@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message Aps {
+    enum ApBand {
+        UNKNOWN = 0;
+        BAND_2_4 = 1;
+        BAND_5 = 2;
+    }
+
+    repeated int64 mac = 1;
+    repeated sint32 rssi = 2;
+    repeated ApBand band = 3;
+    repeated bool connected = 4;
+}
+
+message LteCells {
+    repeated uint32 age = 1;
+    repeated uint32 eucid = 2;
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated sint32 rssi = 5;
+}
+
+message Rq {
+    uint32 userid=1;
+    bytes iv=2;
+    uint32 sw_version = 3;
+    int64 client_mac = 4;
+    Aps aps = 5;
+    LteCells lte_cells = 6;
+    uint32 checksum = 7;
+}
