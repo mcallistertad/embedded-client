@@ -1,0 +1,13 @@
+# Ojbect file and binary executable (target) directory
+bin
+
+# Generated source files
+*.pb.h
+*.pb.c
+elg_pb2.py
+
+# Test output file conttaining encoded ELG request
+rq.bin
+
+# Python scheisse
+pyparse/__pycache__/
