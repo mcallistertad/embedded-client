@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv)
 {
-    init_rq();
+    init_rq(123);
 
     add_ap("aabbcc112233", -10, false, Aps_ApBand_UNKNOWN);
     add_ap("aabbcc112244", -20, false, Aps_ApBand_UNKNOWN);
@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 
     unsigned char buf[1024];
 
-    size_t len = serialize_rq(buf, sizeof(buf));
+    size_t len = serialize_request(buf, sizeof(buf));
 
     /* Write it to a file */
     FILE* fp = fopen("rq.bin", "wb");

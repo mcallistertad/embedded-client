@@ -1,5 +1,30 @@
 syntax = "proto3";
 
+// Request header. Immediately followed by an (encrypted) Rq message of length
+// payload_length.
+//
+message RqHeader {
+    fixed32 partner_id  = 1;
+    bytes iv = 2;
+    fixed32 payload_length = 3;
+}
+
+// Response header. Immediately followed by an (encrypted) Rs message of length
+// payload_length.
+//
+message RsHeader {
+    bytes iv=1;
+    fixed32 payload_length=2;
+}
+
+message Rq {
+    uint32 sw_version = 3;
+    int64 client_mac = 4;
+    Aps aps = 5;
+    LteCells lte_cells = 6;
+    uint32 checksum = 7;
+}
+
 message Aps {
     enum ApBand {
         UNKNOWN = 0;
@@ -19,14 +44,4 @@ message LteCells {
     repeated uint32 mcc = 3;
     repeated uint32 mnc = 4;
     repeated sint32 rssi = 5;
-}
-
-message Rq {
-    uint32 userid=1;
-    bytes iv=2;
-    uint32 sw_version = 3;
-    int64 client_mac = 4;
-    Aps aps = 5;
-    LteCells lte_cells = 6;
-    uint32 checksum = 7;
 }

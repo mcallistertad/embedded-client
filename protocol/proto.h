@@ -7,4 +7,4 @@ void add_ap(const char mac_hex_str[12],
             bool is_connected,
             Aps_ApBand band);
 
-int32_t serialize_rq(uint8_t* buf, size_t buf_len);
+int32_t serialize_request(uint8_t* buf, size_t buf_len);
