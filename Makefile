@@ -10,7 +10,7 @@ PROTO_OBJS = $(addprefix ${BIN_DIR}/, $(PROTO_SRCS:.c=.o))
 
 .PHONY: proto skylib client pyparse aeslib
 
-skylib: ${BIN_DIR}/skylib.a
+skylib: ${BIN_DIR} ${BIN_DIR}/skylib.a
 
 aeslib: ${AES_DIR}/aes.c ${AES_DIR}/aes.h
 	make -C ${AES_DIR} aes.a
