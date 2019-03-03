@@ -7,8 +7,8 @@ from Crypto.Cipher import AES
 Reads a file (the first command line argument) containing single ELG rq
 message, and prints its contents.
 """
-RQ_HEADER_LEN = 15
-CRYPTO_INFO_LEN = 18
+RQ_HEADER_LEN = 10
+CRYPTO_INFO_LEN = 20
 
 with open(sys.argv[1], "rb") as f:
     buffer = f.read()
@@ -47,7 +47,7 @@ with open(sys.argv[1], "rb") as f:
 
     rq = elg_pb2.Rq()
 
-    len = rq.ParseFromString(plaintext[:rq_header.body_length])
+    len = rq.ParseFromString(plaintext[:-crypto_info.aes_padding_length_plus_one + 1])
 
     print("body (len={}):".format(len))
     print(rq)

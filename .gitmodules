@@ -1,6 +1,8 @@
 [submodule ".submodules/nanopb"]
 	path = .submodules/nanopb
 	url = https://github.com/nanopb/nanopb.git
+	ignore = untracked
 [submodule ".submodules/tiny-AES128-C"]
 	path = .submodules/tiny-AES128-C
 	url = https://github.com/kokke/tiny-AES128-C.git
+	ignore = untracked

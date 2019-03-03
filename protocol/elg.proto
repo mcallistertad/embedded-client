@@ -18,25 +18,27 @@ message RqHeader {
 
     // Number of bytes in serialized message, excluding this header.
     fixed32 remaining_length = 2;
-
-    // Length of encoded body portion, exclusive of any padding needed for
-    // encryption.
-    fixed32 body_length = 3;
 }
 
 // Fixed length message.
 message RsHeader {
     // Number of bytes in serialized message, excluding this header.
     fixed32 remaining_length=1;
-
-    // Length of encoded body portion, exclusive of any padding needed for
-    // encryption.
-    fixed32 body_length = 3;
 }
 
 // Fixed length message.
 message CryptoInfo {
     bytes iv=1; // Always 16 bytes in length
+
+    // AES requires messages to be sized in 16-byte increments, so before
+    // encrypting, the encoded message must be padded with 0-15 bytes. The
+    // receiving side needs to know how much padding has been added so that
+    // that it can be stripped off of the message before decoding. 1 is added
+    // to the actual value in order to force this field to always be encoded,
+    // in order to ensure that the length of the CryptoInfo message is fixed.
+    // Valid values are thus 1-16.
+    // 
+    int32 aes_padding_length_plus_one = 2;
 }
 
 // Message body definitions.
@@ -44,11 +46,9 @@ message CryptoInfo {
 
 // Variable length message.
 message Rq {
-    uint32 sw_version = 3;
     int64 client_mac = 4;
     Aps aps = 5;
     LteCells lte_cells = 6;
-    uint32 checksum = 7;
 }
 
 message Aps {

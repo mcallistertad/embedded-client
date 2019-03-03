@@ -14,7 +14,19 @@ static RqHeader rq_hdr;
 static CryptoInfo rq_crypto_info;
 static struct AES_ctx aes_ctx;
 
-void init_rq(uint32_t partner_id, const char* hex_key)
+static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
+{
+    const char* pos = hex_str;
+    size_t i;
+
+    for (i=0; i < buff_len; i++)
+    {
+        sscanf(pos, "%2hhx", &bin_buff[i]);
+        pos += 2;
+    }
+}
+
+void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12])
 {
     memset(&rq_hdr, 0, sizeof(rq_hdr));
 
@@ -31,11 +43,9 @@ void init_rq(uint32_t partner_id, const char* hex_key)
     memcpy(rq_crypto_info.iv.bytes, aes_iv_buf, sizeof(aes_iv_buf));
     rq_crypto_info.iv.size=16;
 
-    for (size_t i=0; i < 16; i++)
-    {
-        sscanf(hex_key, "%2hhx", &aes_key_buf[i]);
-        hex_key += 2;
-    }
+    hex_str_to_bin(hex_key, aes_key_buf, sizeof(aes_key_buf));
+
+    rq.client_mac = strtoll(client_mac, 0, 16);
 
     AES_init_ctx_iv(&aes_ctx, aes_key_buf, aes_iv_buf);
 }
@@ -51,18 +61,29 @@ void add_ap(const char mac_hex_str[12],
     rq.aps.band[rq.aps.band_count++] = band;
 }
 
+void add_lte_cell(uint32_t mcc,
+                  uint32_t mnc,
+                  uint32_t eucid,
+                  int32_t rssi,
+                  uint32_t age)
+{
+    rq.lte_cells.mcc[rq.lte_cells.mcc_count++] = mcc;
+    rq.lte_cells.mnc[rq.lte_cells.mnc_count++] = mnc;
+    rq.lte_cells.eucid[rq.lte_cells.eucid_count++] = eucid;
+    rq.lte_cells.age[rq.lte_cells.age_count++] = age;
+    rq.lte_cells.rssi[rq.lte_cells.rssi_count++] = rssi;
+}
+
 int32_t serialize_request(uint8_t* buf, size_t buf_len)
 {
     // Create and serialize the request header message.
     size_t rq_size;
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
-    rq_hdr.body_length = rq_size;
-
-    size_t aes_padding = (16 - rq_size % 16) % 16;
-
     // Account for necessary encryption padding.
-    rq_hdr.remaining_length = rq_size + aes_padding;
+    size_t aes_padding_length = (16 - rq_size % 16) % 16;
+
+    rq_hdr.remaining_length = rq_size + aes_padding_length;
 
     size_t crypto_info_size;
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
@@ -82,6 +103,8 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     pb_ostream_t crypto_info_ostream = pb_ostream_from_buffer(buf + bytes_written,
                                                               buf_len - bytes_written);
 
+    rq_crypto_info.aes_padding_length_plus_one = aes_padding_length + 1;
+
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
         bytes_written += crypto_info_ostream.bytes_written;
     else
@@ -100,7 +123,7 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
         return -1;
 
     // Encrypt the (serialized) request body.
-    AES_CBC_encrypt_buffer(&aes_ctx, body, rq_size + aes_padding);
+    AES_CBC_encrypt_buffer(&aes_ctx, body, rq_size + aes_padding_length);
 
-    return bytes_written + aes_padding;
+    return bytes_written + aes_padding_length;
 }
