@@ -1,22 +1,48 @@
 syntax = "proto3";
 
-// Request header. Immediately followed by an (encrypted) Rq message of length
-// payload_length.
-//
+/*
+ * Messages exchanged between client and server are comprised of the following
+ * sequence of protocol buffer messages.
+ *
+ * +------------------------------+-----------------------+------------------------------+
+ * | RqHeader/RsHeader (10 bytes) | CryptoInfo (18 bytes) | Rq/Rs body (variable length) |
+ * +------------------------------+-----------------------+------------------------------+
+ *
+ * The Rq/Rs body is encrypted after serialization and decrypted before
+ * deserialization. The *Header and CryptoInfo fields are not encrypted. 
+*/
+
+// Fixed length message.
 message RqHeader {
     fixed32 partner_id  = 1;
-    bytes iv = 2;
-    fixed32 payload_length = 3;
+
+    // Number of bytes in serialized message, excluding this header.
+    fixed32 remaining_length = 2;
+
+    // Length of encoded body portion, exclusive of any padding needed for
+    // encryption.
+    fixed32 body_length = 3;
 }
 
-// Response header. Immediately followed by an (encrypted) Rs message of length
-// payload_length.
-//
+// Fixed length message.
 message RsHeader {
-    bytes iv=1;
-    fixed32 payload_length=2;
+    // Number of bytes in serialized message, excluding this header.
+    fixed32 remaining_length=1;
+
+    // Length of encoded body portion, exclusive of any padding needed for
+    // encryption.
+    fixed32 body_length = 3;
 }
 
+// Fixed length message.
+message CryptoInfo {
+    bytes iv=1; // Always 16 bytes in length
+}
+
+// Message body definitions.
+//
+
+// Variable length message.
 message Rq {
     uint32 sw_version = 3;
     int64 client_mac = 4;

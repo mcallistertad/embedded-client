@@ -1,9 +1,10 @@
 CFLAGS = -Wall -Werror -Os
+CFLAGS += -DCRYPTO_ENABLED # Currently a no-op.
 BIN_DIR = bin
 SKY_PROTO_DIR = protocol
 PROTO_BUFS_DIR = .submodules/nanopb
 AES_DIR = .submodules/tiny-AES128-C
-INCLUDES = -I${SKY_PROTO_DIR} -I${PROTO_BUFS_DIR}
+INCLUDES = -I${SKY_PROTO_DIR} -I${PROTO_BUFS_DIR} -I${AES_DIR}
 
 PROTO_SRCS = elg.pb.c proto.c pb_common.c pb_encode.c pb_decode.c
 PROTO_OBJS = $(addprefix ${BIN_DIR}/, $(PROTO_SRCS:.c=.o))
