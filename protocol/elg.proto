@@ -61,7 +61,7 @@ message Aps {
     repeated int64 mac = 1;
     repeated sint32 rssi = 2;
     repeated ApBand band = 3;
-    repeated bool connected = 4;
+    // repeated bool connected = 4;
 }
 
 message LteCells {

@@ -57,7 +57,7 @@ void add_ap(const char mac_hex_str[12],
 {
     rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
     rq.aps.rssi[rq.aps.rssi_count++] = rssi;
-    rq.aps.connected[rq.aps.connected_count++] = is_connected;
+    //rq.aps.connected[rq.aps.connected_count++] = is_connected;
     rq.aps.band[rq.aps.band_count++] = band;
 }
 
