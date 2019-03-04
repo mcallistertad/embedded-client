@@ -1,5 +1,56 @@
 syntax = "proto3";
 
+/*
+ * Messages exchanged between client and server are comprised of the following
+ * sequence of protocol buffer messages.
+ *
+ * +------------------------------+-----------------------+------------------------------+
+ * | RqHeader/RsHeader (10 bytes) | CryptoInfo (18 bytes) | Rq/Rs body (variable length) |
+ * +------------------------------+-----------------------+------------------------------+
+ *
+ * The Rq/Rs body is encrypted after serialization and decrypted before
+ * deserialization. The *Header and CryptoInfo fields are not encrypted. 
+*/
+
+// Fixed length message.
+message RqHeader {
+    fixed32 partner_id  = 1;
+
+    // Number of bytes in serialized message, excluding this header.
+    fixed32 remaining_length = 2;
+}
+
+// Fixed length message.
+message RsHeader {
+    // Number of bytes in serialized message, excluding this header.
+    fixed32 remaining_length=1;
+}
+
+// Fixed length message.
+message CryptoInfo {
+    bytes iv=1; // Always 16 bytes in length
+
+    // AES requires messages to be sized in 16-byte increments, so before
+    // encrypting, the encoded message must be padded with 0-15 bytes. The
+    // receiving side needs to know how much padding has been added so that
+    // that it can be stripped off of the message before decoding. 1 is added
+    // to the actual value in order to force this field to always be encoded,
+    // in order to ensure that the length of the CryptoInfo message is fixed.
+    // Valid values are thus 1-16.
+    // 
+    int32 aes_padding_length_plus_one = 2;
+}
+
+// Message body definitions.
+//
+
+// Variable length message.
+message Rq {
+    int64 client_mac = 4;
+    Aps aps = 5;
+    LteCells lte_cells = 6;
+}
+
 message Aps {
     enum ApBand {
         UNKNOWN = 0;
@@ -10,7 +61,7 @@ message Aps {
     repeated int64 mac = 1;
     repeated sint32 rssi = 2;
     repeated ApBand band = 3;
-    repeated bool connected = 4;
+    // repeated bool connected = 4;
 }
 
 message LteCells {
@@ -19,14 +70,4 @@ message LteCells {
     repeated uint32 mcc = 3;
     repeated uint32 mnc = 4;
     repeated sint32 rssi = 5;
-}
-
-message Rq {
-    uint32 userid=1;
-    bytes iv=2;
-    uint32 sw_version = 3;
-    int64 client_mac = 4;
-    Aps aps = 5;
-    LteCells lte_cells = 6;
-    uint32 checksum = 7;
 }

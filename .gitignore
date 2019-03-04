@@ -10,4 +10,4 @@ elg_pb2.py
 rq.bin
 
 # Python scheisse
-pyparse/__pycache__/
+__pycache__
