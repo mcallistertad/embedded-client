@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 import elg_proto
-from Crypto.Cipher import AES
 
 """
 Reads a file (the first command line argument) containing single ELG rq
