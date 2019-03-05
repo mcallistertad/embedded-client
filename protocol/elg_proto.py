@@ -5,44 +5,34 @@ from Crypto.Cipher import AES
 RQ_HEADER_LEN = 10
 CRYPTO_INFO_LEN = 20
 
-def encode_rq(rq):
+def encode_rq(rq, crypto_key):
     pass
 
-def decode_rq(buf, key_lookup_func):
-    msg_start = 0
-    msg_end = RQ_HEADER_LEN
+def decode_rq_header(buf):
+    assert len(buf) == RQ_HEADER_LEN, "Invalid buffer length"
 
-    # Deserialze the header
     header = elg_pb2.RqHeader()
-    len = header.ParseFromString(buf[msg_start:msg_end])
+    length = header.ParseFromString(buf)
 
-    msg_start = len
+    assert length == RQ_HEADER_LEN, "Unexpected parse result length"
 
-    # Deserialize the CryptoInfo message.
-    crypto_info = None
+    return header
 
-    msg_end = msg_start + CRYPTO_INFO_LEN
+def decode_rq_crypto_info_and_body(buf, crypto_key):
+    assert len(buf) > CRYPTO_INFO_LEN, "Buffer too small"
 
+    # Deserialize the CryptoInfo
     crypto_info = elg_pb2.CryptoInfo()
-    len = crypto_info.ParseFromString(buf[msg_start:msg_end])
+    length = crypto_info.ParseFromString(buf[:CRYPTO_INFO_LEN])
+
+    assert length == CRYPTO_INFO_LEN, "Unexpected parse result length"
 
     # Decrypt the body.
-    msg_start += len
+    cipher = AES.new(crypto_key, AES.MODE_CBC, crypto_info.iv)
+    plaintext = cipher.decrypt(buf[length:])
 
-    key = key_lookup_func(header.partner_id)
+    # Deserialize the decrypted body.
+    body = elg_pb2.Rq()
+    length = body.ParseFromString(plaintext[:len(plaintext) - crypto_info.aes_padding_length_plus_one + 1])
 
-    try:
-        cipher = AES.new(key, AES.MODE_CBC, crypto_info.iv)
-
-        plaintext = cipher.decrypt(buf[msg_start:])
-    except:
-        print("error decrypting buffer")
-
-    try:
-        body = elg_pb2.Rq()
-
-        len = body.ParseFromString(plaintext[:-crypto_info.aes_padding_length_plus_one + 1])
-    except:
-        print("error decoding buffer")
-
-    return header, crypto_info, body
+    return body

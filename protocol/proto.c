@@ -83,12 +83,12 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     // Account for necessary encryption padding.
     size_t aes_padding_length = (16 - rq_size % 16) % 16;
 
-    rq_hdr.remaining_length = rq_size + aes_padding_length;
+    rq_crypto_info.aes_padding_length_plus_one = aes_padding_length + 1;
 
     size_t crypto_info_size;
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
 
-    rq_hdr.remaining_length += crypto_info_size;
+    rq_hdr.remaining_length += rq_size + aes_padding_length + crypto_info_size;
 
     int32_t bytes_written = -1;
 
@@ -102,8 +102,6 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     // Serialize the crypto_info message.
     pb_ostream_t crypto_info_ostream = pb_ostream_from_buffer(buf + bytes_written,
                                                               buf_len - bytes_written);
-
-    rq_crypto_info.aes_padding_length_plus_one = aes_padding_length + 1;
 
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
         bytes_written += crypto_info_ostream.bytes_written;
