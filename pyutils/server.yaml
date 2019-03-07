@@ -13,7 +13,7 @@ log_config:
 
   handlers:
     console:
-      level: DEBUG
+      level: ERROR
       class: logging.StreamHandler
       formatter: default
       stream: ext://sys.stdout
