@@ -1,18 +1,25 @@
 #!/usr/bin/env python
 import socketserver
 import threading
-import logging
+import logging.config
 import elg_proto
+import yaml
 
 PORT=9756
 SOCKET_TIMEOUT=5
 
-#logging.basicConfig(format='%(asctime)s: %(message)s', filename='server.log',level=logging.DEBUG)
-logging.basicConfig(format='%(asctime)s [%(threadName)s] %(message)s', level=logging.DEBUG)
+def configure():
+    with open("server.yaml") as f:
+        config = yaml.load(f)
+
+    logging.config.dictConfig(config['log_config'])
+
 
 class RequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        logging.info("Handling request. Active thread count = {}".format(threading.active_count()))
+        logger = logging.getLogger('handler')
+
+        logger.info("Handling request. Active thread count = {}".format(threading.active_count()))
 
         self.request.settimeout(SOCKET_TIMEOUT)
 
@@ -26,7 +33,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             header = elg_proto.decode_rq_header(buf)
 
-            logging.info("---- header: ----\n" + str(header))
+            logger.info("---- header: ----\n" + str(header))
 
             # Read the rest of the message.
             buf = bytearray()
@@ -34,7 +41,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
             while len(buf) < header.remaining_length:
                 buf.extend(self.request.recv(header.remaining_length - len(buf)))
 
-            logging.info("remaining bytes read: {}".format(len(buf)))
+            logger.info("remaining bytes read: {}".format(len(buf)))
 
             # TODO: determine the key based on the value of header.partner_id.
             key = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f'
@@ -42,15 +49,15 @@ class RequestHandler(socketserver.BaseRequestHandler):
             # Read and decode the remainder of the message.
             body = elg_proto.decode_rq_crypto_info_and_body(buf, key)
 
-            logging.info("---- body: ----\n" + str(body))
+            logger.info("---- body: ----\n" + str(body))
 
             # TODO: Create the corresponding API server request, send it
             # thither, get the API server response, create and send the client
             # response.
 
-            logging.info("Request complete")
+            logger.info("Request complete")
         except Exception as e:
-            logging.error("exception: " + str(e))
+            logger.error("exception: " + str(e))
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -58,6 +65,10 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 if __name__ == "__main__":
+    configure()
+
+    logging.info("Starting server...")
+
     server = ThreadedTCPServer(("localhost", PORT), RequestHandler)
     server.allow_reuse_address = True
 
