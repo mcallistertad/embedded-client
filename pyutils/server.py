@@ -8,9 +8,6 @@ from xml.etree import ElementTree as ET
 from io import BytesIO
 import urllib.request
 
-PORT=9756
-SOCKET_TIMEOUT=5
-
 def get_config():
     with open("server.yaml") as f:
         config = yaml.load(f)
@@ -84,8 +81,6 @@ class RequestHandler(socketserver.BaseRequestHandler):
             result['lon'] = location.find('longitude').text
             result['hpe'] = location.find('hpe').text
 
-            print(result)
-
         except Exception as e:
             error_msg = type(e).__name__ + ': ' + str(e)
 
@@ -97,7 +92,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
         logger.info("Handling request. Active thread count = {}".format(threading.active_count()))
 
-        self.request.settimeout(SOCKET_TIMEOUT)
+        self.request.settimeout(self.config['conn_timeout'])
 
         try:
             # Read the header in order to get the partner_id and to determine
@@ -155,7 +150,7 @@ if __name__ == "__main__":
     RequestHandler.config = config
     RequestHandler.partner_keys = partner_keys
 
-    server = ThreadedTCPServer(("localhost", PORT), RequestHandler)
+    server = ThreadedTCPServer(("localhost", config['port']), RequestHandler)
     server.allow_reuse_address = True
 
     with server:

@@ -1,3 +1,5 @@
+port: 9756
+conn_timeout: 5 # Seconds
 api_url: http://127.0.0.1:8081/wps2/location
 
 log_config:
