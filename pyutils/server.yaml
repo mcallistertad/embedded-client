@@ -1,3 +1,5 @@
+api_url: http://127.0.0.1:8081/wps2/location
+
 log_config:
   version: 1
   disable_existing_loggers: False

@@ -11,7 +11,7 @@
 //#define SERVER_HOST "elg.skyhook.com"
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 9756
-#define PARTNER_ID 123
+#define PARTNER_ID 2
 #define AES_KEY "000102030405060708090a0b0c0d0e0f"
 #define CLIENT_MAC "deadbeefdead"
 
