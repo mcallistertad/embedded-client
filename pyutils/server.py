@@ -4,6 +4,9 @@ import threading
 import logging.config
 import elg_proto
 import yaml
+from xml.etree import ElementTree as ET
+from io import BytesIO
+import urllib.request
 
 PORT=9756
 SOCKET_TIMEOUT=5
@@ -14,6 +17,74 @@ def configure():
 
     logging.config.dictConfig(config['log_config'])
 
+
+def forward_rq_to_api_server(rq, url, api_key):
+    result = None
+    error_msg = None
+
+    try:
+        root = ET.Element('LocationRQ')
+        root.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
+        root.set('xsi:schemaLocation', 'http://skyhookwireless.com/wps/2005 ../../src/xsd/location.xsd')
+        root.set('xmlns', 'http://skyhookwireless.com/wps/2005')
+        root.set('version', '2.25')
+
+        auth = ET.SubElement(root, 'authentication')
+        auth.set('version', '2.2')
+
+        key = ET.SubElement(auth, 'key')
+        key.set('key', api_key)
+        key.set('username', 'elg')
+
+        event = None
+
+        # AP scans.
+        if 'aps' in rq:
+            aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.band))
+
+            for ap in aps:
+                ap = ET.SubElement(root, 'access-point')
+
+                ET.SubElement(ap, 'mac').text = ap[0]
+                ET.SubElement(ap, 'signal-strength').text = str(ap[1])
+
+        et = ET.ElementTree(root)
+        body = BytesIO()
+        et.write(body, encoding='utf-8', xml_declaration=True) 
+
+        api_request = body.getvalue()
+
+        req = urllib.request.Request(url, body.getvalue(), {'Content-Type': 'text/xml'})
+
+        try:
+            f = urllib.request.urlopen(req)
+            api_response = f.read().strip()
+        finally:
+            try:
+                f.close()
+            except:
+                pass
+
+        # Parse the XML response and convert it to JSON.
+        #
+        # Get the XML root after stripping off pesky namespace attribute.
+        resp_root = ET.fromstring(re.sub(' xmlns="[^"]+"', '', api_response, count=1))
+
+        location = resp_root.find('location')
+
+        # FIXME: populate and return a protobuf RS message (not a "result" dict).
+        result = {}
+
+        result['user'] = event['username']
+        result['lat'] = location.find('latitude').text
+        result['lon'] = location.find('longitude').text
+        result['hpe'] = location.find('hpe').text
+        result['time'] = int(calendar.timegm(time.gmtime()))
+
+    except Exception as e:
+        error_msg = type(e).__name__ + ': ' + str(e)
+
+    return result 
 
 class RequestHandler(socketserver.BaseRequestHandler):
     def handle(self):

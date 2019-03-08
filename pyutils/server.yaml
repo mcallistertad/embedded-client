@@ -21,6 +21,6 @@ log_config:
       level: DEBUG
       class: logging.handlers.RotatingFileHandler
       formatter: default
-      filename: mylogger
+      filename: server.log
       maxBytes: 1073741824
       backupCount: 3
