@@ -124,7 +124,5 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    printf("total bytes sent to server %d\n", rc);
-
     // TODO: read the response.
 }

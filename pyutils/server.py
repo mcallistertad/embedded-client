@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import re
 import socketserver
 import threading
 import logging.config
@@ -7,6 +8,7 @@ import yaml
 from xml.etree import ElementTree as ET
 from io import BytesIO
 import urllib.request
+from http import HTTPStatus
 
 def get_config():
     with open("server.yaml") as f:
@@ -23,6 +25,8 @@ def get_partner_keys():
 
 
 class RequestHandler(socketserver.BaseRequestHandler):
+    request_count = 0
+
     def forward_rq_to_api_server(self, rq, api_key):
         result = None
         error_msg = None
@@ -58,19 +62,13 @@ class RequestHandler(socketserver.BaseRequestHandler):
             req = urllib.request.Request(self.config["api_url"],
                 body.getvalue(), {'Content-Type': 'text/xml'})
 
-            try:
-                f = urllib.request.urlopen(req)
-                api_response = f.read().strip()
-            finally:
-                try:
-                    f.close()
-                except:
-                    pass
+            with urllib.request.urlopen(req) as resp:
+                resp_xml = resp.read().decode('utf-8').strip()
 
             # Parse the XML response.
             #
             # Get the XML root after stripping off pesky namespace attribute.
-            resp_root = ET.fromstring(re.sub(' xmlns="[^"]+"', '', api_response, count=1))
+            resp_root = ET.fromstring(re.sub(' xmlns="[^"]+"', '', resp_xml, count=1))
 
             location = resp_root.find('location')
 
@@ -82,15 +80,17 @@ class RequestHandler(socketserver.BaseRequestHandler):
             result['hpe'] = location.find('hpe').text
 
         except Exception as e:
-            error_msg = type(e).__name__ + ': ' + str(e)
+            raise
 
         return result 
 
 
     def handle(self):
+        RequestHandler.request_count += 1 # GIL obviates need to use a lock.
+
         logger = logging.getLogger('handler')
 
-        logger.info("Handling request. Active thread count = {}".format(threading.active_count()))
+        logger.info("Handling request {}. Active thread count = {}".format(RequestHandler.request_count, threading.active_count()))
 
         self.request.settimeout(self.config['conn_timeout'])
 
@@ -104,10 +104,14 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             header = elg_proto.decode_rq_header(buf)
 
-            logger.info("---- header: ----\n" + str(header))
+            logger.debug("---- header: ----\n" + str(header))
 
             # Get the AES and API keys for this customer.
-            keys = self.partner_keys[header.partner_id]['keys']
+            try:
+                keys = self.partner_keys[header.partner_id]['keys']
+            except KeyError:
+                logger.warning("partner id {} not found in key file. Ignoring request".format(header.partner_id))
+                return
 
             # Read the rest of the message.
             buf = bytearray()
@@ -115,28 +119,22 @@ class RequestHandler(socketserver.BaseRequestHandler):
             while len(buf) < header.remaining_length:
                 buf.extend(self.request.recv(header.remaining_length - len(buf)))
 
-            logger.info("remaining bytes read: {}".format(len(buf)))
+            logger.debug("remaining bytes read: {}".format(len(buf)))
 
             key = bytearray.fromhex(keys['aes'])
 
             # Read and decode the remainder of the message.
             body = elg_proto.decode_rq_crypto_info_and_body(buf, key)
 
-            logger.info("---- body: ----\n" + str(body))
+            logger.debug("---- body: ----\n" + str(body))
 
             rs = self.forward_rq_to_api_server(body, keys['api'])
 
-            # TODO: Create the corresponding API server request, send it
-            # thither, get the API server response, create and send the client
-            # response.
-
-            logger.info("Request complete")
+            logger.debug("Response: " + str(rs))
         except Exception as e:
-            logger.error("exception: " + str(e))
+            logger.error("Error for partner ID {}: ".format(header.partner_id) +
+                    type(e).__name__ + ':: ' + str(e))
 
-
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    pass
 
 if __name__ == "__main__":
     config = get_config()
@@ -150,8 +148,7 @@ if __name__ == "__main__":
     RequestHandler.config = config
     RequestHandler.partner_keys = partner_keys
 
-    server = ThreadedTCPServer(("localhost", config['port']), RequestHandler)
-    server.allow_reuse_address = True
+    server = socketserver.ThreadingTCPServer(("localhost", config['port']), RequestHandler)
 
     with server:
         listener_thread = threading.Thread(target=server.serve_forever)
@@ -159,4 +156,5 @@ if __name__ == "__main__":
         listener_thread.daemon = True
         listener_thread.start()
 
+        server.allow_reuse_address = True
         server.serve_forever()
