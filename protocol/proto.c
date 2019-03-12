@@ -14,6 +14,10 @@ static RqHeader rq_hdr;
 static CryptoInfo rq_crypto_info;
 static struct AES_ctx aes_ctx;
 
+static unsigned char aes_key_buf[16];
+
+static size_t crypto_info_size;
+
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
 {
     const char* pos = hex_str;
@@ -34,7 +38,6 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 
     memset(&rq, 0, sizeof(rq));
 
-    unsigned char aes_key_buf[16];
     unsigned char aes_iv_buf[16];
 
     // TODO: properly value the header.iv field.
@@ -85,7 +88,6 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
 
     rq_crypto_info.aes_padding_length_plus_one = aes_padding_length + 1;
 
-    size_t crypto_info_size;
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
 
     rq_hdr.remaining_length += rq_size + aes_padding_length + crypto_info_size;
@@ -124,4 +126,45 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     AES_CBC_encrypt_buffer(&aes_ctx, body, rq_size + aes_padding_length);
 
     return bytes_written + aes_padding_length;
+}
+
+int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs)
+{
+    // We assume that buf contains the response message in its entirety. (Since
+    // the server closes the connection after sending the response, the client
+    // doesn't need to know how many bytes to read - it just keeps reading
+    // until the connection is closed by the server.)
+    //
+    // Deserialize the header.
+    RsHeader header;
+
+    pb_istream_t hdr_istream = pb_istream_from_buffer(buf, RsHeader_size);
+
+    if (!pb_decode(&hdr_istream, RsHeader_fields, &header))
+        return -1;
+
+    // Deserialize the crypto_info.
+    CryptoInfo crypto_info;
+
+    pb_istream_t crypto_info_istream = 
+        pb_istream_from_buffer(buf + RsHeader_size, crypto_info_size);
+
+    if (!pb_decode(&crypto_info_istream, CryptoInfo_fields, &crypto_info))
+        return -1;
+
+    // Decrypt the response body.
+    AES_init_ctx_iv(&aes_ctx, aes_key_buf, crypto_info.iv.bytes);
+
+    size_t body_size = buf_len - RsHeader_size - crypto_info_size;
+    uint8_t* body_buf = buf + RsHeader_size + crypto_info_size;
+
+    AES_CBC_decrypt_buffer(&aes_ctx, body_buf, body_size);
+
+    // Deserialize the response body.
+    pb_istream_t body_info_istream = pb_istream_from_buffer(body_buf, body_size - crypto_info.aes_padding_length_plus_one + 1);
+
+    if (!pb_decode(&body_info_istream, Rs_fields, rs))
+        return -1;
+
+    return 0;
 }

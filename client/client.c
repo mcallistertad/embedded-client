@@ -74,19 +74,19 @@ int main(int argc, char** argv)
 
     char ipaddr[16]; // the char representation of an ipv4 address
 
-    // lookup server ip address
+    // Lookup server ip address.
     if (!hostname_to_ip(SERVER_HOST, ipaddr, sizeof(ipaddr)))
     {
         printf("Could not resolve host %s\n", SERVER_HOST);
         exit(-1);
     }
 
-    // init server address struct and set ip and port
+    // Init server address struct and set ip and port.
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(SERVER_PORT);
     serv_addr.sin_addr.s_addr = inet_addr(ipaddr);
 
-    // open socket
+    // Open socket.
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd == -1)
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    // Set connection timeout 10 seconds
+    // Set socket timeout to 10 seconds.
     struct timeval tv = {10, 0};
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval)))
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    /* start connection */
+    // Connect.
     int32_t rc = connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
 
     if (rc < 0)
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    /* send data to the server */
+    // Send request.
     rc = send(sockfd, buf, (size_t) len, 0);
 
     if (rc != len)
@@ -124,5 +124,18 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    // TODO: read the response.
+    // Read response.
+    rc = recv(sockfd, &buf, sizeof(buf), MSG_WAITALL);
+
+    Rs rs;
+
+    if (deserialize_response(buf, rc, &rs) < 0)
+    {
+        printf("deserialization failed!\n");
+    }
+    else
+    {
+        printf("recv response = %d\n", rc);
+        printf("lat/lon/hpe = %f/%f/%f\n", rs.lat, rs.lon, rs.hpe);
+    }
 }

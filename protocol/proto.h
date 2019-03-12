@@ -1,3 +1,6 @@
+#ifndef ELG_PB_H
+#define ELG_PB_H
+
 #include "elg.pb.h"
 
 // Sequence for sending request to server is:
@@ -22,3 +25,8 @@ void add_lte_cell(uint32_t mcc,
 
 // Encode and encrypt request into buffer.
 int32_t serialize_request(uint8_t* buf, size_t buf_len);
+
+// Decrypt and decode response info from buffer.
+int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs);
+
+#endif

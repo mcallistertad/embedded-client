@@ -4,9 +4,9 @@ syntax = "proto3";
  * Messages exchanged between client and server are comprised of the following
  * sequence of protocol buffer messages.
  *
- * +------------------------------+-----------------------+------------------------------+
- * | RqHeader/RsHeader (10 bytes) | CryptoInfo (18 bytes) | Rq/Rs body (variable length) |
- * +------------------------------+-----------------------+------------------------------+
+ * +--------------------------------+-----------------------+------------------------------+
+ * | RqHeader/RsHeader (10/5 bytes) | CryptoInfo (20 bytes) | Rq/Rs body (variable length) |
+ * +--------------------------------+-----------------------+------------------------------+
  *
  * The Rq/Rs body is encrypted after serialization and decrypted before
  * deserialization. The *Header and CryptoInfo fields are not encrypted. 
@@ -70,4 +70,10 @@ message LteCells {
     repeated uint32 mcc = 3;
     repeated uint32 mnc = 4;
     repeated sint32 rssi = 5;
+}
+
+message Rs {
+    double lat = 1;
+    double lon = 2;
+    float hpe = 3;
 }

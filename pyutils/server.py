@@ -75,14 +75,14 @@ class RequestHandler(socketserver.BaseRequestHandler):
             # FIXME: populate and return a protobuf RS message (not a "result" dict).
             result = {}
 
-            result['lat'] = location.find('latitude').text
-            result['lon'] = location.find('longitude').text
-            result['hpe'] = location.find('hpe').text
+            lat = float(location.find('latitude').text)
+            lon = float(location.find('longitude').text)
+            hpe = float(location.find('hpe').text)
 
         except Exception as e:
             raise
 
-        return result 
+        return lat, lon, hpe
 
 
     def handle(self):
@@ -128,12 +128,16 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             logger.debug("---- body: ----\n" + str(body))
 
-            rs = self.forward_rq_to_api_server(body, keys['api'])
+            lat, lon, hpe = self.forward_rq_to_api_server(body, keys['api'])
 
-            logger.debug("Response: " + str(rs))
+            logger.debug("Response: {}, {}, {}".format(lat, lon, hpe))
+
+            response = elg_proto.encode_rs(key, lat, lon, hpe)
+
+            self.request.sendall(response)
         except Exception as e:
             logger.error("Error for partner ID {}: ".format(header.partner_id) +
-                    type(e).__name__ + ':: ' + str(e))
+                    type(e).__name__ + ': ' + str(e))
 
 
 if __name__ == "__main__":
@@ -148,13 +152,11 @@ if __name__ == "__main__":
     RequestHandler.config = config
     RequestHandler.partner_keys = partner_keys
 
-    server = socketserver.ThreadingTCPServer(("localhost", config['port']), RequestHandler)
+    with socketserver.ThreadingTCPServer(("localhost", config['port']), RequestHandler) as server:
+        server.allow_reuse_address = True
 
-    with server:
         listener_thread = threading.Thread(target=server.serve_forever)
 
         listener_thread.daemon = True
         listener_thread.start()
-
-        server.allow_reuse_address = True
-        server.serve_forever()
+        listener_thread.join()
