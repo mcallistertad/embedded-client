@@ -17,4 +17,4 @@ $ Start the embedded-lib server:
 ```
 $ ./server.py
 ```
-Make sure that the API server URL specified in server.yaml matches the above (specifically the host name and port number portions). Whale, that's about it.
+Make sure that the API server URL specified in `server.yaml` matches the above (specifically the host name and port number portions). Whale, that's about it.
