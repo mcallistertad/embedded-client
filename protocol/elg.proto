@@ -8,7 +8,7 @@ syntax = "proto3";
  *
  * +-----------+----------------------------+--------------------+============================================+
  * | header len| Encoded RqHeader/RsHeader  | Encoded CryptoInfo || Encoded, padded and encrypted Rq/Rs body ||
- * | (1 byte)  | (variable length)          | (variable length)  || (variable length)                        ||
+ * | (1 byte)  | (variable length < 256)    | (variable length)  || (variable length)                        ||
  * +-----------+----------------------------+--------------------+============================================+
  *
  * The Rq/Rs body is padded (AES has a 16-byte block length) and encrypted
@@ -22,13 +22,11 @@ message RqHeader {
     int32 rq_length = 3; // Includes any AES padding
 }
 
-// Fixed length message.
 message RsHeader {
     int32 crypto_info_length = 1;
     int32 rs_length = 2; // Includes any AES padding
 }
 
-// Fixed length message.
 message CryptoInfo {
     bytes iv=1; // Always 16 bytes in length
 
@@ -37,8 +35,6 @@ message CryptoInfo {
 
 // Message body definitions.
 //
-
-// Variable length message.
 message Rq {
     int64 client_mac = 4;
     Aps aps = 5;
