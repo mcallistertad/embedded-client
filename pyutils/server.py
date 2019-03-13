@@ -108,8 +108,6 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             header = elg_proto.decode_rq_header(buf)
 
-            logger.debug("---- header: ----\n" + str(header))
-
             # Get the AES and API keys for this customer.
             try:
                 keys = self.partner_keys[header.partner_id]['keys']
@@ -120,17 +118,17 @@ class RequestHandler(socketserver.BaseRequestHandler):
             # Read the rest of the message.
             buf = bytearray()
 
-            while len(buf) < header.remaining_length:
-                buf.extend(self.request.recv(header.remaining_length - len(buf)))
+            remaining_length = header.crypto_info_length + header.rq_length
+
+            while len(buf) < remaining_length:
+                buf.extend(self.request.recv(remaining_length - len(buf)))
 
             logger.debug("remaining bytes read: {}".format(len(buf)))
 
             key = bytearray.fromhex(keys['aes'])
 
             # Read and decode the remainder of the message.
-            body = elg_proto.decode_rq_crypto_info_and_body(buf, key)
-
-            logger.debug("---- body: ----\n" + str(body))
+            body = elg_proto.decode_rq_crypto_info_and_body(buf, header, key)
 
             lat, lon, hpe = self.forward_rq_to_api_server(body, keys['api'])
 

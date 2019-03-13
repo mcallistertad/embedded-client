@@ -1,46 +1,38 @@
 syntax = "proto3";
 
 /*
- * Messages exchanged between client and server are comprised of the following
- * sequence of protocol buffer messages, except for the first byte. The first
- * byte on the wire is not a protocol buffer message, but rather is a
- * single byte which represenets the length of the header message.
+ * Buffer streams exchanged between client and server are comprised of the
+ * following sequence of encoded (serialized) protocol buffer messages (except
+ * for the first byte, which represents the length of the encoded header
+ * message).
  *
- * +-----------+--------------------------------+-----------------------+-------------------+
- * | header len| RqHeader/RsHeader              | CryptoInfo            | Rq/Rs body        |
- * | (1 byte)  | (variable length)              | (20 bytes)            | (variable length) |
- * +-----------+--------------------------------+-----------------------+-------------------+
+ * +-----------+----------------------------+--------------------+============================================+
+ * | header len| Encoded RqHeader/RsHeader  | Encoded CryptoInfo || Encoded, padded and encrypted Rq/Rs body ||
+ * | (1 byte)  | (variable length)          | (variable length)  || (variable length)                        ||
+ * +-----------+----------------------------+--------------------+============================================+
  *
- * The Rq/Rs body is encrypted after serialization and decrypted before
- * deserialization. The *Header and CryptoInfo fields are not encrypted. 
+ * The Rq/Rs body is padded (AES has a 16-byte block length) and encrypted
+ * after serialization and decrypted and de-padded before deserialization. The
+ * header length byte, header and CryptoInfo fields are not encrypted. 
 */
 
 message RqHeader {
-    fixed32 partner_id  = 1;
-
-    // Number of bytes in serialized message, excluding this header.
-    int32 remaining_length = 2;
+    int32 partner_id  = 1;
+    int32 crypto_info_length = 2;
+    int32 rq_length = 3; // Includes any AES padding
 }
 
 // Fixed length message.
 message RsHeader {
-    // Number of bytes in serialized message, excluding this header.
-    int32 remaining_length=1;
+    int32 crypto_info_length = 1;
+    int32 rs_length = 2; // Includes any AES padding
 }
 
 // Fixed length message.
 message CryptoInfo {
     bytes iv=1; // Always 16 bytes in length
 
-    // AES requires messages to be sized in 16-byte increments, so before
-    // encrypting, the encoded message must be padded with 0-15 bytes. The
-    // receiving side needs to know how much padding has been added so that
-    // that it can be stripped off of the message before decoding. 1 is added
-    // to the actual value in order to force this field to always be encoded,
-    // in order to ensure that the length of the CryptoInfo message is fixed.
-    // Valid values are thus 1-16.
-    // 
-    int32 aes_padding_length_plus_one = 2;
+    int32 aes_padding_length = 2;
 }
 
 // Message body definitions.

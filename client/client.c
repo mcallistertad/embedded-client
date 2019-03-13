@@ -51,6 +51,7 @@ int main(int argc, char** argv)
         add_ap("aabbcc112244", -20, false, Aps_ApBand_UNKNOWN);
         add_ap("aabbcc112255", -30, false, Aps_ApBand_UNKNOWN);
         add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
+        add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
     }
 
     add_lte_cell(300, 400, 32462, -20, 400001);

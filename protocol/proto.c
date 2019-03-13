@@ -16,8 +16,6 @@ static struct AES_ctx aes_ctx;
 
 static unsigned char aes_key_buf[16];
 
-static size_t crypto_info_size;
-
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
 {
     const char* pos = hex_str;
@@ -40,7 +38,9 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 
     unsigned char aes_iv_buf[16];
 
-    // TODO: properly value the header.iv field.
+    // TODO: properly value the header.iv field. And maybe move this stuff down
+    // into the serialize() method.
+    //
     memset(aes_iv_buf, 1, sizeof(aes_iv_buf));
 
     memcpy(rq_crypto_info.iv.bytes, aes_iv_buf, sizeof(aes_iv_buf));
@@ -86,11 +86,14 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     // Account for necessary encryption padding.
     size_t aes_padding_length = (16 - rq_size % 16) % 16;
 
-    rq_crypto_info.aes_padding_length_plus_one = aes_padding_length + 1;
+    rq_crypto_info.aes_padding_length = aes_padding_length;
+
+    size_t crypto_info_size;
 
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
 
-    rq_hdr.remaining_length += rq_size + aes_padding_length + crypto_info_size;
+    rq_hdr.crypto_info_length = crypto_info_size;
+    rq_hdr.rq_length = rq_size + aes_padding_length;
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
@@ -120,9 +123,9 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
 
     // Serialize the request body.
     //
-    uint8_t* body = buf + bytes_written;
+    buf += bytes_written;
 
-    pb_ostream_t rq_ostream = pb_ostream_from_buffer(body,
+    pb_ostream_t rq_ostream = pb_ostream_from_buffer(buf,
                                                      buf_len - bytes_written);
 
     if (pb_encode(&rq_ostream, Rq_fields, &rq))
@@ -131,7 +134,10 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
         return -1;
 
     // Encrypt the (serialized) request body.
-    AES_CBC_encrypt_buffer(&aes_ctx, body, rq_size + aes_padding_length);
+    // TODO: value the padding bytes explicitly instead of just letting them be
+    // whatever is in the buffer.
+    //
+    AES_CBC_encrypt_buffer(&aes_ctx, buf, rq_size + aes_padding_length);
 
     return bytes_written + aes_padding_length;
 }
@@ -165,24 +171,24 @@ int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs)
     CryptoInfo crypto_info;
 
     pb_istream_t crypto_info_istream = 
-        pb_istream_from_buffer(buf, crypto_info_size);
+        pb_istream_from_buffer(buf, header.crypto_info_length);
 
     if (!pb_decode(&crypto_info_istream, CryptoInfo_fields, &crypto_info))
     {
         return -1;
     }
 
-    buf += crypto_info_size;
+    buf += header.crypto_info_length;
 
     // Decrypt the response body.
     AES_init_ctx_iv(&aes_ctx, aes_key_buf, crypto_info.iv.bytes);
 
-    size_t body_size = buf_len - 1 - hdr_size - crypto_info_size;
+    size_t body_size = buf_len - 1 - hdr_size - header.crypto_info_length;
 
     AES_CBC_decrypt_buffer(&aes_ctx, buf, body_size);
 
     // Deserialize the response body.
-    pb_istream_t body_info_istream = pb_istream_from_buffer(buf, body_size - crypto_info.aes_padding_length_plus_one + 1);
+    pb_istream_t body_info_istream = pb_istream_from_buffer(buf, body_size - crypto_info.aes_padding_length);
 
     if (!pb_decode(&body_info_istream, Rs_fields, rs))
     {

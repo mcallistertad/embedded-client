@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import elg_pb2
+import logging
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
-CRYPTO_INFO_LEN = 20
+logger = logging.getLogger('elg_pb2')
 
 def encode_rs(crypto_key, lat, lon, hpe):
     # Create and serialize the response body.
@@ -21,14 +22,15 @@ def encode_rs(crypto_key, lat, lon, hpe):
     crypto_info = elg_pb2.CryptoInfo()
 
     crypto_info.iv = get_random_bytes(16)
-    crypto_info.aes_padding_length_plus_one = aes_padding_length + 1
+    crypto_info.aes_padding_length = aes_padding_length
 
     crypto_info_buf = crypto_info.SerializeToString()
 
     # Create and serialize the header.
     rs_header = elg_pb2.RsHeader()
 
-    rs_header.remaining_length = len(crypto_info_buf) + len(rs_buf) + aes_padding_length
+    rs_header.crypto_info_length = len(crypto_info_buf) 
+    rs_header.rs_length = len(rs_buf) + aes_padding_length
 
     rs_header_buf = rs_header.SerializeToString()
 
@@ -43,17 +45,19 @@ def decode_rq_header(buf):
     header = elg_pb2.RqHeader()
     length = header.ParseFromString(buf)
 
+    logger.debug("---- header: ----\n" + str(header))
+
     return header
 
 
-def decode_rq_crypto_info_and_body(buf, crypto_key):
-    assert len(buf) > CRYPTO_INFO_LEN, "Buffer too small"
-
+def decode_rq_crypto_info_and_body(buf, header, crypto_key):
     # Deserialize the CryptoInfo
     crypto_info = elg_pb2.CryptoInfo()
-    length = crypto_info.ParseFromString(buf[:CRYPTO_INFO_LEN])
+    length = crypto_info.ParseFromString(buf[:header.crypto_info_length])
 
-    assert length == CRYPTO_INFO_LEN, "Unexpected parse result length"
+    logger.debug("---- crypto info: ----\n" + str(crypto_info))
+
+    assert length == header.crypto_info_length, "unexpected crypto_info_length ({} vs {})".format(length, header.crypto_info_length)
 
     # Decrypt the body.
     cipher = AES.new(crypto_key, AES.MODE_CBC, crypto_info.iv)
@@ -61,6 +65,8 @@ def decode_rq_crypto_info_and_body(buf, crypto_key):
 
     # Deserialize the decrypted body.
     body = elg_pb2.Rq()
-    length = body.ParseFromString(plaintext[:len(plaintext) - crypto_info.aes_padding_length_plus_one + 1])
+    length = body.ParseFromString(plaintext[:len(plaintext) - crypto_info.aes_padding_length])
+
+    logger.debug("---- body: ----\n" + str(body))
 
     return body
