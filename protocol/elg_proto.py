@@ -41,12 +41,8 @@ def encode_rs(crypto_key, lat, lon, hpe):
 
 
 def decode_rq_header(buf):
-    assert len(buf) == RQ_HEADER_LEN, "Invalid buffer length"
-
     header = elg_pb2.RqHeader()
     length = header.ParseFromString(buf)
-
-    assert length == RQ_HEADER_LEN, "Unexpected parse result length"
 
     return header
 

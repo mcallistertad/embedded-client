@@ -92,12 +92,20 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
 
     rq_hdr.remaining_length += rq_size + aes_padding_length + crypto_info_size;
 
-    int32_t bytes_written = -1;
+    // First byte of message on wire is the length (in bytes) of the request
+    // header.
+    uint8_t hdr_size;
 
-    pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf, buf_len);
+    pb_get_encoded_size((size_t*) &hdr_size, RqHeader_fields, &rq_hdr);
+
+    *buf = hdr_size;
+
+    int32_t bytes_written = 1;
+
+    pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, buf_len);
 
     if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
-        bytes_written = hdr_ostream.bytes_written;
+        bytes_written += hdr_ostream.bytes_written;
     else
         return -1;
 

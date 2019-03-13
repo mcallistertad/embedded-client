@@ -135,7 +135,6 @@ int main(int argc, char** argv)
     }
     else
     {
-        printf("recv response = %d\n", rc);
         printf("lat/lon/hpe = %f/%f/%f\n", rs.lat, rs.lon, rs.hpe);
     }
 }

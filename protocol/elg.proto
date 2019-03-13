@@ -2,22 +2,24 @@ syntax = "proto3";
 
 /*
  * Messages exchanged between client and server are comprised of the following
- * sequence of protocol buffer messages.
+ * sequence of protocol buffer messages, except for the first byte. The first
+ * byte on the wire is not a protocol buffer message, but rather is a
+ * single byte which represenets the length of the header message.
  *
- * +--------------------------------+-----------------------+------------------------------+
- * | RqHeader/RsHeader (10/5 bytes) | CryptoInfo (20 bytes) | Rq/Rs body (variable length) |
- * +--------------------------------+-----------------------+------------------------------+
+ * +-----------+--------------------------------+-----------------------+-------------------+
+ * | header len| RqHeader/RsHeader              | CryptoInfo            | Rq/Rs body        |
+ * | (1 byte)  | (variable length)              | (20 bytes)            | (variable length) |
+ * +-----------+--------------------------------+-----------------------+-------------------+
  *
  * The Rq/Rs body is encrypted after serialization and decrypted before
  * deserialization. The *Header and CryptoInfo fields are not encrypted. 
 */
 
-// Fixed length message.
 message RqHeader {
     fixed32 partner_id  = 1;
 
     // Number of bytes in serialized message, excluding this header.
-    fixed32 remaining_length = 2;
+    int32 remaining_length = 2;
 }
 
 // Fixed length message.

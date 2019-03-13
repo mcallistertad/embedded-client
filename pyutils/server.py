@@ -96,11 +96,15 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
         try:
             # Read the header in order to get the partner_id and to determine
-            # how long the message is.
+            # how long the message is.  The first byte on the wire is the
+            # length of the header in bytes.
+            #
+            hdr_len = int.from_bytes(self.request.recv(1), byteorder='little')
+
             buf = bytearray()
 
-            while len(buf) < elg_proto.RQ_HEADER_LEN:
-                buf.extend(self.request.recv(elg_proto.RQ_HEADER_LEN - len(buf)))
+            while len(buf) < hdr_len:
+                buf.extend(self.request.recv(hdr_len - len(buf)))
 
             header = elg_proto.decode_rq_header(buf)
 
