@@ -36,9 +36,9 @@ message CryptoInfo {
 // Message body definitions.
 //
 message Rq {
-    int64 client_mac = 4;
-    Aps aps = 5;
-    LteCells lte_cells = 6;
+    int64 client_mac = 1;
+    Aps aps = 2;
+    LteCells lte_cells = 3;
 }
 
 message Aps {
