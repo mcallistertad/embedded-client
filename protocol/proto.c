@@ -143,36 +143,51 @@ int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs)
     // doesn't need to know how many bytes to read - it just keeps reading
     // until the connection is closed by the server.)
     //
-    // Deserialize the header.
+    // Deserialize the header. First byte of input buffer represents length of
+    // header.
+    //
+    uint8_t hdr_size = *buf;
+
+    buf += 1;
+
     RsHeader header;
 
-    pb_istream_t hdr_istream = pb_istream_from_buffer(buf, RsHeader_size);
+    pb_istream_t hdr_istream = pb_istream_from_buffer(buf, hdr_size);
 
     if (!pb_decode(&hdr_istream, RsHeader_fields, &header))
+    {
         return -1;
+    }
+
+    buf += hdr_size;
 
     // Deserialize the crypto_info.
     CryptoInfo crypto_info;
 
     pb_istream_t crypto_info_istream = 
-        pb_istream_from_buffer(buf + RsHeader_size, crypto_info_size);
+        pb_istream_from_buffer(buf, crypto_info_size);
 
     if (!pb_decode(&crypto_info_istream, CryptoInfo_fields, &crypto_info))
+    {
         return -1;
+    }
+
+    buf += crypto_info_size;
 
     // Decrypt the response body.
     AES_init_ctx_iv(&aes_ctx, aes_key_buf, crypto_info.iv.bytes);
 
-    size_t body_size = buf_len - RsHeader_size - crypto_info_size;
-    uint8_t* body_buf = buf + RsHeader_size + crypto_info_size;
+    size_t body_size = buf_len - 1 - hdr_size - crypto_info_size;
 
-    AES_CBC_decrypt_buffer(&aes_ctx, body_buf, body_size);
+    AES_CBC_decrypt_buffer(&aes_ctx, buf, body_size);
 
     // Deserialize the response body.
-    pb_istream_t body_info_istream = pb_istream_from_buffer(body_buf, body_size - crypto_info.aes_padding_length_plus_one + 1);
+    pb_istream_t body_info_istream = pb_istream_from_buffer(buf, body_size - crypto_info.aes_padding_length_plus_one + 1);
 
     if (!pb_decode(&body_info_istream, Rs_fields, rs))
+    {
         return -1;
+    }
 
     return 0;
 }

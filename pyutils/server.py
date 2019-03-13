@@ -96,7 +96,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
         try:
             # Read the header in order to get the partner_id and to determine
-            # how long the message is.  The first byte on the wire is the
+            # how long the message is. The first byte on the wire is the
             # length of the header in bytes.
             #
             hdr_len = int.from_bytes(self.request.recv(1), byteorder='little')
@@ -136,9 +136,11 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             logger.debug("Response: {}, {}, {}".format(lat, lon, hpe))
 
-            response = elg_proto.encode_rs(key, lat, lon, hpe)
+            # Encode and send the response. The first byte on the wire is the
+            # length of the header in bytes.
+            hdr_len, response = elg_proto.encode_rs(key, lat, lon, hpe)
 
-            self.request.sendall(response)
+            self.request.sendall(hdr_len.to_bytes(1, byteorder='little') + response)
         except Exception as e:
             logger.error("Error for partner ID {}: ".format(header.partner_id) +
                     type(e).__name__ + ': ' + str(e))

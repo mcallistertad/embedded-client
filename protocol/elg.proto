@@ -25,7 +25,7 @@ message RqHeader {
 // Fixed length message.
 message RsHeader {
     // Number of bytes in serialized message, excluding this header.
-    fixed32 remaining_length=1;
+    int32 remaining_length=1;
 }
 
 // Fixed length message.

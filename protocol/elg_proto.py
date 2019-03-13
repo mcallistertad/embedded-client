@@ -3,7 +3,6 @@ import elg_pb2
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
-RQ_HEADER_LEN = 10
 CRYPTO_INFO_LEN = 20
 
 def encode_rs(crypto_key, lat, lon, hpe):
@@ -37,7 +36,7 @@ def encode_rs(crypto_key, lat, lon, hpe):
     cipher = AES.new(crypto_key, AES.MODE_CBC, crypto_info.iv)
     rs_buf = cipher.encrypt(rs_buf + get_random_bytes(aes_padding_length))
 
-    return rs_header_buf + crypto_info_buf + rs_buf
+    return len(rs_header_buf), rs_header_buf + crypto_info_buf + rs_buf
 
 
 def decode_rq_header(buf):
@@ -45,6 +44,7 @@ def decode_rq_header(buf):
     length = header.ParseFromString(buf)
 
     return header
+
 
 def decode_rq_crypto_info_and_body(buf, crypto_key):
     assert len(buf) > CRYPTO_INFO_LEN, "Buffer too small"
