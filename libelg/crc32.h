@@ -6,6 +6,6 @@
 #ifndef SKY_CRC32_H
 #define SKY_CRC32_H
 
-unsigned int sky_crc32(unsigned char *message, unsigned msgsize)
+unsigned int sky_crc32(void *message, unsigned msgsize);
 
 #endif

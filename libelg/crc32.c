@@ -19,21 +19,22 @@
  *
  *  @returns crc32
  */
-unsigned int sky_crc32(unsigned char *message, unsigned msgsize)
+unsigned int sky_crc32(void *msg, unsigned msgsize)
 {
-    int i, j;
-    unsigned int byte, crc, mask;
+	int i, j;
+	unsigned int byte, crc, mask;
+	unsigned char *message = msg;
 
-    i = 0;
-    crc = 0xFFFFFFFF;
-    while (i < msgsize) {
-        byte = message[i]; // Get next byte.
-        crc = crc ^ byte;
-        for (j = 7; j >= 0; j--) { // Do eight times.
-            mask = -(crc & 1);
-            crc = (crc >> 1) ^ (0xEDB88320 & mask);
-        }
-        i = i + 1;
-    }
-    return ~crc;
+	i = 0;
+	crc = 0xFFFFFFFF;
+	while (i < msgsize) {
+		byte = message[i]; // Get next byte.
+		crc = crc ^ byte;
+		for (j = 7; j >= 0; j--) { // Do eight times.
+			mask = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+		i = i + 1;
+	}
+	return ~crc;
 }

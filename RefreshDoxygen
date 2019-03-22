@@ -1,1 +1,1 @@
-make && rm -rf doxygen && doxygen embedded-lib.conf
+rm -rf doxygen && doxygen embedded-lib.conf

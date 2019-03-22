@@ -20,11 +20,36 @@
 /*! \brief set sky_errno and return sky_status
  *
  *  @param sky_errno sky_errno is the error code
+ *  @param code the sky_errno_t code to return
  *
- *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
 sky_status_t sky_return(sky_errno_t *sky_errno, sky_errno_t code)
 {
-    *sky_errno = code;
-    return (code == SKY_ERROR_NONE) ? SKY_SUCCESS : SKY_ERROR;
+	*sky_errno = code;
+	return (code == SKY_ERROR_NONE) ? SKY_SUCCESS : SKY_ERROR;
+}
+
+/*! \brief validate the workspace buffer
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return true if workspace is valid, else false
+ */
+int validate_workspace(sky_ctx_t *ctx)
+{
+	int i;
+
+	if (ctx->header.crc32 ==
+	    sky_crc32(&ctx->header.magic,
+		      sizeof(ctx->header.magic) + sizeof(ctx->header.size))) {
+		for (i = 0; i < MAX_BEACONS; i++) {
+			if (ctx->beacon[i].ap.magic != BEACON_MAGIC ||
+			    ctx->beacon[i].ap.type >= SKY_BEACON_MAX)
+				return false;
+		}
+	}
+	if (ctx->len > MAX_BEACONS || ctx->connected > MAX_BEACONS)
+		return false;
+	return true;
 }

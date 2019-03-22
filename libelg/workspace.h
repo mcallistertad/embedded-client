@@ -20,14 +20,21 @@
 
 #define SKY_MAGIC 0xD1967805
 struct sky_header {
-    uint32_t magic;
-    uint32_t size;
-    uint32_t crc32;
+	uint32_t magic;
+	uint32_t size;
+	uint32_t crc32;
 };
 
 typedef struct sky_ctx {
-    struct sky_header header;
-    uint8_t body[];
+	struct sky_header header; /* magic, size, crc32 */
+	int16_t expect; /* number of beacons to be added */
+	int16_t len; /* number of beacons in list (0 == none) */
+	beacon_t beacon[MAX_BEACONS]; /* beacon data */
+	int32_t connected; /* which beacon is conneted (0 == none) */
+	gps_t gps; /* GPS info */
+	uint8_t request[sizeof(struct sky_header) + sizeof(int32_t) +
+			(sizeof(beacon_t) * MAX_BEACONS) + sizeof(int32_t) +
+			sizeof(gps_t)];
 } sky_ctx_t;
 
 #endif
