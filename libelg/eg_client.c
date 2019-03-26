@@ -21,24 +21,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint8_t nv[1000];
+/* functions to be provided */
+/* stash the library state in non-volatile memory */
+extern void save_state(uint8_t *p, int32_t size);
+/* get pointer to any saved state or NULL */
+extern uint8_t *get_state(void);
+/* send request to Skyhook server */
+extern void send_request(uint8_t *req, uint32_t req_size);
+/* get response from Skyhook server or timeout */
+extern void get_response(uint8_t *r, uint32_t size);
+/* return location result */
+extern void new_location(float lat, float lon, uint16_t hpe, time_t ts);
 
-/* stubs for functions to be provided */
-void save_state(uint8_t *p)
-{
-	if (sizeof(nv) > sky_sizeof_state(p))
-		memcpy(nv, p, sky_sizeof_state(p));
-}
-void send_request(uint8_t *req, uint32_t req_size)
-{
-}
-void get_response(uint8_t *r, uint32_t size)
-{
-}
-
-/* Example assumes a scan with 10 AP beacons
- */
-#define SCAN_LIST_SIZE 10
+/* Maximum number of beacons in scans */
+#define MAX_AP_SCAN_LIST_SIZE 100
+#define MAX_NB_IOT_SCAN_LIST_SIZE 1
+#define MAX_SCAN_LIST_SIZE (MAX_AP_SCAN_LIST_SIZE + MAX_NB_IOT_SCAN_LIST_SIZE)
 
 /* From configuration
  */
@@ -47,43 +45,24 @@ uint32_t sky_aes_key_id = 3;
 uint8_t sky_aes_key[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 			  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-/*! \brief validate fundamental functionality of the ELG IoT library
+/*! \brief Typical use case
  *
- *  @param ac arg count
- *  @param av arg vector
- *
- *  @returns 0 for success or negative number for error
- */
-void dump(void *ctx)
-{
-	uint32_t *p = ctx;
-	int i;
-
-	for (i = 0; i < sky_sizeof_workspace(MAX_BEACONS) / sizeof(int); i += 8)
-		printf("ctx: %08X %08X %08X %08X  %08X %08X %08X %08X\n",
-		       p[i + 000], p[i + 001], p[i + 002], p[i + 003],
-		       p[i + 004], p[i + 005], p[i + 006], p[i + 007]);
-	printf("\n");
-}
-
-/*! \brief validate fundamental functionality of the ELG IoT library
- *
- *  @param ac arg count
- *  @param av arg vector
+ *  @param ap_scan latest ap scan data
+ *  @param nb_iot_scan latest nb_iot scan data
  *
  *  @returns 0 for success or negative number for error
  */
-int main(int ac, char **av)
+int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
+	 time_t nb_iot_scan_ts)
 {
+	uint8_t *pstate = NULL;
+	struct ap *pap;
 	sky_errno_t sky_errno = -1;
 	sky_ctx_t *ctx;
+	sky_finalize_t fret;
 	void *p;
 	uint32_t bufsize;
 	uint8_t mac[MAC_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
-	time_t timestamp = time(NULL);
-	int8_t rssi = 50;
-	uint32_t ch = 65;
-	uint8_t *pstate;
 	uint8_t *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
@@ -92,93 +71,82 @@ int main(int ac, char **av)
 	float lat, lon;
 	uint16_t hpe;
 	time_t ts;
+	int ret = -1;
 
 	if (sky_open(&sky_errno, mac /* device_id */, sizeof(mac),
-		     sky_partner_id, sky_aes_key_id, sky_aes_key, NULL,
+		     sky_partner_id, sky_aes_key_id, sky_aes_key, get_state(),
 		     NULL) == SKY_ERROR) {
-		printf("sky_open returned bad value, Can't continue\n");
-		exit(-1);
+		printf("sky_open returned bad value: '%s', Can't continue\n",
+		       sky_perror(sky_errno));
+		return ret;
 	}
 
-	bufsize = sky_sizeof_workspace(SCAN_LIST_SIZE);
+	bufsize = sky_sizeof_workspace(MAX_SCAN_LIST_SIZE);
 
 	/* allocate workspace */
 	if ((p = (sky_ctx_t *)alloca(bufsize)) == NULL) {
 		printf("Can't alloc space\n");
-		exit(-1);
-	}
-
-	if ((ctx = sky_new_request(p, bufsize, &sky_errno, SCAN_LIST_SIZE)) ==
-	    NULL) {
-		printf("sky_new_request() returned bad value\n");
-		printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
-	}
-
-	/* AP 1 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 2 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 3 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 4 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 5 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 6 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 7 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 8 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 9 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* AP 10 */
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi, ch, 0))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	/* nb IoT 11 */
-	if (sky_add_cell_nb_iot_beacon(ctx, &sky_errno, 200, 2, 174754934, 542,
-				       -1, -1, 1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-
-	/* e.g. call assuming no cached scan/location */
-	if (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
-				 (void *)NULL, NULL, NULL, NULL,
-				 &response_size))
-		printf("sky_finalize_request sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	else {
-		p = alloca(response_size);
-		send_request(prequest, request_size);
-		get_response(p, response_size);
-		if (sky_decode_response(ctx, &sky_errno, p, response_size, &lat,
-					&lon, &hpe, &ts))
-			printf("sky_decode_response sky_errno contains '%s'\n",
+	} else {
+		/* initialize workspace */
+		if ((ctx = sky_new_request(p, bufsize, &sky_errno,
+					   MAX_SCAN_LIST_SIZE)) == NULL)
+			printf("sky_new_request() returned '%s'\n",
 			       sky_perror(sky_errno));
+
+		/* add AP beacons */
+		for (pap = ap_scan; pap->magic == SKY_MAGIC; pap++) {
+			if (sky_add_ap_beacon(ctx, &sky_errno, pap->mac,
+					      ap_scan_ts, pap->rssi,
+					      pap->channel, false) == SKY_ERROR)
+				printf("sky_add_ap_beacon sky_errno contains '%s'\n",
+				       sky_perror(sky_errno));
+			/* continue to try and process request without this beacon */
+		}
+		/* add nb IoT */
+		if (sky_add_cell_nb_iot_beacon(
+			    ctx, &sky_errno, nb_iot_scan->mcc, nb_iot_scan->mnc,
+			    nb_iot_scan->e_cellid, nb_iot_scan->tac,
+			    nb_iot_scan_ts, nb_iot_scan->nrsrp,
+			    true) == SKY_ERROR)
+			printf("sky_add_cell_nb_iot_beacon sky_errno contains '%s'\n",
+			       sky_perror(sky_errno));
+		/* continue to try and process request without this beacon */
+
+		/* process the beacon info */
+		if ((fret = sky_finalize_request(ctx, &sky_errno, &prequest,
+						 &request_size, &lat, &lon,
+						 &hpe, &ts, &response_size)) ==
+		    SKY_FINALIZE_ERROR)
+			printf("sky_finalize_request sky_errno contains '%s'\n",
+			       sky_perror(sky_errno));
+		else if (fret == SKY_FINALIZE_LOCATION) {
+			/* report location result (from cache) */
+			new_location(lat, lon, hpe, ts);
+			ret = 0;
+		} else {
+			p = alloca(response_size);
+			send_request(prequest, request_size);
+			get_response(p, response_size);
+			/* decode response */
+			if (sky_decode_response(ctx, &sky_errno, p,
+						response_size, &lat, &lon, &hpe,
+						&ts) == SKY_ERROR)
+				printf("sky_decode_response sky_errno contains '%s'\n",
+				       sky_perror(sky_errno));
+			/* report location result (from server) */
+			new_location(lat, lon, hpe, ts);
+			ret = 0;
+		}
 	}
 
-	if (sky_close(&sky_errno, &pstate))
+	/* close library and get state info */
+	if (sky_close(&sky_errno, &pstate)) {
 		printf("sky_close sky_errno contains '%s'\n",
 		       sky_perror(sky_errno));
+		return -1;
+	}
+	/* if close returned a state, copy it to non-volatile memory */
 	if (pstate != NULL)
-		save_state(pstate);
+		save_state(pstate, sky_sizeof_state(pstate));
+	return ret;
 }
