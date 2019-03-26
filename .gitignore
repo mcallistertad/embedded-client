@@ -1,13 +1,9 @@
-# Ojbect file and binary executable (target) directory
-bin
-
-# Generated source files
-*.pb.h
-*.pb.c
-elg_pb2.py
-
-# Test output file conttaining encoded ELG request
+doxygen/
+bin/
+tags
+a.out
+protocol/elg.pb.c
+protocol/elg.pb.h
+protocol/elg_pb2.py
+pyutils/elg_pb2.py
 rq.bin
-
-# Python scheisse
-__pycache__
