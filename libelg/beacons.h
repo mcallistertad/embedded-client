@@ -15,11 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <inttypes.h>
-#include <time.h>
-
 #ifndef SKY_BEACONS_H
 #define SKY_BEACONS_H
+
+#include <inttypes.h>
+#include <time.h>
 
 #define BEACON_MAGIC 0xf0f0
 #define MAC_SIZE 6

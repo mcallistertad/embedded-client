@@ -15,7 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
+#define SKY_LIBELG 1
+#include "beacons.h"
+#include "config.h"
+#include "response.h"
+#include "crc32.h"
 #include "libelg.h"
+#include "workspace.h"
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -192,8 +201,9 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-	if (ctx->expect == 0)
-		printf("Log warning: adding more beacons than expected\n");
+	/* TODO Use logging fn() */
+	// if (ctx->expect == 0)
+	// 	printf("Log warning: adding more beacons than expected\n");
 
 	/* Decrement the number of beacons expected to be added */
 	ctx->expect--;

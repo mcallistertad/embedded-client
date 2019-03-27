@@ -15,13 +15,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "libelg.h"
 #include <alloca.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "libelg.h"
+
+/* Maximum number of beacons in scans lists */
+#define MAX_AP_SCAN_LIST_SIZE 100
+#define MAX_NB_IOT_SCAN_LIST_SIZE 1
+#define MAX_SCAN_LIST_SIZE (MAX_AP_SCAN_LIST_SIZE + MAX_NB_IOT_SCAN_LIST_SIZE)
+
+/* scan list definitions (platform dependant) */
+struct ap_scan {
+	uint8_t mac[MAC_SIZE];
+	uint32_t channel;
+	int8_t rssi;
+};
+struct nb_iot_scan {
+	uint16_t mcc;
+	uint16_t mnc;
+	uint32_t e_cellid;
+	uint16_t tac;
+	int8_t nrsrp;
+};
 
 /* functions to be provided */
+/* allocate/free some space */
+extern void *alloc_space(size_t size);
+extern void free_space(void *space);
 /* stash the library state in non-volatile memory */
 extern void save_state(uint8_t *p, int32_t size);
 /* get pointer to any saved state or NULL */
@@ -33,11 +55,6 @@ extern void get_response(uint8_t *r, uint32_t size);
 /* return location result */
 extern void new_location(float lat, float lon, uint16_t hpe, time_t ts);
 
-/* Maximum number of beacons in scans */
-#define MAX_AP_SCAN_LIST_SIZE 100
-#define MAX_NB_IOT_SCAN_LIST_SIZE 1
-#define MAX_SCAN_LIST_SIZE (MAX_AP_SCAN_LIST_SIZE + MAX_NB_IOT_SCAN_LIST_SIZE)
-
 /* From configuration
  */
 uint32_t sky_partner_id = 2;
@@ -48,15 +65,19 @@ uint8_t sky_aes_key[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 /*! \brief Typical use case
  *
  *  @param ap_scan latest ap scan data
+ *  @param ap_size latest ap scan data length
+ *  @param ap_scan_ts time of latest ap scan data
  *  @param nb_iot_scan latest nb_iot scan data
+ *  @param nb_iot_scan_ts time of latest nb_iot scan data
  *
  *  @returns 0 for success or negative number for error
  */
-int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
-	 time_t nb_iot_scan_ts)
+int get_skyhook_location(struct ap_scan *ap_scan, size_t ap_size,
+			 time_t ap_scan_ts, struct nb_iot_scan *nb_iot_scan,
+			 time_t nb_iot_scan_ts)
 {
 	uint8_t *pstate = NULL;
-	struct ap *pap;
+	struct ap_scan *pap;
 	sky_errno_t sky_errno = -1;
 	sky_ctx_t *ctx;
 	sky_finalize_t fret;
@@ -66,12 +87,12 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 	uint8_t *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
+	int ret = -1;
 
 	/* location result */
 	float lat, lon;
 	uint16_t hpe;
 	time_t ts;
-	int ret = -1;
 
 	if (sky_open(&sky_errno, mac /* device_id */, sizeof(mac),
 		     sky_partner_id, sky_aes_key_id, sky_aes_key, get_state(),
@@ -84,7 +105,7 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 	bufsize = sky_sizeof_workspace(MAX_SCAN_LIST_SIZE);
 
 	/* allocate workspace */
-	if ((p = (sky_ctx_t *)alloca(bufsize)) == NULL) {
+	if ((p = alloc_space(bufsize)) == NULL) {
 		printf("Can't alloc space\n");
 	} else {
 		/* initialize workspace */
@@ -94,7 +115,7 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 			       sky_perror(sky_errno));
 
 		/* add AP beacons */
-		for (pap = ap_scan; pap->magic == SKY_MAGIC; pap++) {
+		for (pap = ap_scan; pap - ap_scan < ap_size; pap++) {
 			if (sky_add_ap_beacon(ctx, &sky_errno, pap->mac,
 					      ap_scan_ts, pap->rssi,
 					      pap->channel, false) == SKY_ERROR)
@@ -102,7 +123,7 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 				       sky_perror(sky_errno));
 			/* continue to try and process request without this beacon */
 		}
-		/* add nb IoT */
+		/* add a single nb IoT beacon */
 		if (sky_add_cell_nb_iot_beacon(
 			    ctx, &sky_errno, nb_iot_scan->mcc, nb_iot_scan->mnc,
 			    nb_iot_scan->e_cellid, nb_iot_scan->tac,
@@ -124,7 +145,7 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 			new_location(lat, lon, hpe, ts);
 			ret = 0;
 		} else {
-			p = alloca(response_size);
+			p = alloc_space(response_size);
 			send_request(prequest, request_size);
 			get_response(p, response_size);
 			/* decode response */
@@ -133,20 +154,25 @@ int wake(struct ap *ap_scan, time_t ap_scan_ts, struct nb_iot *nb_iot_scan,
 						&ts) == SKY_ERROR)
 				printf("sky_decode_response sky_errno contains '%s'\n",
 				       sky_perror(sky_errno));
-			/* report location result (from server) */
-			new_location(lat, lon, hpe, ts);
-			ret = 0;
+			else {
+				/* report location result (from server) */
+				new_location(lat, lon, hpe, ts);
+				ret = 0;
+			}
+			free_space(p);
 		}
+		free_space(ctx);
 	}
 
-	/* close library and get state info */
-	if (sky_close(&sky_errno, &pstate)) {
+	/* close library and get state info.
+     * Note: return success if location was reported */
+	if (sky_close(&sky_errno, &pstate))
 		printf("sky_close sky_errno contains '%s'\n",
 		       sky_perror(sky_errno));
-		return -1;
-	}
+
 	/* if close returned a state, copy it to non-volatile memory */
 	if (pstate != NULL)
 		save_state(pstate, sky_sizeof_state(pstate));
+
 	return ret;
 }

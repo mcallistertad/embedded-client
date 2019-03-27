@@ -15,11 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "beacons.h"
-#include "config.h"
-#include "response.h"
-#include "workspace.h"
-#include "crc32.h"
+#include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
@@ -46,6 +42,10 @@
 #define MAX_BLES 5 // max # of blue tooth
 
 #define MAX_DEVICE_ID 16
+
+#ifndef SKY_LIBELG
+typedef void sky_ctx_t;
+#endif
 
 /*! \brief API return value
  */
@@ -137,12 +137,5 @@ sky_status_t sky_decode_response(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 char *sky_perror(sky_errno_t sky_errno);
 
 sky_status_t sky_close(sky_errno_t *sky_errno, uint8_t **sky_state);
-
-/*******************************************************************************
- * Sky library internal functions
- * ****************************************************************************/
-
-sky_status_t sky_return(sky_errno_t *sky_errno, sky_errno_t code);
-int validate_workspace(sky_ctx_t *ctx);
 
 #endif
