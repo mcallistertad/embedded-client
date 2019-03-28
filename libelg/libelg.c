@@ -17,14 +17,16 @@
  */
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 #include <time.h>
 #define SKY_LIBELG 1
 #include "beacons.h"
 #include "config.h"
 #include "response.h"
 #include "crc32.h"
-#include "libelg.h"
 #include "workspace.h"
+#include "libelg.h"
+#include "utilities.h"
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -47,6 +49,22 @@ static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key_id(uint32_t aes_key_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
+
+/*! \brief qsort cmp for beacon type 
+ *
+ *  @param a Pointer to beacon info
+ *  @param b Pointer to beacon info
+ *
+ *  @return -1, 0 or 1 based on beacon type less, equal or greater
+ */
+int32_t cmp_beacon(const void *a, const void *b)
+{
+	// Sort on type, low-to-high.
+	int8_t typeA = ((beacon_t *)a)->h.type;
+	int8_t typeB = ((beacon_t *)b)->h.type;
+
+	return typeA < typeB ? -1 : typeA > typeB;
+}
 
 /*! \brief Initialize Skyhook library and verify access to resources
  *
@@ -162,14 +180,15 @@ sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
 	/* update header in workspace */
 	ctx->header.magic = SKY_MAGIC;
 	ctx->header.size = bufsize;
+	ctx->header.time = time(NULL);
 	ctx->header.crc32 =
 		sky_crc32(&ctx->header.magic,
-			  sizeof(ctx->header.magic) + sizeof(ctx->header.size));
+			  sizeof(ctx->header) - sizeof(ctx->header.crc32));
 
 	ctx->expect = number_beacons;
 	ctx->len = 0; /* empty */
 	for (i = 0; i < MAX_BEACONS; i++)
-		ctx->beacon[i].ap.magic = BEACON_MAGIC;
+		ctx->beacon[i].h.magic = BEACON_MAGIC;
 	ctx->connected = 0; /* all unconnected */
 	return ctx;
 }
@@ -210,14 +229,21 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 
 	/* Create AP beacon */
 	i = (++ctx->len) - 1;
-	ctx->beacon[i].ap.type = SKY_BEACON_AP;
+	ctx->beacon[i].h.type = SKY_BEACON_AP;
 	memcpy(ctx->beacon[i].ap.mac, mac, MAC_SIZE);
-	ctx->beacon[i].ap.age = timestamp;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		ctx->beacon[i].ap.age = ctx->header.time - timestamp;
+	else
+		ctx->beacon[i].ap.age = 0;
 	ctx->beacon[i].ap.channel = channel;
 	ctx->beacon[i].ap.rssi = rssi;
 	ctx->beacon[i].ap.flag = 0; /* TODO map channel? */
 	if (is_connected)
 		ctx->connected = ctx->len;
+	/* sort beacons by type */
+	qsort(ctx->beacon, ctx->len, sizeof(beacon_t), cmp_beacon);
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -326,10 +352,46 @@ sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  */
 sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
-					uint32_t cellid, uint32_t tac,
+					uint32_t e_cellid, uint32_t tac,
 					time_t timestamp, int8_t nrsrp,
 					bool is_connected)
 {
+	int i;
+
+	if (!sky_open_flag)
+		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+	if (!validate_workspace(ctx))
+		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
+		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+	/* TODO Use logging fn() */
+	// if (ctx->expect == 0)
+	// 	printf("Log warning: adding more beacons than expected\n");
+
+	/* Decrement the number of beacons expected to be added */
+	ctx->expect--;
+
+	/* Create NB IoT beacon */
+	i = (++ctx->len) - 1;
+	ctx->beacon[i].h.type = SKY_BEACON_NBIOT;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		ctx->beacon[i].nb_iot.age = ctx->header.time - timestamp;
+	else
+		ctx->beacon[i].nb_iot.age = 0;
+	ctx->beacon[i].nb_iot.mcc = mcc;
+	ctx->beacon[i].nb_iot.mnc = mnc;
+	ctx->beacon[i].nb_iot.e_cellid = e_cellid;
+	ctx->beacon[i].nb_iot.tac = tac;
+	ctx->beacon[i].nb_iot.nrsrp = nrsrp;
+	if (is_connected)
+		ctx->connected = ctx->len;
+	/* sort beacons by type */
+	qsort(ctx->beacon, ctx->len, sizeof(beacon_t), cmp_beacon);
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 

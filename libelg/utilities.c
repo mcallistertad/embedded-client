@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#define SKY_LIBELG 1
 #include "beacons.h"
 #include "config.h"
 #include "response.h"
@@ -51,11 +52,11 @@ int validate_workspace(sky_ctx_t *ctx)
 
 	if (ctx != NULL &&
 	    ctx->header.crc32 == sky_crc32(&ctx->header.magic,
-					   sizeof(ctx->header.magic) +
-						   sizeof(ctx->header.size))) {
+					   sizeof(ctx->header) -
+						   sizeof(ctx->header.crc32))) {
 		for (i = 0; i < MAX_BEACONS; i++) {
-			if (ctx->beacon[i].ap.magic != BEACON_MAGIC ||
-			    ctx->beacon[i].ap.type >= SKY_BEACON_MAX)
+			if (ctx->beacon[i].h.magic != BEACON_MAGIC ||
+			    ctx->beacon[i].h.type >= SKY_BEACON_MAX)
 				return false;
 		}
 	}

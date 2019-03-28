@@ -21,6 +21,9 @@
 /*! \brief The maximum number of beacons passed to the ELG server in a request
  */
 #define MAX_BEACONS 11
+/*! \brief The maximum number of AP beacons passed to the ELG server in a request
+ */
+#define MAX_AP_BEACONS 10
 
 /*! \brief The percentage of beacons that must match in a cached scan/location
  */

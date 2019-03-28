@@ -19,10 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
+#include <time.h>
+#define SKY_LIBELG 1
 #include "config.h"
 #include "beacons.h"
 #include "workspace.h"
-
 #include "libelg.h"
 
 /* Example assumes a scan with 100 AP beacons

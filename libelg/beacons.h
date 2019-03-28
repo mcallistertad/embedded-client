@@ -42,6 +42,7 @@ typedef enum {
 	SKY_BEACON_CDMA,
 	SKY_BEACON_GSM,
 	SKY_BEACON_LTE,
+	SKY_BEACON_NBIOT,
 	SKY_BEACON_UMTS,
 	SKY_BEACON_MAX, /* add more before this */
 } sky_beacon_type_t;
@@ -67,6 +68,8 @@ struct ap {
 
 // http://wiki.opencellid.org/wiki/API
 struct gsm {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	uint32_t ci;
 	uint32_t age;
 	uint16_t mcc; // country
@@ -77,6 +80,8 @@ struct gsm {
 
 // 64-bit aligned due to double
 struct cdma {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	double lat;
 	double lon;
 	uint32_t age;
@@ -87,6 +92,8 @@ struct cdma {
 };
 
 struct umts {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	uint32_t ci;
 	uint32_t age;
 	uint16_t mcc; // country
@@ -96,6 +103,8 @@ struct umts {
 };
 
 struct lte {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	uint32_t age;
 	uint32_t eucid;
 	uint16_t mcc;
@@ -105,6 +114,8 @@ struct lte {
 
 // blue tooth
 struct ble {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	uint16_t major;
 	uint16_t minor;
 	uint8_t MAC[MAC_SIZE];
@@ -113,6 +124,8 @@ struct ble {
 };
 
 struct nb_iot {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
 	uint32_t age;
 	uint16_t mcc;
 	uint16_t mnc;
@@ -121,7 +134,12 @@ struct nb_iot {
 	int8_t nrsrp;
 };
 
+struct header {
+	uint16_t magic; /* Indication that this beacon entry is valid */
+	uint16_t type; /* sky_beacon_type_t */
+};
 typedef union beacon {
+	struct header h;
 	struct ap ap;
 	struct ble ble;
 	struct cdma cdma;
