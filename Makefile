@@ -9,23 +9,24 @@ INCLUDES = -I${SKY_PROTO_DIR} -I${PROTO_BUFS_DIR} -I${AES_DIR}
 PROTO_SRCS = elg.pb.c proto.c pb_common.c pb_encode.c pb_decode.c
 PROTO_OBJS = $(addprefix ${BIN_DIR}/, $(PROTO_SRCS:.c=.o))
 
-LIBELG_SRCS = libelg.c utilities.c crc32.c
+LIBELG_SRCS = libelg.c utilities.c beacons.c crc32.c
 LIBELG_OBJS = $(addprefix ${BIN_DIR}/, $(LIBELG_SRCS:.c=.o))
 
-.PHONY: eg_client unit_test proto skylib client pyparse aeslib libelg
+# .PHONY: eg_client unit_test proto skylib client pyparse aeslib libelg
+.PHONY: unit_test proto skylib client pyparse aeslib libelg
 
 skylib: ${BIN_DIR} ${BIN_DIR}/skylib.a
 
 aeslib: ${AES_DIR}/aes.c ${AES_DIR}/aes.h
 	make -C ${AES_DIR} aes.a
 
-eg_client: ${BIN_DIR}/eg_client.o ${BIN_DIR}/libelg.a
-	$(CC) -lc -o ${BIN_DIR}/eg_client \
-	${BIN_DIR}/eg_client.o ${BIN_DIR}/libelg.a
-
 unit_test: ${BIN_DIR}/unit_test.o ${BIN_DIR}/libelg.a
 	$(CC) -lc -o ${BIN_DIR}/unit_test \
 	${BIN_DIR}/unit_test.o ${BIN_DIR}/libelg.a
+
+eg_client: ${BIN_DIR}/eg_client.o ${BIN_DIR}/libelg.a
+	$(CC) -lc -o ${BIN_DIR}/eg_client \
+	${BIN_DIR}/eg_client.o ${BIN_DIR}/libelg.a
 
 client: skylib ${BIN_DIR}/client.o aeslib
 	$(CC) -lc -o ${BIN_DIR}/client \
@@ -48,6 +49,7 @@ proto:
 ${BIN_DIR}/libelg.o: libelg/libelg.c
 ${BIN_DIR}/crc32.o: libelg/crc32.c
 ${BIN_DIR}/utilities.o: libelg/utilities.c
+${BIN_DIR}/beacons.o: libelg/beacons.c
 ${BIN_DIR}/eg_client.o: libelg/eg_client.c
 ${BIN_DIR}/unit_test.o: libelg/unit_test.c
 ${BIN_DIR}/client.o: client/client.c

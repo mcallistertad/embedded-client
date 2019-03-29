@@ -32,7 +32,8 @@ typedef struct sky_ctx {
 	int16_t len; /* number of beacons in list (0 == none) */
 	beacon_t beacon[MAX_BEACONS + 1]; /* beacon data */
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
-	int16_t connected; /* which beacon is conneted (0 == none) */
+	int16_t ap_low; /* first of AP beacons in list (0 based index) */
+	int16_t connected; /* which beacon is conneted (-1 == none) */
 	gps_t gps; /* GPS info */
 	uint8_t request[sizeof(struct sky_header) + sizeof(int32_t) +
 			(sizeof(beacon_t) * MAX_BEACONS) + sizeof(int32_t) +

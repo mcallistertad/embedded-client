@@ -187,9 +187,10 @@ sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
 
 	ctx->expect = number_beacons;
 	ctx->len = 0; /* empty */
+	ctx->ap_len = 0; /* empty */
 	for (i = 0; i < MAX_BEACONS; i++)
 		ctx->beacon[i].h.magic = BEACON_MAGIC;
-	ctx->connected = 0; /* all unconnected */
+	ctx->connected = -1; /* all unconnected */
 	return ctx;
 }
 
@@ -209,16 +210,13 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 			       uint8_t mac[6], time_t timestamp, int8_t rssi,
 			       int32_t channel, bool is_connected)
 {
-	int i;
+	beacon_t b;
 
 	if (!sky_open_flag)
 		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
-		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
 	/* TODO Use logging fn() */
 	// if (ctx->expect == 0)
@@ -228,23 +226,20 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	ctx->expect--;
 
 	/* Create AP beacon */
-	i = (++ctx->len) - 1;
-	ctx->beacon[i].h.type = SKY_BEACON_AP;
-	memcpy(ctx->beacon[i].ap.mac, mac, MAC_SIZE);
+	b.h.magic = BEACON_MAGIC;
+	b.h.type = SKY_BEACON_AP;
+	memcpy(b.ap.mac, mac, MAC_SIZE);
 	/* If beacon has meaningful timestamp */
 	/* scan was before sky_new_request and since Mar 1st 2019 */
 	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].ap.age = ctx->header.time - timestamp;
+		b.ap.age = ctx->header.time - timestamp;
 	else
-		ctx->beacon[i].ap.age = 0;
-	ctx->beacon[i].ap.channel = channel;
-	ctx->beacon[i].ap.rssi = rssi;
-	ctx->beacon[i].ap.flag = 0; /* TODO map channel? */
-	if (is_connected)
-		ctx->connected = ctx->len;
-	/* sort beacons by type */
-	qsort(ctx->beacon, ctx->len, sizeof(beacon_t), cmp_beacon);
-	return sky_return(sky_errno, SKY_ERROR_NONE);
+		b.ap.age = 0;
+	b.ap.channel = channel;
+	b.ap.rssi = rssi;
+	b.ap.flag = 0; /* TODO map channel? */
+
+	return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Add an lte cell beacon to request context
