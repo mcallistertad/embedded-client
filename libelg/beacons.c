@@ -56,7 +56,10 @@ static int similar(uint8_t macA[], uint8_t macB[])
 			return 0;
 	}
 
-	return (memcmp(macA + 3, macB + 3, MAC_SIZE - 3));
+	printf("similar: returning %d\n",
+	       memcmp(macA + 3, macB + 3, MAC_SIZE - 3));
+	/* MACs are similar, choose one to remove */
+	return (memcmp(macA + 3, macB + 3, MAC_SIZE - 3) < 0 ? -1 : 1);
 }
 
 /*! \brief shuffle list to remove the beacon at index
@@ -106,11 +109,9 @@ static sky_status_t insert_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	for (i = 0; i < ctx->len; i++)
 		if (ctx->beacon[i].h.type >= b->h.type)
 			break;
-	if (b->h.type == SKY_BEACON_AP) {
+	if (b->h.type == SKY_BEACON_AP)
 		/* note first AP */
 		ctx->ap_low = i;
-		ctx->ap_len++;
-	}
 
 	/* add beacon at the end */
 	if (i == ctx->len) {
@@ -135,6 +136,8 @@ static sky_status_t insert_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	if (index != NULL)
 		*index = i;
 
+	if (b->h.type == SKY_BEACON_AP)
+		ctx->ap_len++;
 	return SKY_SUCCESS;
 }
 
@@ -165,8 +168,8 @@ static sky_status_t filter_by_rssi(sky_ctx_t *ctx)
 	       band_range);
 	/* for each beacon, work out it's ideal rssi value to give an even distribution */
 	for (i = 0; i < ctx->ap_len; i++)
-		ideal_rssi[i] = ctx->beacon[ctx->ap_low].ap.rssi +
-				(i + 0.5) * band_range;
+		ideal_rssi[i] =
+			ctx->beacon[ctx->ap_low].ap.rssi + i * band_range;
 
 	/* find AP with poorest fit to ideal rssi */
 	/* always keep lowest and highest rssi */
@@ -198,34 +201,34 @@ static sky_status_t filter_virtual_aps(sky_ctx_t *ctx)
 	dump(ctx);
 
 	if (ctx->ap_len < MAX_AP_BEACONS)
-		return false;
+		return SKY_ERROR;
 
 	/* look for any AP beacon that is 'similar' to another */
 	if (ctx->beacon[ctx->ap_low].h.type != SKY_BEACON_AP) {
 		printf("filter_virtual_aps: beacon type not AP\n");
-		return false;
+		return SKY_ERROR;
 	}
 
 	for (j = ctx->ap_low; j <= ctx->ap_low + ctx->ap_len; j++) {
 		for (i = j + 1; i <= ctx->ap_low + ctx->ap_len; i++) {
-			if ((cmp = similar(ctx->beacon[j].ap.mac,
-					   ctx->beacon[i].ap.mac)) < 0) {
+			if ((cmp = similar(ctx->beacon[i].ap.mac,
+					   ctx->beacon[j].ap.mac)) < 0) {
 				printf("remove_beacon: %d similar to %d\n", j,
 				       i);
 				dump(ctx);
 				remove_beacon(ctx, j);
-				return true;
+				return SKY_SUCCESS;
 			} else if (cmp > 0) {
 				printf("remove_beacon: %d similar to %d\n", i,
 				       j);
 				dump(ctx);
 				remove_beacon(ctx, i);
-				return true;
+				return SKY_SUCCESS;
 			}
 		}
 	}
 	printf("filter_virtual_aps: no match\n");
-	return false;
+	return SKY_ERROR;
 }
 
 /*! \brief add beacon to list
@@ -257,14 +260,12 @@ sky_status_t add_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno, beacon_t *b,
 	if (is_connected)
 		ctx->connected = i;
 
-	printf("\nadd_beacon: before filter\n");
-	dump(ctx);
 	/* done if no filtering needed */
 	if (b->h.type != SKY_BEACON_AP || ctx->ap_len <= MAX_AP_BEACONS)
 		return sky_return(sky_errno, SKY_ERROR_NONE);
 
 	/* beacon is AP and need filter */
-	if (1 || filter_virtual_aps(ctx) == SKY_ERROR)
+	if (filter_virtual_aps(ctx) == SKY_ERROR)
 		if (filter_by_rssi(ctx) == SKY_ERROR) {
 			printf("add_beacon: failed to filter\n");
 			return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);

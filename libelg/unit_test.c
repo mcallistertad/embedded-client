@@ -31,6 +31,28 @@
  */
 #define SCAN_LIST_SIZE 100
 
+/*! \brief set mac address. 30% are virtual AP
+ *
+ *  @param mac pointer to mac address
+ *
+ *  @returns 0 for success or negative number for error
+ */
+void set_mac(uint8_t *mac)
+{
+	if (rand() % 3 == 0) {
+		/* Virtual MAC */
+		uint8_t ref[] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
+		memcpy(mac, ref, sizeof(ref));
+		mac[rand() % 3 + 3] ^= (0x01 << (rand() % 7));
+	} else {
+		/* Non Virtual MAC */
+		uint8_t ref[] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
+		memcpy(mac, ref, sizeof(ref));
+		mac[rand() % 3] = (rand() % 256);
+		mac[rand() % 3 + 3] = (rand() % 256);
+	}
+}
+
 /*! \brief validate fundamental functionality of the ELG IoT library
  *
  *  @param ac arg count
@@ -71,6 +93,7 @@ void dump(sky_ctx_t *ctx)
  */
 int main(int ac, char **av)
 {
+	int i;
 	sky_errno_t sky_errno = -1;
 	sky_ctx_t *ctx;
 	uint32_t *p;
@@ -80,12 +103,27 @@ int main(int ac, char **av)
 				      0xd4, 0x85, 0x64, 0xb2 };
 	uint8_t mac[MAC_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
 	time_t timestamp = time(NULL);
-	int8_t rssi = 50;
 	uint32_t ch = 65;
 	uint8_t *pstate;
 	uint8_t *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
+
+	beacon_t b[25];
+
+	/* Intializes random number generator */
+	srand((unsigned)time(NULL));
+
+	for (i = 0; i < 25; i++) {
+		b[i].ap.magic = BEACON_MAGIC;
+		b[i].ap.type = SKY_BEACON_AP;
+		set_mac(b[i].ap.mac);
+		b[i].ap.rssi = rand() % 128;
+		printf("Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
+		       i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1],
+		       b[i].ap.mac[2], b[i].ap.mac[3], b[i].ap.mac[4],
+		       b[i].ap.mac[5], b[i].ap.rssi);
+	}
 
 	if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
 		     NULL, NULL) == SKY_ERROR) {
@@ -116,107 +154,12 @@ int main(int ac, char **av)
 	printf("ctx: magic:%08X size:%08X crc:%08X\n", ctx->header.magic,
 	       ctx->header.size, ctx->header.crc32);
 
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	mac[5]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-	mac[5]++;
-	mac[4]++;
-	mac[3]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-	mac[5]++;
-	mac[4]++;
-	mac[3]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-	mac[5]++;
-	mac[3]++;
-	mac[1]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-	mac[5]++;
-	mac[4]++;
-	mac[3]++;
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi -= 3, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi += 1, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
-
-	if (sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp, rssi += 1, ch,
-			      1))
-		printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-		       sky_perror(sky_errno));
-	dump(ctx);
+	for (i = 0; i < 25; i++) {
+		if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp,
+				      b[i].ap.rssi, ch, 1))
+			printf("sky_add_ap_beacon sky_errno contains '%s'\n",
+			       sky_perror(sky_errno));
+	}
 
 	if (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
 				 (void *)NULL, NULL, NULL, NULL,
