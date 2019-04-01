@@ -16,6 +16,58 @@ static struct AES_ctx aes_ctx;
 
 static unsigned char aes_key_buf[16];
 
+bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
+{
+    printf("callback with tag %d\n", field->tag);
+
+    // Per the documentation here:
+    // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
+    //
+    // Aps tag.
+    if (!pb_encode_tag_for_field(ostream, field))
+    {
+        printf("pb_encode_tag(Aps) returned false!");
+        return false;
+    }
+
+     // APs length (type, len, mac1, mac2: 4 bytes).
+    if (!pb_encode_varint(ostream, 4))
+    {
+        printf("pb_encode_varint (Aps length) returned false!");
+        return false;
+    }
+
+    // Mac tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, Aps_mac_tag))
+    {
+        printf("pb_encode_tag (mac) returned false!");
+        return false;
+    }
+
+     // Macs length.
+    if (!pb_encode_varint(ostream, 2))
+    {
+        printf("pb_encode_varint () returned false!");
+        return false;
+    }
+
+    // mac1 value.
+    if (!pb_encode_varint(ostream, 10))
+    {
+        printf("pb_encode_varint (mac1) returned false!");
+        return false;
+    }
+
+    // mac2 value.
+    if (!pb_encode_varint(ostream, 11))
+    {
+        printf("pb_encode_varint (mac2) returned false!");
+        return false;
+    }
+
+    return true;
+}
+
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
 {
     const char* pos = hex_str;
@@ -58,10 +110,10 @@ void add_ap(const char mac_hex_str[12],
             bool is_connected,
             Aps_ApBand band)
 {
-    rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
-    rq.aps.rssi[rq.aps.rssi_count++] = rssi;
+    //rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
+    //rq.aps.rssi[rq.aps.rssi_count++] = rssi;
     //rq.aps.connected[rq.aps.connected_count++] = is_connected;
-    rq.aps.band[rq.aps.band_count++] = band;
+    //rq.aps.band[rq.aps.band_count++] = band;
 }
 
 void add_lte_cell(uint32_t mcc,
