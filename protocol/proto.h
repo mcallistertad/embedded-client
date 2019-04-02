@@ -15,7 +15,7 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 void add_ap(const char mac_hex_str[12],
             int8_t rssi, 
             bool is_connected,
-            Aps_ApBand band);
+            size_t channel_number);
 
 void add_lte_cell(uint32_t mcc,
                   uint32_t mnc,

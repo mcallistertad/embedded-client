@@ -16,6 +16,100 @@ static struct AES_ctx aes_ctx;
 
 static unsigned char aes_key_buf[16];
 
+struct Ap {
+	uint8_t mac[6];
+	uint32_t age; // ms
+	uint32_t channel;
+	int32_t rssi;
+    bool connected;
+};
+
+struct Ap aps[] = {
+    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0a}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
+    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0b}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
+    //{ {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 32000, /* channel */ 160, /* rssi */ -10, true}
+};
+
+size_t num_aps = sizeof(aps) / sizeof(struct Ap);
+
+uint64_t mac_to_int(uint8_t mac[6])
+{
+    uint64_t ret_val = 0;
+
+    for (size_t i = 0; i < 6; i++)
+        ret_val = ret_val * 256 + mac[i];
+
+    return ret_val;
+}
+
+bool encode_macs(pb_ostream_t* ostream)
+{
+    // Encode the array of macs as a sequence of varints.
+    for (size_t i = 0; i < num_aps; i++)
+    {
+        pb_encode_varint(ostream, mac_to_int(aps[i].mac));
+    }
+
+    return true;
+}
+
+bool encode_macs_field(pb_ostream_t* ostream)
+{
+    if (!pb_encode_tag(ostream, PB_WT_STRING, Aps_mac_tag))
+    {
+        printf("pb_encode_tag (macs) returned false!");
+        return false;
+    }
+
+    // Determine length of macs array.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    encode_macs(&substream);
+
+    // Now encode the length.
+    pb_encode_varint(ostream, substream.bytes_written);
+
+    // Now encode the macs themselves, this time for real.
+    encode_macs(ostream);
+
+    return true;
+}
+
+bool encode_aps_field(pb_ostream_t* ostream, const pb_field_t* field)
+{
+    // The Aps field is a submessage. So we need to encode first the tag, and then the length.
+
+    // Encode Aps tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, field->tag))
+    {
+        printf("pb_encode_tag(Aps) returned false!");
+        return false;
+    }
+
+    // Determine length of macs field.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    if (!encode_macs_field(&substream))
+    {
+        printf("mac sizing failed!");
+        return false;
+    }
+
+    printf("mac field size = %zu\n", substream.bytes_written);
+
+    // Now encode the length of the macs field.
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+    {
+        printf("pb_encode_varint (Aps length) returned false!");
+        return false;
+    }
+
+    // Now encode the mac field itself.
+    encode_macs_field(ostream);
+
+    return true;
+}
+
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
     printf("callback with tag %d\n", field->tag);
@@ -23,49 +117,10 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
     //
-    // Aps tag.
-    if (!pb_encode_tag_for_field(ostream, field))
-    {
-        printf("pb_encode_tag(Aps) returned false!");
+    if (field->tag == Rq_aps_tag)
+        return encode_aps_field(ostream, field);
+    else
         return false;
-    }
-
-     // APs length (type, len, mac1, mac2: 4 bytes).
-    if (!pb_encode_varint(ostream, 4))
-    {
-        printf("pb_encode_varint (Aps length) returned false!");
-        return false;
-    }
-
-    // Mac tag.
-    if (!pb_encode_tag(ostream, PB_WT_STRING, Aps_mac_tag))
-    {
-        printf("pb_encode_tag (mac) returned false!");
-        return false;
-    }
-
-     // Macs length.
-    if (!pb_encode_varint(ostream, 2))
-    {
-        printf("pb_encode_varint () returned false!");
-        return false;
-    }
-
-    // mac1 value.
-    if (!pb_encode_varint(ostream, 10))
-    {
-        printf("pb_encode_varint (mac1) returned false!");
-        return false;
-    }
-
-    // mac2 value.
-    if (!pb_encode_varint(ostream, 11))
-    {
-        printf("pb_encode_varint (mac2) returned false!");
-        return false;
-    }
-
-    return true;
 }
 
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
@@ -108,7 +163,7 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 void add_ap(const char mac_hex_str[12],
             int8_t rssi,
             bool is_connected,
-            Aps_ApBand band)
+            size_t channel_number)
 {
     //rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
     //rq.aps.rssi[rq.aps.rssi_count++] = rssi;

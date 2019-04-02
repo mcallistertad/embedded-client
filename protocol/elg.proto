@@ -42,16 +42,11 @@ message Rq {
 }
 
 message Aps {
-    enum ApBand {
-        UNKNOWN = 0;
-        BAND_2_4 = 1;
-        BAND_5 = 2;
-    }
-
-    repeated int64 mac = 1;
-    repeated sint32 rssi = 2;
-    repeated ApBand band = 3;
-    // repeated bool connected = 4;
+    int32          connected_ap_idx_plus_one = 1;
+    repeated int64 mac = 2;
+    repeated int32 age = 3; // milliseconds
+    repeated int32 negative_rssi = 4;
+    repeated int32 channel_number = 5;
 }
 
 message LteCells {
