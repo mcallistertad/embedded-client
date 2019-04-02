@@ -47,7 +47,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             # AP scans.
             if rq.aps:
-                aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.band))
+                aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.channel_number))
 
                 for ap in aps:
                     ap_elem = ET.SubElement(root, 'access-point')

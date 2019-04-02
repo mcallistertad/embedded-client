@@ -50,11 +50,11 @@ int main(int argc, char** argv)
     // Populate request with dummy data.
     for (size_t i = 0; i < 2; i++)
     {
-        add_ap("aabbcc112233", -10, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112244", -20, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112255", -30, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
+        add_ap("aabbcc112233", -10, false, 0, 0);
+        add_ap("aabbcc112244", -20, false, 0, 0);
+        add_ap("aabbcc112255", -30, true, 0, 0);
+        add_ap("aabbcc112266", -40, false, 0, 0);
+        add_ap("aabbcc112266", -40, false, 3, 0);
     }
 
     add_lte_cell(300, 400, 32462, -20, 400001);

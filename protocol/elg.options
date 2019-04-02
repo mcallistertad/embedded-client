@@ -1,4 +1,13 @@
-Aps.* max_count:50
-LteCells.* max_count:7
+# The following represent the maximum number of beacons of each type that can
+# be sent to the Skyhook server.
+# ------
+Aps.* max_count:10
+GsmCells.* max_count:1
+UmtsCells.* max_count:1
+CdmaCells.* max_count:1
+NbiotCells.* max_count:1
+LteCells.* max_count:1
+# ------
+# Do not change the following values.
 CryptoInfo.iv max_size:16
 CryptoInfo.iv max_size:16
