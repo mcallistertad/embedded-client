@@ -79,10 +79,22 @@ typedef enum {
 	SKY_ERROR_NO_BEACONS,
 } sky_errno_t;
 
-sky_status_t sky_open(sky_errno_t *sky_errno, uint8_t *device_id,
-		      uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
-		      uint8_t aes_key[16], uint8_t *sky_state,
-		      int (*puts)(const char *s));
+/*! \brief sky_log_level logging levels
+ */
+#ifndef SKY_LIBELG
+typedef enum {
+	SKY_LOG_LEVEL_CRITICAL = 1,
+	SKY_LOG_LEVEL_ERROR,
+	SKY_LOG_LEVEL_WARNING,
+	SKY_LOG_LEVEL_DEBUG,
+} sky_log_level_t;
+#endif
+
+sky_status_t
+sky_open(sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
+	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
+	 uint8_t *sky_state, sky_log_level_t min_level,
+	 int (*logf)(sky_log_level_t level, const char *s, int max));
 
 int32_t sky_sizeof_state(uint8_t *sky_state);
 
@@ -112,8 +124,8 @@ sky_status_t sky_add_cell_umts_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 
 sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				      uint32_t sid, uint16_t nid, uint16_t bsid,
-				      float lat, float lon, time_t timestamp,
-				      int8_t rssi, bool is_connected);
+				      time_t timestamp, int8_t rssi,
+				      bool is_connected);
 
 sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,

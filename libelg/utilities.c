@@ -18,6 +18,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdarg.h>
 #define SKY_LIBELG 1
 #include "beacons.h"
 #include "config.h"
@@ -64,4 +66,19 @@ int validate_workspace(sky_ctx_t *ctx)
 	    ctx->connected > MAX_BEACONS)
 		return false;
 	return true;
+}
+
+int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...)
+{
+	char buf[96];
+	int ret;
+	va_list ap;
+
+	if (level > ctx->min_level)
+		return 0;
+	va_start(ap, fmt);
+	ret = vsnprintf(buf, sizeof(buf), fmt, ap);
+	(*ctx->logf)(level, buf, sizeof(buf));
+	va_end(ap);
+	return ret;
 }

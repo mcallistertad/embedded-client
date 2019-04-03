@@ -26,6 +26,7 @@
 #include "beacons.h"
 #include "workspace.h"
 #include "libelg.h"
+#include "utilities.h"
 
 /* Example assumes a scan with 100 AP beacons
  */
@@ -53,10 +54,9 @@ void set_mac(uint8_t *mac)
 	}
 }
 
-/*! \brief validate fundamental functionality of the ELG IoT library
+/*! \brief dump the beacons in the workspace
  *
- *  @param ac arg count
- *  @param av arg vector
+ *  @param ctx workspace pointer
  *
  *  @returns 0 for success or negative number for error
  */
@@ -64,10 +64,12 @@ void dump(sky_ctx_t *ctx)
 {
 	int i;
 
-	printf("WorkSpace: Expect %d, got %d, AP %d starting at %d\n",
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+	       "WorkSpace: Expect %d, got %d, AP %d starting at %d",
 	       ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low);
 	for (i = 0; i < ctx->len; i++) {
-		printf("Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
 		       i, ctx->beacon[i].ap.type, ctx->beacon[i].ap.mac[0],
 		       ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
 		       ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4],
@@ -81,7 +83,27 @@ void dump(sky_ctx_t *ctx)
 		       p[i + 000], p[i + 001], p[i + 002], p[i + 003],
 		       p[i + 004], p[i + 005], p[i + 006], p[i + 007]);
 #endif
-	printf("\n");
+}
+
+/*! \brief validate fundamental functionality of the ELG IoT library
+ *
+ *  @param ac arg count
+ *  @param av arg vector
+ *
+ *  @returns 0 for success or negative number for error
+ */
+int logger(sky_log_level_t level, const char *s, int max)
+{
+	printf("Skyhook libELG %s: %.*s\n",
+	       level == SKY_LOG_LEVEL_CRITICAL ?
+		       "CRIT" :
+		       level == SKY_LOG_LEVEL_ERROR ?
+		       "ERRR" :
+		       level == SKY_LOG_LEVEL_WARNING ?
+		       "WARN" :
+		       level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+	       max, s);
+	return 0;
 }
 
 /*! \brief validate fundamental functionality of the ELG IoT library
@@ -119,14 +141,10 @@ int main(int ac, char **av)
 		b[i].ap.type = SKY_BEACON_AP;
 		set_mac(b[i].ap.mac);
 		b[i].ap.rssi = rand() % 128;
-		printf("Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
-		       i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1],
-		       b[i].ap.mac[2], b[i].ap.mac[3], b[i].ap.mac[4],
-		       b[i].ap.mac[5], b[i].ap.rssi);
 	}
 
 	if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-		     NULL, NULL) == SKY_ERROR) {
+		     NULL, SKY_LOG_LEVEL_DEBUG, &logger) == SKY_ERROR) {
 		printf("sky_open returned bad value, Can't continue\n");
 		exit(-1);
 	}
@@ -134,7 +152,6 @@ int main(int ac, char **av)
 	bufsize = sky_sizeof_workspace(SCAN_LIST_SIZE);
 
 	/* sky_sizeof_workspace should return a value below 5k and above 0 */
-	printf("sky_sizeof_workspace(SCAN_LIST_SIZE) = %d\n", bufsize);
 	if (bufsize == 0 || bufsize > 4096) {
 		printf("sky_sizeof_workspace returned bad value, Can't continue\n");
 		exit(-1);
@@ -151,26 +168,36 @@ int main(int ac, char **av)
 		printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
 	}
 
-	printf("ctx: magic:%08X size:%08X crc:%08X\n", ctx->header.magic,
-	       ctx->header.size, ctx->header.crc32);
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "ctx: magic:%08X size:%08X crc:%08X",
+	       ctx->header.magic, ctx->header.size, ctx->header.crc32);
 
 	for (i = 0; i < 25; i++) {
 		if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp,
 				      b[i].ap.rssi, ch, 1))
-			printf("sky_add_ap_beacon sky_errno contains '%s'\n",
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "sky_add_ap_beacon sky_errno contains '%s'",
 			       sky_perror(sky_errno));
+		else
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
+			       i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1],
+			       b[i].ap.mac[2], b[i].ap.mac[3], b[i].ap.mac[4],
+			       b[i].ap.mac[5], b[i].ap.rssi);
 	}
 
 	if (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
 				 (void *)NULL, NULL, NULL, NULL,
 				 &response_size))
-		printf("sky_finalize_request sky_errno contains '%s'\n",
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "sky_finalize_request sky_errno contains '%s'",
 		       sky_perror(sky_errno));
 	if (strcmp((char *)prequest, "SKYHOOK REQUEST MSG"))
-		printf("sky_finalize_request bad request buffer\n");
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "sky_finalize_request bad request buffer");
 	dump(ctx);
 
 	if (sky_close(&sky_errno, &pstate))
-		printf("sky_close sky_errno contains '%s'\n",
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "sky_close sky_errno contains '%s'\n",
 		       sky_perror(sky_errno));
 }
