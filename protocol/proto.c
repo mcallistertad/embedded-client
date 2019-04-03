@@ -114,6 +114,8 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 {
     printf("callback with tag %d\n", field->tag);
 
+    printf("context data = %s\n", * (char**) field->pData);
+
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
     //
@@ -142,6 +144,14 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
     rq_hdr.partner_id = partner_id;
 
     memset(&rq, 0, sizeof(rq));
+
+    // Put some data into the struct which will then be available to the encode
+    // callback. Just stick a string in there for now, but eventually we'll
+    // want to pass the full request context, which contains the scan data,
+    // etc.
+    static char data[] = "context";
+
+    rq.aps = data;
 
     unsigned char aes_iv_buf[16];
 
