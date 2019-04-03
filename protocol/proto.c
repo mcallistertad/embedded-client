@@ -32,8 +32,13 @@ struct Ap aps[] = {
 
 size_t num_aps = sizeof(aps) / sizeof(struct Ap);
 
-uint64_t mac_to_int(uint8_t mac[6])
+uint64_t mac_to_int(void* ctx, uint32_t idx)
 {
+    // This is a wrapper function around get_ap_mac(). It converts the 8-byte
+    // mac array to an unsigned64_t.
+    //
+    uint8* mac = get_ap_mac(ctx, idx);
+
     uint64_t ret_val = 0;
 
     for (size_t i = 0; i < 6; i++)
@@ -42,87 +47,60 @@ uint64_t mac_to_int(uint8_t mac[6])
     return ret_val;
 }
 
-bool encode_macs(pb_ostream_t* ostream)
+bool encode_repeated_int_field(void* ctx,
+                               pb_ostream_t* ostream,
+                               uint32_t tag,
+                               uint32_t num_elems,
+                               uint32_t (*func) (void*, uint32_t))
 {
-    // Encode the array of macs as a sequence of varints.
-    for (size_t i = 0; i < num_aps; i++)
-    {
-        pb_encode_varint(ostream, mac_to_int(aps[i].mac));
-    }
+    // Encode field tag.
+    pb_encode(ostream, PB_WT_STRING, tag);   
 
-    return true;
-}
-
-bool encode_macs_field(pb_ostream_t* ostream)
-{
-    if (!pb_encode_tag(ostream, PB_WT_STRING, Aps_mac_tag))
-    {
-        printf("pb_encode_tag (macs) returned false!");
-        return false;
-    }
-
-    // Determine length of macs array.
+    // Get field lenth by encoding the field to the bit bucket.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
 
-    encode_macs(&substream);
+    for (size_t i = 0; i < num_elems; i++)
+    {
+        pb_encode_varint(ostream, func(ctx, i));
+    }
 
-    // Now encode the length.
+    // Encode the field length.
     pb_encode_varint(ostream, substream.bytes_written);
 
-    // Now encode the macs themselves, this time for real.
-    encode_macs(ostream);
-
-    return true;
-}
-
-bool encode_aps_field(pb_ostream_t* ostream, const pb_field_t* field)
-{
-    // The Aps field is a submessage. So we need to encode first the tag, and then the length.
-
-    // Encode Aps tag.
-    if (!pb_encode_tag(ostream, PB_WT_STRING, field->tag))
+    // Now encode the field for real.
+    for (size_t i = 0; i < num_elems; i++)
     {
-        printf("pb_encode_tag(Aps) returned false!");
-        return false;
+        pb_encode_varint(ostream, func(ctx, i));
     }
-
-    // Determine length of macs field.
-    pb_ostream_t substream = PB_OSTREAM_SIZING;
-
-    if (!encode_macs_field(&substream))
-    {
-        printf("mac sizing failed!");
-        return false;
-    }
-
-    printf("mac field size = %zu\n", substream.bytes_written);
-
-    // Now encode the length of the macs field.
-    if (!pb_encode_varint(ostream, substream.bytes_written))
-    {
-        printf("pb_encode_varint (Aps length) returned false!");
-        return false;
-    }
-
-    // Now encode the mac field itself.
-    encode_macs_field(ostream);
 
     return true;
 }
 
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
+    //printf("callback with tag %d, context data %s\n", field->tag, *(char**) field->pData);
     printf("callback with tag %d\n", field->tag);
 
-    printf("context data = %s\n", * (char**) field->pData);
+    // Actual type of ctx will eventually be a sky_ctx_t*. Baby steps....
+    char* ctx = *(char**) field->pData;
 
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
     //
-    if (field->tag == Rq_aps_tag)
-        return encode_aps_field(ostream, field);
-    else
-        return false;
+    switch (field->tag)
+    {
+        case Rq_aps_tag:
+            return encode_repeated_int_field(ctx,
+                                             ostream,
+                                             field->tag,
+                                             get_num_aps("context"),
+                                             mac_to_int("context");
+            break;
+    }
+
+    printf("unknown Rq field: %d\n", field->tag);
+
+    return true;
 }
 
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
@@ -151,7 +129,7 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
     // etc.
     static char data[] = "context";
 
-    rq.aps = data;
+    rq.aps = rq.gsm_cells = data;
 
     unsigned char aes_iv_buf[16];
 

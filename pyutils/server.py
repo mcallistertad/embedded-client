@@ -140,8 +140,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             self.request.sendall(hdr_len.to_bytes(1, byteorder='little') + response)
         except Exception as e:
-            logger.error("Error for partner ID {}: ".format(header.partner_id) +
-                    type(e).__name__ + ': ' + str(e))
+            logger.error("Error handling request: " + type(e).__name__ + ': ' + str(e))
 
 
 if __name__ == "__main__":

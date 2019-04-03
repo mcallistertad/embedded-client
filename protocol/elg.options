@@ -1,9 +1,9 @@
-Rq.aps       type:FT_CALLBACK, callback_datatype:"void*"
-GsmCells.*   max_count:1
-UmtsCells.*  max_count:1
-CdmaCells.*  max_count:1
-NbiotCells.* max_count:1
-LteCells.*   max_count:1
+Rq.aps           type:FT_CALLBACK, callback_datatype:"void*"
+Rq.gsm_cells     type:FT_CALLBACK, callback_datatype:"void*"
+UmtsCells.*      max_count:1
+CdmaCells.*      max_count:1
+NbiotCells.*     max_count:1
+LteCells.*       max_count:1
 # ------
 # Do not change the following values.
 # ------

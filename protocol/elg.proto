@@ -50,7 +50,7 @@ message Aps {
     repeated int64 mac = 2;
     repeated int32 channel_number = 3;
     repeated sint32 rssi = 4;
-    repeated uint32 ts = 5; // UTC time of scan in ms
+    repeated uint32 age = 5;
 }
 
 message GsmCells {
@@ -59,7 +59,7 @@ message GsmCells {
     repeated uint32 lac = 3;
     repeated uint32 ci = 4;
     repeated sint32 rssi = 5;
-    repeated uint32 ts = 6; // UTC time of scan in ms
+    repeated uint32 age = 6;
 }
 
 message UmtsCells {
@@ -68,7 +68,7 @@ message UmtsCells {
     repeated uint32 lac = 3;
     repeated uint32 ci = 4;
     repeated sint32 rssi = 5;
-    repeated uint32 ts = 6; // UTC time of scan in ms
+    repeated uint32 age = 6;
 }
 
 message CdmaCells {
@@ -76,7 +76,7 @@ message CdmaCells {
     repeated uint32 nid = 2;
     repeated uint32 bsid = 3;
     repeated sint32 rssi = 4;
-    repeated uint32 ts = 5; // UTC time of scan in ms
+    repeated uint32 age = 5;
 }
 
 message LteCells {
@@ -85,7 +85,7 @@ message LteCells {
     repeated uint32 tac = 3;
     repeated uint32 eucid = 4;
     repeated sint32 rssi = 5;
-    repeated uint32 ts = 6; // UTC time of scan in ms
+    repeated uint32 age = 6;
 }
 
 message NbiotCells {
@@ -95,7 +95,7 @@ message NbiotCells {
     repeated uint32 e_cellid = 4;
     repeated uint32 nrsrp = 5;
     repeated sint32 rssi = 6;
-    repeated uint32 ts = 7; // UTC time of scan in ms
+    repeated uint32 age = 7;
 }
 
 message Rs {
