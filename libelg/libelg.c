@@ -35,6 +35,10 @@ static uint32_t sky_open_flag = 0;
 static uint8_t sky_id_len;
 static uint8_t sky_device_id[MAC_SIZE];
 
+/*! \brief keep track of logging function */
+static int (*sky_logf)(sky_log_level_t level, const char *s, int max);
+static sky_log_level_t sky_min_level;
+
 /*! \brief keep track of user credentials */
 static uint32_t sky_partner_id;
 
@@ -68,14 +72,15 @@ int32_t cmp_beacon(const void *a, const void *b)
 
 /*! \brief Initialize Skyhook library and verify access to resources
  *
- *  @param sky_errno sky_errno is set to the error code
+ *  @param sky_errno if sky_open returns failure, sky_errno is set to the error code
  *  @param device_id Device unique ID (example mac address of the device)
- *  @param id_len length if the Device ID
+ *  @param id_len length if the Device ID, typically 6, Max 16 bytes
  *  @param partner_id Skyhook assigned credentials
  *  @param aes_key_id Skyhook assigned credentials
  *  @param aes_key Skyhook assigned encryption key
- *  @param sky_state pointer to a state buffer (provided by sky_close)
- *  @param puts pointer to logging function
+ *  @param sky_state pointer to a state buffer (provided by sky_close) or NULL
+ *  @param min_level logging function is called for msg with equal or greater level
+ *  @param logf pointer to logging function
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -84,10 +89,11 @@ int32_t cmp_beacon(const void *a, const void *b)
  *  in order to change the parameter values. Device ID length will
  *  be truncated to 16 if larger, without causing an error.
  */
-sky_status_t sky_open(sky_errno_t *sky_errno, uint8_t *device_id,
-		      uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
-		      uint8_t aes_key[16], uint8_t *sky_state,
-		      int (*puts)(const char *s))
+sky_status_t
+sky_open(sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
+	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
+	 uint8_t *sky_state, sky_log_level_t min_level,
+	 int (*logf)(sky_log_level_t level, const char *s, int len))
 {
 	/* Only concider up to 16 bytes. Ignore any extra */
 	id_len = (id_len > MAX_DEVICE_ID) ? 16 : id_len;
@@ -111,11 +117,16 @@ sky_status_t sky_open(sky_errno_t *sky_errno, uint8_t *device_id,
 		return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
 	sky_id_len = id_len;
+	sky_min_level = min_level;
+	sky_logf = logf;
 	memcpy(sky_device_id, device_id, id_len);
 	sky_partner_id = partner_id;
 	sky_aes_key_id = aes_key_id;
 	memcpy(sky_aes_key, aes_key, sizeof(sky_aes_key));
 	sky_open_flag = true;
+
+	(*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook libELG Version 3.0\n", 80);
+
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -185,6 +196,8 @@ sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
 		sky_crc32(&ctx->header.magic,
 			  sizeof(ctx->header) - sizeof(ctx->header.crc32));
 
+	ctx->logf = sky_logf;
+	ctx->min_level = sky_min_level;
 	ctx->expect = number_beacons;
 	ctx->len = 0; /* empty */
 	ctx->ap_len = 0; /* empty */
@@ -199,10 +212,10 @@ sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
  *  @param mac pointer to mac address of the Wi-Fi beacon
- *  @param timestamp when the scan was performed
- *  @param rssi Received Signal Strength Intensity
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rssi Received Signal Strength Intensity, -10 through -127, -1 if unknown
  *  @param channel Frequency Channel , -1 if unknown
- *  @param is_connected This beacon is currently connected
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -218,9 +231,9 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-	/* TODO Use logging fn() */
-	// if (ctx->expect == 0)
-	// 	printf("Log warning: adding more beacons than expected\n");
+	if (ctx->expect == 0)
+		logfmt(ctx, SKY_LOG_LEVEL_WARNING,
+		       "adding more beacons than expected");
 
 	/* Decrement the number of beacons expected to be added */
 	ctx->expect--;
@@ -246,20 +259,21 @@ sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param tac lte beacon identifier
- *  @param eucid lte beacon identifier
- *  @param mcc lte beacon identifier
- *  @param mnc lte beacon identifier
- *  @param timestamp when the scan was performed
- *  @param rsrp Received Signal Receive Power
- *  @param is_connected This beacon is currently connected
+ *  @param tac lte tracking area code identifier (1-65,535),0 if unknown
+ *  @param e_cellid lte beacon identifier 28bit (0-268,435,456)
+ *  @param mcc mobile country code (200-799)
+ *  @param mnc mobile network code (0-999)
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 sky_status_t sky_add_cell_lte_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
-				     uint16_t tac, uint32_t eucid, uint16_t mcc,
-				     uint16_t mnc, time_t timestamp,
-				     int8_t rsrp, bool is_connected)
+				     uint16_t tac, uint32_t e_cellid,
+				     uint16_t mcc, uint16_t mnc,
+				     time_t timestamp, int8_t rsrp,
+				     bool is_connected)
 {
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -268,13 +282,13 @@ sky_status_t sky_add_cell_lte_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param lac gsm beacon identifier
- *  @param ui gsm beacon identifier
- *  @param mcc gsm beacon identifier
- *  @param mnc gsm beacon identifier
- *  @param timestamp when the scan was performed
- *  @param rssi Received Signal Strength Intensity
- *  @param is_connected This beacon is currently connected
+ *  @param lac gsm location area code identifier (1-65,535)
+ *  @param ui gsm cell identifier (0-65,535)
+ *  @param mcc mobile country code (200-799)
+ *  @param mnc mobile network code  (0-999)
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rssi Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -290,18 +304,18 @@ sky_status_t sky_add_cell_gsm_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param lac utms beacon identifier
- *  @param ui utms beacon identifier
- *  @param mcc utms beacon identifier
- *  @param mnc utms beacon identifier
- *  @param timestamp when the scan was performed
- *  @param rscp Received Signal Code Power
- *  @param is_connected This beacon is currently connected
+ *  @param lac umts location area code identifier (1-65,535), 0 if unknown
+ *  @param ucid umts cell identifier 28bit (0-268,435,456)
+ *  @param mcc mobile country code (200-799)
+ *  @param mnc mobile network code  (0-999)
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 sky_status_t sky_add_cell_umts_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
-				      uint16_t lac, uint32_t ui, uint16_t mcc,
+				      uint16_t lac, uint32_t ucid, uint16_t mcc,
 				      uint16_t mnc, time_t timestamp,
 				      int8_t rscp, bool is_connected)
 {
@@ -312,21 +326,19 @@ sky_status_t sky_add_cell_umts_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param sid cdma beacon identifier
- *  @param nid cdma beacon identifier
- *  @param bsid cdma beacon identifier
- *  @param lat tower latitude
- *  @param lon tower longitude
- *  @param timestamp when the scan was performed
+ *  @param sid cdma system identifier (0-32767)
+ *  @param nid cdma network identifier(0-65535)
+ *  @param bsid cdma base station identifier (0-65535)
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rssi Received Signal Strength Intensity
- *  @param is_connected This beacon is currently connected
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				      uint32_t sid, uint16_t nid, uint16_t bsid,
-				      float lat, float lon, time_t timestamp,
-				      int8_t rssi, bool is_connected)
+				      time_t timestamp, int8_t rssi,
+				      bool is_connected)
 {
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -335,13 +347,13 @@ sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param mcc nbiot beacon identifier
- *  @param mnc nbiot beacon identifier
- *  @param cellid nbiot beacon identifier
- *  @param tac nbiot beacon identifier
- *  @param timestamp when the scan was performed
- *  @param nrsrp Narrowband Reference Signal Received Power
- *  @param is_connected This beacon is currently connected
+ *  @param mcc mobile country code (200-799)
+ *  @param mnc mobile network code  (0-999)
+ *  @param e_cellid nbiot beacon identifier (0-268,435,456)
+ *  @param tac nbiot tracking area code identifier (1-65,535), 0 if unknown
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
+ *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -361,13 +373,6 @@ sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 
 	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
-	/* TODO Use logging fn() */
-	// if (ctx->expect == 0)
-	// 	printf("Log warning: adding more beacons than expected\n");
-
-	/* Decrement the number of beacons expected to be added */
-	ctx->expect--;
 
 	/* Create NB IoT beacon */
 	i = (++ctx->len) - 1;
@@ -396,13 +401,12 @@ sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *  @param sky_errno skyErrno is set to the error code
  *  @param lat device latitude
  *  @param lon device longitude
- *  @param hpe pointer to horizontal Positioning Error
- *  @param altitude pointer to altitude
- *  @param vpe pointer to vertical Positioning Error
- *  @param speed pointer to speed in meters per second
- *  @param bearing pointer to bearing of device in degrees, counterclockwise
- * from north
- *  @param timestamp when the location was determined
+ *  @param hpe pointer to horizontal Positioning Error in meters with 68% confidence, 0 if unknown
+ *  @param altitude pointer to altitude above mean sea level, in meters, NaN if unknown
+ *  @param vpe pointer to vertical Positioning Error in meters with 68% confidence, 0 if unknown
+ *  @param speed pointer to speed in meters per second, Nan if unknown
+ *  @param bearing pointer to bearing of device in degrees, counterclockwise from north
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -419,10 +423,10 @@ sky_status_t sky_add_gps(sky_ctx_t *ctx, sky_errno_t *sky_errno, float lat,
  *  @param sky_errno skyErrno is set to the error code
  *  @param request Request to send to Skyhook server
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude
- *  @param lon where to save device longitude
- *  @param hpe where to save horizontal Positioning Error
- *  @param timestamp when the location was determined
+ *  @param lat where to save device latitude from cache if known
+ *  @param lon where to save device longitude from cache if known
+ *  @param hpe where to save horizontal Positioning Error from cache if known
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when fix was computed (from cache)
  *  @param response_size the space required to hold the server response
  *
  *  @return SKY_FINALIZE_REQUEST, SKY_FINALIZE_LOCATION or
@@ -455,10 +459,10 @@ sky_finalize_t sky_finalize_request(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *  @param sky_errno skyErrno is set to the error code
  *  @param response buffer holding the skyhook server response
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude
- *  @param lon where to save device longitude
- *  @param hpe where to save horizontal Positioning Error
- *  @param timestamp when the location was determined
+ *  @param lat where to save device latitude from cache if known
+ *  @param lon where to save device longitude from cache if known
+ *  @param hpe where to save horizontal Positioning Error from cache if known
+ *  @param timestamp pointer to time in seconds (from 1970 epoch) indicating when fix was computed (on server)
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -471,7 +475,7 @@ sky_status_t sky_decode_response(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 
 /*! \brief returns a string which describes the meaning of sky_errno codes
  *
- *  @param sky_errno skyErrno is set to the error code
+ *  @param sky_errno Error code for which to provide descriptive string
  *
  *  @return pointer to string or NULL if the code is invalid
  */

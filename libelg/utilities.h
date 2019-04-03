@@ -22,5 +22,6 @@ sky_status_t sky_return(sky_errno_t *sky_errno, sky_errno_t code);
 int validate_workspace(sky_ctx_t *ctx);
 sky_status_t add_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno, beacon_t *b,
 			bool is_connected);
+int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...);
 
 #endif

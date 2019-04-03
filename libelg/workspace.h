@@ -26,8 +26,21 @@ struct sky_header {
 	uint32_t crc32;
 };
 
+/*! \brief sky_log_level logging levels
+ */
+#ifdef SKY_LIBELG
+typedef enum {
+	SKY_LOG_LEVEL_CRITICAL = 1,
+	SKY_LOG_LEVEL_ERROR,
+	SKY_LOG_LEVEL_WARNING,
+	SKY_LOG_LEVEL_DEBUG,
+} sky_log_level_t;
+#endif
+
 typedef struct sky_ctx {
 	struct sky_header header; /* magic, size, timestamp, crc32 */
+	int (*logf)(sky_log_level_t level, const char *s, int max);
+	sky_log_level_t min_level;
 	int16_t expect; /* number of beacons to be added */
 	int16_t len; /* number of beacons in list (0 == none) */
 	beacon_t beacon[MAX_BEACONS + 1]; /* beacon data */
