@@ -25,6 +25,8 @@
 
 #define SKY_PROTOCOL_VERSION 3
 
+#define SKY_DEBUG true
+
 #define URL_SIZE 512
 #define AUTH_SIZE 512
 
@@ -104,33 +106,33 @@ sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
 			   uint8_t number_beacons);
 
 sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
-			       uint8_t mac[6], time_t timestamp, int8_t rssi,
+			       uint8_t mac[6], time_t timestamp, int16_t rssi,
 			       int32_t channel, bool is_connected);
 
 sky_status_t sky_add_cell_lte_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				     uint16_t tac, uint32_t eucid, uint16_t mcc,
 				     uint16_t mnc, time_t timestamp,
-				     int8_t rsrp, bool is_connected);
+				     int16_t rsrp, bool is_connected);
 
 sky_status_t sky_add_cell_gsm_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				     uint16_t lac, uint32_t ui, uint16_t mcc,
 				     uint16_t mnc, time_t timestamp,
-				     int8_t rssi, bool is_connected);
+				     int16_t rssi, bool is_connected);
 
 sky_status_t sky_add_cell_umts_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				      uint16_t lac, uint32_t ui, uint16_t mcc,
 				      uint16_t mnc, time_t timestamp,
-				      int8_t rscp, bool is_connected);
+				      int16_t rscp, bool is_connected);
 
 sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				      uint32_t sid, uint16_t nid, uint16_t bsid,
-				      time_t timestamp, int8_t rssi,
+				      time_t timestamp, int16_t rssi,
 				      bool is_connected);
 
 sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
 					uint32_t cellid, uint32_t tac,
-					time_t timestamp, int8_t nrsrp,
+					time_t timestamp, int16_t nrsrp,
 					bool is_connected);
 
 sky_status_t sky_add_gps(sky_ctx_t *ctx, sky_errno_t *sky_errno, float lat,

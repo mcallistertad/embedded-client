@@ -75,7 +75,7 @@ struct gsm {
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
-	int8_t rssi; // -255 unkonwn - map it to - 128
+	int16_t rssi; // -255 unkonwn - map it to - 128
 };
 
 // 64-bit aligned due to double
@@ -88,7 +88,7 @@ struct cdma {
 	uint16_t sid;
 	uint16_t nid;
 	uint16_t bsid;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 struct umts {
@@ -99,7 +99,7 @@ struct umts {
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 struct lte {
@@ -109,7 +109,7 @@ struct lte {
 	uint32_t eucid;
 	uint16_t mcc;
 	uint16_t mnc;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 // blue tooth
@@ -120,7 +120,7 @@ struct ble {
 	uint16_t minor;
 	uint8_t MAC[MAC_SIZE];
 	uint8_t uuid[16];
-	int8_t rssi;
+	int16_t rssi;
 };
 
 struct nb_iot {
@@ -131,7 +131,7 @@ struct nb_iot {
 	uint16_t mnc;
 	uint32_t e_cellid;
 	uint16_t tac;
-	int8_t nrsrp;
+	int16_t nrsrp;
 };
 
 struct header {
