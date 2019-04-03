@@ -38,23 +38,64 @@ message CryptoInfo {
 message Rq {
     int64 client_mac = 1;
     Aps aps = 2;
-    LteCells lte_cells = 3;
+    GsmCells gsm_cells = 3;
+    UmtsCells umts_cells = 4;
+    LteCells lte_cells = 5;
+    CdmaCells cdma_cells = 6;
+    NbiotCells nbiot_cells = 7;
 }
 
 message Aps {
-    int32          connected_ap_idx_plus_one = 1;
+    uint32 connected_ap_idx_plus_1 = 1; // 0 means that device is not connected to any AP
     repeated int64 mac = 2;
-    repeated int32 age = 3; // milliseconds
-    repeated int32 negative_rssi = 4;
-    repeated int32 channel_number = 5;
+    repeated int32 channel_number = 3;
+    repeated sint32 rssi = 4;
+    repeated uint32 ts = 5; // UTC time of scan in ms
+}
+
+message GsmCells {
+    repeated uint32 mcc = 1;
+    repeated uint32 mnc = 2;
+    repeated uint32 lac = 3;
+    repeated uint32 ci = 4;
+    repeated sint32 rssi = 5;
+    repeated uint32 ts = 6; // UTC time of scan in ms
+}
+
+message UmtsCells {
+    repeated uint32 mcc = 1;
+    repeated uint32 mnc = 2;
+    repeated uint32 lac = 3;
+    repeated uint32 ci = 4;
+    repeated sint32 rssi = 5;
+    repeated uint32 ts = 6; // UTC time of scan in ms
+}
+
+message CdmaCells {
+    repeated uint32 sid = 1;
+    repeated uint32 nid = 2;
+    repeated uint32 bsid = 3;
+    repeated sint32 rssi = 4;
+    repeated uint32 ts = 5; // UTC time of scan in ms
 }
 
 message LteCells {
-    repeated uint32 age = 1;
-    repeated uint32 eucid = 2;
-    repeated uint32 mcc = 3;
-    repeated uint32 mnc = 4;
+    repeated uint32 mcc = 1;
+    repeated uint32 mnc = 2;
+    repeated uint32 tac = 3;
+    repeated uint32 eucid = 4;
     repeated sint32 rssi = 5;
+    repeated uint32 ts = 6; // UTC time of scan in ms
+}
+
+message NbiotCells {
+    repeated uint32 mcc = 1;
+    repeated uint32 mnc = 2;
+    repeated uint32 tac = 3;
+    repeated uint32 e_cellid = 4;
+    repeated uint32 nrsrp = 5;
+    repeated sint32 rssi = 6;
+    repeated uint32 ts = 7; // UTC time of scan in ms
 }
 
 message Rs {

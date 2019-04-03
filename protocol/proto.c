@@ -173,7 +173,8 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 void add_ap(const char mac_hex_str[12],
             int8_t rssi,
             bool is_connected,
-            size_t channel_number)
+            uint32_t channel,
+            uint32_t ts)
 {
     //rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
     //rq.aps.rssi[rq.aps.rssi_count++] = rssi;
@@ -185,17 +186,47 @@ void add_lte_cell(uint32_t mcc,
                   uint32_t mnc,
                   uint32_t eucid,
                   int32_t rssi,
-                  uint32_t age)
+                  uint32_t ts)
 {
     rq.lte_cells.mcc[rq.lte_cells.mcc_count++] = mcc;
     rq.lte_cells.mnc[rq.lte_cells.mnc_count++] = mnc;
     rq.lte_cells.eucid[rq.lte_cells.eucid_count++] = eucid;
-    rq.lte_cells.age[rq.lte_cells.age_count++] = age;
+    rq.lte_cells.ts[rq.lte_cells.ts_count++] = ts;
     rq.lte_cells.rssi[rq.lte_cells.rssi_count++] = rssi;
+}
+
+void suppress_degenerate_fields()
+{
+#if 0
+    // Remove certain repeated fields if all elements contain default values.
+    // This is purely a bandwidth utilization optimization.
+    //
+    bool suppress_ts = true;
+    bool suppress_channel = true;
+
+    for (size_t i = 0; (suppress_ts || suppress_channel) && i < rq.aps.ts_count; i++)
+    {
+        if (rq.aps.ts[i] != 0)
+            suppress_ts = false;
+
+        if (rq.aps.channel_number[i] != 0)
+            suppress_channel = false;
+    }
+
+    if (suppress_ts)
+        rq.aps.ts_count = 0;
+
+    if (suppress_channel)
+    {
+        rq.aps.channel_number_count = 0;
+    }
+#endif
 }
 
 int32_t serialize_request(uint8_t* buf, size_t buf_len)
 {
+    suppress_degenerate_fields();
+
     // Create and serialize the request header message.
     size_t rq_size;
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);

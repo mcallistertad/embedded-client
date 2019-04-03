@@ -15,13 +15,14 @@ void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12]
 void add_ap(const char mac_hex_str[12],
             int8_t rssi, 
             bool is_connected,
-            size_t channel_number);
+            uint32_t channel,
+            uint32_t ts);
 
 void add_lte_cell(uint32_t mcc,
                   uint32_t mnc,
                   uint32_t eucid,
                   int32_t rssi,
-                  uint32_t age);
+                  uint32_t ts);
 
 // Encode and encrypt request into buffer.
 int32_t serialize_request(uint8_t* buf, size_t buf_len);
