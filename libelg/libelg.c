@@ -31,7 +31,7 @@
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
 
-/*! \brief keep track of the device using the library */
+/*! \brief keep track of the device ID */
 static uint8_t sky_id_len;
 static uint8_t sky_device_id[MAC_SIZE];
 
@@ -472,6 +472,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (ctx->len == 0)
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
+	/* check cache against beacons for match */
+
 	/* TODO encode request */
 	strcpy((void *)ctx->request, "SKYHOOK REQUEST MSG");
 
@@ -499,6 +501,9 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				 char *response, int32_t bufsize, float *lat,
 				 float *lon, uint16_t *hpe, time_t *timestamp)
 {
+	/* Validate response from server */
+
+	/* Add location and current beacons to Cache */
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 

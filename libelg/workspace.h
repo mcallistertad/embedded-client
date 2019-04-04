@@ -54,4 +54,15 @@ typedef struct sky_ctx {
 			sizeof(Gps_t)];
 } Sky_ctx_t;
 
+typedef struct sky_state {
+	Sky_header_t header; /* magic, size, timestamp, crc32 */
+	uint8_t sky_id_len; /* device ID len */
+	uint8_t sky_device_id[MAC_SIZE]; /* device ID */
+	uint32_t sky_partner_id; /* partner ID */
+	uint32_t sky_aes_key_id; /* aes key ID */
+	uint8_t sky_aes_key[16]; /* aes key */
+	int16_t len; /* number of beacons */
+	Beacon_t beacon[MAX_BEACONS]; /* beacons */
+} Sky_cache_t;
+
 #endif
