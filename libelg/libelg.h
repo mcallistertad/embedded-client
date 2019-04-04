@@ -46,7 +46,7 @@
 #define MAX_DEVICE_ID 16
 
 #ifndef SKY_LIBELG
-typedef void sky_ctx_t;
+typedef void Sky_ctx_t;
 #endif
 
 /*! \brief API return value
@@ -54,7 +54,7 @@ typedef void sky_ctx_t;
 typedef enum {
 	SKY_SUCCESS = 0,
 	SKY_ERROR = -1,
-} sky_status_t;
+} Sky_status_t;
 
 /*! \brief sky_finalize_request return value
  */
@@ -62,7 +62,7 @@ typedef enum {
 	SKY_FINALIZE_ERROR = -1,
 	SKY_FINALIZE_LOCATION = 0,
 	SKY_FINALIZE_REQUEST = 1,
-} sky_finalize_t;
+} Sky_finalize_t;
 
 /*! \brief sky_errno Error Codes
  */
@@ -79,7 +79,7 @@ typedef enum {
 	SKY_ERROR_CLOSE,
 	SKY_ERROR_BAD_KEY,
 	SKY_ERROR_NO_BEACONS,
-} sky_errno_t;
+} Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
  */
@@ -90,67 +90,67 @@ typedef enum {
 	SKY_LOG_LEVEL_WARNING,
 	SKY_LOG_LEVEL_DEBUG,
 	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
-} sky_log_level_t;
+} Sky_log_level_t;
 #endif
 
-sky_status_t
-sky_open(sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
+Sky_status_t
+sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
-	 uint8_t *sky_state, sky_log_level_t min_level,
-	 int (*logf)(sky_log_level_t level, const char *s, int max));
+	 uint8_t *sky_state, Sky_log_level_t min_level,
+	 int (*logf)(Sky_log_level_t level, const char *s, int max));
 
 int32_t sky_sizeof_state(uint8_t *sky_state);
 
 int32_t sky_sizeof_workspace(uint16_t number_beacons);
 
-sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, sky_errno_t *sky_errno,
+Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 			   uint8_t number_beacons);
 
-sky_status_t sky_add_ap_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 			       uint8_t mac[6], time_t timestamp, int16_t rssi,
 			       int32_t channel, bool is_connected);
 
-sky_status_t sky_add_cell_lte_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				     uint16_t tac, uint32_t eucid, uint16_t mcc,
 				     uint16_t mnc, time_t timestamp,
 				     int16_t rsrp, bool is_connected);
 
-sky_status_t sky_add_cell_gsm_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				     uint16_t lac, uint32_t ui, uint16_t mcc,
 				     uint16_t mnc, time_t timestamp,
 				     int16_t rssi, bool is_connected);
 
-sky_status_t sky_add_cell_umts_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				      uint16_t lac, uint32_t ui, uint16_t mcc,
 				      uint16_t mnc, time_t timestamp,
 				      int16_t rscp, bool is_connected);
 
-sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				      uint32_t sid, uint16_t nid, uint16_t bsid,
 				      time_t timestamp, int16_t rssi,
 				      bool is_connected);
 
-sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
 					uint32_t e_cellid, uint32_t tac,
 					time_t timestamp, int16_t nrsrp,
 					bool is_connected);
 
-sky_status_t sky_add_gps(sky_ctx_t *ctx, sky_errno_t *sky_errno, float lat,
+Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
 			 float lon, uint16_t hpe, float altitude, uint16_t vpe,
 			 float speed, float bearing, time_t timestamp);
 
-sky_finalize_t sky_finalize_request(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    uint8_t **request, uint32_t *bufsize,
 				    float *lat, float *lon, uint16_t *hpe,
 				    time_t *timestamp, uint32_t *response_size);
 
-sky_status_t sky_decode_response(sky_ctx_t *ctx, sky_errno_t *sky_errno,
+Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				 char *response, int32_t bufsize, float *lat,
 				 float *lon, uint16_t *hpe, time_t *timestamp);
 
-char *sky_perror(sky_errno_t sky_errno);
+char *sky_perror(Sky_errno_t sky_errno);
 
-sky_status_t sky_close(sky_errno_t *sky_errno, uint8_t **sky_state);
+Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state);
 
 #endif

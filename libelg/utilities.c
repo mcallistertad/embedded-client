@@ -28,14 +28,14 @@
 #include "crc32.h"
 #include "libelg.h"
 
-/*! \brief set sky_errno and return sky_status
+/*! \brief set sky_errno and return Sky_status
  *
  *  @param sky_errno sky_errno is the error code
  *  @param code the sky_errno_t code to return
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return Sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-sky_status_t sky_return(sky_errno_t *sky_errno, sky_errno_t code)
+Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code)
 {
 	if (sky_errno != NULL)
 		*sky_errno = code;
@@ -48,7 +48,7 @@ sky_status_t sky_return(sky_errno_t *sky_errno, sky_errno_t code)
  *
  *  @return true if workspace is valid, else false
  */
-int validate_workspace(sky_ctx_t *ctx)
+int validate_workspace(Sky_ctx_t *ctx)
 {
 	int i;
 
@@ -77,7 +77,7 @@ int validate_workspace(sky_ctx_t *ctx)
  *
  *  @return 0 for success
  */
-int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...)
+int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...)
 {
 #if SKY_DEBUG
 	va_list ap;
@@ -102,7 +102,7 @@ int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...)
  *
  *  @return number of beacons of the specified type
  */
-int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
+int64_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 {
 	int i, b = 0;
 
@@ -130,7 +130,7 @@ int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
  *
  *  @return first beacon of the specified type
  */
-int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
+int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 {
 	int i = 0;
 
@@ -156,7 +156,7 @@ int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
  *
  *  @return 0 for success
  */
-int64_t get_num_aps(sky_ctx_t *ctx)
+int64_t get_num_aps(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -172,7 +172,7 @@ int64_t get_num_aps(sky_ctx_t *ctx)
  *
  *  @return 0 for success
  */
-uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx)
+uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -188,7 +188,7 @@ uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -204,7 +204,7 @@ int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -220,7 +220,7 @@ int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_num_gsm(sky_ctx_t *ctx)
+int64_t get_num_gsm(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -236,7 +236,7 @@ int64_t get_num_gsm(sky_ctx_t *ctx)
  *
  *  @return 0 for success
  */
-uint64_t get_gsm_ui(sky_ctx_t *ctx, uint32_t idx)
+uint64_t get_gsm_ui(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -252,7 +252,7 @@ uint64_t get_gsm_ui(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -268,7 +268,7 @@ int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -284,7 +284,7 @@ int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -300,7 +300,7 @@ int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_gsm_rssi(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -315,7 +315,7 @@ int64_t get_gsm_rssi(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_num_nbiot(sky_ctx_t *ctx)
+int64_t get_num_nbiot(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -331,7 +331,7 @@ int64_t get_num_nbiot(sky_ctx_t *ctx)
  *
  *  @return 0 for success
  */
-uint64_t get_nbiot_mcc(sky_ctx_t *ctx, uint32_t idx)
+uint64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -348,7 +348,7 @@ uint64_t get_nbiot_mcc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_nbiot_mnc(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -365,7 +365,7 @@ int64_t get_nbiot_mnc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_nbiot_ecellid(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -382,7 +382,7 @@ int64_t get_nbiot_ecellid(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_nbiot_tac(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -399,7 +399,7 @@ int64_t get_nbiot_tac(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-int64_t get_nbiot_rssi(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);

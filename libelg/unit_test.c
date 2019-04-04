@@ -60,7 +60,7 @@ void set_mac(uint8_t *mac)
  *
  *  @returns 0 for success or negative number for error
  */
-void dump(sky_ctx_t *ctx)
+void dump(Sky_ctx_t *ctx)
 {
 	int i;
 
@@ -115,7 +115,7 @@ void dump(sky_ctx_t *ctx)
  *
  *  @returns 0 for success or negative number for error
  */
-int logger(sky_log_level_t level, const char *s, int max)
+int logger(Sky_log_level_t level, const char *s, int max)
 {
 	printf("Skyhook libELG %s: %.*s\n",
 	       level == SKY_LOG_LEVEL_CRITICAL ?
@@ -139,8 +139,8 @@ int logger(sky_log_level_t level, const char *s, int max)
 int main(int ac, char **av)
 {
 	int i;
-	sky_errno_t sky_errno = -1;
-	sky_ctx_t *ctx;
+	Sky_errno_t sky_errno = -1;
+	Sky_ctx_t *ctx;
 	uint32_t *p;
 	uint32_t bufsize;
 	uint8_t aes_key[AES_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e,
@@ -153,8 +153,8 @@ int main(int ac, char **av)
 	uint8_t *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
-	sky_beacon_type_t t;
-	beacon_t b[25];
+	Sky_beacon_type_t t;
+	Beacon_t b[25];
 
 	/* Intializes random number generator */
 	srand((unsigned)time(NULL));
@@ -174,7 +174,7 @@ int main(int ac, char **av)
 	}
 
 	/* allocate workspace */
-	ctx = (sky_ctx_t *)(p = alloca(bufsize));
+	ctx = (Sky_ctx_t *)(p = alloca(bufsize));
 
 	/* initialize the workspace */
 	memset(p, 0, bufsize);

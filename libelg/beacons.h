@@ -45,7 +45,7 @@ typedef enum {
 	SKY_BEACON_NBIOT,
 	SKY_BEACON_UMTS,
 	SKY_BEACON_MAX, /* add more before this */
-} sky_beacon_type_t;
+} Sky_beacon_type_t;
 
 /*! \brief Access Point data
  */
@@ -147,7 +147,7 @@ typedef union beacon {
 	struct lte lte;
 	struct nbiot nbiot;
 	struct umts umts;
-} beacon_t;
+} Beacon_t;
 
 typedef struct gps {
 	double lat;
@@ -159,6 +159,6 @@ typedef struct gps {
 	uint32_t age;
 	uint8_t nsat;
 	uint8_t fix;
-} gps_t;
+} Gps_t;
 
 #endif

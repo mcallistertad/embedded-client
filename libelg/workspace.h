@@ -19,12 +19,12 @@
 #define SKY_WORKSPACE_H
 
 #define SKY_MAGIC 0xD1967805
-struct sky_header {
+typedef struct sky_header {
 	uint32_t magic;
 	uint32_t size;
 	time_t time;
 	uint32_t crc32;
-};
+} Sky_header_t;
 
 /*! \brief sky_log_level logging levels
  */
@@ -35,23 +35,23 @@ typedef enum {
 	SKY_LOG_LEVEL_WARNING,
 	SKY_LOG_LEVEL_DEBUG,
 	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
-} sky_log_level_t;
+} Sky_log_level_t;
 #endif
 
 typedef struct sky_ctx {
-	struct sky_header header; /* magic, size, timestamp, crc32 */
-	int (*logf)(sky_log_level_t level, const char *s, int max);
-	sky_log_level_t min_level;
+	Sky_header_t header; /* magic, size, timestamp, crc32 */
+	int (*logf)(Sky_log_level_t level, const char *s, int max);
+	Sky_log_level_t min_level;
 	int16_t expect; /* number of beacons to be added */
 	int16_t len; /* number of beacons in list (0 == none) */
-	beacon_t beacon[MAX_BEACONS + 1]; /* beacon data */
+	Beacon_t beacon[MAX_BEACONS + 1]; /* beacon data */
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
-	gps_t gps; /* GPS info */
-	uint8_t request[sizeof(struct sky_header) + sizeof(int32_t) +
-			(sizeof(beacon_t) * MAX_BEACONS) + sizeof(int32_t) +
-			sizeof(gps_t)];
-} sky_ctx_t;
+	Gps_t gps; /* GPS info */
+	uint8_t request[sizeof(Sky_header_t) + sizeof(int32_t) +
+			(sizeof(Beacon_t) * MAX_BEACONS) + sizeof(int32_t) +
+			sizeof(Gps_t)];
+} Sky_ctx_t;
 
 #endif

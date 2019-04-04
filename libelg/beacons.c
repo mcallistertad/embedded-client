@@ -29,7 +29,7 @@
 #include "libelg.h"
 #include "utilities.h"
 
-void dump(sky_ctx_t *ctx);
+void dump(Sky_ctx_t *ctx);
 
 /*! \brief test two MAC addresses for being virtual aps
  *
@@ -67,7 +67,7 @@ static int similar(uint8_t macA[], uint8_t macB[])
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-static sky_status_t remove_beacon(sky_ctx_t *ctx, int index)
+static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 {
 	if (index >= ctx->len)
 		return SKY_ERROR;
@@ -76,7 +76,7 @@ static sky_status_t remove_beacon(sky_ctx_t *ctx, int index)
 		ctx->ap_len -= 1;
 
 	memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
-		sizeof(beacon_t) * (ctx->len - index - 1));
+		sizeof(Beacon_t) * (ctx->len - index - 1));
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d", index);
 	ctx->len -= 1;
 	return SKY_SUCCESS;
@@ -91,8 +91,8 @@ static sky_status_t remove_beacon(sky_ctx_t *ctx, int index)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-static sky_status_t insert_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
-				  beacon_t *b, int *index)
+static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
+				  Beacon_t *b, int *index)
 {
 	int i;
 
@@ -128,7 +128,7 @@ static sky_status_t insert_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "shift beacons to make room for the new one (%d)", i);
 		memmove(&ctx->beacon[i + 1], &ctx->beacon[i],
-			sizeof(beacon_t) * (ctx->len - i));
+			sizeof(Beacon_t) * (ctx->len - i));
 		ctx->beacon[i] = *b;
 		ctx->len++;
 	}
@@ -148,7 +148,7 @@ static sky_status_t insert_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
  *
  *  @return true if AP removed, or false
  */
-static sky_status_t filter_by_rssi(sky_ctx_t *ctx)
+static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
 	int i, reject;
 	float band_range, worst;
@@ -192,7 +192,7 @@ static sky_status_t filter_by_rssi(sky_ctx_t *ctx)
  *
  *  @return true if AP removed, or false
  */
-static sky_status_t filter_virtual_aps(sky_ctx_t *ctx)
+static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 {
 	int i, j;
 	int cmp;
@@ -244,7 +244,7 @@ static sky_status_t filter_virtual_aps(sky_ctx_t *ctx)
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-sky_status_t add_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno, beacon_t *b,
+Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 			bool is_connected)
 {
 	int i = -1;
