@@ -89,6 +89,7 @@ typedef enum {
 	SKY_LOG_LEVEL_ERROR,
 	SKY_LOG_LEVEL_WARNING,
 	SKY_LOG_LEVEL_DEBUG,
+	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
 } sky_log_level_t;
 #endif
 
