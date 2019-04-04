@@ -409,14 +409,14 @@ sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	/* If beacon has meaningful timestamp */
 	/* scan was before sky_new_request and since Mar 1st 2019 */
 	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].nb_iot.age = ctx->header.time - timestamp;
+		ctx->beacon[i].nbiot.age = ctx->header.time - timestamp;
 	else
-		ctx->beacon[i].nb_iot.age = 0;
-	ctx->beacon[i].nb_iot.mcc = mcc;
-	ctx->beacon[i].nb_iot.mnc = mnc;
-	ctx->beacon[i].nb_iot.e_cellid = e_cellid;
-	ctx->beacon[i].nb_iot.tac = tac;
-	ctx->beacon[i].nb_iot.rssi = rssi;
+		ctx->beacon[i].nbiot.age = 0;
+	ctx->beacon[i].nbiot.mcc = mcc;
+	ctx->beacon[i].nbiot.mnc = mnc;
+	ctx->beacon[i].nbiot.e_cellid = e_cellid;
+	ctx->beacon[i].nbiot.tac = tac;
+	ctx->beacon[i].nbiot.rssi = rssi;
 	if (is_connected)
 		ctx->connected = ctx->len;
 	/* sort beacons by type */

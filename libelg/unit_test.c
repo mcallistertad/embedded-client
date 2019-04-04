@@ -90,11 +90,11 @@ void dump(sky_ctx_t *ctx)
 		case SKY_BEACON_NBIOT:
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
-			       i, ctx->beacon[i].nb_iot.mcc,
-			       ctx->beacon[i].nb_iot.mnc,
-			       ctx->beacon[i].nb_iot.e_cellid,
-			       ctx->beacon[i].nb_iot.tac,
-			       ctx->beacon[i].nb_iot.rssi);
+			       i, ctx->beacon[i].nbiot.mcc,
+			       ctx->beacon[i].nbiot.mnc,
+			       ctx->beacon[i].nbiot.e_cellid,
+			       ctx->beacon[i].nbiot.tac,
+			       ctx->beacon[i].nbiot.rssi);
 			break;
 		}
 	}
@@ -209,29 +209,29 @@ int main(int ac, char **av)
 	}
 
 	for (i = 0; i < 3; i++) {
-		b[i].nb_iot.magic = BEACON_MAGIC;
-		b[i].nb_iot.type = SKY_BEACON_NBIOT;
-		b[i].nb_iot.mcc = 200 + (rand() % 599);
-		b[i].nb_iot.mnc = rand() % 999;
-		b[i].nb_iot.e_cellid = rand() % 268435456;
-		b[i].nb_iot.tac = rand();
-		b[i].nb_iot.rssi = -(44 + (rand() % 112));
+		b[i].nbiot.magic = BEACON_MAGIC;
+		b[i].nbiot.type = SKY_BEACON_NBIOT;
+		b[i].nbiot.mcc = 200 + (rand() % 599);
+		b[i].nbiot.mnc = rand() % 999;
+		b[i].nbiot.e_cellid = rand() % 268435456;
+		b[i].nbiot.tac = rand();
+		b[i].nbiot.rssi = -(44 + (rand() % 112));
 	}
 
 	for (i = 0; i < 3; i++) {
 		if (sky_add_cell_nb_iot_beacon(
-			    ctx, &sky_errno, b[i].nb_iot.mcc, b[i].nb_iot.mnc,
-			    b[i].nb_iot.e_cellid, b[i].nb_iot.tac, timestamp,
-			    b[i].nb_iot.rssi, 1))
+			    ctx, &sky_errno, b[i].nbiot.mcc, b[i].nbiot.mnc,
+			    b[i].nbiot.e_cellid, b[i].nbiot.tac, timestamp,
+			    b[i].nbiot.rssi, 1))
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "sky_add_nbiot_beacon sky_errno contains '%s'",
 			       sky_perror(sky_errno));
 		else
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "Added Test Beacon % 2d: Type: %d, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d\n",
-			       i, b[i].nb_iot.type, b[i].nb_iot.mcc,
-			       b[i].nb_iot.mnc, b[i].nb_iot.e_cellid,
-			       b[i].nb_iot.tac, b[i].nb_iot.rssi);
+			       i, b[i].nbiot.type, b[i].nbiot.mcc,
+			       b[i].nbiot.mnc, b[i].nbiot.e_cellid,
+			       b[i].nbiot.tac, b[i].nbiot.rssi);
 	}
 
 	for (i = 0; i < 2; i++) {
@@ -273,40 +273,53 @@ int main(int ac, char **av)
 	for (t = SKY_BEACON_AP; t != SKY_BEACON_MAX; t++) {
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "get_num_beacons: %d, %d", t,
 		       i = get_num_beacons(ctx, t));
+		if (t == SKY_BEACON_AP)
+			for (i--; i >= 0; i--) {
+				uint8_t *m = get_ap_mac(ctx, i);
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_ap_mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X",
+				       i, m[0], m[1], m[2], m[3], m[4], m[5]);
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_ap_channel:   %d, %d", i,
+				       get_ap_channel(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_ap_rssi:      %d, %d", i,
+				       get_ap_rssi(ctx, i));
+			}
 		if (t == SKY_BEACON_GSM)
 			for (i--; i >= 0; i--) {
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_ui: %d, %d", i,
+				       "get_gsm_ui:       %d, %d", i,
 				       get_gsm_ui(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_mcc: %d, %d", i,
+				       "get_gsm_mcc:       %d, %d", i,
 				       get_gsm_mcc(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_mnc: %d, %d", i,
+				       "get_gsm_mnc:       %d, %d", i,
 				       get_gsm_mnc(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_lac: %d, %d", i,
+				       "get_gsm_lac:       %d, %d", i,
 				       get_gsm_lac(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_rssi: %d, %d", i,
+				       "get_gsm_rssi:      %d, %d", i,
 				       get_gsm_rssi(ctx, i));
 			}
 		if (t == SKY_BEACON_NBIOT)
 			for (i--; i >= 0; i--) {
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_nbiot_mcc: %d, %d", i,
+				       "get_nbiot_mcc:     %d, %d", i,
 				       get_nbiot_mcc(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_nbiot_mnc: %d, %d", i,
+				       "get_nbiot_mnc:     %d, %d", i,
 				       get_nbiot_mnc(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "get_nbiot_ecellid: %d, %d", i,
 				       get_nbiot_ecellid(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_nbiot_tac: %d, %d", i,
+				       "get_nbiot_tac:     %d, %d", i,
 				       get_nbiot_tac(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_nbiot_rssi: %d, %d", i,
+				       "get_nbiot_rssi:    %d, %d", i,
 				       get_nbiot_rssi(ctx, i));
 			}
 	}
