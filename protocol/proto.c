@@ -16,6 +16,9 @@ static struct AES_ctx aes_ctx;
 
 static unsigned char aes_key_buf[16];
 
+typedef int64_t (*DataCallback) (void*, uint32_t);
+
+/* ------- Standin for Geoff's stuff --------------------------- */
 struct Ap {
 	uint8_t mac[6];
 	uint32_t age; // ms
@@ -30,14 +33,24 @@ struct Ap aps[] = {
     //{ {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 32000, /* channel */ 160, /* rssi */ -10, true}
 };
 
-size_t num_aps = sizeof(aps) / sizeof(struct Ap);
+uint8_t* get_ap_mac(void* ctx, uint32_t idx)
+{
+    return aps[idx].mac;
+}
 
-uint64_t mac_to_int(void* ctx, uint32_t idx)
+uint32_t get_num_aps(void* ctx)
+{
+    return sizeof(aps) / sizeof(struct Ap);
+}
+
+/* ------- End of standin for Geoff's stuff --------------------- */
+
+int64_t mac_to_int(void* ctx, uint32_t idx)
 {
     // This is a wrapper function around get_ap_mac(). It converts the 8-byte
-    // mac array to an unsigned64_t.
+    // mac array to an uint64_t.
     //
-    uint8* mac = get_ap_mac(ctx, idx);
+    uint8_t* mac = get_ap_mac(ctx, idx);
 
     uint64_t ret_val = 0;
 
@@ -51,10 +64,10 @@ bool encode_repeated_int_field(void* ctx,
                                pb_ostream_t* ostream,
                                uint32_t tag,
                                uint32_t num_elems,
-                               uint32_t (*func) (void*, uint32_t))
+                               DataCallback func)
 {
     // Encode field tag.
-    pb_encode(ostream, PB_WT_STRING, tag);   
+    pb_encode_tag(ostream, PB_WT_STRING, tag);   
 
     // Get field lenth by encoding the field to the bit bucket.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
@@ -94,7 +107,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
                                              ostream,
                                              field->tag,
                                              get_num_aps("context"),
-                                             mac_to_int("context");
+                                             mac_to_int);
             break;
     }
 
@@ -169,7 +182,7 @@ void add_lte_cell(uint32_t mcc,
     rq.lte_cells.mcc[rq.lte_cells.mcc_count++] = mcc;
     rq.lte_cells.mnc[rq.lte_cells.mnc_count++] = mnc;
     rq.lte_cells.eucid[rq.lte_cells.eucid_count++] = eucid;
-    rq.lte_cells.ts[rq.lte_cells.ts_count++] = ts;
+    rq.lte_cells.age[rq.lte_cells.age_count++] = ts;
     rq.lte_cells.rssi[rq.lte_cells.rssi_count++] = rssi;
 }
 
