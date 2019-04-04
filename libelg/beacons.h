@@ -70,7 +70,7 @@ struct ap {
 struct gsm {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	uint32_t ci;
+	uint32_t ui;
 	uint32_t age;
 	uint16_t mcc; // country
 	uint16_t mnc;
@@ -123,7 +123,7 @@ struct ble {
 	int16_t rssi;
 };
 
-struct nb_iot {
+struct nbiot {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint32_t age;
@@ -131,7 +131,7 @@ struct nb_iot {
 	uint16_t mnc;
 	uint32_t e_cellid;
 	uint16_t tac;
-	int16_t nrsrp;
+	int16_t rssi;
 };
 
 struct header {
@@ -145,7 +145,7 @@ typedef union beacon {
 	struct cdma cdma;
 	struct gsm gsm;
 	struct lte lte;
-	struct nb_iot nb_iot;
+	struct nbiot nbiot;
 	struct umts umts;
 } beacon_t;
 

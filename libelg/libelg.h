@@ -131,7 +131,7 @@ sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 
 sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
-					uint32_t cellid, uint32_t tac,
+					uint32_t e_cellid, uint32_t tac,
 					time_t timestamp, int16_t nrsrp,
 					bool is_connected);
 

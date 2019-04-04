@@ -23,5 +23,24 @@ int validate_workspace(sky_ctx_t *ctx);
 sky_status_t add_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno, beacon_t *b,
 			bool is_connected);
 int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...);
+int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t);
+int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t);
+int64_t get_num_aps(sky_ctx_t *ctx);
+uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_num_gsm(sky_ctx_t *ctx);
+uint64_t get_gsm_ui(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gsm_rssi(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_num_nbiot(sky_ctx_t *ctx);
+int64_t get_nbiot_mcc(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_mnc(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_ecellid(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_tac(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_lac(sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_rssi(sky_ctx_t *ctx, uint32_t idx);
 
 #endif

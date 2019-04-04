@@ -68,12 +68,35 @@ void dump(sky_ctx_t *ctx)
 	       "WorkSpace: Expect %d, got %d, AP %d starting at %d",
 	       ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low);
 	for (i = 0; i < ctx->len; i++) {
-		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-		       "Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
-		       i, ctx->beacon[i].ap.type, ctx->beacon[i].ap.mac[0],
-		       ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
-		       ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4],
-		       ctx->beacon[i].ap.mac[5], ctx->beacon[i].ap.rssi);
+		switch (ctx->beacon[i].h.type) {
+		case SKY_BEACON_AP:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
+			       i, ctx->beacon[i].ap.mac[0],
+			       ctx->beacon[i].ap.mac[1],
+			       ctx->beacon[i].ap.mac[2],
+			       ctx->beacon[i].ap.mac[3],
+			       ctx->beacon[i].ap.mac[4],
+			       ctx->beacon[i].ap.mac[5],
+			       ctx->beacon[i].ap.rssi);
+			break;
+		case SKY_BEACON_GSM:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
+			       i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ui,
+			       ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
+			       ctx->beacon[i].gsm.rssi);
+			break;
+		case SKY_BEACON_NBIOT:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+			       i, ctx->beacon[i].nb_iot.mcc,
+			       ctx->beacon[i].nb_iot.mnc,
+			       ctx->beacon[i].nb_iot.e_cellid,
+			       ctx->beacon[i].nb_iot.tac,
+			       ctx->beacon[i].nb_iot.rssi);
+			break;
+		}
 	}
 #if 0
 	uint32_t *p = (void *)ctx;
@@ -130,18 +153,11 @@ int main(int ac, char **av)
 	uint8_t *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
-
+	sky_beacon_type_t t;
 	beacon_t b[25];
 
 	/* Intializes random number generator */
 	srand((unsigned)time(NULL));
-
-	for (i = 0; i < 25; i++) {
-		b[i].ap.magic = BEACON_MAGIC;
-		b[i].ap.type = SKY_BEACON_AP;
-		set_mac(b[i].ap.mac);
-		b[i].ap.rssi = rand() % 128;
-	}
 
 	if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
 		     NULL, SKY_LOG_LEVEL_DEBUG, &logger) == SKY_ERROR) {
@@ -172,6 +188,13 @@ int main(int ac, char **av)
 	       ctx->header.magic, ctx->header.size, ctx->header.crc32);
 
 	for (i = 0; i < 25; i++) {
+		b[i].ap.magic = BEACON_MAGIC;
+		b[i].ap.type = SKY_BEACON_AP;
+		set_mac(b[i].ap.mac);
+		b[i].ap.rssi = rand() % 128;
+	}
+
+	for (i = 0; i < 25; i++) {
 		if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp,
 				      b[i].ap.rssi, ch, 1))
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -185,6 +208,57 @@ int main(int ac, char **av)
 			       b[i].ap.mac[5], b[i].ap.rssi);
 	}
 
+	for (i = 0; i < 3; i++) {
+		b[i].nb_iot.magic = BEACON_MAGIC;
+		b[i].nb_iot.type = SKY_BEACON_NBIOT;
+		b[i].nb_iot.mcc = 200 + (rand() % 599);
+		b[i].nb_iot.mnc = rand() % 999;
+		b[i].nb_iot.e_cellid = rand() % 268435456;
+		b[i].nb_iot.tac = rand();
+		b[i].nb_iot.rssi = -(44 + (rand() % 112));
+	}
+
+	for (i = 0; i < 3; i++) {
+		if (sky_add_cell_nb_iot_beacon(
+			    ctx, &sky_errno, b[i].nb_iot.mcc, b[i].nb_iot.mnc,
+			    b[i].nb_iot.e_cellid, b[i].nb_iot.tac, timestamp,
+			    b[i].nb_iot.rssi, 1))
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "sky_add_nbiot_beacon sky_errno contains '%s'",
+			       sky_perror(sky_errno));
+		else
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Added Test Beacon % 2d: Type: %d, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d\n",
+			       i, b[i].nb_iot.type, b[i].nb_iot.mcc,
+			       b[i].nb_iot.mnc, b[i].nb_iot.e_cellid,
+			       b[i].nb_iot.tac, b[i].nb_iot.rssi);
+	}
+
+	for (i = 0; i < 2; i++) {
+		b[i].gsm.magic = BEACON_MAGIC;
+		b[i].gsm.type = SKY_BEACON_GSM;
+		b[i].gsm.lac = rand() % 65535;
+		b[i].gsm.ui = rand() % 65535;
+		b[i].gsm.mcc = 200 + (rand() % 599);
+		b[i].gsm.mnc = rand() % 999;
+		b[i].gsm.rssi = -(32 + (rand() % 96));
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (sky_add_cell_gsm_beacon(ctx, &sky_errno, b[i].gsm.lac,
+					    b[i].gsm.ui, b[i].gsm.mcc,
+					    b[i].gsm.mnc, timestamp,
+					    b[i].gsm.rssi, 1))
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "sky_add_gsm_beacon sky_errno contains '%s'",
+			       sky_perror(sky_errno));
+		else
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Added Test Beacon % 2d: Type: %d, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d\n",
+			       i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ui,
+			       b[i].gsm.mcc, b[i].gsm.mnc, b[i].gsm.rssi);
+	}
+
 	if (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
 				 (void *)NULL, NULL, NULL, NULL,
 				 &response_size))
@@ -195,6 +269,47 @@ int main(int ac, char **av)
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "sky_finalize_request bad request buffer");
 	dump(ctx);
+
+	for (t = SKY_BEACON_AP; t != SKY_BEACON_MAX; t++) {
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "get_num_beacons: %d, %d", t,
+		       i = get_num_beacons(ctx, t));
+		if (t == SKY_BEACON_GSM)
+			for (i--; i >= 0; i--) {
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_ui: %d, %d", i,
+				       get_gsm_ui(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_mcc: %d, %d", i,
+				       get_gsm_mcc(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_mnc: %d, %d", i,
+				       get_gsm_mnc(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_lac: %d, %d", i,
+				       get_gsm_lac(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_rssi: %d, %d", i,
+				       get_gsm_rssi(ctx, i));
+			}
+		if (t == SKY_BEACON_NBIOT)
+			for (i--; i >= 0; i--) {
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_mcc: %d, %d", i,
+				       get_nbiot_mcc(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_mnc: %d, %d", i,
+				       get_nbiot_mnc(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_ecellid: %d, %d", i,
+				       get_nbiot_ecellid(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_tac: %d, %d", i,
+				       get_nbiot_tac(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_rssi: %d, %d", i,
+				       get_nbiot_rssi(ctx, i));
+			}
+	}
 
 	if (sky_close(&sky_errno, &pstate))
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,

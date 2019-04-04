@@ -297,6 +297,35 @@ sky_status_t sky_add_cell_gsm_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 				     uint16_t mnc, time_t timestamp,
 				     int16_t rssi, bool is_connected)
 {
+	int i;
+
+	if (!sky_open_flag)
+		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+	if (!validate_workspace(ctx))
+		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
+		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+	/* Create GSM beacon */
+	i = (++ctx->len) - 1;
+	ctx->beacon[i].h.type = SKY_BEACON_GSM;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		ctx->beacon[i].gsm.age = ctx->header.time - timestamp;
+	else
+		ctx->beacon[i].gsm.age = 0;
+	ctx->beacon[i].gsm.lac = lac;
+	ctx->beacon[i].gsm.ui = ui;
+	ctx->beacon[i].gsm.mcc = mcc;
+	ctx->beacon[i].gsm.mnc = mnc;
+	ctx->beacon[i].gsm.rssi = rssi;
+	if (is_connected)
+		ctx->connected = ctx->len;
+	/* sort beacons by type */
+	qsort(ctx->beacon, ctx->len, sizeof(beacon_t), cmp_beacon);
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -360,7 +389,7 @@ sky_status_t sky_add_cell_cdma_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
 					uint32_t e_cellid, uint32_t tac,
-					time_t timestamp, int16_t nrsrp,
+					time_t timestamp, int16_t rssi,
 					bool is_connected)
 {
 	int i;
@@ -387,7 +416,7 @@ sky_status_t sky_add_cell_nb_iot_beacon(sky_ctx_t *ctx, sky_errno_t *sky_errno,
 	ctx->beacon[i].nb_iot.mnc = mnc;
 	ctx->beacon[i].nb_iot.e_cellid = e_cellid;
 	ctx->beacon[i].nb_iot.tac = tac;
-	ctx->beacon[i].nb_iot.nrsrp = nrsrp;
+	ctx->beacon[i].nb_iot.rssi = rssi;
 	if (is_connected)
 		ctx->connected = ctx->len;
 	/* sort beacons by type */

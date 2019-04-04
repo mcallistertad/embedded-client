@@ -102,7 +102,7 @@ int logfmt(sky_ctx_t *ctx, sky_log_level_t level, const char *fmt, ...)
  *
  *  @return number of beacons of the specified type
  */
-inline int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
+int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
 {
 	int i, b = 0;
 
@@ -130,9 +130,9 @@ inline int64_t get_num_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
  *
  *  @return first beacon of the specified type
  */
-inline int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
+int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
 {
-	int i;
+	int i = 0;
 
 	if (ctx == NULL || t > SKY_BEACON_MAX) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -156,7 +156,7 @@ inline int get_base_beacons(sky_ctx_t *ctx, sky_beacon_type_t t)
  *
  *  @return 0 for success
  */
-inline int64_t get_num_aps(sky_ctx_t *ctx)
+int64_t get_num_aps(sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -172,7 +172,7 @@ inline int64_t get_num_aps(sky_ctx_t *ctx)
  *
  *  @return 0 for success
  */
-inline uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx)
+uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -188,7 +188,7 @@ inline uint8_t *get_ap_mac(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -204,7 +204,7 @@ inline int64_t get_ap_channel(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -220,7 +220,7 @@ inline int64_t get_ap_rssi(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_num_gsm(sky_ctx_t *ctx)
+int64_t get_num_gsm(sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -229,20 +229,20 @@ inline int64_t get_num_gsm(sky_ctx_t *ctx)
 	return get_num_beacons(ctx, SKY_BEACON_GSM);
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (gsm/ci)
+/*! \brief field extraction for dynamic use of Nanopb (gsm/ui)
  *
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
  *  @return 0 for success
  */
-inline uint64_t get_gsm_ci(sky_ctx_t *ctx, uint32_t idx)
+uint64_t get_gsm_ui(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
-	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.ci;
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.ui;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gsm/mcc)
@@ -252,7 +252,7 @@ inline uint64_t get_gsm_ci(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -268,7 +268,7 @@ inline int64_t get_gsm_mcc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -284,7 +284,7 @@ inline int64_t get_gsm_mnc(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -300,11 +300,111 @@ inline int64_t get_gsm_lac(sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return 0 for success
  */
-inline int64_t get_gsm_rssi(sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_rssi(sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
 	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.rssi;
+}
+/*! \brief field extraction for dynamic use of Nanopb (num nbiot)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+int64_t get_num_nbiot(sky_ctx_t *ctx)
+{
+	if (ctx == NULL) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return get_num_beacons(ctx, SKY_BEACON_NBIOT);
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/mcc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+uint64_t get_nbiot_mcc(sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.mcc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/mnc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+int64_t get_nbiot_mnc(sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.mnc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/e_cellid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+int64_t get_nbiot_ecellid(sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.e_cellid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/tac)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+int64_t get_nbiot_tac(sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.tac;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/rssi)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return 0 for success
+ */
+int64_t get_nbiot_rssi(sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.rssi;
 }

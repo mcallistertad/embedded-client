@@ -20,7 +20,7 @@
 
 /*! \brief The maximum number of beacons passed to the ELG server in a request
  */
-#define MAX_BEACONS 11
+#define MAX_BEACONS 20
 /*! \brief The maximum number of AP beacons passed to the ELG server in a request
  */
 #define MAX_AP_BEACONS 10
