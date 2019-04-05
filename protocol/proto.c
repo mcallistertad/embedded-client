@@ -163,6 +163,8 @@ int32_t serialize_request(void* ctx,
     rq_hdr.crypto_info_length = crypto_info_size;
     rq_hdr.rq_length = rq_size + aes_padding_length;
 
+    printf("crypto_info_length=%d, rq_length=%d\n", rq_hdr.crypto_info_length, rq_hdr.rq_length);
+
     // First byte of message on wire is the length (in bytes) of the request
     // header.
     uint8_t hdr_size;
@@ -179,7 +181,10 @@ int32_t serialize_request(void* ctx,
     pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, buf_len);
 
     if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
+    {
+        printf("hdr encode bytes=%zu\n", hdr_ostream.bytes_written);
         bytes_written += hdr_ostream.bytes_written;
+    }
     else
         return -1;
 
@@ -188,7 +193,10 @@ int32_t serialize_request(void* ctx,
                                                               buf_len - bytes_written);
 
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
+    {
+        printf("crypto encode bytes=%zu\n", crypto_info_ostream.bytes_written);
         bytes_written += crypto_info_ostream.bytes_written;
+    }
     else
         return -1;
 
@@ -200,7 +208,10 @@ int32_t serialize_request(void* ctx,
                                                      buf_len - bytes_written);
 
     if (pb_encode(&rq_ostream, Rq_fields, &rq))
+    {
+        printf("rq encode bytes=%zu\n", rq_ostream.bytes_written);
         bytes_written += rq_ostream.bytes_written;
+    }
     else
         return -1;
 

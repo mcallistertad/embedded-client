@@ -101,6 +101,8 @@ class RequestHandler(socketserver.BaseRequestHandler):
             #
             hdr_len = int.from_bytes(self.request.recv(1), byteorder='little')
 
+            logger.info("header length: {}".format(hdr_len))
+
             buf = bytearray()
 
             while len(buf) < hdr_len:
