@@ -243,7 +243,7 @@ void suppress_degenerate_fields()
 #endif
 }
 
-int32_t serialize_request(uint8_t* buf, size_t buf_len)
+int32_t serialize_request(void* ctx, uint8_t* buf, size_t buf_len)
 {
     suppress_degenerate_fields();
 
@@ -268,6 +268,9 @@ int32_t serialize_request(uint8_t* buf, size_t buf_len)
     uint8_t hdr_size;
 
     pb_get_encoded_size((size_t*) &hdr_size, RqHeader_fields, &rq_hdr);
+
+    if (1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length > buf_len)
+        return -1;
 
     *buf = hdr_size;
 

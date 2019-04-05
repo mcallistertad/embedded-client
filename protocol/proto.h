@@ -25,7 +25,7 @@ void add_lte_cell(uint32_t mcc,
                   uint32_t ts);
 
 // Encode and encrypt request into buffer.
-int32_t serialize_request(uint8_t* buf, size_t buf_len);
+int32_t serialize_request(void* ctx, uint8_t* buf, size_t buf_len);
 
 // Decrypt and decode response info from buffer.
 int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs);

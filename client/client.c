@@ -62,7 +62,13 @@ int main(int argc, char** argv)
     // Serialize request.
     unsigned char buf[1024];
 
-    size_t len = serialize_request(buf, sizeof(buf));
+    int32_t len = serialize_request(NULL, buf, sizeof(buf));
+
+    if (len < 0)
+    {
+        printf("Failed to serialize (buf too small?)\n");
+        exit(-1);
+    }
 
     // Write request to a file.
     FILE* fp = fopen("rq.bin", "wb");
@@ -120,6 +126,8 @@ int main(int argc, char** argv)
 
     // Send request.
     rc = send(sockfd, buf, (size_t) len, 0);
+
+    printf("Sent %d bytes to server\n", len);
 
     if (rc != (int32_t)len)
     {
