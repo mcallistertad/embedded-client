@@ -36,7 +36,7 @@ message CryptoInfo {
 // Message body definitions.
 //
 message Rq {
-    int64 client_mac = 1;
+    bytes device_id = 1;
     Aps aps = 2;
     GsmCells gsm_cells = 3;
     UmtsCells umts_cells = 4;

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "aes.h"
 #include "proto.h"
 
 //#define SERVER_HOST "elg.skyhook.com"
@@ -15,6 +16,45 @@
 #define PARTNER_ID 2
 #define AES_KEY "000102030405060708090a0b0c0d0e0f"
 #define CLIENT_MAC "deadbeefdead"
+
+/* ------- Standin for Geoff's stuff --------------------------- */
+struct Ap {
+	uint8_t mac[6];
+	uint32_t age; // ms
+	uint32_t channel;
+	int32_t rssi;
+    bool connected;
+};
+
+static struct Ap aps[] = {
+    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0a}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
+    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0b}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
+    //{ {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 32000, /* channel */ 160, /* rssi */ -10, true}
+};
+
+uint8_t* get_ap_mac(void* ctx, uint32_t idx)
+{
+    return aps[idx].mac;
+}
+
+uint32_t get_num_aps(void* ctx)
+{
+    return sizeof(aps) / sizeof(struct Ap);
+}
+
+static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
+{
+    const char* pos = hex_str;
+    size_t i;
+
+    for (i=0; i < buff_len; i++)
+    {
+        sscanf(pos, "%2hhx", &bin_buff[i]);
+        pos += 2;
+    }
+}
+
+/* ------- End of standin for Geoff's stuff --------------------- */
 
 bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
 {
@@ -40,29 +80,27 @@ bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
 
 int main(int argc, char** argv)
 {
-    (void)argc;	/* suppress warning */
-    (void)argv;	/* suppress warning */
+    (void) argc;
+    (void) argv;
+
     // Initialize request message.
-    init_rq(PARTNER_ID,
-            AES_KEY,
-            CLIENT_MAC);
 
-    // Populate request with dummy data.
-    for (size_t i = 0; i < 2; i++)
-    {
-        add_ap("aabbcc112233", -10, false, 0, 0);
-        add_ap("aabbcc112244", -20, false, 0, 0);
-        add_ap("aabbcc112255", -30, true, 0, 0);
-        add_ap("aabbcc112266", -40, false, 0, 0);
-        add_ap("aabbcc112266", -40, false, 3, 0);
-    }
+    unsigned char aes_key[16];
+    hex_str_to_bin(AES_KEY, aes_key, sizeof(aes_key));
 
-    add_lte_cell(300, 400, 32462, -20, 400001);
+    unsigned char device_id[6]; // e.g., MAC address.
+    hex_str_to_bin(CLIENT_MAC, device_id, sizeof(device_id));
 
     // Serialize request.
     unsigned char buf[1024];
 
-    int32_t len = serialize_request(NULL, buf, sizeof(buf));
+    int32_t len = serialize_request(NULL,
+                                    buf,
+                                    sizeof(buf),
+                                    PARTNER_ID,
+                                    aes_key,
+                                    device_id,
+                                    sizeof(device_id));
 
     if (len < 0)
     {
@@ -141,7 +179,7 @@ int main(int argc, char** argv)
 
     Rs rs;
 
-    if (deserialize_response(buf, rc, &rs) < 0)
+    if (deserialize_response(buf, rc, aes_key, &rs) < 0)
     {
         printf("deserialization failed!\n");
     }

@@ -8,43 +8,8 @@
 #include "proto.h"
 #include "aes.h"
 
-static Rq rq;
-static RqHeader rq_hdr;
-
-static CryptoInfo rq_crypto_info;
-static struct AES_ctx aes_ctx;
-
-static unsigned char aes_key_buf[16];
-
 typedef int64_t (*DataCallback) (void*, uint32_t);
 typedef bool (*EncodeSubmsgCallback) (void*, pb_ostream_t*);
-
-/* ------- Standin for Geoff's stuff --------------------------- */
-struct Ap {
-	uint8_t mac[6];
-	uint32_t age; // ms
-	uint32_t channel;
-	int32_t rssi;
-    bool connected;
-};
-
-struct Ap aps[] = {
-    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0a}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
-    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0b}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
-    //{ {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 32000, /* channel */ 160, /* rssi */ -10, true}
-};
-
-uint8_t* get_ap_mac(void* ctx, uint32_t idx)
-{
-    return aps[idx].mac;
-}
-
-uint32_t get_num_aps(void* ctx)
-{
-    return sizeof(aps) / sizeof(struct Ap);
-}
-
-/* ------- End of standin for Geoff's stuff --------------------- */
 
 int64_t mac_to_int(void* ctx, uint32_t idx)
 {
@@ -145,107 +110,40 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     return true;
 }
 
-static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
+int32_t serialize_request(void* ctx,
+                          uint8_t* buf,
+                          size_t buf_len,
+                          uint32_t partner_id,
+                          uint8_t aes_key[16],
+                          uint8_t* device_id,
+                          uint32_t device_id_length)
 {
-    const char* pos = hex_str;
-    size_t i;
-
-    for (i=0; i < buff_len; i++)
-    {
-        sscanf(pos, "%2hhx", &bin_buff[i]);
-        pos += 2;
-    }
-}
-
-void init_rq(uint32_t partner_id, const char* hex_key, const char client_mac[12])
-{
-    memset(&rq_hdr, 0, sizeof(rq_hdr));
+    // Initialize request header.
+    RqHeader rq_hdr;
 
     rq_hdr.partner_id = partner_id;
 
-    memset(&rq, 0, sizeof(rq));
-
-    // Put some data into the struct which will then be available to the encode
-    // callback. Just stick a string in there for now, but eventually we'll
-    // want to pass the full request context, which contains the scan data,
-    // etc.
-    static char data[] = "context";
-
-    rq.aps = rq.gsm_cells = data;
+    // Initialize crypto_info.
+    CryptoInfo rq_crypto_info;
 
     unsigned char aes_iv_buf[16];
 
-    // TODO: properly value the header.iv field. And maybe move this stuff down
-    // into the serialize() method.
-    //
-    memset(aes_iv_buf, 1, sizeof(aes_iv_buf));
+    memset(aes_iv_buf, 1, sizeof(aes_iv_buf)); // TODO; initialize this properly.
 
     memcpy(rq_crypto_info.iv.bytes, aes_iv_buf, sizeof(aes_iv_buf));
     rq_crypto_info.iv.size=16;
 
-    hex_str_to_bin(hex_key, aes_key_buf, sizeof(aes_key_buf));
+    struct AES_ctx aes_ctx;
 
-    rq.client_mac = strtoll(client_mac, 0, 16);
+    AES_init_ctx_iv(&aes_ctx, aes_key, aes_iv_buf);
 
-    AES_init_ctx_iv(&aes_ctx, aes_key_buf, aes_iv_buf);
-}
+    // Initialize request body.
+    Rq rq;
 
-void add_ap(const char mac_hex_str[12],
-            int8_t rssi,
-            bool is_connected,
-            uint32_t channel,
-            uint32_t ts)
-{
-    //rq.aps.mac[rq.aps.mac_count++] = strtoll(mac_hex_str, 0, 16);
-    //rq.aps.rssi[rq.aps.rssi_count++] = rssi;
-    //rq.aps.connected[rq.aps.connected_count++] = is_connected;
-    //rq.aps.band[rq.aps.band_count++] = band;
-}
+    rq.aps = rq.gsm_cells = ctx;
 
-void add_lte_cell(uint32_t mcc,
-                  uint32_t mnc,
-                  uint32_t eucid,
-                  int32_t rssi,
-                  uint32_t ts)
-{
-    rq.lte_cells.mcc[rq.lte_cells.mcc_count++] = mcc;
-    rq.lte_cells.mnc[rq.lte_cells.mnc_count++] = mnc;
-    rq.lte_cells.eucid[rq.lte_cells.eucid_count++] = eucid;
-    rq.lte_cells.age[rq.lte_cells.age_count++] = ts;
-    rq.lte_cells.rssi[rq.lte_cells.rssi_count++] = rssi;
-}
-
-void suppress_degenerate_fields()
-{
-#if 0
-    // Remove certain repeated fields if all elements contain default values.
-    // This is purely a bandwidth utilization optimization.
-    //
-    bool suppress_ts = true;
-    bool suppress_channel = true;
-
-    for (size_t i = 0; (suppress_ts || suppress_channel) && i < rq.aps.ts_count; i++)
-    {
-        if (rq.aps.ts[i] != 0)
-            suppress_ts = false;
-
-        if (rq.aps.channel_number[i] != 0)
-            suppress_channel = false;
-    }
-
-    if (suppress_ts)
-        rq.aps.ts_count = 0;
-
-    if (suppress_channel)
-    {
-        rq.aps.channel_number_count = 0;
-    }
-#endif
-}
-
-int32_t serialize_request(void* ctx, uint8_t* buf, size_t buf_len)
-{
-    suppress_degenerate_fields();
+    memcpy(rq.device_id.bytes, device_id, device_id_length);
+    rq.device_id.size = device_id_length;
 
     // Create and serialize the request header message.
     size_t rq_size;
@@ -313,7 +211,10 @@ int32_t serialize_request(void* ctx, uint8_t* buf, size_t buf_len)
     return bytes_written + aes_padding_length;
 }
 
-int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs)
+int32_t deserialize_response(uint8_t* buf,
+                             size_t buf_len,
+                             uint8_t aes_key[16],
+                             Rs* rs)
 {
     // We assume that buf contains the response message in its entirety. (Since
     // the server closes the connection after sending the response, the client
@@ -352,7 +253,9 @@ int32_t deserialize_response(uint8_t* buf, size_t buf_len, Rs* rs)
     buf += header.crypto_info_length;
 
     // Decrypt the response body.
-    AES_init_ctx_iv(&aes_ctx, aes_key_buf, crypto_info.iv.bytes);
+    struct AES_ctx aes_ctx;
+
+    AES_init_ctx_iv(&aes_ctx, aes_key, crypto_info.iv.bytes);
 
     size_t body_size = buf_len - 1 - hdr_size - header.crypto_info_length;
 

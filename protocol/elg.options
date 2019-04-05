@@ -7,5 +7,6 @@ LteCells.*       max_count:1
 # ------
 # Do not change the following values.
 # ------
+Rq.device_id  max_size:16
 CryptoInfo.iv max_size:16
 CryptoInfo.iv max_size:16
