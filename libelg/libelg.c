@@ -181,7 +181,7 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 		sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 		return NULL;
 	}
-	if (bufsize != sky_sizeof_workspace(MAX_BEACONS) || buf == NULL) {
+	if (bufsize != sky_sizeof_workspace(TOTAL_BEACONS) || buf == NULL) {
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 		return NULL;
 	}
@@ -201,7 +201,7 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 	ctx->expect = number_beacons;
 	ctx->len = 0; /* empty */
 	ctx->ap_len = 0; /* empty */
-	for (i = 0; i < MAX_BEACONS; i++)
+	for (i = 0; i < TOTAL_BEACONS; i++)
 		ctx->beacon[i].h.magic = BEACON_MAGIC;
 	ctx->connected = -1; /* all unconnected */
 	return ctx;
@@ -305,7 +305,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
+	if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
 	/* Create GSM beacon */
@@ -400,7 +400,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-	if (ctx->len > (MAX_BEACONS - 1)) /* room for one more? */
+	if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
 	/* Create NB IoT beacon */

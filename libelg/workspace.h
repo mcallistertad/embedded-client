@@ -62,7 +62,7 @@ typedef struct sky_state {
 	uint32_t sky_aes_key_id; /* aes key ID */
 	uint8_t sky_aes_key[16]; /* aes key */
 	int16_t len; /* number of beacons */
-	Beacon_t beacon[MAX_BEACONS]; /* beacons */
+	Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
 } Sky_cache_t;
 
 #endif

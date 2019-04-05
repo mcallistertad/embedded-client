@@ -101,7 +101,7 @@ void dump(Sky_ctx_t *ctx)
 #if 0
 	uint32_t *p = (void *)ctx;
 
-	for (i = 0; i < sky_sizeof_workspace(MAX_BEACONS) / sizeof(int); i += 8)
+	for (i = 0; i < sky_sizeof_workspace(TOTAL_BEACONS) / sizeof(int); i += 8)
 		printf("ctx: %08X %08X %08X %08X  %08X %08X %08X %08X\n",
 		       p[i + 000], p[i + 001], p[i + 002], p[i + 003],
 		       p[i + 004], p[i + 005], p[i + 006], p[i + 007]);

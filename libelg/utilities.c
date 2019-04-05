@@ -56,14 +56,14 @@ int validate_workspace(Sky_ctx_t *ctx)
 	    ctx->header.crc32 == sky_crc32(&ctx->header.magic,
 					   sizeof(ctx->header) -
 						   sizeof(ctx->header.crc32))) {
-		for (i = 0; i < MAX_BEACONS; i++) {
+		for (i = 0; i < TOTAL_BEACONS; i++) {
 			if (ctx->beacon[i].h.magic != BEACON_MAGIC ||
 			    ctx->beacon[i].h.type >= SKY_BEACON_MAX)
 				return false;
 		}
 	}
-	if (ctx == NULL || ctx->len > MAX_BEACONS ||
-	    ctx->connected > MAX_BEACONS)
+	if (ctx == NULL || ctx->len > TOTAL_BEACONS ||
+	    ctx->connected > TOTAL_BEACONS)
 		return false;
 	return true;
 }

@@ -251,7 +251,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 
 	/* check if maximum number of non-AP beacons already added */
 	if (b->h.type == SKY_BEACON_AP &&
-	    ctx->len - ctx->ap_len > (MAX_BEACONS - MAX_AP_BEACONS)) {
+	    ctx->len - ctx->ap_len > (TOTAL_BEACONS - MAX_AP_BEACONS)) {
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "add_beacon: (b->h.type %d) (ctx->len - ctx->ap_len %d)",
 		       b->h.type, ctx->len - ctx->ap_len);
