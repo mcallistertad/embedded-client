@@ -140,6 +140,8 @@ int32_t serialize_request(void* ctx,
     // Initialize request body.
     Rq rq;
 
+    memset(&rq, 0, sizeof(rq));
+
     rq.aps = rq.gsm_cells = ctx;
 
     memcpy(rq.device_id.bytes, device_id, device_id_length);
