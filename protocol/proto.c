@@ -167,14 +167,14 @@ int32_t serialize_request(void* ctx,
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
-    uint8_t hdr_size;
+    size_t hdr_size;
 
-    pb_get_encoded_size((size_t*) &hdr_size, RqHeader_fields, &rq_hdr);
+    pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
     if (1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length > buf_len)
         return -1;
 
-    *buf = hdr_size;
+    *buf = (uint8_t) hdr_size;
 
     int32_t bytes_written = 1;
 
