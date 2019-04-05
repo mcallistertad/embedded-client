@@ -44,17 +44,17 @@ typedef struct sky_ctx {
 	Sky_log_level_t min_level;
 	int16_t expect; /* number of beacons to be added */
 	int16_t len; /* number of beacons in list (0 == none) */
-	Beacon_t beacon[MAX_BEACONS + 1]; /* beacon data */
+	Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
 	Gps_t gps; /* GPS info */
 	uint8_t request[sizeof(Sky_header_t) + sizeof(int32_t) +
-			(sizeof(Beacon_t) * MAX_BEACONS) + sizeof(int32_t) +
+			(sizeof(Beacon_t) * TOTAL_BEACONS) + sizeof(int32_t) +
 			sizeof(Gps_t)];
 } Sky_ctx_t;
 
-typedef struct sky_state {
+typedef struct sky_cache {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
 	uint8_t sky_id_len; /* device ID len */
 	uint8_t sky_device_id[MAC_SIZE]; /* device ID */
@@ -63,6 +63,7 @@ typedef struct sky_state {
 	uint8_t sky_aes_key[16]; /* aes key */
 	int16_t len; /* number of beacons */
 	Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+	Gps_t gps; /* GPS info */
 } Sky_cache_t;
 
 #endif
