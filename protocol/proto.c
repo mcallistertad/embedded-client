@@ -17,6 +17,7 @@ static struct AES_ctx aes_ctx;
 static unsigned char aes_key_buf[16];
 
 typedef int64_t (*DataCallback) (void*, uint32_t);
+typedef bool (*EncodeSubmsgCallback) (void*, pb_ostream_t*);
 
 /* ------- Standin for Geoff's stuff --------------------------- */
 struct Ap {
@@ -67,24 +68,56 @@ bool encode_repeated_int_field(void* ctx,
                                DataCallback func)
 {
     // Encode field tag.
-    pb_encode_tag(ostream, PB_WT_STRING, tag);   
+    if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
+        return false;
 
-    // Get field lenth by encoding the field to the bit bucket.
+    // Get and encode the field size.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
 
     for (size_t i = 0; i < num_elems; i++)
     {
-        pb_encode_varint(ostream, func(ctx, i));
+        if (!pb_encode_varint(&substream, func(ctx, i)))
+            return false;
     }
 
-    // Encode the field length.
-    pb_encode_varint(ostream, substream.bytes_written);
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+        return false;
 
     // Now encode the field for real.
     for (size_t i = 0; i < num_elems; i++)
     {
-        pb_encode_varint(ostream, func(ctx, i));
+        if (!pb_encode_varint(ostream, func(ctx, i)))
+            return false;
     }
+
+    return true;
+}
+
+bool encode_aps_fields(void* ctx, pb_ostream_t* ostream)
+{
+    return encode_repeated_int_field(ctx, ostream, Aps_mac_tag, get_num_aps("context"), mac_to_int);
+    
+    // TODO: encode other fields (channel, etc.).
+}
+
+bool encode_submessage(void* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
+{
+    // Encode the submessage tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
+        return false;
+
+    // Get and encode the submessage size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    if (!func(ctx, &substream))
+        return false;
+
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+        return false;
+
+    // Encode the submessage.
+    if (!func(ctx, ostream))
+        return false;
 
     return true;
 }
@@ -103,11 +136,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     switch (field->tag)
     {
         case Rq_aps_tag:
-            return encode_repeated_int_field(ctx,
-                                             ostream,
-                                             field->tag,
-                                             get_num_aps("context"),
-                                             mac_to_int);
+            return encode_submessage(ctx, ostream, field->tag, encode_aps_fields);
             break;
     }
 
