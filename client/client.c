@@ -27,9 +27,16 @@ struct Ap {
 };
 
 static struct Ap aps[] = {
-    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0a}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
-    { {0x00, 0x00, 0x00, 0x00, 0x00, 0x0b}, /* age */ 1, /* channel */ 10, /* rssi */ -150, false},
-    //{ {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 32000, /* channel */ 160, /* rssi */ -10, true}
+    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 0, /* channel */ 162, /* rssi */ -150, true},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 160, /* rssi */ -10, false}
 };
 
 uint8_t* get_ap_mac(void* ctx, uint32_t idx)
@@ -37,9 +44,29 @@ uint8_t* get_ap_mac(void* ctx, uint32_t idx)
     return aps[idx].mac;
 }
 
+bool get_ap_connected(void* ctx, uint32_t idx)
+{
+    return aps[idx].connected;
+}
+
 uint32_t get_num_aps(void* ctx)
 {
     return sizeof(aps) / sizeof(struct Ap);
+}
+
+int64_t get_ap_channel(void* ctx, uint32_t idx)
+{
+    return aps[idx].channel;
+}
+
+int64_t get_ap_rssi(void* ctx, uint32_t idx)
+{
+    return aps[idx].rssi;
+}
+
+int64_t get_ap_age(void* ctx, uint32_t idx)
+{
+    return aps[idx].age;
 }
 
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)

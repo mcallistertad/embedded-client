@@ -29,7 +29,6 @@ message RsHeader {
 
 message CryptoInfo {
     bytes iv=1; // Always 16 bytes in length
-
     int32 aes_padding_length = 2;
 }
 
@@ -47,10 +46,11 @@ message Rq {
 
 message Aps {
     uint32 connected_ap_idx_plus_1 = 1; // 0 means that device is not connected to any AP
-    repeated int64 mac = 2;
-    repeated int32 channel_number = 3;
-    repeated sint32 rssi = 4;
-    repeated uint32 age = 5;
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated int64 mac = 3;
+    repeated int32 channel_number = 4;
+    repeated uint32 neg_rssi = 5; // -rssi
+    repeated uint32 age = 6; // Not valued if all ages are the same. common_age_plus_1 sent instead in this case.
 }
 
 message GsmCells {

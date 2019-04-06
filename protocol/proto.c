@@ -8,10 +8,10 @@
 #include "proto.h"
 #include "aes.h"
 
-typedef int64_t (*DataCallback) (void*, uint32_t);
-typedef bool (*EncodeSubmsgCallback) (void*, pb_ostream_t*);
+typedef int64_t (*DataCallback) (Sky_ctx_t*, uint32_t);
+typedef bool (*EncodeSubmsgCallback) (Sky_ctx_t*, pb_ostream_t*);
 
-int64_t mac_to_int(void* ctx, uint32_t idx)
+int64_t mac_to_int(Sky_ctx_t* ctx, uint32_t idx)
 {
     // This is a wrapper function around get_ap_mac(). It converts the 8-byte
     // mac array to an uint64_t.
@@ -26,7 +26,12 @@ int64_t mac_to_int(void* ctx, uint32_t idx)
     return ret_val;
 }
 
-bool encode_repeated_int_field(void* ctx,
+int64_t negative_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return -get_ap_rssi(ctx, idx);
+}
+
+bool encode_repeated_int_field(Sky_ctx_t* ctx,
                                pb_ostream_t* ostream,
                                uint32_t tag,
                                uint32_t num_elems,
@@ -58,14 +63,54 @@ bool encode_repeated_int_field(void* ctx,
     return true;
 }
 
-bool encode_aps_fields(void* ctx, pb_ostream_t* ostream)
+bool encode_aps_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
 {
-    return encode_repeated_int_field(ctx, ostream, Aps_mac_tag, get_num_aps("context"), mac_to_int);
+    uint32_t num_aps = get_num_aps(ctx);
+
+    if (num_aps == 0) 
+        return true;
+
+    // Encode index connected_ap_idx_plus_1.
+    for (size_t i = 0; i < num_aps; i++)
+    {
+        if (get_ap_connected(ctx, i))
+        {
+            pb_encode_tag(ostream, PB_WT_VARINT, Aps_connected_ap_idx_plus_1_tag);
+            pb_encode_varint(ostream, i+1);
+            break;
+        }
+    }
     
-    // TODO: encode other fields (channel, etc.).
+    // Encode macs, channels, and rssi fields.
+    encode_repeated_int_field(ctx, ostream, Aps_mac_tag, num_aps, mac_to_int);
+    encode_repeated_int_field(ctx, ostream, Aps_channel_number_tag, num_aps, get_ap_channel);
+    encode_repeated_int_field(ctx, ostream, Aps_neg_rssi_tag, num_aps, negative_rssi);
+
+    // Encode age fields. Optimization: send only a single common age value if
+    // all ages are the same. 
+    uint32_t age = get_ap_age(ctx, 0);
+    bool ages_all_same = true;
+
+    for (size_t i = 1; ages_all_same && i < num_aps; i++)
+    {
+        if (get_ap_age(ctx, i) != age)
+            ages_all_same = false;
+    }
+
+    if (ages_all_same)
+    {
+        pb_encode_tag(ostream, PB_WT_VARINT, Aps_common_age_plus_1_tag);
+        pb_encode_varint(ostream, age + 1);
+    }
+    else
+    {
+        encode_repeated_int_field(ctx, ostream, Aps_age_tag, num_aps, get_ap_age);
+    }
+
+    return true;
 }
 
-bool encode_submessage(void* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
+bool encode_submessage(Sky_ctx_t* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
 {
     // Encode the submessage tag.
     if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
@@ -89,9 +134,6 @@ bool encode_submessage(void* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSub
 
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
-    //printf("callback with tag %d, context data %s\n", field->tag, *(char**) field->pData);
-    printf("callback with tag %d\n", field->tag);
-
     // Actual type of ctx will eventually be a sky_ctx_t*. Baby steps....
     char* ctx = *(char**) field->pData;
 
@@ -110,7 +152,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     return true;
 }
 
-int32_t serialize_request(void* ctx,
+int32_t serialize_request(Sky_ctx_t* ctx,
                           uint8_t* buf,
                           size_t buf_len,
                           uint32_t partner_id,
@@ -163,8 +205,6 @@ int32_t serialize_request(void* ctx,
     rq_hdr.crypto_info_length = crypto_info_size;
     rq_hdr.rq_length = rq_size + aes_padding_length;
 
-    printf("crypto_info_length=%d, rq_length=%d\n", rq_hdr.crypto_info_length, rq_hdr.rq_length);
-
     // First byte of message on wire is the length (in bytes) of the request
     // header.
     size_t hdr_size;
@@ -181,10 +221,7 @@ int32_t serialize_request(void* ctx,
     pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, buf_len);
 
     if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
-    {
-        printf("hdr encode bytes=%zu\n", hdr_ostream.bytes_written);
         bytes_written += hdr_ostream.bytes_written;
-    }
     else
         return -1;
 
@@ -193,10 +230,7 @@ int32_t serialize_request(void* ctx,
                                                               buf_len - bytes_written);
 
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
-    {
-        printf("crypto encode bytes=%zu\n", crypto_info_ostream.bytes_written);
         bytes_written += crypto_info_ostream.bytes_written;
-    }
     else
         return -1;
 
@@ -208,10 +242,7 @@ int32_t serialize_request(void* ctx,
                                                      buf_len - bytes_written);
 
     if (pb_encode(&rq_ostream, Rq_fields, &rq))
-    {
-        printf("rq encode bytes=%zu\n", rq_ostream.bytes_written);
         bytes_written += rq_ostream.bytes_written;
-    }
     else
         return -1;
 

@@ -4,11 +4,18 @@
 #include "elg.pb.h"
 
 // TODO: Delete these accessor prototypes after they become available in one of Geoff's header file.
-uint32_t get_num_aps(void* ctx);
-uint8_t* get_ap_mac(void* ctx, uint32_t idx);
+//
+typedef void Sky_ctx_t;
+
+uint32_t get_num_aps(Sky_ctx_t* ctx);
+uint8_t* get_ap_mac(Sky_ctx_t* ctx, uint32_t idx);
+bool get_ap_connected(Sky_ctx_t* ctx, uint32_t idx);
+int64_t get_ap_channel(Sky_ctx_t* ctx, uint32_t idx);
+int64_t get_ap_rssi(Sky_ctx_t* ctx, uint32_t idx);
+int64_t get_ap_age(Sky_ctx_t* ctx, uint32_t idx);
 
 // Encode and encrypt request into buffer.
-int32_t serialize_request(void* ctx,
+int32_t serialize_request(Sky_ctx_t* ctx,
                           uint8_t* buf,
                           size_t buf_len,
                           uint32_t partner_id,
