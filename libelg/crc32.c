@@ -19,6 +19,8 @@
  *
  *  @returns crc32
  */
+#include <stdio.h>
+
 unsigned int sky_crc32(void *msg, unsigned msgsize)
 {
 	int i, j;

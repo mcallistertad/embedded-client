@@ -21,12 +21,16 @@
 #include <string.h>
 #include <inttypes.h>
 #include <time.h>
+#include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
 #include "config.h"
 #include "beacons.h"
 #include "workspace.h"
 #include "libelg.h"
 #include "utilities.h"
+#include "crc32.h"
+
+Sky_cache_t nv_space;
 
 /* Example assumes a scan with 100 AP beacons
  */
@@ -129,6 +133,65 @@ int logger(Sky_log_level_t level, const char *s, int max)
 	return 0;
 }
 
+/*! \brief check for saved cache state
+ *
+ *  @param void
+ *
+ *  @returns NULL for failure to restore cache, pointer to cache otherwise
+ */
+Sky_cache_t *nv_cache(void)
+{
+	FILE *fio;
+	uint8_t *p = (void *)&nv_space;
+
+	if ((fio = fopen("nv_cache", "r")) != NULL) {
+		if (fread(p, sizeof(Sky_header_t), 1, fio) == 1 &&
+		    nv_space.header.magic == SKY_MAGIC &&
+		    nv_space.header.crc32 ==
+			    sky_crc32(
+				    &nv_space.header.magic,
+				    (uint8_t *)&nv_space.header.crc32 -
+					    (uint8_t *)&nv_space.header.magic)) {
+			if (fread(p + sizeof(Sky_header_t),
+				  nv_space.header.size - sizeof(Sky_header_t),
+				  1, fio) == 1) {
+				if (validate_cache(&nv_space)) {
+					printf("validate_cache: Restoring Cache\n");
+					return &nv_space;
+				} else
+					printf("validate_cache: false\n");
+			}
+		}
+	}
+	return NULL;
+}
+
+/*! \brief save cache state
+ *
+ *  @param void
+ *
+ *  @returns 0 for success or negative number for error
+ */
+Sky_status_t nv_cache_save(uint8_t *p)
+{
+	FILE *fio;
+	Sky_cache_t *c = (void *)p;
+
+	if (validate_cache(c)) {
+		if ((fio = fopen("nv_cache", "w+")) != NULL) {
+			if (fwrite(p, c->header.size, 1, fio) == 1) {
+				printf("nv_cache_save: cache size %d (%lu)\n",
+				       c->header.size, sizeof(Sky_cache_t));
+				return 0;
+			} else
+				printf("fwrite failed\n");
+		} else
+			printf("fopen failed\n");
+	} else
+		printf("nv_cache_save: failed to validate cache\n");
+	return -1;
+}
+
 /*! \brief validate fundamental functionality of the ELG IoT library
  *
  *  @param ac arg count
@@ -160,7 +223,7 @@ int main(int ac, char **av)
 	srand((unsigned)time(NULL));
 
 	if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-		     NULL, SKY_LOG_LEVEL_ALL, &logger) == SKY_ERROR) {
+		     nv_cache(), SKY_LOG_LEVEL_ALL, &logger) == SKY_ERROR) {
 		printf("sky_open returned bad value, Can't continue\n");
 		exit(-1);
 	}
@@ -328,4 +391,6 @@ int main(int ac, char **av)
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "sky_close sky_errno contains '%s'\n",
 		       sky_perror(sky_errno));
+	if (pstate != NULL)
+		nv_cache_save(pstate);
 }

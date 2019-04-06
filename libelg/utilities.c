@@ -20,6 +20,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
 #include "beacons.h"
 #include "config.h"
@@ -53,17 +54,51 @@ int validate_workspace(Sky_ctx_t *ctx)
 	int i;
 
 	if (ctx != NULL &&
-	    ctx->header.crc32 == sky_crc32(&ctx->header.magic,
-					   sizeof(ctx->header) -
-						   sizeof(ctx->header.crc32))) {
+	    ctx->header.crc32 ==
+		    sky_crc32(&ctx->header.magic,
+			      (uint8_t *)&ctx->header.crc32 -
+				      (uint8_t *)&ctx->header.magic)) {
 		for (i = 0; i < TOTAL_BEACONS; i++) {
 			if (ctx->beacon[i].h.magic != BEACON_MAGIC ||
-			    ctx->beacon[i].h.type >= SKY_BEACON_MAX)
+			    ctx->beacon[i].h.type > SKY_BEACON_MAX)
 				return false;
 		}
 	}
 	if (ctx == NULL || ctx->len > TOTAL_BEACONS ||
 	    ctx->connected > TOTAL_BEACONS)
+		return false;
+	return true;
+}
+
+/*! \brief validate the cache buffer
+ *
+ *  @param cache pointer to cache buffer
+ *
+ *  @return true if cache is valid, else false
+ */
+int validate_cache(Sky_cache_t *c)
+{
+	int i, j;
+
+	if (c != NULL &&
+	    c->header.crc32 == sky_crc32(&c->header.magic,
+					 (uint8_t *)&c->header.crc32 -
+						 (uint8_t *)&c->header.magic)) {
+		for (i = 0; i < CACHE_SIZE; i++) {
+			if (c->cacheline[i].len > TOTAL_BEACONS)
+				return false;
+
+			for (j = 0; j < TOTAL_BEACONS; j++) {
+				if (c->cacheline[i].beacon[j].h.magic !=
+				    BEACON_MAGIC)
+					return false;
+				if (c->cacheline[i].beacon[j].h.type >
+				    SKY_BEACON_MAX)
+					return false;
+			}
+		}
+	}
+	if (c == NULL)
 		return false;
 	return true;
 }

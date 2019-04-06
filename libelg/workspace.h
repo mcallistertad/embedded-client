@@ -49,10 +49,16 @@ typedef struct sky_ctx {
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
 	Gps_t gps; /* GPS info */
-	uint8_t request[sizeof(Sky_header_t) + sizeof(int32_t) +
-			(sizeof(Beacon_t) * TOTAL_BEACONS) + sizeof(int32_t) +
-			sizeof(Gps_t)];
+	/* Assume worst case is that beacons and gps info takes twice the bare structure size */
+	uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
+			(sizeof(Gps_t) * 2)];
 } Sky_ctx_t;
+
+typedef struct sky_cacheline {
+	int16_t len; /* number of beacons */
+	Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+	Gps_t gps; /* GPS info */
+} Sky_cacheline_t;
 
 typedef struct sky_cache {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
@@ -61,9 +67,8 @@ typedef struct sky_cache {
 	uint32_t sky_partner_id; /* partner ID */
 	uint32_t sky_aes_key_id; /* aes key ID */
 	uint8_t sky_aes_key[16]; /* aes key */
-	int16_t len; /* number of beacons */
-	Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
-	Gps_t gps; /* GPS info */
+	struct AES_ctx aes_ctx; /* aes context */
+	Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 } Sky_cache_t;
 
 #endif

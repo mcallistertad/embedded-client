@@ -18,7 +18,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
+#include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
 #include "beacons.h"
 #include "config.h"
@@ -32,21 +34,11 @@
 static uint32_t sky_open_flag = 0;
 
 /*! \brief keep track of the device ID */
-static uint8_t sky_id_len;
-static uint8_t sky_device_id[MAC_SIZE];
+static Sky_cache_t cache;
 
 /*! \brief keep track of logging function */
 static int (*sky_logf)(Sky_log_level_t level, const char *s, int max);
 static Sky_log_level_t sky_min_level;
-
-/*! \brief keep track of user credentials */
-static uint32_t sky_partner_id;
-
-/*! \brief keep track of user credentials */
-static uint32_t sky_aes_key_id;
-
-/*! \brief keep track of user credentials */
-static uint8_t sky_aes_key[16];
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
@@ -92,22 +84,53 @@ int32_t cmp_beacon(const void *a, const void *b)
 Sky_status_t
 sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
-	 uint8_t *sky_state, Sky_log_level_t min_level,
+	 Sky_cache_t *sky_state, Sky_log_level_t min_level,
 	 int (*logf)(Sky_log_level_t level, const char *s, int len))
 {
-	/* Only concider up to 16 bytes. Ignore any extra */
+	int i = 0;
+	int j = 0;
+
+	/* Only consider up to 16 bytes. Ignore any extra */
 	id_len = (id_len > MAX_DEVICE_ID) ? 16 : id_len;
 
+	if (sky_state != NULL && !validate_cache(sky_state))
+		sky_state = NULL;
+
 	/* if open already */
-	if (sky_open_flag) {
+	if (sky_open_flag && sky_state) {
 		/* parameters must be the same (no-op) or fail */
-		if (memcmp(device_id, sky_device_id, id_len) == 0 &&
-		    id_len == sky_id_len && partner_id == sky_partner_id &&
-		    aes_key_id == sky_aes_key_id &&
-		    memcmp(aes_key, sky_aes_key, sizeof(sky_aes_key)) == 0)
+		if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
+		    id_len == sky_state->sky_id_len &&
+		    partner_id == sky_state->sky_partner_id &&
+		    aes_key_id == sky_state->sky_aes_key_id &&
+		    memcmp(aes_key, sky_state->sky_aes_key,
+			   sizeof(sky_state->sky_aes_key)) == 0)
 			return sky_return(sky_errno, SKY_ERROR_NONE);
 		else
 			return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
+	} else if (sky_state)
+		cache = *sky_state;
+	else {
+		cache.header.magic = SKY_MAGIC;
+		cache.header.size = sizeof(cache);
+		cache.header.time = time(NULL);
+		cache.header.crc32 =
+			sky_crc32(&cache.header.magic,
+				  (uint8_t *)&cache.header.crc32 -
+					  (uint8_t *)&cache.header.magic);
+		for (i = 0; i < CACHE_SIZE; i++) {
+			for (j = 0; j < TOTAL_BEACONS; j++) {
+				cache.cacheline[i].len = 0;
+				cache.cacheline[i].beacon[j].h.magic =
+					BEACON_MAGIC;
+				cache.cacheline[i].beacon[j].h.type =
+					SKY_BEACON_MAX;
+			}
+		}
+
+		printf("Init cache 0x%08x 0x%08x 0x%08x 0x%08x\n",
+		       cache.header.magic, cache.header.size,
+		       (uint32_t)cache.header.time, cache.header.crc32);
 	}
 
 	/* Sanity check */
@@ -116,13 +139,13 @@ sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	    !validate_aes_key_id(aes_key_id) || !validate_aes_key(aes_key))
 		return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-	sky_id_len = id_len;
+	cache.sky_id_len = id_len;
 	sky_min_level = min_level;
 	sky_logf = logf;
-	memcpy(sky_device_id, device_id, id_len);
-	sky_partner_id = partner_id;
-	sky_aes_key_id = aes_key_id;
-	memcpy(sky_aes_key, aes_key, sizeof(sky_aes_key));
+	memcpy(cache.sky_device_id, device_id, id_len);
+	cache.sky_partner_id = partner_id;
+	cache.sky_aes_key_id = aes_key_id;
+	memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
 	sky_open_flag = true;
 
 	(*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook libELG Version 3.0\n", 80);
@@ -192,9 +215,9 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 	ctx->header.magic = SKY_MAGIC;
 	ctx->header.size = bufsize;
 	ctx->header.time = time(NULL);
-	ctx->header.crc32 =
-		sky_crc32(&ctx->header.magic,
-			  sizeof(ctx->header) - sizeof(ctx->header.crc32));
+	ctx->header.crc32 = sky_crc32(&ctx->header.magic,
+				      (uint8_t *)&ctx->header.crc32 -
+					      (uint8_t *)&ctx->header.magic);
 
 	ctx->logf = sky_logf;
 	ctx->min_level = sky_min_level;
@@ -573,7 +596,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state)
 	sky_open_flag = false;
 
 	if (sky_state != NULL)
-		*sky_state = NULL;
+		*sky_state = (void *)&cache;
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 

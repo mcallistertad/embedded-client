@@ -96,7 +96,7 @@ typedef enum {
 Sky_status_t
 sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
-	 uint8_t *sky_state, Sky_log_level_t min_level,
+	 Sky_cache_t *sky_state, Sky_log_level_t min_level,
 	 int (*logf)(Sky_log_level_t level, const char *s, int max));
 
 int32_t sky_sizeof_state(uint8_t *sky_state);

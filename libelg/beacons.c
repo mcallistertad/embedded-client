@@ -20,6 +20,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
 #include "config.h"
 #include "response.h"
