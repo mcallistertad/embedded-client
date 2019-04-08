@@ -336,7 +336,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	ctx->beacon[i].gsm.mnc = mnc;
 	ctx->beacon[i].gsm.rssi = rssi;
 	if (is_connected)
-		ctx->connected = ctx->len;
+		ctx->connected = i;
 	/* sort beacons by type */
 	qsort(ctx->beacon, ctx->len, sizeof(Beacon_t), cmp_beacon);
 	return sky_return(sky_errno, SKY_ERROR_NONE);
@@ -426,7 +426,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	ctx->beacon[i].nbiot.tac = tac;
 	ctx->beacon[i].nbiot.rssi = rssi;
 	if (is_connected)
-		ctx->connected = ctx->len;
+		ctx->connected = i;
 	/* sort beacons by type */
 	qsort(ctx->beacon, ctx->len, sizeof(Beacon_t), cmp_beacon);
 	return sky_return(sky_errno, SKY_ERROR_NONE);
