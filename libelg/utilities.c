@@ -264,20 +264,20 @@ int64_t get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 	return ctx->ap_low + idx == ctx->connected;
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (AP/age)
+/*! \brief field extraction for dynamic use of Nanopb (AP/timestamp)
  *
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return beacon age info
+ *  @return beacon timestamp info
  */
-int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_time(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
-	return ctx->beacon[ctx->ap_low + idx].ap.age;
+	return ctx->beacon[ctx->ap_low + idx].ap.time;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num gsm)
@@ -390,6 +390,22 @@ int64_t get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 		return 0;
 	}
 	return ctx->connected == get_base_beacons(ctx, SKY_BEACON_GSM) + idx;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (gsm/timestamp)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon timestamp info
+ */
+int64_t get_gsm_time(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[ctx->ap_low + idx].gsm.time;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num nbiot)
@@ -507,4 +523,21 @@ int64_t get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 		return 0;
 	}
 	return ctx->connected == get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/timestamp)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon timestamp info
+ */
+int64_t get_nbiot_time(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
+		.nbiot.time;
 }

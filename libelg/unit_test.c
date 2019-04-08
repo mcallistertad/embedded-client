@@ -69,8 +69,8 @@ void dump(Sky_ctx_t *ctx)
 	int i;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-	       "WorkSpace: Expect %d, got %d, AP %d starting at %d",
-	       ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low);
+	       "WorkSpace: Expect %d, got %d, AP %d starting at %d, connected %d",
+	       ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low, ctx->connected);
 	for (i = 0; i < ctx->len; i++) {
 		switch (ctx->beacon[i].h.type) {
 		case SKY_BEACON_AP:
@@ -348,6 +348,12 @@ int main(int ac, char **av)
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "get_ap_rssi:      %d, %d", i,
 				       get_ap_rssi(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_ap_is_connected:      %d, %d", i,
+				       get_ap_is_connected(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_ap_time:      %d, %d", i,
+				       get_ap_time(ctx, i));
 			}
 		if (t == SKY_BEACON_GSM)
 			for (i--; i >= 0; i--) {
@@ -366,6 +372,12 @@ int main(int ac, char **av)
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "get_gsm_rssi:      %d, %d", i,
 				       get_gsm_rssi(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_is_connected:      %d, %d", i,
+				       get_gsm_is_connected(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_gsm_time:      %d, %d", i,
+				       get_gsm_time(ctx, i));
 			}
 		if (t == SKY_BEACON_NBIOT)
 			for (i--; i >= 0; i--) {
@@ -384,6 +396,12 @@ int main(int ac, char **av)
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "get_nbiot_rssi:    %d, %d", i,
 				       get_nbiot_rssi(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_is_connected:      %d, %d", i,
+				       get_nbiot_is_connected(ctx, i));
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "get_nbiot_time:      %d, %d", i,
+				       get_nbiot_time(ctx, i));
 			}
 	}
 

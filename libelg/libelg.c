@@ -113,7 +113,7 @@ sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	else {
 		cache.header.magic = SKY_MAGIC;
 		cache.header.size = sizeof(cache);
-		cache.header.time = time(NULL);
+		cache.header.time = (uint32_t)time(NULL);
 		cache.header.crc32 =
 			sky_crc32(&cache.header.magic,
 				  (uint8_t *)&cache.header.crc32 -
@@ -214,7 +214,7 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 	/* update header in workspace */
 	ctx->header.magic = SKY_MAGIC;
 	ctx->header.size = bufsize;
-	ctx->header.time = time(NULL);
+	ctx->header.time = (uint32_t)time(NULL);
 	ctx->header.crc32 = sky_crc32(&ctx->header.magic,
 				      (uint8_t *)&ctx->header.crc32 -
 					      (uint8_t *)&ctx->header.magic);
@@ -265,12 +265,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	b.h.magic = BEACON_MAGIC;
 	b.h.type = SKY_BEACON_AP;
 	memcpy(b.ap.mac, mac, MAC_SIZE);
-	/* If beacon has meaningful timestamp */
-	/* scan was before sky_new_request and since Mar 1st 2019 */
-	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		b.ap.age = ctx->header.time - timestamp;
-	else
-		b.ap.age = 0;
+	b.ap.time = timestamp;
 	b.ap.channel = channel;
 	b.ap.rssi = rssi;
 	b.ap.flag = 0; /* TODO map channel? */
@@ -334,12 +329,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* Create GSM beacon */
 	i = (++ctx->len) - 1;
 	ctx->beacon[i].h.type = SKY_BEACON_GSM;
-	/* If beacon has meaningful timestamp */
-	/* scan was before sky_new_request and since Mar 1st 2019 */
-	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].gsm.age = ctx->header.time - timestamp;
-	else
-		ctx->beacon[i].gsm.age = 0;
+	ctx->beacon[i].gsm.time = timestamp;
 	ctx->beacon[i].gsm.lac = lac;
 	ctx->beacon[i].gsm.ci = ci;
 	ctx->beacon[i].gsm.mcc = mcc;
@@ -429,12 +419,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* Create NB IoT beacon */
 	i = (++ctx->len) - 1;
 	ctx->beacon[i].h.type = SKY_BEACON_NBIOT;
-	/* If beacon has meaningful timestamp */
-	/* scan was before sky_new_request and since Mar 1st 2019 */
-	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].nbiot.age = ctx->header.time - timestamp;
-	else
-		ctx->beacon[i].nbiot.age = 0;
+	ctx->beacon[i].nbiot.time = timestamp;
 	ctx->beacon[i].nbiot.mcc = mcc;
 	ctx->beacon[i].nbiot.mnc = mnc;
 	ctx->beacon[i].nbiot.e_cellid = e_cellid;
