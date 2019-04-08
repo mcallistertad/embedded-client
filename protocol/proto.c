@@ -134,8 +134,7 @@ bool encode_submessage(Sky_ctx_t* ctx, pb_ostream_t* ostream, uint32_t tag, Enco
 
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
-    // Actual type of ctx will eventually be a sky_ctx_t*. Baby steps....
-    char* ctx = *(char**) field->pData;
+    Sky_ctx_t* ctx = *(Sky_ctx_t**) field->pData;
 
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
@@ -211,6 +210,7 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
+    // Return an error indication if the supplied buffer is too small.
     if (1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length > buf_len)
         return -1;
 
