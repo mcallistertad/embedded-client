@@ -58,7 +58,7 @@ message GsmCells {
     repeated uint32 mnc = 2;
     repeated uint32 lac = 3;
     repeated uint32 ci = 4;
-    repeated sint32 neg_rssi = 5; // -rssi
+    repeated uint32 neg_rssi = 5; // -rssi
     repeated uint32 age = 6;
 }
 
@@ -67,7 +67,7 @@ message UmtsCells {
     repeated uint32 mnc = 2;
     repeated uint32 lac = 3;
     repeated uint32 ci = 4;
-    repeated sint32 neg_rscp = 5; // -rscp
+    repeated uint32 neg_rscp = 5; // -rscp
     repeated uint32 age = 6;
 }
 
@@ -75,7 +75,7 @@ message CdmaCells {
     repeated uint32 sid = 1;
     repeated uint32 nid = 2;
     repeated uint32 bsid = 3;
-    repeated sint32 neg_rssi = 4; // -rssi
+    repeated uint32 neg_rssi = 4; // -rssi
     repeated uint32 age = 5;
 }
 
@@ -84,7 +84,7 @@ message LteCells {
     repeated uint32 mnc = 2;
     repeated uint32 tac = 3;
     repeated uint32 eucid = 4;
-    repeated sint32 neg_rsrp = 5; // -rsrp
+    repeated uint32 neg_rsrp = 5; // -rsrp
     repeated uint32 age = 6;
 }
 
