@@ -87,7 +87,7 @@ void dump(Sky_ctx_t *ctx)
 		case SKY_BEACON_GSM:
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
-			       i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ui,
+			       i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
 			       ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
 			       ctx->beacon[i].gsm.rssi);
 			break;
@@ -301,7 +301,7 @@ int main(int ac, char **av)
 		b[i].gsm.magic = BEACON_MAGIC;
 		b[i].gsm.type = SKY_BEACON_GSM;
 		b[i].gsm.lac = rand() % 65535;
-		b[i].gsm.ui = rand() % 65535;
+		b[i].gsm.ci = rand() % 65535;
 		b[i].gsm.mcc = 200 + (rand() % 599);
 		b[i].gsm.mnc = rand() % 999;
 		b[i].gsm.rssi = -(32 + (rand() % 96));
@@ -309,7 +309,7 @@ int main(int ac, char **av)
 
 	for (i = 0; i < 2; i++) {
 		if (sky_add_cell_gsm_beacon(ctx, &sky_errno, b[i].gsm.lac,
-					    b[i].gsm.ui, b[i].gsm.mcc,
+					    b[i].gsm.ci, b[i].gsm.mcc,
 					    b[i].gsm.mnc, timestamp,
 					    b[i].gsm.rssi, 1))
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -318,7 +318,7 @@ int main(int ac, char **av)
 		else
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "Added Test Beacon % 2d: Type: %d, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d\n",
-			       i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ui,
+			       i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ci,
 			       b[i].gsm.mcc, b[i].gsm.mnc, b[i].gsm.rssi);
 	}
 
@@ -352,8 +352,8 @@ int main(int ac, char **av)
 		if (t == SKY_BEACON_GSM)
 			for (i--; i >= 0; i--) {
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_ui:       %d, %d", i,
-				       get_gsm_ui(ctx, i));
+				       "get_gsm_ci:       %d, %d", i,
+				       get_gsm_ci(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "get_gsm_mcc:       %d, %d", i,
 				       get_gsm_mcc(ctx, i));

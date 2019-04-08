@@ -316,7 +316,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				     uint16_t lac, uint32_t ui, uint16_t mcc,
+				     uint16_t lac, uint32_t ci, uint16_t mcc,
 				     uint16_t mnc, time_t timestamp,
 				     int16_t rssi, bool is_connected)
 {
@@ -341,7 +341,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	else
 		ctx->beacon[i].gsm.age = 0;
 	ctx->beacon[i].gsm.lac = lac;
-	ctx->beacon[i].gsm.ui = ui;
+	ctx->beacon[i].gsm.ci = ci;
 	ctx->beacon[i].gsm.mcc = mcc;
 	ctx->beacon[i].gsm.mnc = mnc;
 	ctx->beacon[i].gsm.rssi = rssi;

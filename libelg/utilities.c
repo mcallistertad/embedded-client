@@ -137,7 +137,7 @@ int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...)
  *
  *  @return number of beacons of the specified type
  */
-int64_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
+int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 {
 	int i, b = 0;
 
@@ -189,9 +189,9 @@ int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
  *
  *  @param ctx workspace buffer
  *
- *  @return 0 for success
+ *  @return number of AP beacons
  */
-int64_t get_num_aps(Sky_ctx_t *ctx)
+int32_t get_num_aps(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -205,7 +205,7 @@ int64_t get_num_aps(Sky_ctx_t *ctx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon mac info
  */
 uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -221,7 +221,7 @@ uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon channel info
  */
 int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -237,7 +237,7 @@ int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon rssi info
  */
 int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -253,9 +253,9 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return number of gsm beacons
  */
-int64_t get_num_gsm(Sky_ctx_t *ctx)
+int32_t get_num_gsm(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -264,20 +264,20 @@ int64_t get_num_gsm(Sky_ctx_t *ctx)
 	return get_num_beacons(ctx, SKY_BEACON_GSM);
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (gsm/ui)
+/*! \brief field extraction for dynamic use of Nanopb (gsm/ci)
  *
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon ci info
  */
-uint64_t get_gsm_ui(Sky_ctx_t *ctx, uint32_t idx)
+uint64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
-	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.ui;
+	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.ci;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gsm/mcc)
@@ -285,7 +285,7 @@ uint64_t get_gsm_ui(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon mcc info
  */
 int64_t get_gsm_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -301,7 +301,7 @@ int64_t get_gsm_mcc(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon mnc info
  */
 int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -317,7 +317,7 @@ int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon lac info
  */
 int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -333,7 +333,7 @@ int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon rssi info
  */
 int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -348,9 +348,9 @@ int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return number of nbiot beacons
  */
-int64_t get_num_nbiot(Sky_ctx_t *ctx)
+int32_t get_num_nbiot(Sky_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -364,9 +364,9 @@ int64_t get_num_nbiot(Sky_ctx_t *ctx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon mcc info
  */
-uint64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -381,7 +381,7 @@ uint64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon mnc info
  */
 int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -398,7 +398,7 @@ int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon e cellid info
  */
 int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -415,7 +415,7 @@ int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon tac info
  */
 int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -432,7 +432,7 @@ int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
- *  @return 0 for success
+ *  @return beacon rssi info
  */
 int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {

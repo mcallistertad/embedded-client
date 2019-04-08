@@ -70,7 +70,7 @@ struct ap {
 struct gsm {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	uint32_t ui;
+	uint32_t ci;
 	uint32_t age;
 	uint16_t mcc; // country
 	uint16_t mnc;
