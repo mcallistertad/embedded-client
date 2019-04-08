@@ -306,7 +306,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
  *  @param lac gsm location area code identifier (1-65,535)
- *  @param ui gsm cell identifier (0-65,535)
+ *  @param ci gsm cell identifier (0-65,535)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown

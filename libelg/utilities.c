@@ -248,6 +248,38 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
 	return ctx->beacon[ctx->ap_low + idx].ap.rssi;
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (AP/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+int64_t get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > ctx->ap_len) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->ap_low + idx == ctx->connected;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (AP/age)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon age info
+ */
+int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > ctx->ap_len) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->beacon[ctx->ap_low + idx].ap.age;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (num gsm)
  *
  *  @param ctx workspace buffer
@@ -343,6 +375,23 @@ int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
 	}
 	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.rssi;
 }
+
+/*! \brief field extraction for dynamic use of Nanopb (gsm/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+int64_t get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->connected == get_base_beacons(ctx, SKY_BEACON_GSM) + idx;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (num nbiot)
  *
  *  @param ctx workspace buffer
@@ -442,4 +491,20 @@ int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
 	}
 	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
 		.nbiot.rssi;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (nbiot/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+int64_t get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
+		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+		return 0;
+	}
+	return ctx->connected == get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx;
 }
