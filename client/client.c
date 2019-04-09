@@ -39,34 +39,89 @@ static struct Ap aps[] = {
     { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 160, /* rssi */ -10, false}
 };
 
-uint8_t* get_ap_mac(void* ctx, uint32_t idx)
+uint8_t* get_ap_mac(Sky_ctx_t* ctx, uint32_t idx)
 {
     return aps[idx].mac;
 }
 
-bool get_ap_connected(void* ctx, uint32_t idx)
+bool get_ap_is_connected(Sky_ctx_t* ctx, uint32_t idx)
 {
     return aps[idx].connected;
 }
 
-uint32_t get_num_aps(void* ctx)
+uint32_t get_num_aps(Sky_ctx_t* ctx)
 {
     return sizeof(aps) / sizeof(struct Ap);
 }
 
-int64_t get_ap_channel(void* ctx, uint32_t idx)
+int64_t get_ap_channel(Sky_ctx_t* ctx, uint32_t idx)
 {
     return aps[idx].channel;
 }
 
-int64_t get_ap_rssi(void* ctx, uint32_t idx)
+int64_t get_ap_rssi(Sky_ctx_t* ctx, uint32_t idx)
 {
     return aps[idx].rssi;
 }
 
-int64_t get_ap_age(void* ctx, uint32_t idx)
+int64_t get_ap_age(Sky_ctx_t* ctx, uint32_t idx)
 {
     return aps[idx].age;
+}
+
+struct Gsm {
+    uint32_t mcc;
+    uint32_t mnc;
+    uint32_t lac;
+    uint32_t ci;
+    int32_t rssi;
+    uint32_t age;
+    bool connected;
+};
+
+static struct Gsm gsm_cells[] = {
+    {310, 410, 512, 6676, -130, 1000, false}, 
+    //{510, 610, 513, 6677, -13, 1001, true}
+};
+
+int64_t get_gsm_mcc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].mcc;
+}
+
+int64_t get_gsm_mnc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].mnc;
+}
+
+int64_t get_gsm_lac(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].lac;
+}
+
+int64_t get_gsm_ci(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].lac;
+}
+
+bool get_gsm_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].connected;
+}
+
+uint32_t get_num_gsm(Sky_ctx_t* ctx)
+{
+    return sizeof(gsm_cells) / sizeof(struct Gsm);
+}
+
+int64_t get_gsm_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].rssi;
+}
+
+int64_t get_gsm_age(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].age;
 }
 
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)

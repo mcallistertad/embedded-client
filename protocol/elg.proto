@@ -45,7 +45,7 @@ message Rq {
 }
 
 message Aps {
-    uint32 connected_ap_idx_plus_1 = 1; // 0 means that device is not connected to any AP
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any AP
     uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
     repeated int64 mac = 3;
     repeated int32 channel_number = 4;
@@ -54,47 +54,57 @@ message Aps {
 }
 
 message GsmCells {
-    repeated uint32 mcc = 1;
-    repeated uint32 mnc = 2;
-    repeated uint32 lac = 3;
-    repeated uint32 ci = 4;
-    repeated uint32 neg_rssi = 5; // -rssi
-    repeated uint32 age = 6;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 lac = 5;
+    repeated uint32 ci = 6;
+    repeated uint32 neg_rssi = 7; // -rssi
+    repeated uint32 age = 8;
 }
 
 message UmtsCells {
-    repeated uint32 mcc = 1;
-    repeated uint32 mnc = 2;
-    repeated uint32 lac = 3;
-    repeated uint32 ci = 4;
-    repeated uint32 neg_rscp = 5; // -rscp
-    repeated uint32 age = 6;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 lac = 5;
+    repeated uint32 ci = 6;
+    repeated uint32 neg_rscp = 7; // -rscp
+    repeated uint32 age = 8;
 }
 
 message CdmaCells {
-    repeated uint32 sid = 1;
-    repeated uint32 nid = 2;
-    repeated uint32 bsid = 3;
-    repeated uint32 neg_rssi = 4; // -rssi
-    repeated uint32 age = 5;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 sid = 3;
+    repeated uint32 nid = 4;
+    repeated uint32 bsid = 5;
+    repeated uint32 neg_rssi = 6; // -rssi
+    repeated uint32 age = 7;
 }
 
 message LteCells {
-    repeated uint32 mcc = 1;
-    repeated uint32 mnc = 2;
-    repeated uint32 tac = 3;
-    repeated uint32 eucid = 4;
-    repeated uint32 neg_rsrp = 5; // -rsrp
-    repeated uint32 age = 6;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 tac = 5;
+    repeated uint32 eucid = 6;
+    repeated uint32 neg_rsrp = 7; // -rsrp
+    repeated uint32 age = 8;
 }
 
 message NbiotCells {
-    repeated uint32 mcc = 1;
-    repeated uint32 mnc = 2;
-    repeated uint32 tac = 3;
-    repeated uint32 e_cellid = 4;
-    repeated uint32 neg_nrsrp = 5; // -nrsrp
-    repeated uint32 age = 7;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 tac = 5;
+    repeated uint32 e_cellid = 6;
+    repeated uint32 neg_nrsrp = 7; // -nrsrp
+    repeated uint32 age = 8;
 }
 
 message Rs {
