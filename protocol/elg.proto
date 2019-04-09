@@ -36,12 +36,13 @@ message CryptoInfo {
 //
 message Rq {
     bytes device_id = 1;
-    Aps aps = 2;
-    GsmCells gsm_cells = 3;
-    UmtsCells umts_cells = 4;
-    LteCells lte_cells = 5;
-    CdmaCells cdma_cells = 6;
-    NbiotCells nbiot_cells = 7;
+    uint64 timestamp = 2; // Seconds since epoch (Jan 1, 1970)
+    Aps aps = 3;
+    GsmCells gsm_cells = 4;
+    UmtsCells umts_cells = 5;
+    LteCells lte_cells = 6;
+    CdmaCells cdma_cells = 7;
+    NbiotCells nbiot_cells = 8;
 }
 
 message Aps {

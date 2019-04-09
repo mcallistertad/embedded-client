@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <pb_encode.h>
 #include <pb_decode.h>
@@ -202,14 +203,17 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     switch (field->tag)
     {
         case Rq_aps_tag:
-            return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
+            if (get_num_aps(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
             break;
         case Rq_gsm_cells_tag:
-            return encode_submessage(ctx, ostream, field->tag, encode_gsm_fields);
+            if (get_num_gsm(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_gsm_fields);
+            break;
+        default:
+            printf("unknown Rq field: %d\n", field->tag);
             break;
     }
-
-    printf("unknown Rq field: %d\n", field->tag);
 
     return true;
 }
@@ -245,6 +249,8 @@ int32_t serialize_request(Sky_ctx_t* ctx,
     Rq rq;
 
     memset(&rq, 0, sizeof(rq));
+
+    rq.timestamp = (int64_t) time(NULL);
 
     rq.aps = rq.gsm_cells = ctx;
 
