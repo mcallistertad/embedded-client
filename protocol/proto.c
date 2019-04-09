@@ -262,7 +262,7 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     unsigned char aes_iv_buf[16];
 
-    memset(aes_iv_buf, 1, sizeof(aes_iv_buf)); // TODO; initialize this properly.
+    arc4random_buf(aes_iv_buf, sizeof(aes_iv_buf));
 
     memcpy(rq_crypto_info.iv.bytes, aes_iv_buf, sizeof(aes_iv_buf));
     rq_crypto_info.iv.size=16;
