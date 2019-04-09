@@ -11,7 +11,7 @@
 typedef int64_t (*DataCallback) (Sky_ctx_t*, uint32_t);
 typedef bool (*EncodeSubmsgCallback) (Sky_ctx_t*, pb_ostream_t*);
 
-int64_t mac_to_int(Sky_ctx_t* ctx, uint32_t idx)
+static int64_t mac_to_int(Sky_ctx_t* ctx, uint32_t idx)
 {
     // This is a wrapper function around get_ap_mac(). It converts the 8-byte
     // mac array to an uint64_t.
@@ -26,12 +26,12 @@ int64_t mac_to_int(Sky_ctx_t* ctx, uint32_t idx)
     return ret_val;
 }
 
-int64_t negative_rssi(Sky_ctx_t* ctx, uint32_t idx)
+static int64_t negative_rssi(Sky_ctx_t* ctx, uint32_t idx)
 {
     return -get_ap_rssi(ctx, idx);
 }
 
-bool encode_repeated_int_field(Sky_ctx_t* ctx,
+static bool encode_repeated_int_field(Sky_ctx_t* ctx,
                                pb_ostream_t* ostream,
                                uint32_t tag,
                                uint32_t num_elems,
@@ -63,7 +63,7 @@ bool encode_repeated_int_field(Sky_ctx_t* ctx,
     return true;
 }
 
-bool encode_aps_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
+static bool encode_aps_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
 {
     uint32_t num_aps = get_num_aps(ctx);
 
@@ -110,7 +110,7 @@ bool encode_aps_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
     return true;
 }
 
-bool encode_submessage(Sky_ctx_t* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
+static bool encode_submessage(Sky_ctx_t* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
 {
     // Encode the submessage tag.
     if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
