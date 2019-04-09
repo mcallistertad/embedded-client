@@ -80,10 +80,18 @@ int validate_cache(Sky_cache_t *c)
 {
 	int i, j;
 
-	if (c != NULL &&
-	    c->header.crc32 == sky_crc32(&c->header.magic,
-					 (uint8_t *)&c->header.crc32 -
-						 (uint8_t *)&c->header.magic)) {
+	if (c == NULL)
+		return false;
+
+	if (c->len != CACHE_SIZE) {
+		printf("%s: CACHE_SIZE %d vs len %d", __FUNCTION__, CACHE_SIZE,
+		       c->len);
+		return false;
+	}
+
+	if (c->header.crc32 ==
+	    sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 -
+						(uint8_t *)&c->header.magic)) {
 		for (i = 0; i < CACHE_SIZE; i++) {
 			if (c->cacheline[i].len > TOTAL_BEACONS)
 				return false;
@@ -97,8 +105,7 @@ int validate_cache(Sky_cache_t *c)
 					return false;
 			}
 		}
-	}
-	if (c == NULL)
+	} else
 		return false;
 	return true;
 }

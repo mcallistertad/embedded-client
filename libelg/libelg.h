@@ -79,6 +79,8 @@ typedef enum {
 	SKY_ERROR_CLOSE,
 	SKY_ERROR_BAD_KEY,
 	SKY_ERROR_NO_BEACONS,
+	SKY_ERROR_ADD_CACHE,
+	SKY_ERROR_GET_CACHE
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels

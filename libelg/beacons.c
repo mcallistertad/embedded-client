@@ -31,6 +31,7 @@
 #include "utilities.h"
 
 void dump(Sky_ctx_t *ctx);
+void dump_cache(Sky_ctx_t *ctx);
 
 /*! \brief test two MAC addresses for being virtual aps
  *
@@ -199,8 +200,8 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 	int cmp;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-	       "filter_virtual_aps: ap_low: %d, ap_len: %d of %d", ctx->ap_low,
-	       (int)ctx->ap_len, (int)ctx->len);
+	       "filter_virtual_aps: ap_low: %d, ap_len: %d of %d APs",
+	       ctx->ap_low, (int)ctx->ap_len, (int)ctx->len);
 	dump(ctx);
 
 	if (ctx->ap_len < MAX_AP_BEACONS)
@@ -278,4 +279,191 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 		}
 
 	return sky_return(sky_errno, SKY_ERROR_NONE);
+}
+
+/*! \brief check if a beacon is in a cacheline
+ *
+ *  @param ctx Skyhook request context
+ *  @param beacon pointer to new beacon
+ *
+ *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ */
+Sky_status_t beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
+{
+	int j, ret = 0;
+
+	/* score each cache line wrt beacon match ratio */
+	for (j = 0; j < TOTAL_BEACONS; j++)
+		if (b->h.type == cl->beacon[j].h.type) {
+			switch (b->h.type) {
+			case SKY_BEACON_AP:
+				if ((memcmp(b->ap.mac, cl->beacon[j].ap.mac,
+					    MAC_SIZE) == 0) &&
+				    (b->ap.channel ==
+				     cl->beacon[j].ap.channel)) {
+					ret = 1;
+				}
+				break;
+			case SKY_BEACON_BLE:
+				if ((memcmp(b->ble.mac, cl->beacon[j].ble.mac,
+					    MAC_SIZE) == 0) &&
+				    (b->ble.major == cl->beacon[j].ble.major) &&
+				    (b->ble.minor == cl->beacon[j].ble.minor) &&
+				    (memcmp(b->ble.uuid, cl->beacon[j].ble.uuid,
+					    16) == 0))
+					ret = 1;
+				break;
+			case SKY_BEACON_CDMA:
+				if ((b->cdma.sid == cl->beacon[j].cdma.sid) &&
+				    (b->cdma.nid == cl->beacon[j].cdma.nid) &&
+				    (b->cdma.bsid == cl->beacon[j].cdma.bsid))
+					ret = 1;
+				break;
+			case SKY_BEACON_GSM:
+				if ((b->gsm.ci == cl->beacon[j].gsm.ci) &&
+				    (b->gsm.mcc == cl->beacon[j].gsm.mcc) &&
+				    (b->gsm.mnc == cl->beacon[j].gsm.mnc) &&
+				    (b->gsm.lac == cl->beacon[j].gsm.lac))
+					ret = 1;
+				break;
+			case SKY_BEACON_LTE:
+				if ((b->lte.eucid == cl->beacon[j].lte.eucid) &&
+				    (b->lte.mcc == cl->beacon[j].lte.mcc) &&
+				    (b->lte.mnc == cl->beacon[j].lte.mnc))
+					ret = 1;
+				break;
+			case SKY_BEACON_NBIOT:
+				if ((b->nbiot.mcc == cl->beacon[j].nbiot.mcc) &&
+				    (b->nbiot.mnc == cl->beacon[j].nbiot.mnc) &&
+				    (b->nbiot.e_cellid ==
+				     cl->beacon[j].nbiot.e_cellid) &&
+				    (b->nbiot.tac == cl->beacon[j].nbiot.tac))
+					ret = 1;
+				break;
+			case SKY_BEACON_UMTS:
+				if ((b->umts.ci == cl->beacon[j].umts.ci) &&
+				    (b->umts.mcc == cl->beacon[j].umts.mcc) &&
+				    (b->umts.mnc == cl->beacon[j].umts.mnc) &&
+				    (b->umts.lac == cl->beacon[j].umts.lac))
+					ret = 1;
+				break;
+			default:
+				ret = 0;
+			}
+		}
+	return ret;
+}
+
+/*! \brief find cache entry with best match
+ *  if beacon is AP, filter
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return index of best match or empty cacheline or -1
+ */
+int find_best_match(Sky_ctx_t *ctx)
+{
+	int i, j;
+	float score[CACHE_SIZE];
+	float best = 0;
+	int bestc = -1;
+
+	/* score each cache line wrt beacon match ratio */
+	for (i = 0; i < CACHE_SIZE; i++) {
+		score[i] = 0;
+		if (ctx->cache->cacheline[i].time == 0)
+			score[i] = TOTAL_BEACONS;
+		else
+			for (j = 0; j < ctx->cache->cacheline[i].len; j++) {
+				if (beacon_in_cache(ctx, &ctx->beacon[j],
+						    &ctx->cache->cacheline[i])) {
+					score[i] = score[i] + 1.0;
+				}
+			}
+	}
+
+	for (i = 0; i < CACHE_SIZE; i++) {
+		score[i] /= ctx->len;
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f",
+		       __FUNCTION__, i, score[i] * 100);
+		if (score[i] > best) {
+			best = score[i];
+			bestc = i;
+		}
+	}
+
+	if (best * 100 > CACHE_MATCH_THRESHOLD) {
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: pick cache %d score %.2f",
+		       __FUNCTION__, bestc, score[bestc] * 100);
+		return bestc;
+	}
+	return -1;
+}
+
+/*! \brief find cache entry with oldest entry
+ *  if beacon is AP, filter
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return index of oldest cache entry, or empty
+ */
+int find_oldest(Sky_ctx_t *ctx)
+{
+	int i;
+	uint32_t oldestc = 0;
+	int oldest = time(NULL);
+
+	for (i = 0; i < CACHE_SIZE; i++) {
+		if (ctx->cache->cacheline[i].time == 0)
+			return i;
+		else if (ctx->cache->cacheline[i].time < oldest) {
+			oldest = ctx->cache->cacheline[i].time;
+			oldestc = i;
+		}
+	}
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cacheline %d oldest time %d",
+	       __FUNCTION__, oldestc, oldest);
+	return oldestc;
+}
+
+/*! \brief add location to cache
+ *  if beacon is AP, filter
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param beacon pointer to new beacon
+ *  @param is_connected This beacon is currently connected
+ *
+ *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ */
+Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+{
+	int i = -1;
+	int j;
+
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s:", __FUNCTION__);
+
+	dump(ctx);
+	dump_cache(ctx);
+
+	/* Find best match in cache */
+	/*    yes - add entry here */
+	/* else find oldest cache entry */
+	/*    yes - add entryu here */
+	if ((i = find_best_match(ctx)) < 0) {
+		i = find_oldest(ctx);
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "%s: find_oldest chose cache %d of 0..%d", __FUNCTION__,
+		       i, CACHE_SIZE - 1);
+	} else
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "%s: find_best_match found cache match %d of 0..%d",
+		       __FUNCTION__, i, CACHE_SIZE - 1);
+	for (j = 0; j < TOTAL_BEACONS; j++) {
+		ctx->cache->cacheline[i].len = ctx->len;
+		ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
+		ctx->cache->cacheline[i].gps = *loc;
+		ctx->cache->cacheline[i].time = time(NULL);
+	}
+	return SKY_SUCCESS;
 }

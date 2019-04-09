@@ -82,8 +82,6 @@ struct gsm {
 struct cdma {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	double lat;
-	double lon;
 	uint32_t time;
 	uint16_t sid;
 	uint16_t nid;
@@ -118,7 +116,7 @@ struct ble {
 	uint16_t type; /* sky_beacon_type_t */
 	uint16_t major;
 	uint16_t minor;
-	uint8_t MAC[MAC_SIZE];
+	uint8_t mac[MAC_SIZE];
 	uint8_t uuid[16];
 	int16_t rssi;
 };

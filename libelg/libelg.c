@@ -41,6 +41,7 @@ static int (*sky_logf)(Sky_log_level_t level, const char *s, int max);
 static Sky_log_level_t sky_min_level;
 
 /* Local functions */
+void dump_cache(Sky_ctx_t *ctx);
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key_id(uint32_t aes_key_id);
@@ -101,6 +102,7 @@ sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 		/* parameters must be the same (no-op) or fail */
 		if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
 		    id_len == sky_state->sky_id_len &&
+		    sky_state->header.size == sizeof(cache) &&
 		    partner_id == sky_state->sky_partner_id &&
 		    aes_key_id == sky_state->sky_aes_key_id &&
 		    memcmp(aes_key, sky_state->sky_aes_key,
@@ -118,8 +120,10 @@ sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 			sky_crc32(&cache.header.magic,
 				  (uint8_t *)&cache.header.crc32 -
 					  (uint8_t *)&cache.header.magic);
+		cache.len = CACHE_SIZE;
 		for (i = 0; i < CACHE_SIZE; i++) {
 			for (j = 0; j < TOTAL_BEACONS; j++) {
+				cache.cacheline[i].time = 0;
 				cache.cacheline[i].len = 0;
 				cache.cacheline[i].beacon[j].h.magic =
 					BEACON_MAGIC;
@@ -219,6 +223,7 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 				      (uint8_t *)&ctx->header.crc32 -
 					      (uint8_t *)&ctx->header.magic);
 
+	ctx->cache = &cache;
 	ctx->logf = sky_logf;
 	ctx->min_level = sky_min_level;
 	ctx->expect = number_beacons;
@@ -474,6 +479,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    float *lat, float *lon, uint16_t *hpe,
 				    time_t *timestamp, uint32_t *response_size)
 {
+	int c;
+
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
@@ -481,6 +488,16 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
 	/* check cache against beacons for match */
+	if ((c = find_best_match(ctx)) >= 0) {
+		if (lat != NULL)
+			*lat = ctx->cache->cacheline[c].gps.lat;
+		if (lon != NULL)
+			*lon = ctx->cache->cacheline[c].gps.lon;
+		if (hpe != NULL)
+			*hpe = ctx->cache->cacheline[c].gps.hpe;
+		sky_errno = SKY_ERROR_NONE;
+		return SKY_FINALIZE_LOCATION;
+	}
 
 	/* TODO encode request */
 	strcpy((void *)ctx->request, "SKYHOOK REQUEST MSG");
@@ -489,7 +506,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	*bufsize = strlen((void *)ctx->request);
 	*response_size = sizeof(ctx->request);
 
-	return sky_return(sky_errno, SKY_ERROR_NONE);
+	sky_errno = SKY_ERROR_NONE;
+	return SKY_FINALIZE_REQUEST;
 }
 
 /*! \brief decodes a Skyhook server response
@@ -509,9 +527,27 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				 char *response, int32_t bufsize, float *lat,
 				 float *lon, uint16_t *hpe, time_t *timestamp)
 {
+	Sky_location_t loc;
+
 	/* Validate response from server */
 
+	/* decode response to get lat/lon */
+	loc.lat = 40.161250;
+	loc.lon = -75.229619;
+	loc.hpe = 25;
+
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
+
 	/* Add location and current beacons to Cache */
+	if (add_cache(ctx, &loc) == SKY_ERROR) {
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "sky_decode_response: failed to add to cache");
+		return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
+	}
+
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: dump cache", __FUNCTION__);
+	dump_cache(ctx);
+
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -560,6 +596,12 @@ char *sky_perror(Sky_errno_t sky_errno)
 		break;
 	case SKY_ERROR_NO_BEACONS:
 		str = "At least one beacon must be added";
+		break;
+	case SKY_ERROR_ADD_CACHE:
+		str = "failed to add entry in cache";
+		break;
+	case SKY_ERROR_GET_CACHE:
+		str = "failed to get entry from cache";
 		break;
 	}
 	return str;
