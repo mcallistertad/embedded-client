@@ -155,7 +155,7 @@ static bool encode_gsm_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
     if (num_beacons == 0) 
         return true;
 
-    // Encode index connected_ap_idx_plus_1.
+    // Encode index connected_beacon_idx_plus_1.
     encode_connected_field(ctx, ostream, num_beacons, GsmCells_connected_beacon_idx_plus_1_tag, get_gsm_is_connected);
 
     // Encode mcc, mnc, ci, rssi.
@@ -167,6 +167,29 @@ static bool encode_gsm_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
 
     // Encode age fields.
     encode_age_field(ctx, ostream, num_beacons, GsmCells_common_age_plus_1_tag, GsmCells_age_tag, get_gsm_age);
+
+    return true;
+}
+
+static bool encode_nbiot_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
+{
+    uint32_t num_beacons = get_num_nbiot(ctx);
+
+    if (num_beacons == 0) 
+        return true;
+
+    // Encode index connected_beacon_idx_plus_1.
+    encode_connected_field(ctx, ostream, num_beacons, NbiotCells_connected_beacon_idx_plus_1_tag, get_nbiot_is_connected);
+
+    // Encode mcc, mnc, ci, rssi.
+    encode_repeated_int_field(ctx, ostream, NbiotCells_mcc_tag, num_beacons, get_nbiot_mcc, NULL);
+    encode_repeated_int_field(ctx, ostream, NbiotCells_mnc_tag, num_beacons, get_nbiot_mnc, NULL);
+    encode_repeated_int_field(ctx, ostream, NbiotCells_tac_tag, num_beacons, get_nbiot_tac, NULL);
+    encode_repeated_int_field(ctx, ostream, NbiotCells_e_cellid_tag, num_beacons, get_nbiot_ecellid, NULL);
+    encode_repeated_int_field(ctx, ostream, NbiotCells_neg_nrsrp_tag, num_beacons, get_nbiot_rssi, flip_sign);
+
+    // Encode age fields.
+    encode_age_field(ctx, ostream, num_beacons, NbiotCells_common_age_plus_1_tag, NbiotCells_age_tag, get_nbiot_age);
 
     return true;
 }
@@ -210,8 +233,11 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
             if (get_num_gsm(ctx))
                 return encode_submessage(ctx, ostream, field->tag, encode_gsm_fields);
             break;
+        case Rq_nbiot_cells_tag:
+            if (get_num_nbiot(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_nbiot_fields);
+            break;
         default:
-            printf("unknown Rq field: %d\n", field->tag);
             break;
     }
 
@@ -250,9 +276,9 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.timestamp = (int64_t) time(NULL);
+    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells = ctx;
 
-    rq.aps = rq.gsm_cells = ctx;
+    rq.timestamp = (int64_t) time(NULL);
 
     memcpy(rq.device_id.bytes, device_id, device_id_length);
     rq.device_id.size = device_id_length;

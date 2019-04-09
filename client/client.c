@@ -101,7 +101,7 @@ int64_t get_gsm_lac(Sky_ctx_t* ctx, uint32_t idx)
 
 int64_t get_gsm_ci(Sky_ctx_t* ctx, uint32_t idx)
 {
-    return gsm_cells[idx].lac;
+    return gsm_cells[idx].ci;
 }
 
 bool get_gsm_is_connected(Sky_ctx_t* ctx, uint32_t idx)
@@ -122,6 +122,61 @@ int64_t get_gsm_rssi(Sky_ctx_t* ctx, uint32_t idx)
 int64_t get_gsm_age(Sky_ctx_t* ctx, uint32_t idx)
 {
     return gsm_cells[idx].age;
+}
+
+struct Nbiot {
+    uint32_t mcc;
+    uint32_t mnc;
+    uint32_t tac;
+    uint32_t ecid;
+    int32_t nrsrp;
+    uint32_t age;
+    bool connected;
+};
+
+static struct Nbiot nbiot_cells[] = {
+    {310, 410, 512, 6676, -130, 1000, false}, 
+    {510, 610, 513, 6677, -13, 1001, true}
+};
+
+int64_t get_nbiot_mcc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].mcc;
+}
+
+int64_t get_nbiot_mnc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].mnc;
+}
+
+int64_t get_nbiot_tac(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].tac;
+}
+
+int64_t get_nbiot_ecellid(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].ecid;
+}
+
+bool get_nbiot_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].connected;
+}
+
+uint32_t get_num_nbiot(Sky_ctx_t* ctx)
+{
+    return sizeof(nbiot_cells) / sizeof(struct Nbiot);
+}
+
+int64_t get_nbiot_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].nrsrp;
+}
+
+int64_t get_nbiot_age(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].age;
 }
 
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
