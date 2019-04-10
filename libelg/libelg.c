@@ -46,22 +46,6 @@ static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key_id(uint32_t aes_key_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 
-/*! \brief qsort cmp for beacon type 
- *
- *  @param a Pointer to beacon info
- *  @param b Pointer to beacon info
- *
- *  @return -1, 0 or 1 based on beacon type less, equal or greater
- */
-static int32_t cmp_beacon(const void *a, const void *b)
-{
-	// Sort on type, low-to-high.
-	int8_t typeA = ((Beacon_t *)a)->h.type;
-	int8_t typeB = ((Beacon_t *)b)->h.type;
-
-	return typeA < typeB ? -1 : typeA > typeB;
-}
-
 /*! \brief Initialize Skyhook library and verify access to resources
  *
  *  @param sky_errno if sky_open returns failure, sky_errno is set to the error code
@@ -324,7 +308,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				     uint16_t mnc, time_t timestamp,
 				     int16_t rssi, bool is_connected)
 {
-	int i;
+	Beacon_t b;
 
 	if (!sky_open_flag)
 		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -335,25 +319,25 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
+	/* Decrement the number of beacons expected to be added */
+	ctx->expect--;
+
 	/* Create GSM beacon */
-	i = (++ctx->len) - 1;
-	ctx->beacon[i].h.type = SKY_BEACON_GSM;
+	b.h.magic = BEACON_MAGIC;
+	b.h.type = SKY_BEACON_GSM;
 	/* If beacon has meaningful timestamp */
 	/* scan was before sky_new_request and since Mar 1st 2019 */
 	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].gsm.age = ctx->header.time - timestamp;
+		b.gsm.age = ctx->header.time - timestamp;
 	else
-		ctx->beacon[i].gsm.age = 0;
-	ctx->beacon[i].gsm.lac = lac;
-	ctx->beacon[i].gsm.ci = ci;
-	ctx->beacon[i].gsm.mcc = mcc;
-	ctx->beacon[i].gsm.mnc = mnc;
-	ctx->beacon[i].gsm.rssi = rssi;
-	if (is_connected)
-		ctx->connected = i;
-	/* sort beacons by type */
-	qsort(ctx->beacon, ctx->len, sizeof(Beacon_t), cmp_beacon);
-	return sky_return(sky_errno, SKY_ERROR_NONE);
+		b.gsm.age = 0;
+	b.gsm.lac = lac;
+	b.gsm.ci = ci;
+	b.gsm.mcc = mcc;
+	b.gsm.mnc = mnc;
+	b.gsm.rssi = rssi;
+
+	return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a umts cell beacon to the request context
@@ -419,7 +403,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 					time_t timestamp, int16_t nrsrp,
 					bool is_connected)
 {
-	int i;
+	Beacon_t b;
 
 	if (!sky_open_flag)
 		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -430,25 +414,25 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
+	/* Decrement the number of beacons expected to be added */
+	ctx->expect--;
+
 	/* Create NB IoT beacon */
-	i = (++ctx->len) - 1;
-	ctx->beacon[i].h.type = SKY_BEACON_NBIOT;
+	b.h.magic = BEACON_MAGIC;
+	b.h.type = SKY_BEACON_NBIOT;
 	/* If beacon has meaningful timestamp */
 	/* scan was before sky_new_request and since Mar 1st 2019 */
 	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
-		ctx->beacon[i].nbiot.age = ctx->header.time - timestamp;
+		b.nbiot.age = ctx->header.time - timestamp;
 	else
-		ctx->beacon[i].nbiot.age = 0;
-	ctx->beacon[i].nbiot.mcc = mcc;
-	ctx->beacon[i].nbiot.mnc = mnc;
-	ctx->beacon[i].nbiot.e_cellid = e_cellid;
-	ctx->beacon[i].nbiot.tac = tac;
-	ctx->beacon[i].nbiot.rssi = nrsrp;
-	if (is_connected)
-		ctx->connected = i;
-	/* sort beacons by type */
-	qsort(ctx->beacon, ctx->len, sizeof(Beacon_t), cmp_beacon);
-	return sky_return(sky_errno, SKY_ERROR_NONE);
+		b.nbiot.age = 0;
+	b.nbiot.mcc = mcc;
+	b.nbiot.mnc = mnc;
+	b.nbiot.e_cellid = e_cellid;
+	b.nbiot.tac = tac;
+	b.nbiot.rssi = nrsrp;
+
+	return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds the position of the device from gps to the request context
