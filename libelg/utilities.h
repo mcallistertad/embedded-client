@@ -40,6 +40,14 @@ void dump_cache(Sky_ctx_t *ctx);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 
+uint8_t *get_ctx_request(Sky_ctx_t *ctx);
+size_t get_ctx_request_size(Sky_ctx_t *ctx);
+uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
+uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx);
+uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx);
+uint8_t *get_ctx_device_id(Sky_ctx_t *ctx);
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
+
 int32_t get_num_aps(Sky_ctx_t *ctx);
 uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx);

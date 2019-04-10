@@ -230,6 +230,83 @@ void dump_cache(Sky_ctx_t *ctx)
 	}
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (ctx request)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return pointer to request buffer
+ */
+uint8_t *get_ctx_request(Sky_ctx_t *ctx)
+{
+	return ctx->request;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx request_size)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return size of request buffer
+ */
+size_t get_ctx_request_size(Sky_ctx_t *ctx)
+{
+	return sizeof(ctx->request);
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx partner_id)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return partner_id
+ */
+uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
+{
+	return ctx->cache->sky_partner_id;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_aes_key
+ */
+uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
+{
+	return ctx->cache->sky_aes_key;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key_id)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_aes_key_id
+ */
+uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx)
+{
+	return ctx->cache->sky_aes_key_id;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_device_id
+ */
+uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
+{
+	return ctx->cache->sky_device_id;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_id_len
+ */
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
+{
+	return ctx->cache->sky_id_len;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (count beacons)
  *
  *  @param ctx workspace buffer
