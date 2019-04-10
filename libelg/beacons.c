@@ -30,7 +30,7 @@
 #include "libelg.h"
 #include "utilities.h"
 
-void dump(Sky_ctx_t *ctx);
+void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
 
 /*! \brief test two MAC addresses for being virtual aps
@@ -202,7 +202,7 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 	       "filter_virtual_aps: ap_low: %d, ap_len: %d of %d APs",
 	       ctx->ap_low, (int)ctx->ap_len, (int)ctx->len);
-	dump(ctx);
+	dump_workspace(ctx);
 
 	if (ctx->ap_len < MAX_AP_BEACONS)
 		return SKY_ERROR;
@@ -220,13 +220,13 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 					   ctx->beacon[j].ap.mac)) < 0) {
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "remove_beacon: %d similar to %d", j, i);
-				dump(ctx);
+				dump_workspace(ctx);
 				remove_beacon(ctx, j);
 				return SKY_SUCCESS;
 			} else if (cmp > 0) {
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "remove_beacon: %d similar to %d", i, j);
-				dump(ctx);
+				dump_workspace(ctx);
 				remove_beacon(ctx, i);
 				return SKY_SUCCESS;
 			}
@@ -457,7 +457,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s:", __FUNCTION__);
 
-	dump(ctx);
+	dump_workspace(ctx);
 	dump_cache(ctx);
 
 	/* Find best match in cache */

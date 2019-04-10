@@ -137,6 +137,99 @@ int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...)
 #endif
 }
 
+/*! \brief dump the beacons in the workspace
+ *
+ *  @param ctx workspace pointer
+ *
+ *  @returns 0 for success or negative number for error
+ */
+void dump_workspace(Sky_ctx_t *ctx)
+{
+	int i;
+
+	logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+	       "WorkSpace: Expect %d, got %d, AP %d starting at %d, connected %d",
+	       ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low, ctx->connected);
+	for (i = 0; i < ctx->len; i++) {
+		switch (ctx->beacon[i].h.type) {
+		case SKY_BEACON_AP:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
+			       i, ctx->beacon[i].ap.mac[0],
+			       ctx->beacon[i].ap.mac[1],
+			       ctx->beacon[i].ap.mac[2],
+			       ctx->beacon[i].ap.mac[3],
+			       ctx->beacon[i].ap.mac[4],
+			       ctx->beacon[i].ap.mac[5],
+			       ctx->beacon[i].ap.rssi);
+			break;
+		case SKY_BEACON_GSM:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
+			       i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
+			       ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
+			       ctx->beacon[i].gsm.rssi);
+			break;
+		case SKY_BEACON_NBIOT:
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+			       i, ctx->beacon[i].nbiot.mcc,
+			       ctx->beacon[i].nbiot.mnc,
+			       ctx->beacon[i].nbiot.e_cellid,
+			       ctx->beacon[i].nbiot.tac,
+			       ctx->beacon[i].nbiot.rssi);
+			break;
+		}
+	}
+}
+
+/*! \brief dump the beacons in the cache
+ *
+ *  @param ctx workspace pointer
+ *
+ *  @returns 0 for success or negative number for error
+ */
+void dump_cache(Sky_ctx_t *ctx)
+{
+	int i, j;
+	Sky_cacheline_t *c;
+	Beacon_t *b;
+
+	for (i = 0; i < CACHE_SIZE; i++) {
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d", i,
+		       CACHE_SIZE);
+		c = &ctx->cache->cacheline[i];
+		for (j = 0; j < c->len; j++) {
+			b = &c->beacon[j];
+			switch (b->h.type) {
+			case SKY_BEACON_AP:
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "cache % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
+				       i, b->ap.mac[0], b->ap.mac[1],
+				       b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
+				       b->ap.mac[5], b->ap.rssi, c->gps.lat,
+				       c->gps.lon, c->gps.hpe);
+				break;
+			case SKY_BEACON_GSM:
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: %d, %.2f,%.2f,%d",
+				       i, b->gsm.lac, b->gsm.ci, b->gsm.mcc,
+				       b->gsm.mnc, b->gsm.rssi, c->gps.lat,
+				       c->gps.lon, c->gps.hpe);
+				break;
+			case SKY_BEACON_NBIOT:
+				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+				       "cache % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
+				       i, b->nbiot.mcc, b->nbiot.mnc,
+				       b->nbiot.e_cellid, b->nbiot.tac,
+				       b->nbiot.rssi, c->gps.lat, c->gps.lon,
+				       c->gps.hpe);
+				break;
+			}
+		}
+	}
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (count beacons)
  *
  *  @param ctx workspace buffer

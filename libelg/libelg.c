@@ -499,6 +499,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	if (!validate_workspace(ctx))
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
+	/* There must be at least one beacon */
 	if (ctx->len == 0)
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 

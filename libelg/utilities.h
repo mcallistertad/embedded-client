@@ -27,6 +27,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 			bool is_connected);
 int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...);
+void dump_workspace(Sky_ctx_t *ctx);
 
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
