@@ -53,7 +53,7 @@ struct ap {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint8_t mac[MAC_SIZE];
-	uint32_t time;
+	uint32_t age;
 	uint32_t channel;
 	int8_t rssi;
 	uint8_t flag; /* bit fields:                                        */
@@ -71,7 +71,7 @@ struct gsm {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint32_t ci;
-	uint32_t time;
+	uint32_t age;
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
@@ -82,7 +82,7 @@ struct gsm {
 struct cdma {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	uint32_t time;
+	uint32_t age;
 	uint16_t sid;
 	uint16_t nid;
 	uint16_t bsid;
@@ -93,7 +93,7 @@ struct umts {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint32_t ci;
-	uint32_t time;
+	uint32_t age;
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
@@ -103,7 +103,7 @@ struct umts {
 struct lte {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	uint32_t time;
+	uint32_t age;
 	uint32_t eucid;
 	uint16_t mcc;
 	uint16_t mnc;
@@ -124,7 +124,7 @@ struct ble {
 struct nbiot {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	uint32_t time;
+	uint32_t age;
 	uint16_t mcc;
 	uint16_t mnc;
 	uint32_t e_cellid;
@@ -154,7 +154,7 @@ typedef struct gps {
 	float alt; // altitude
 	float hpe;
 	float speed;
-	uint32_t time;
+	uint32_t age;
 	uint8_t nsat;
 	uint8_t fix;
 } Gps_t;

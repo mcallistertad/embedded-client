@@ -35,6 +35,6 @@
 
 /*! \brief The number of entries in the scan/response cache
  */
-#define CACHE_SIZE 3
+#define CACHE_SIZE 2
 
 #endif

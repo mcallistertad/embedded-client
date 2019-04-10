@@ -435,8 +435,8 @@ int main(int ac, char **av)
 				       "get_ap_is_connected:      %d, %d", i,
 				       get_ap_is_connected(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_ap_time:      %d, %d", i,
-				       get_ap_time(ctx, i));
+				       "get_ap_age:      %d, %d", i,
+				       get_ap_age(ctx, i));
 			}
 		if (t == SKY_BEACON_GSM)
 			for (i--; i >= 0; i--) {
@@ -459,8 +459,8 @@ int main(int ac, char **av)
 				       "get_gsm_is_connected:      %d, %d", i,
 				       get_gsm_is_connected(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_gsm_time:      %d, %d", i,
-				       get_gsm_time(ctx, i));
+				       "get_gsm_age:      %d, %d", i,
+				       get_gsm_age(ctx, i));
 			}
 		if (t == SKY_BEACON_NBIOT)
 			for (i--; i >= 0; i--) {
@@ -483,8 +483,8 @@ int main(int ac, char **av)
 				       "get_nbiot_is_connected:      %d, %d", i,
 				       get_nbiot_is_connected(ctx, i));
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-				       "get_nbiot_time:      %d, %d", i,
-				       get_nbiot_time(ctx, i));
+				       "get_nbiot_age:      %d, %d", i,
+				       get_nbiot_age(ctx, i));
 			}
 	}
 

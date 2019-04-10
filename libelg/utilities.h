@@ -22,7 +22,8 @@ Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c);
 Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
-int find_best_match(Sky_ctx_t *ctx);
+#define get_cache(ctx) (find_best_match(ctx, 0))
+int find_best_match(Sky_ctx_t *ctx, bool put);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 			bool is_connected);
 int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...);
@@ -35,7 +36,7 @@ uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_ap_time(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int32_t get_num_gsm(Sky_ctx_t *ctx);
 uint64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx);
@@ -44,7 +45,7 @@ int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_time(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int32_t get_num_nbiot(Sky_ctx_t *ctx);
 int64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx);
@@ -54,5 +55,5 @@ int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_lac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_time(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
 #endif

@@ -278,13 +278,13 @@ int64_t get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon timestamp info
  */
-int64_t get_ap_time(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
-	return ctx->beacon[ctx->ap_low + idx].ap.time;
+	return ctx->beacon[ctx->ap_low + idx].ap.age;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num gsm)
@@ -406,13 +406,13 @@ int64_t get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon timestamp info
  */
-int64_t get_gsm_time(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
-	return ctx->beacon[ctx->ap_low + idx].gsm.time;
+	return ctx->beacon[ctx->ap_low + idx].gsm.age;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num nbiot)
@@ -539,12 +539,12 @@ int64_t get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon timestamp info
  */
-int64_t get_nbiot_time(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
 		return 0;
 	}
 	return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-		.nbiot.time;
+		.nbiot.age;
 }

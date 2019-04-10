@@ -358,10 +358,11 @@ Sky_status_t beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
  *  if beacon is AP, filter
  *
  *  @param ctx Skyhook request context
+ *  @param put boolean which reflects put or get from cache
  *
  *  @return index of best match or empty cacheline or -1
  */
-int find_best_match(Sky_ctx_t *ctx)
+int find_best_match(Sky_ctx_t *ctx, bool put)
 {
 	int i, j;
 	float score[CACHE_SIZE];
@@ -371,8 +372,11 @@ int find_best_match(Sky_ctx_t *ctx)
 	/* score each cache line wrt beacon match ratio */
 	for (i = 0; i < CACHE_SIZE; i++) {
 		score[i] = 0;
-		if (ctx->cache->cacheline[i].time == 0)
-			score[i] = TOTAL_BEACONS;
+		if (put && ctx->cache->cacheline[i].time == 0)
+			score[i] =
+				TOTAL_BEACONS; /* looking for match for put, fill empty cache first */
+		else if (ctx->cache->cacheline[i].time == 0)
+			continue; /* looking for match for get, ignore empty cache */
 		else
 			for (j = 0; j < ctx->cache->cacheline[i].len; j++) {
 				if (beacon_in_cache(ctx, &ctx->beacon[j],
@@ -392,9 +396,19 @@ int find_best_match(Sky_ctx_t *ctx)
 		}
 	}
 
-	if (best * 100 > CACHE_MATCH_THRESHOLD) {
-		logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: pick cache %d score %.2f",
-		       __FUNCTION__, bestc, score[bestc] * 100);
+	/* if match is for get, must meet threshold */
+	if (!put) {
+		if (best * 100 > CACHE_MATCH_THRESHOLD) {
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "%s: location in cache, pick cache %d of 0..%d score %.2f",
+			       __FUNCTION__, bestc, CACHE_SIZE - 1,
+			       score[bestc] * 100);
+			return bestc;
+		}
+	} else if (bestc >= 0) {
+		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		       "%s: save location in best cache, %d of 0..%d score %.2f",
+		       __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
 		return bestc;
 	}
 	return -1;
@@ -450,7 +464,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 	/*    yes - add entry here */
 	/* else find oldest cache entry */
 	/*    yes - add entryu here */
-	if ((i = find_best_match(ctx)) < 0) {
+	if ((i = find_best_match(ctx, 1)) < 0) {
 		i = find_oldest(ctx);
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "%s: find_oldest chose cache %d of 0..%d", __FUNCTION__,

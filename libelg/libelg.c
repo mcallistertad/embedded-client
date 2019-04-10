@@ -270,7 +270,12 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	b.h.magic = BEACON_MAGIC;
 	b.h.type = SKY_BEACON_AP;
 	memcpy(b.ap.mac, mac, MAC_SIZE);
-	b.ap.time = timestamp;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		b.ap.age = ctx->header.time - timestamp;
+	else
+		b.ap.age = 0;
 	b.ap.channel = channel;
 	b.ap.rssi = rssi;
 	b.ap.flag = 0; /* TODO map channel? */
@@ -334,7 +339,12 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* Create GSM beacon */
 	i = (++ctx->len) - 1;
 	ctx->beacon[i].h.type = SKY_BEACON_GSM;
-	ctx->beacon[i].gsm.time = timestamp;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		ctx->beacon[i].gsm.age = ctx->header.time - timestamp;
+	else
+		ctx->beacon[i].gsm.age = 0;
 	ctx->beacon[i].gsm.lac = lac;
 	ctx->beacon[i].gsm.ci = ci;
 	ctx->beacon[i].gsm.mcc = mcc;
@@ -424,7 +434,12 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* Create NB IoT beacon */
 	i = (++ctx->len) - 1;
 	ctx->beacon[i].h.type = SKY_BEACON_NBIOT;
-	ctx->beacon[i].nbiot.time = timestamp;
+	/* If beacon has meaningful timestamp */
+	/* scan was before sky_new_request and since Mar 1st 2019 */
+	if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+		ctx->beacon[i].nbiot.age = ctx->header.time - timestamp;
+	else
+		ctx->beacon[i].nbiot.age = 0;
 	ctx->beacon[i].nbiot.mcc = mcc;
 	ctx->beacon[i].nbiot.mnc = mnc;
 	ctx->beacon[i].nbiot.e_cellid = e_cellid;
@@ -488,7 +503,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
 	/* check cache against beacons for match */
-	if ((c = find_best_match(ctx)) >= 0) {
+	if ((c = get_cache(ctx)) >= 0) {
 		if (lat != NULL)
 			*lat = ctx->cache->cacheline[c].gps.lat;
 		if (lon != NULL)
