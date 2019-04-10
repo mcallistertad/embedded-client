@@ -65,7 +65,7 @@ static int similar(uint8_t macA[], uint8_t macB[])
 /*! \brief shuffle list to remove the beacon at index
  *
  *  @param ctx Skyhook request context
- *  @param int index 0 based index of AP to remove
+ *  @param index 0 based index of AP to remove
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
@@ -146,9 +146,8 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 /*! \brief try to reduce AP by filtering out based on diversity of rssi
  *
  *  @param ctx Skyhook request context
- *  @param int index 0 based index of last AP added
  *
- *  @return true if AP removed, or false
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
@@ -190,9 +189,8 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 /*! \brief try to reduce AP by filtering out virtual AP
  *
  *  @param ctx Skyhook request context
- *  @param int index 0 based index of last AP added
  *
- *  @return true if AP removed, or false
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
 static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 {
@@ -241,7 +239,7 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param beacon pointer to new beacon
+ *  @param b pointer to new beacon
  *  @param is_connected This beacon is currently connected
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
@@ -284,7 +282,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 /*! \brief check if a beacon is in a cacheline
  *
  *  @param ctx Skyhook request context
- *  @param beacon pointer to new beacon
+ *  @param b pointer to new beacon
+ *  @param cl pointer to cacheline
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
@@ -444,9 +443,7 @@ int find_oldest(Sky_ctx_t *ctx)
  *  if beacon is AP, filter
  *
  *  @param ctx Skyhook request context
- *  @param sky_errno skyErrno is set to the error code
- *  @param beacon pointer to new beacon
- *  @param is_connected This beacon is currently connected
+ *  @param loc pointer to location info
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */

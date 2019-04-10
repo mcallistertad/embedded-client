@@ -41,7 +41,6 @@ static int (*sky_logf)(Sky_log_level_t level, const char *s, int max);
 static Sky_log_level_t sky_min_level;
 
 /* Local functions */
-void dump_cache(Sky_ctx_t *ctx);
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key_id(uint32_t aes_key_id);
@@ -54,7 +53,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *
  *  @return -1, 0 or 1 based on beacon type less, equal or greater
  */
-int32_t cmp_beacon(const void *a, const void *b)
+static int32_t cmp_beacon(const void *a, const void *b)
 {
 	// Sort on type, low-to-high.
 	int8_t typeA = ((Beacon_t *)a)->h.type;
@@ -417,7 +416,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 					uint16_t mcc, uint16_t mnc,
 					uint32_t e_cellid, uint32_t tac,
-					time_t timestamp, int16_t rssi,
+					time_t timestamp, int16_t nrsrp,
 					bool is_connected)
 {
 	int i;
@@ -444,7 +443,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	ctx->beacon[i].nbiot.mnc = mnc;
 	ctx->beacon[i].nbiot.e_cellid = e_cellid;
 	ctx->beacon[i].nbiot.tac = tac;
-	ctx->beacon[i].nbiot.rssi = rssi;
+	ctx->beacon[i].nbiot.rssi = nrsrp;
 	if (is_connected)
 		ctx->connected = i;
 	/* sort beacons by type */
@@ -650,6 +649,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state)
 /*! \brief sanity check the device_id
  *
  *  @param device_id this is expected to be a binary mac address
+ *  @param id_len length of device_id
  *
  *  @return true or false
  */

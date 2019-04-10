@@ -71,8 +71,9 @@ void set_mac(uint8_t *mac)
 
 /*! \brief validate fundamental functionality of the ELG IoT library
  *
- *  @param ac arg count
- *  @param av arg vector
+ *  @param level log level of this message
+ *  @param s this message
+ *  @param max maximum length of this message
  *
  *  @returns 0 for success or negative number for error
  */
@@ -91,8 +92,6 @@ int logger(Sky_log_level_t level, const char *s, int max)
 }
 
 /*! \brief check for saved cache state
- *
- *  @param void
  *
  *  @returns NULL for failure to restore cache, pointer to cache otherwise
  */
@@ -125,7 +124,7 @@ Sky_cache_t *nv_cache(void)
 
 /*! \brief save cache state
  *
- *  @param void
+ *  @param p pointer to cache buffer
  *
  *  @returns 0 for success or negative number for error
  */

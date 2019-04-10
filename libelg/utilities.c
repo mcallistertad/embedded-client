@@ -72,7 +72,7 @@ int validate_workspace(Sky_ctx_t *ctx)
 
 /*! \brief validate the cache buffer
  *
- *  @param cache pointer to cache buffer
+ *  @param c pointer to cache buffer
  *
  *  @return true if cache is valid, else false
  */
@@ -383,7 +383,6 @@ int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
 /*! \brief field extraction for dynamic use of Nanopb (num gsm)
  *
  *  @param ctx workspace buffer
- *  @param idx index into beacons
  *
  *  @return number of gsm beacons
  */
@@ -511,7 +510,6 @@ int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx)
 /*! \brief field extraction for dynamic use of Nanopb (num nbiot)
  *
  *  @param ctx workspace buffer
- *  @param idx index into beacons
  *
  *  @return number of nbiot beacons
  */

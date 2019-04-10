@@ -62,10 +62,11 @@ uint32_t sky_aes_key_id = 3;
 uint8_t sky_aes_key[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 			  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-/*! \brief validate fundamental functionality of the ELG IoT library
+/*! \brief log function
  *
- *  @param ac arg count
- *  @param av arg vector
+ *  @param level log level of this message
+ *  @param s this message
+ *  @param max maximum length of this message
  *
  *  @returns 0 for success or negative number for error
  */
