@@ -52,7 +52,7 @@ typedef struct sky_cacheline {
 
 typedef struct sky_cache {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
-	uint8_t sky_id_len; /* device ID len */
+	uint32_t sky_id_len; /* device ID len */
 	uint8_t sky_device_id[MAC_SIZE]; /* device ID */
 	uint32_t sky_partner_id; /* partner ID */
 	uint32_t sky_aes_key_id; /* aes key ID */
