@@ -202,13 +202,16 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 	       ctx->ap_low, (int)ctx->ap_len, (int)ctx->len);
 	dump_workspace(ctx);
 
-	if (ctx->ap_len < MAX_AP_BEACONS)
+	if (ctx->ap_len < MAX_AP_BEACONS) {
+		logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: too many AP beacons",
+		       __FUNCTION__);
 		return SKY_ERROR;
+	}
 
 	/* look for any AP beacon that is 'similar' to another */
 	if (ctx->beacon[ctx->ap_low].h.type != SKY_BEACON_AP) {
-		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-		       "filter_virtual_aps: beacon type not AP");
+		logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: beacon type not AP",
+		       __FUNCTION__);
 		return SKY_ERROR;
 	}
 
@@ -250,11 +253,11 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 	int i = -1;
 
 	/* check if maximum number of non-AP beacons already added */
-	if (b->h.type == SKY_BEACON_AP &&
+	if (b->h.type != SKY_BEACON_AP &&
 	    ctx->len - ctx->ap_len > (TOTAL_BEACONS - MAX_AP_BEACONS)) {
-		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-		       "add_beacon: (b->h.type %d) (ctx->len - ctx->ap_len %d)",
-		       b->h.type, ctx->len - ctx->ap_len);
+		logfmt(ctx, SKY_LOG_LEVEL_WARNING,
+		       "%s: too many (b->h.type: %d) (ctx->len - ctx->ap_len: %d)",
+		       __FUNCTION__, b->h.type, ctx->len - ctx->ap_len);
 		return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 	}
 
@@ -271,8 +274,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 	/* beacon is AP and need filter */
 	if (filter_virtual_aps(ctx) == SKY_ERROR)
 		if (filter_by_rssi(ctx) == SKY_ERROR) {
-			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-			       "add_beacon: failed to filter");
+			logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: failed to filter",
+			       __FUNCTION__);
 			return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 		}
 
@@ -473,7 +476,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 	for (j = 0; j < TOTAL_BEACONS; j++) {
 		ctx->cache->cacheline[i].len = ctx->len;
 		ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
-		ctx->cache->cacheline[i].gps = *loc;
+		ctx->cache->cacheline[i].loc = *loc;
 		ctx->cache->cacheline[i].time = time(NULL);
 	}
 	return SKY_SUCCESS;

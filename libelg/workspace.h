@@ -47,7 +47,7 @@ typedef struct sky_cacheline {
 	int16_t len; /* number of beacons */
 	uint32_t time;
 	Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
-	Sky_location_t gps; /* GPS info */
+	Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
 typedef struct sky_cache {
@@ -57,7 +57,6 @@ typedef struct sky_cache {
 	uint32_t sky_partner_id; /* partner ID */
 	uint32_t sky_aes_key_id; /* aes key ID */
 	uint8_t sky_aes_key[16]; /* aes key */
-	struct AES_ctx aes_ctx; /* aes context */
 	int len; /* number of cache lines */
 	Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 } Sky_cache_t;

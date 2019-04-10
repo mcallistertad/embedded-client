@@ -18,6 +18,9 @@
 #ifndef SKY_CONFIG_H
 #define SKY_CONFIG_H
 
+/* Change to false to remove all calls to logging */
+#define SKY_DEBUG true
+
 /*! \brief The maximum number of beacons passed to the ELG server in a request
  */
 #define TOTAL_BEACONS 11

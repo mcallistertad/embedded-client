@@ -25,8 +25,6 @@
 
 #define SKY_PROTOCOL_VERSION 3
 
-#define SKY_DEBUG true
-
 #define URL_SIZE 512
 #define AUTH_SIZE 512
 

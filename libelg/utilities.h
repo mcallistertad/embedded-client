@@ -18,6 +18,13 @@
 #ifndef SKY_UTILITIES_H
 #define SKY_UTILITIES_H
 
+#if SKY_DEBUG
+#define LOGFMT(ctx, fmt, ...) logfmt(ctx, fmt, ...)
+#else
+#define LOGFMT(ctx, fmt, ...)                                                  \
+	if (0)                                                                 \
+	logfmt(ctx, fmt, ...)
+#endif
 Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c);

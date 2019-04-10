@@ -489,11 +489,11 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* check cache against beacons for match */
 	if ((c = get_cache(ctx)) >= 0) {
 		if (lat != NULL)
-			*lat = ctx->cache->cacheline[c].gps.lat;
+			*lat = ctx->cache->cacheline[c].loc.lat;
 		if (lon != NULL)
-			*lon = ctx->cache->cacheline[c].gps.lon;
+			*lon = ctx->cache->cacheline[c].loc.lon;
 		if (hpe != NULL)
-			*hpe = ctx->cache->cacheline[c].gps.hpe;
+			*hpe = ctx->cache->cacheline[c].loc.hpe;
 		sky_errno = SKY_ERROR_NONE;
 		return SKY_FINALIZE_LOCATION;
 	}
@@ -539,7 +539,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
 	/* Add location and current beacons to Cache */
 	if (add_cache(ctx, &loc) == SKY_ERROR) {
-		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+		logfmt(ctx, SKY_LOG_LEVEL_ERROR,
 		       "sky_decode_response: failed to add to cache");
 		return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
 	}

@@ -207,23 +207,23 @@ void dump_cache(Sky_ctx_t *ctx)
 				       "cache % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
 				       i, b->ap.mac[0], b->ap.mac[1],
 				       b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
-				       b->ap.mac[5], b->ap.rssi, c->gps.lat,
-				       c->gps.lon, c->gps.hpe);
+				       b->ap.mac[5], b->ap.rssi, c->loc.lat,
+				       c->loc.lon, c->loc.hpe);
 				break;
 			case SKY_BEACON_GSM:
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: %d, %.2f,%.2f,%d",
 				       i, b->gsm.lac, b->gsm.ci, b->gsm.mcc,
-				       b->gsm.mnc, b->gsm.rssi, c->gps.lat,
-				       c->gps.lon, c->gps.hpe);
+				       b->gsm.mnc, b->gsm.rssi, c->loc.lat,
+				       c->loc.lon, c->loc.hpe);
 				break;
 			case SKY_BEACON_NBIOT:
 				logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 				       "cache % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
 				       i, b->nbiot.mcc, b->nbiot.mnc,
 				       b->nbiot.e_cellid, b->nbiot.tac,
-				       b->nbiot.rssi, c->gps.lat, c->gps.lon,
-				       c->gps.hpe);
+				       b->nbiot.rssi, c->loc.lat, c->loc.lon,
+				       c->loc.hpe);
 				break;
 			}
 		}
