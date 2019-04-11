@@ -32,19 +32,23 @@ int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
 
+uint8_t *get_ctx_request(Sky_ctx_t *ctx);
+size_t get_ctx_request_size(Sky_ctx_t *ctx);
+uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
+uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx);
+uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx);
+uint8_t *get_ctx_device_id(Sky_ctx_t *ctx);
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
+
+
 // Encode and encrypt request into buffer.
-int32_t serialize_request(Sky_ctx_t* ctx,
-                          uint8_t* buf,
-                          size_t buf_len,
-                          uint32_t partner_id,
-                          uint8_t aes_key[16],
-                          uint8_t* device_id,
-                          uint32_t device_id_length);
+int32_t serialize_request(Sky_ctx_t* ctx);
 
 // Decrypt and decode response info from buffer.
-int32_t deserialize_response(uint8_t* buf,
-                             size_t buf_len,
-                             uint8_t aes_key[16],
-                             Rs* rs);
-
+int32_t deserialize_response(Sky_ctx_t* ctx,
+                             uint8_t* buf,
+                             uint32_t buf_len,
+                             float* lat,
+                             float* lon,
+                             uint32_t* hpe);
 #endif

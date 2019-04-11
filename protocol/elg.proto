@@ -111,5 +111,5 @@ message NbiotCells {
 message Rs {
     double lat = 1;
     double lon = 2;
-    float hpe = 3;
+    uint32 hpe = 3;
 }

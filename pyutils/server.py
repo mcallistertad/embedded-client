@@ -30,6 +30,9 @@ class RequestHandler(socketserver.BaseRequestHandler):
     def forward_rq_to_api_server(self, rq, api_key):
         result = None
         error_msg = None
+        lat = lon = hpe = 0
+
+        logger = logging.getLogger('handler')
 
         try:
             root = ET.Element('LocationRQ')
@@ -47,7 +50,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             # AP scans.
             if rq.aps:
-                aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.channel_number))
+                aps = list(zip(rq.aps.mac, [-neg_rssi for neg_rssi in rq.aps.neg_rssi], rq.aps.channel_number))
 
                 for ap in aps:
                     ap_elem = ET.SubElement(root, 'access-point')
@@ -80,7 +83,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
             hpe = float(location.find('hpe').text)
 
         except Exception as e:
-            raise
+            logger.error(type(e).__name__ + ': ' + str(e))
 
         return lat, lon, hpe
 

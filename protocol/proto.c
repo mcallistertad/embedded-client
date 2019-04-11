@@ -217,18 +217,12 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     return true;
 }
 
-int32_t serialize_request(Sky_ctx_t* ctx,
-                          uint8_t* buf,
-                          size_t buf_len,
-                          uint32_t partner_id,
-                          uint8_t aes_key[16],
-                          uint8_t* device_id,
-                          uint32_t device_id_length)
+int32_t serialize_request(Sky_ctx_t* ctx)
 {
     // Initialize request header.
     RqHeader rq_hdr;
 
-    rq_hdr.partner_id = partner_id;
+    rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // Initialize crypto_info.
     CryptoInfo rq_crypto_info;
@@ -242,7 +236,7 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     struct AES_ctx aes_ctx;
 
-    AES_init_ctx_iv(&aes_ctx, aes_key, aes_iv_buf);
+    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), aes_iv_buf);
 
     // Initialize request body.
     Rq rq;
@@ -253,8 +247,8 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     rq.timestamp = (int64_t) time(NULL);
 
-    memcpy(rq.device_id.bytes, device_id, device_id_length);
-    rq.device_id.size = device_id_length;
+    memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
+    rq.device_id.size = get_ctx_id_length(ctx);
 
     // Create and serialize the request header message.
     size_t rq_size;
@@ -278,9 +272,13 @@ int32_t serialize_request(Sky_ctx_t* ctx,
 
     pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
+    size_t buf_len = get_ctx_request_size(ctx);
+
     // Return an error indication if the supplied buffer is too small.
     if (1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length > buf_len)
         return -1;
+
+    uint8_t* buf = get_ctx_request(ctx);
 
     *buf = (uint8_t) hdr_size;
 
@@ -323,10 +321,12 @@ int32_t serialize_request(Sky_ctx_t* ctx,
     return bytes_written + aes_padding_length;
 }
 
-int32_t deserialize_response(uint8_t* buf,
-                             size_t buf_len,
-                             uint8_t aes_key[16],
-                             Rs* rs)
+int32_t deserialize_response(Sky_ctx_t* ctx,
+                             uint8_t* buf,
+                             uint32_t buf_len,
+                             float* lat,
+                             float* lon,
+                             uint32_t* hpe)
 {
     // We assume that buf contains the response message in its entirety. (Since
     // the server closes the connection after sending the response, the client
@@ -336,11 +336,17 @@ int32_t deserialize_response(uint8_t* buf,
     // Deserialize the header. First byte of input buffer represents length of
     // header.
     //
+    if (buf_len < 1)
+        return -1;
+
     uint8_t hdr_size = *buf;
 
     buf += 1;
 
     RsHeader header;
+
+    if (buf_len < 1 + hdr_size)
+        return -1;
 
     pb_istream_t hdr_istream = pb_istream_from_buffer(buf, hdr_size);
 
@@ -353,6 +359,9 @@ int32_t deserialize_response(uint8_t* buf,
 
     // Deserialize the crypto_info.
     CryptoInfo crypto_info;
+
+    if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
+        return -1;
 
     pb_istream_t crypto_info_istream = 
         pb_istream_from_buffer(buf, header.crypto_info_length);
@@ -367,19 +376,25 @@ int32_t deserialize_response(uint8_t* buf,
     // Decrypt the response body.
     struct AES_ctx aes_ctx;
 
-    AES_init_ctx_iv(&aes_ctx, aes_key, crypto_info.iv.bytes);
+    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), crypto_info.iv.bytes);
 
-    size_t body_size = buf_len - 1 - hdr_size - header.crypto_info_length;
-
-    AES_CBC_decrypt_buffer(&aes_ctx, buf, body_size);
+    AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
 
     // Deserialize the response body.
-    pb_istream_t body_info_istream = pb_istream_from_buffer(buf, body_size - crypto_info.aes_padding_length);
+    pb_istream_t body_info_istream = pb_istream_from_buffer(buf, header.rs_length - crypto_info.aes_padding_length);
 
-    if (!pb_decode(&body_info_istream, Rs_fields, rs))
+    Rs rs = Rs_init_default;
+
+    if (!pb_decode(&body_info_istream, Rs_fields, &rs))
     {
         return -1;
     }
+    else
+    {
+        *lat = rs.lat;
+        *lon = rs.lon;
+        *hpe = rs.hpe;
 
-    return 0;
+        return 0;
+    }
 }

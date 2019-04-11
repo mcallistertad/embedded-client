@@ -179,6 +179,14 @@ int64_t get_nbiot_age(Sky_ctx_t* ctx, uint32_t idx)
     return nbiot_cells[idx].age;
 }
 
+static unsigned char buf[1024];
+
+uint8_t *get_ctx_request(Sky_ctx_t *ctx) { return buf; }
+
+size_t get_ctx_request_size(Sky_ctx_t *ctx) { return sizeof(buf); }
+
+uint32_t get_ctx_partner_id(Sky_ctx_t *ctx) { return 2; }
+
 static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
 {
     const char* pos = hex_str;
@@ -190,6 +198,25 @@ static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_
         pos += 2;
     }
 }
+
+uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
+{
+    static unsigned char aes_key[16];
+    hex_str_to_bin(AES_KEY, aes_key, sizeof(aes_key));
+    return aes_key;
+}
+
+uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx) { return 0; }
+
+static unsigned char device_id[6]; // e.g., MAC address.
+
+uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
+{
+    hex_str_to_bin(CLIENT_MAC, device_id, sizeof(device_id));
+    return device_id;
+}
+
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx) { return sizeof(device_id); }
 
 /* ------- End of standin for Geoff's stuff --------------------- */
 
@@ -220,24 +247,8 @@ int main(int argc, char** argv)
     (void) argc;
     (void) argv;
 
-    // Initialize request message.
-
-    unsigned char aes_key[16];
-    hex_str_to_bin(AES_KEY, aes_key, sizeof(aes_key));
-
-    unsigned char device_id[6]; // e.g., MAC address.
-    hex_str_to_bin(CLIENT_MAC, device_id, sizeof(device_id));
-
     // Serialize request.
-    unsigned char buf[1024];
-
-    int32_t len = serialize_request(NULL,
-                                    buf,
-                                    sizeof(buf),
-                                    PARTNER_ID,
-                                    aes_key,
-                                    device_id,
-                                    sizeof(device_id));
+    int32_t len = serialize_request(0);
 
     if (len < 0)
     {
@@ -314,14 +325,15 @@ int main(int argc, char** argv)
     // Read response.
     rc = recv(sockfd, &buf, sizeof(buf), MSG_WAITALL);
 
-    Rs rs;
+    float lat, lon;
+    uint32_t hpe;
 
-    if (deserialize_response(buf, rc, aes_key, &rs) < 0)
+    if (deserialize_response(0, get_ctx_request(0), get_ctx_request_size(0), &lat, &lon, &hpe) < 0)
     {
         printf("deserialization failed!\n");
     }
     else
     {
-        printf("lat/lon/hpe = %f/%f/%f\n", rs.lat, rs.lon, rs.hpe);
+        printf("lat/lon/hpe = %f/%f/%u\n", lat, lon, hpe);
     }
 }
