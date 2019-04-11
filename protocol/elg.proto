@@ -29,37 +29,83 @@ message RsHeader {
 
 message CryptoInfo {
     bytes iv=1; // Always 16 bytes in length
-
     int32 aes_padding_length = 2;
 }
 
 // Message body definitions.
 //
 message Rq {
-    int64 client_mac = 1;
-    Aps aps = 2;
-    LteCells lte_cells = 3;
+    bytes device_id = 1;
+    uint64 timestamp = 2; // Seconds since epoch (Jan 1, 1970)
+    Aps aps = 3;
+    GsmCells gsm_cells = 4;
+    UmtsCells umts_cells = 5;
+    LteCells lte_cells = 6;
+    CdmaCells cdma_cells = 7;
+    NbiotCells nbiot_cells = 8;
 }
 
 message Aps {
-    enum ApBand {
-        UNKNOWN = 0;
-        BAND_2_4 = 1;
-        BAND_5 = 2;
-    }
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any AP
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated int64 mac = 3;
+    repeated int32 channel_number = 4;
+    repeated uint32 neg_rssi = 5; // -rssi
+    repeated uint32 age = 6; // Not valued if all ages are the same. common_age_plus_1 sent instead in this case.
+}
 
-    repeated int64 mac = 1;
-    repeated sint32 rssi = 2;
-    repeated ApBand band = 3;
-    // repeated bool connected = 4;
+message GsmCells {
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 lac = 5;
+    repeated uint32 ci = 6;
+    repeated uint32 neg_rssi = 7; // -rssi
+    repeated uint32 age = 8;
+}
+
+message UmtsCells {
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 lac = 5;
+    repeated uint32 ci = 6;
+    repeated uint32 neg_rscp = 7; // -rscp
+    repeated uint32 age = 8;
+}
+
+message CdmaCells {
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 sid = 3;
+    repeated uint32 nid = 4;
+    repeated uint32 bsid = 5;
+    repeated uint32 neg_rssi = 6; // -rssi
+    repeated uint32 age = 7;
 }
 
 message LteCells {
-    repeated uint32 age = 1;
-    repeated uint32 eucid = 2;
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
     repeated uint32 mcc = 3;
     repeated uint32 mnc = 4;
-    repeated sint32 rssi = 5;
+    repeated uint32 tac = 5;
+    repeated uint32 eucid = 6;
+    repeated uint32 neg_rsrp = 7; // -rsrp
+    repeated uint32 age = 8;
+}
+
+message NbiotCells {
+    uint32 connected_beacon_idx_plus_1 = 1; // 0 means that device is not connected to any beacon
+    uint32 common_age_plus_1 = 2; // Valued only if all age values are the same.
+    repeated uint32 mcc = 3;
+    repeated uint32 mnc = 4;
+    repeated uint32 tac = 5;
+    repeated uint32 e_cellid = 6;
+    repeated uint32 neg_nrsrp = 7; // -nrsrp
+    repeated uint32 age = 8;
 }
 
 message Rs {

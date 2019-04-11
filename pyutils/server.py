@@ -47,7 +47,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             # AP scans.
             if rq.aps:
-                aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.band))
+                aps = list(zip(rq.aps.mac, rq.aps.rssi, rq.aps.channel_number))
 
                 for ap in aps:
                     ap_elem = ET.SubElement(root, 'access-point')
@@ -101,6 +101,8 @@ class RequestHandler(socketserver.BaseRequestHandler):
             #
             hdr_len = int.from_bytes(self.request.recv(1), byteorder='little')
 
+            logger.info("header length: {}".format(hdr_len))
+
             buf = bytearray()
 
             while len(buf) < hdr_len:
@@ -140,8 +142,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
             self.request.sendall(hdr_len.to_bytes(1, byteorder='little') + response)
         except Exception as e:
-            logger.error("Error for partner ID {}: ".format(header.partner_id) +
-                    type(e).__name__ + ': ' + str(e))
+            logger.error("Error handling request: " + type(e).__name__ + ': ' + str(e))
 
 
 if __name__ == "__main__":

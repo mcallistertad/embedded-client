@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "aes.h"
 #include "proto.h"
 
 //#define SERVER_HOST "elg.skyhook.com"
@@ -15,6 +16,182 @@
 #define PARTNER_ID 2
 #define AES_KEY "000102030405060708090a0b0c0d0e0f"
 #define CLIENT_MAC "deadbeefdead"
+
+/* ------- Standin for Geoff's stuff --------------------------- */
+struct Ap {
+	uint8_t mac[6];
+	uint32_t age; // ms
+	uint32_t channel;
+	int32_t rssi;
+    bool connected;
+};
+
+static struct Ap aps[] = {
+    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 162, /* rssi */ -150, true},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
+    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 160, /* rssi */ -10, false}
+};
+
+uint8_t* get_ap_mac(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return aps[idx].mac;
+}
+
+bool get_ap_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return aps[idx].connected;
+}
+
+uint32_t get_num_aps(Sky_ctx_t* ctx)
+{
+    return sizeof(aps) / sizeof(struct Ap);
+}
+
+int64_t get_ap_channel(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return aps[idx].channel;
+}
+
+int64_t get_ap_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return aps[idx].rssi;
+}
+
+int64_t get_ap_age(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return aps[idx].age;
+}
+
+struct Gsm {
+    uint32_t mcc;
+    uint32_t mnc;
+    uint32_t lac;
+    uint32_t ci;
+    int32_t rssi;
+    uint32_t age;
+    bool connected;
+};
+
+static struct Gsm gsm_cells[] = {
+    {310, 410, 512, 6676, -130, 1000, false}, 
+    //{510, 610, 513, 6677, -13, 1001, true}
+};
+
+int64_t get_gsm_mcc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].mcc;
+}
+
+int64_t get_gsm_mnc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].mnc;
+}
+
+int64_t get_gsm_lac(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].lac;
+}
+
+int64_t get_gsm_ci(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].ci;
+}
+
+bool get_gsm_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].connected;
+}
+
+uint32_t get_num_gsm(Sky_ctx_t* ctx)
+{
+    return sizeof(gsm_cells) / sizeof(struct Gsm);
+}
+
+int64_t get_gsm_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].rssi;
+}
+
+int64_t get_gsm_age(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return gsm_cells[idx].age;
+}
+
+struct Nbiot {
+    uint32_t mcc;
+    uint32_t mnc;
+    uint32_t tac;
+    uint32_t ecid;
+    int32_t nrsrp;
+    uint32_t age;
+    bool connected;
+};
+
+static struct Nbiot nbiot_cells[] = {
+    {310, 410, 512, 6676, -130, 1000, false}, 
+    {510, 610, 513, 6677, -13, 1001, true}
+};
+
+int64_t get_nbiot_mcc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].mcc;
+}
+
+int64_t get_nbiot_mnc(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].mnc;
+}
+
+int64_t get_nbiot_tac(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].tac;
+}
+
+int64_t get_nbiot_ecellid(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].ecid;
+}
+
+bool get_nbiot_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].connected;
+}
+
+uint32_t get_num_nbiot(Sky_ctx_t* ctx)
+{
+    return sizeof(nbiot_cells) / sizeof(struct Nbiot);
+}
+
+int64_t get_nbiot_rssi(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].nrsrp;
+}
+
+int64_t get_nbiot_age(Sky_ctx_t* ctx, uint32_t idx)
+{
+    return nbiot_cells[idx].age;
+}
+
+static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
+{
+    const char* pos = hex_str;
+    size_t i;
+
+    for (i=0; i < buff_len; i++)
+    {
+        sscanf(pos, "%2hhx", &bin_buff[i]);
+        pos += 2;
+    }
+}
+
+/* ------- End of standin for Geoff's stuff --------------------- */
 
 bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
 {
@@ -40,29 +217,33 @@ bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
 
 int main(int argc, char** argv)
 {
-    (void)argc;	/* suppress warning */
-    (void)argv;	/* suppress warning */
+    (void) argc;
+    (void) argv;
+
     // Initialize request message.
-    init_rq(PARTNER_ID,
-            AES_KEY,
-            CLIENT_MAC);
 
-    // Populate request with dummy data.
-    for (size_t i = 0; i < 2; i++)
-    {
-        add_ap("aabbcc112233", -10, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112244", -20, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112255", -30, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
-        add_ap("aabbcc112266", -40, false, Aps_ApBand_UNKNOWN);
-    }
+    unsigned char aes_key[16];
+    hex_str_to_bin(AES_KEY, aes_key, sizeof(aes_key));
 
-    add_lte_cell(300, 400, 32462, -20, 400001);
+    unsigned char device_id[6]; // e.g., MAC address.
+    hex_str_to_bin(CLIENT_MAC, device_id, sizeof(device_id));
 
     // Serialize request.
     unsigned char buf[1024];
 
-    size_t len = serialize_request(buf, sizeof(buf));
+    int32_t len = serialize_request(NULL,
+                                    buf,
+                                    sizeof(buf),
+                                    PARTNER_ID,
+                                    aes_key,
+                                    device_id,
+                                    sizeof(device_id));
+
+    if (len < 0)
+    {
+        printf("Failed to serialize (buf too small?)\n");
+        exit(-1);
+    }
 
     // Write request to a file.
     FILE* fp = fopen("rq.bin", "wb");
@@ -121,6 +302,8 @@ int main(int argc, char** argv)
     // Send request.
     rc = send(sockfd, buf, (size_t) len, 0);
 
+    printf("Sent %d bytes to server\n", len);
+
     if (rc != (int32_t)len)
     {
         close(sockfd);
@@ -133,7 +316,7 @@ int main(int argc, char** argv)
 
     Rs rs;
 
-    if (deserialize_response(buf, rc, &rs) < 0)
+    if (deserialize_response(buf, rc, aes_key, &rs) < 0)
     {
         printf("deserialization failed!\n");
     }
