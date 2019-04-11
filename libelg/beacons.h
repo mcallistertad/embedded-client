@@ -45,7 +45,7 @@ typedef enum {
 	SKY_BEACON_NBIOT,
 	SKY_BEACON_UMTS,
 	SKY_BEACON_MAX, /* add more before this */
-} sky_beacon_type_t;
+} Sky_beacon_type_t;
 
 /*! \brief Access Point data
  */
@@ -53,7 +53,7 @@ struct ap {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint8_t mac[MAC_SIZE];
-	time_t age;
+	uint32_t age;
 	uint32_t channel;
 	int8_t rssi;
 	uint8_t flag; /* bit fields:                                        */
@@ -75,20 +75,18 @@ struct gsm {
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
-	int8_t rssi; // -255 unkonwn - map it to - 128
+	int16_t rssi; // -255 unkonwn - map it to - 128
 };
 
 // 64-bit aligned due to double
 struct cdma {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
-	double lat;
-	double lon;
 	uint32_t age;
 	uint16_t sid;
 	uint16_t nid;
 	uint16_t bsid;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 struct umts {
@@ -99,7 +97,7 @@ struct umts {
 	uint16_t mcc; // country
 	uint16_t mnc;
 	uint16_t lac;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 struct lte {
@@ -109,7 +107,7 @@ struct lte {
 	uint32_t eucid;
 	uint16_t mcc;
 	uint16_t mnc;
-	int8_t rssi;
+	int16_t rssi;
 };
 
 // blue tooth
@@ -118,12 +116,12 @@ struct ble {
 	uint16_t type; /* sky_beacon_type_t */
 	uint16_t major;
 	uint16_t minor;
-	uint8_t MAC[MAC_SIZE];
+	uint8_t mac[MAC_SIZE];
 	uint8_t uuid[16];
-	int8_t rssi;
+	int16_t rssi;
 };
 
-struct nb_iot {
+struct nbiot {
 	uint16_t magic; /* Indication that this beacon entry is valid */
 	uint16_t type; /* sky_beacon_type_t */
 	uint32_t age;
@@ -131,7 +129,7 @@ struct nb_iot {
 	uint16_t mnc;
 	uint32_t e_cellid;
 	uint16_t tac;
-	int8_t nrsrp;
+	int16_t rssi;
 };
 
 struct header {
@@ -145,9 +143,9 @@ typedef union beacon {
 	struct cdma cdma;
 	struct gsm gsm;
 	struct lte lte;
-	struct nb_iot nb_iot;
+	struct nbiot nbiot;
 	struct umts umts;
-} beacon_t;
+} Beacon_t;
 
 typedef struct gps {
 	double lat;
@@ -159,6 +157,6 @@ typedef struct gps {
 	uint32_t age;
 	uint8_t nsat;
 	uint8_t fix;
-} gps_t;
+} Gps_t;
 
 #endif

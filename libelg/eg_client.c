@@ -62,6 +62,28 @@ uint32_t sky_aes_key_id = 3;
 uint8_t sky_aes_key[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 			  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
+/*! \brief log function
+ *
+ *  @param level log level of this message
+ *  @param s this message
+ *  @param max maximum length of this message
+ *
+ *  @returns 0 for success or negative number for error
+ */
+int logger(Sky_log_level_t level, const char *s, int max)
+{
+	printf("Skyhook libELG %s: %.*s\n",
+	       level == SKY_LOG_LEVEL_CRITICAL ?
+		       "CRIT" :
+		       level == SKY_LOG_LEVEL_ERROR ?
+		       "ERRR" :
+		       level == SKY_LOG_LEVEL_WARNING ?
+		       "WARN" :
+		       level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+	       max, s);
+	return 0;
+}
+
 /*! \brief Typical use case
  *
  *  @param ap_scan latest ap scan data
@@ -78,9 +100,9 @@ int get_skyhook_location(struct ap_scan *ap_scan, size_t ap_size,
 {
 	uint8_t *pstate = NULL;
 	struct ap_scan *pap;
-	sky_errno_t sky_errno = -1;
-	sky_ctx_t *ctx;
-	sky_finalize_t fret;
+	Sky_errno_t sky_errno = -1;
+	Sky_ctx_t *ctx;
+	Sky_finalize_t fret;
 	void *p;
 	uint32_t bufsize;
 	uint8_t mac[MAC_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
@@ -96,7 +118,7 @@ int get_skyhook_location(struct ap_scan *ap_scan, size_t ap_size,
 
 	if (sky_open(&sky_errno, mac /* device_id */, sizeof(mac),
 		     sky_partner_id, sky_aes_key_id, sky_aes_key, get_state(),
-		     NULL) == SKY_ERROR) {
+		     SKY_LOG_LEVEL_ALL, &logger) == SKY_ERROR) {
 		printf("sky_open returned bad value: '%s', Can't continue\n",
 		       sky_perror(sky_errno));
 		return ret;

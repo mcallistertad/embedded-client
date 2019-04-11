@@ -18,16 +18,19 @@
 #ifndef SKY_CONFIG_H
 #define SKY_CONFIG_H
 
+/* Change to false to remove all calls to logging */
+#define SKY_DEBUG true
+
 /*! \brief The maximum number of beacons passed to the ELG server in a request
  */
-#define MAX_BEACONS 11
+#define TOTAL_BEACONS 11
 /*! \brief The maximum number of AP beacons passed to the ELG server in a request
  */
 #define MAX_AP_BEACONS 10
 
 /*! \brief The percentage of beacons that must match in a cached scan/location
  */
-#define CACHE_MATCH_THRESHOLD 70
+#define CACHE_MATCH_THRESHOLD 50
 
 /*! \brief The maximum age (in hr) that a cached value is concidered useful
  */
@@ -35,6 +38,6 @@
 
 /*! \brief The number of entries in the scan/response cache
  */
-#define CACHE_SIZE 1
+#define CACHE_SIZE 2
 
 #endif
