@@ -37,7 +37,8 @@ static uint32_t sky_open_flag = 0;
 static Sky_cache_t cache;
 
 /*! \brief keep track of logging function */
-static int (*sky_logf)(Sky_log_level_t level, const char *s, int max);
+static int (*sky_rand_bytes)(uint8_t *rand_buf, uint32_t bufsize);
+static int (*sky_logf)(Sky_log_level_t level, const char *s);
 static Sky_log_level_t sky_min_level;
 
 /* Local functions */
@@ -54,9 +55,10 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *  @param partner_id Skyhook assigned credentials
  *  @param aes_key_id Skyhook assigned credentials
  *  @param aes_key Skyhook assigned encryption key
- *  @param sky_state pointer to a state buffer (provided by sky_close) or NULL
+ *  @param state_buf pointer to a state buffer (provided by sky_close) or NULL
  *  @param min_level logging function is called for msg with equal or greater level
  *  @param logf pointer to logging function
+ *  @param rand_bytes pointer to random function
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -65,12 +67,14 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *  in order to change the parameter values. Device ID length will
  *  be truncated to 16 if larger, without causing an error.
  */
-Sky_status_t
-sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
-	 Sky_cache_t *sky_state, Sky_log_level_t min_level,
-	 int (*logf)(Sky_log_level_t level, const char *s, int len))
+Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
+		      uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
+		      uint8_t aes_key[16], void *state_buf,
+		      Sky_log_level_t min_level,
+		      int (*logf)(Sky_log_level_t level, const char *s),
+		      int (*rand_bytes)(uint8_t *rand_buf, uint32_t bufsize))
 {
+	Sky_cache_t *sky_state = state_buf;
 	int i = 0;
 	int j = 0;
 
@@ -129,13 +133,14 @@ sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
 	cache.sky_id_len = id_len;
 	sky_min_level = min_level;
 	sky_logf = logf;
+	sky_rand_bytes = rand_bytes;
 	memcpy(cache.sky_device_id, device_id, id_len);
 	cache.sky_partner_id = partner_id;
 	cache.sky_aes_key_id = aes_key_id;
 	memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
 	sky_open_flag = true;
 
-	(*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook libELG Version 3.0\n", 80);
+	(*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook libELG Version 3.0\n");
 
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -175,15 +180,15 @@ int32_t sky_sizeof_workspace(uint16_t number_beacons)
 
 /*! \brief Initializes the workspace provided ready to build a request
  *
- *  @param buf Pointer to workspace provided by user
+ *  @param workspace_buf Pointer to workspace provided by user
  *  @param bufsize Workspace buffer size (from sky_sizeof_workspace)
  *  @param sky_errno Pointer to error code
  *  @param number_beacons The number of beacons user will add
  *
  *  @return Pointer to the initialized workspace context buffer or NULL
  */
-Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
-			   uint8_t number_beacons)
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
+			   Sky_errno_t *sky_errno, uint8_t number_beacons)
 {
 	int i;
 
@@ -191,12 +196,13 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 		sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 		return NULL;
 	}
-	if (bufsize != sky_sizeof_workspace(TOTAL_BEACONS) || buf == NULL) {
+	if (bufsize != sky_sizeof_workspace(TOTAL_BEACONS) ||
+	    workspace_buf == NULL) {
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 		return NULL;
 	}
 
-	Sky_ctx_t *ctx = (Sky_ctx_t *)buf;
+	Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
 
 	/* update header in workspace */
 	ctx->header.magic = SKY_MAGIC;
@@ -208,6 +214,7 @@ Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
 
 	ctx->cache = &cache;
 	ctx->logf = sky_logf;
+	ctx->rand_bytes = sky_rand_bytes;
 	ctx->min_level = sky_min_level;
 	ctx->expect = number_beacons;
 	ctx->len = 0; /* empty */
@@ -461,7 +468,7 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param request Request to send to Skyhook server
+ *  @param request_buf Request to send to Skyhook server
  *  @param bufsize Request size in bytes
  *  @param lat where to save device latitude from cache if known
  *  @param lon where to save device longitude from cache if known
@@ -473,9 +480,10 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  *          SKY_FINALIZE_ERROR and sets sky_errno with error code
  */
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				    uint8_t **request, uint32_t *bufsize,
+				    void **request_buf, uint32_t *bufsize,
 				    float *lat, float *lon, uint16_t *hpe,
-				    time_t *timestamp, uint32_t *response_size)
+				    uint32_t *timestamp,
+				    uint32_t *response_size)
 {
 	int c;
 
@@ -505,7 +513,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	/* TODO encode request */
 	strcpy((void *)ctx->request, "SKYHOOK REQUEST MSG");
 
-	*request = ctx->request;
+	*request_buf = ctx->request;
 	*bufsize = strlen((void *)ctx->request);
 	*response_size = sizeof(ctx->request);
 
@@ -517,7 +525,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param response buffer holding the skyhook server response
+ *  @param response_buf buffer holding the skyhook server response
  *  @param bufsize Request size in bytes
  *  @param lat where to save device latitude from cache if known
  *  @param lon where to save device longitude from cache if known
@@ -527,9 +535,9 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				 uint8_t *response, uint32_t bufsize,
+				 void *response_buf, uint32_t bufsize,
 				 float *lat, float *lon, uint16_t *hpe,
-				 time_t *timestamp)
+				 uint32_t *timestamp)
 {
 	Sky_location_t loc;
 
@@ -619,7 +627,7 @@ char *sky_perror(Sky_errno_t sky_errno)
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state)
+Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
 {
 	if (!sky_open_flag)
 		return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -627,7 +635,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state)
 	sky_open_flag = false;
 
 	if (sky_state != NULL)
-		*sky_state = (void *)&cache;
+		*sky_state = &cache;
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 

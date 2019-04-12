@@ -93,18 +93,19 @@ typedef enum {
 } Sky_log_level_t;
 #endif
 
-Sky_status_t
-sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-	 uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16],
-	 Sky_cache_t *sky_state, Sky_log_level_t min_level,
-	 int (*logf)(Sky_log_level_t level, const char *s, int max));
+Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
+		      uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
+		      uint8_t aes_key[16], void *state_buf,
+		      Sky_log_level_t min_level,
+		      int (*logf)(Sky_log_level_t level, const char *s),
+		      int (*rand_bytes)(uint8_t *rand_buf, uint32_t bufsize));
 
 int32_t sky_sizeof_state(uint8_t *sky_state);
 
 int32_t sky_sizeof_workspace(uint16_t number_beacons);
 
-Sky_ctx_t *sky_new_request(void *buf, int32_t bufsize, Sky_errno_t *sky_errno,
-			   uint8_t number_beacons);
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
+			   Sky_errno_t *sky_errno, uint8_t number_beacons);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 			       uint8_t mac[6], time_t timestamp, int16_t rssi,
@@ -141,17 +142,18 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
 			 float speed, float bearing, time_t timestamp);
 
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				    uint8_t **request, uint32_t *bufsize,
+				    void **request_buf, uint32_t *bufsize,
 				    float *lat, float *lon, uint16_t *hpe,
-				    time_t *timestamp, uint32_t *response_size);
+				    uint32_t *timestamp,
+				    uint32_t *response_size);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				 uint8_t *response, uint32_t bufsize,
+				 void *response_buf, uint32_t bufsize,
 				 float *lat, float *lon, uint16_t *hpe,
-				 time_t *timestamp);
+				 uint32_t *timestamp);
 
 char *sky_perror(Sky_errno_t sky_errno);
 
-Sky_status_t sky_close(Sky_errno_t *sky_errno, uint8_t **sky_state);
+Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state);
 
 #endif

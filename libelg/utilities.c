@@ -129,7 +129,7 @@ int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...)
 		return -1;
 	va_start(ap, fmt);
 	ret = vsnprintf(buf, sizeof(buf), fmt, ap);
-	(*ctx->logf)(level, buf, sizeof(buf));
+	(*ctx->logf)(level, buf);
 	va_end(ap);
 	return ret;
 #else

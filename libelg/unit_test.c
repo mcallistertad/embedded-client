@@ -69,15 +69,14 @@ void set_mac(uint8_t *mac)
 	}
 }
 
-/*! \brief validate fundamental functionality of the ELG IoT library
+/*! \brief logging function
  *
  *  @param level log level of this message
  *  @param s this message
- *  @param max maximum length of this message
  *
  *  @returns 0 for success or negative number for error
  */
-int logger(Sky_log_level_t level, const char *s, int max)
+int logger(Sky_log_level_t level, const char *s)
 {
 	printf("Skyhook libELG %s: %.*s\n",
 	       level == SKY_LOG_LEVEL_CRITICAL ?
@@ -87,15 +86,34 @@ int logger(Sky_log_level_t level, const char *s, int max)
 		       level == SKY_LOG_LEVEL_WARNING ?
 		       "WARN" :
 		       level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-	       max, s);
+	       80, s);
 	return 0;
+}
+
+/*! \brief generate random byte sequence
+ *
+ *  @param rand_buf pointer to buffer where rand bytes are put
+ *  @param bufsize length of rand bytes
+ *
+ *  @returns 0 for failure, length of rand sequence for success
+ */
+int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
+{
+	int i;
+
+	if (!rand_buf)
+		return 0;
+
+	for (i = 0; i < bufsize; i++)
+		rand_buf[i] = rand() % 256;
+	return bufsize;
 }
 
 /*! \brief check for saved cache state
  *
  *  @returns NULL for failure to restore cache, pointer to cache otherwise
  */
-Sky_cache_t *nv_cache(void)
+void *nv_cache(void)
 {
 	FILE *fio;
 	uint8_t *p = (void *)&nv_space;
@@ -128,10 +146,10 @@ Sky_cache_t *nv_cache(void)
  *
  *  @returns 0 for success or negative number for error
  */
-Sky_status_t nv_cache_save(uint8_t *p)
+Sky_status_t nv_cache_save(void *p)
 {
 	FILE *fio;
-	Sky_cache_t *c = (void *)p;
+	Sky_cache_t *c = p;
 
 	if (validate_cache(c)) {
 		if ((fio = fopen("nv_cache", "w+")) != NULL) {
@@ -168,8 +186,8 @@ int main(int ac, char **av)
 	uint8_t mac[MAC_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
 	time_t timestamp = time(NULL);
 	uint32_t ch = 65;
-	uint8_t *pstate;
-	uint8_t *prequest;
+	void *pstate;
+	void *prequest;
 	uint32_t request_size;
 	uint32_t response_size;
 	Sky_beacon_type_t t;
@@ -180,7 +198,8 @@ int main(int ac, char **av)
 	srand((unsigned)time(NULL));
 
 	if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-		     nv_cache(), SKY_LOG_LEVEL_ALL, &logger) == SKY_ERROR) {
+		     nv_cache(), SKY_LOG_LEVEL_ALL, &logger,
+		     &rand_bytes) == SKY_ERROR) {
 		printf("sky_open returned bad value, Can't continue\n");
 		exit(-1);
 	}
