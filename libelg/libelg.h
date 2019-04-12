@@ -146,8 +146,9 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    time_t *timestamp, uint32_t *response_size);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-				 char *response, int32_t bufsize, float *lat,
-				 float *lon, uint16_t *hpe, time_t *timestamp);
+				 uint8_t *response, uint32_t bufsize,
+				 float *lat, float *lon, uint16_t *hpe,
+				 time_t *timestamp);
 
 char *sky_perror(Sky_errno_t sky_errno);
 
