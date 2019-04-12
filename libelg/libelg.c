@@ -479,12 +479,16 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 {
 	int c;
 
-	if (!validate_workspace(ctx))
-		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+	if (!validate_workspace(ctx)) {
+		*sky_errno = SKY_ERROR_BAD_WORKSPACE;
+		return SKY_FINALIZE_ERROR;
+	}
 
 	/* There must be at least one beacon */
-	if (ctx->len == 0)
-		return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+	if (ctx->len == 0) {
+		*sky_errno = SKY_ERROR_BAD_WORKSPACE;
+		return SKY_FINALIZE_ERROR;
+	}
 
 	/* check cache against beacons for match */
 	if ((c = get_cache(ctx)) >= 0) {
@@ -494,7 +498,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 			*lon = ctx->cache->cacheline[c].loc.lon;
 		if (hpe != NULL)
 			*hpe = ctx->cache->cacheline[c].loc.hpe;
-		sky_errno = SKY_ERROR_NONE;
+		*sky_errno = SKY_ERROR_NONE;
 		return SKY_FINALIZE_LOCATION;
 	}
 
@@ -505,7 +509,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	*bufsize = strlen((void *)ctx->request);
 	*response_size = sizeof(ctx->request);
 
-	sky_errno = SKY_ERROR_NONE;
+	*sky_errno = SKY_ERROR_NONE;
 	return SKY_FINALIZE_REQUEST;
 }
 
