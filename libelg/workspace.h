@@ -36,11 +36,22 @@ typedef enum {
 	SKY_LOG_LEVEL_DEBUG,
 	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
 } Sky_log_level_t;
+
+/*! \brief sky_loc_source location source
+ */
+typedef enum {
+	SKY_LOCATION_SOURCE_CELL = 0,
+	SKY_LOCATION_SOURCE_AP,
+	SKY_LOCATION_SOURCE_MAX,
+} Sky_loc_source_t;
+
 #endif
 
 typedef struct sky_location {
 	float lat, lon; /* GPS info */
 	uint16_t hpe;
+	uint32_t time;
+	Sky_loc_source_t location_source;
 } Sky_location_t;
 
 typedef struct sky_cacheline {
@@ -65,7 +76,8 @@ typedef struct sky_cache {
 
 typedef struct sky_ctx {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
-	int (*logf)(Sky_log_level_t level, const char *s, int max);
+	int (*logf)(Sky_log_level_t level, const char *s);
+	int (*rand_bytes)(uint8_t *rand_buf, uint32_t buf_len);
 	Sky_log_level_t min_level;
 	int16_t expect; /* number of beacons to be added */
 	int16_t len; /* number of beacons in list (0 == none) */
