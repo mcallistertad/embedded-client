@@ -36,11 +36,22 @@ typedef enum {
 	SKY_LOG_LEVEL_DEBUG,
 	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
 } Sky_log_level_t;
+
+/*! \brief sky_loc_source location source
+ */
+typedef enum {
+	SKY_LOCATION_SOURCE_CELL = 0,
+	SKY_LOCATION_SOURCE_AP,
+	SKY_LOCATION_SOURCE_MAX,
+} Sky_loc_source_t;
+
 #endif
 
 typedef struct sky_location {
 	float lat, lon; /* GPS info */
 	uint16_t hpe;
+	uint32_t time;
+	Sky_loc_source_t location_source;
 } Sky_location_t;
 
 typedef struct sky_cacheline {

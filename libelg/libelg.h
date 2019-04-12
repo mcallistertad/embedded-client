@@ -62,6 +62,16 @@ typedef enum {
 	SKY_FINALIZE_REQUEST = 1,
 } Sky_finalize_t;
 
+/*! \brief sky_loc_source location source
+ */
+#ifndef SKY_LIBELG
+typedef enum {
+	SKY_LOCATION_SOURCE_CELL = 0,
+	SKY_LOCATION_SOURCE_AP,
+	SKY_LOCATION_SOURCE_MAX,
+} Sky_loc_source_t;
+#endif
+
 /*! \brief sky_errno Error Codes
  */
 typedef enum {
@@ -78,7 +88,8 @@ typedef enum {
 	SKY_ERROR_BAD_KEY,
 	SKY_ERROR_NO_BEACONS,
 	SKY_ERROR_ADD_CACHE,
-	SKY_ERROR_GET_CACHE
+	SKY_ERROR_GET_CACHE,
+	SKY_ERROR_LOCATION_UNKNOWN
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
@@ -143,14 +154,12 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
 
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    void **request_buf, uint32_t *bufsize,
-				    float *lat, float *lon, uint16_t *hpe,
-				    uint32_t *timestamp,
+				    Sky_location_t *loc,
 				    uint32_t *response_size);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				 void *response_buf, uint32_t bufsize,
-				 float *lat, float *lon, uint16_t *hpe,
-				 uint32_t *timestamp);
+				 Sky_location_t *loc);
 
 char *sky_perror(Sky_errno_t sky_errno);
 

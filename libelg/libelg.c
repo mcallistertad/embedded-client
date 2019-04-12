@@ -481,8 +481,7 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  */
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    void **request_buf, uint32_t *bufsize,
-				    float *lat, float *lon, uint16_t *hpe,
-				    uint32_t *timestamp,
+				    Sky_location_t *loc,
 				    uint32_t *response_size)
 {
 	int c;
@@ -500,12 +499,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
 	/* check cache against beacons for match */
 	if ((c = get_cache(ctx)) >= 0) {
-		if (lat != NULL)
-			*lat = ctx->cache->cacheline[c].loc.lat;
-		if (lon != NULL)
-			*lon = ctx->cache->cacheline[c].loc.lon;
-		if (hpe != NULL)
-			*hpe = ctx->cache->cacheline[c].loc.hpe;
+		if (loc != NULL)
+			*loc = ctx->cache->cacheline[c].loc;
 		*sky_errno = SKY_ERROR_NONE;
 		return SKY_FINALIZE_LOCATION;
 	}
@@ -536,22 +531,24 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  */
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				 void *response_buf, uint32_t bufsize,
-				 float *lat, float *lon, uint16_t *hpe,
-				 uint32_t *timestamp)
+				 Sky_location_t *loc)
 {
-	Sky_location_t loc;
-
+	if (!loc)
+		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 	/* Validate response from server */
 
 	/* decode response to get lat/lon */
-	loc.lat = 40.161250;
-	loc.lon = -75.229619;
-	loc.hpe = 25;
+	/* if failed sky_return(sky_error, SKY_ERROR_LOCATION_UNKNOWN) */
+	loc->lat = 40.161250;
+	loc->lon = -75.229619;
+	loc->hpe = 25;
+	loc->time = time(NULL);
+	loc->location_source = SKY_LOCATION_SOURCE_AP;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 
 	/* Add location and current beacons to Cache */
-	if (add_cache(ctx, &loc) == SKY_ERROR) {
+	if (add_cache(ctx, loc) == SKY_ERROR) {
 		logfmt(ctx, SKY_LOG_LEVEL_ERROR,
 		       "sky_decode_response: failed to add to cache");
 		return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
@@ -614,6 +611,9 @@ char *sky_perror(Sky_errno_t sky_errno)
 		break;
 	case SKY_ERROR_GET_CACHE:
 		str = "failed to get entry from cache";
+		break;
+	case SKY_ERROR_LOCATION_UNKNOWN:
+		str = "server failed to determine location";
 		break;
 	}
 	return str;

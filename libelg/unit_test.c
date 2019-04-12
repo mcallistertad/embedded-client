@@ -300,8 +300,7 @@ int main(int ac, char **av)
 	}
 
 	switch (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
-				     &loc.lat, &loc.lon, &loc.hpe, NULL,
-				     &response_size)) {
+				     &loc, &response_size)) {
 	case SKY_FINALIZE_LOCATION:
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "sky_finalize_request: GPS: %.6f,%.6f,%d", loc.lat,
@@ -405,8 +404,7 @@ int main(int ac, char **av)
 			}
 	}
 
-	if (sky_decode_response(ctx, &sky_errno, NULL, 0, &loc.lat, &loc.lon,
-				&loc.hpe, NULL))
+	if (sky_decode_response(ctx, &sky_errno, NULL, 0, &loc))
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "sky_decode_response sky_errno contains '%s'\n",
 		       sky_perror(sky_errno));
