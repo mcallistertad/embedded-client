@@ -1,7 +1,7 @@
 #ifndef ELG_PB_H
 #define ELG_PB_H
 
-#include "elg.pb.h"
+#include "el.pb.h"
 
 // TODO: Delete these accessor prototypes after they become available in one of Geoff's header file.
 //
