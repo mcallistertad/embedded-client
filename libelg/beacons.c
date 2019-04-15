@@ -22,13 +22,7 @@
 #include <stdio.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
-#include "config.h"
-#include "response.h"
-#include "beacons.h"
-#include "workspace.h"
-#include "crc32.h"
 #include "libelg.h"
-#include "utilities.h"
 
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);

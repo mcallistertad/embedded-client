@@ -22,13 +22,7 @@
 #include <time.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
-#include "beacons.h"
-#include "config.h"
-#include "response.h"
-#include "crc32.h"
-#include "workspace.h"
 #include "libelg.h"
-#include "utilities.h"
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -195,6 +189,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
 			   Sky_errno_t *sky_errno, uint8_t number_beacons)
 {
 	int i;
+	Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
 
 	if (!sky_open_flag) {
 		sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -205,8 +200,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 		return NULL;
 	}
-
-	Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
 
 	/* update header in workspace */
 	ctx->header.magic = SKY_MAGIC;
