@@ -537,7 +537,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	loc->lon = -75.229619;
 	loc->hpe = 25;
 	loc->time = time(NULL);
-	loc->location_source = SKY_LOCATION_SOURCE_AP;
+	loc->location_source = SKY_LOCATION_SOURCE_WIFI;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 
