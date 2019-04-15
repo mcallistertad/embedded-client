@@ -151,15 +151,19 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
  *
  *  @return Size of state buffer or 0 to indicate that the buffer was invalid
  */
-int32_t sky_sizeof_state(uint8_t *sky_state)
+int32_t sky_sizeof_state(void *sky_state)
 {
+	Sky_cache_t *c = sky_state;
+
 	/* Cache space required
      *
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-	return sizeof(struct sky_header) +
-	       CACHE_SIZE * (sizeof(Beacon_t) + sizeof(Gps_t));
+	if (!validate_cache(c))
+		return 0;
+	else
+		return c->header.size;
 }
 
 /*! \brief Determines the size of the workspace required to build request
@@ -173,7 +177,7 @@ int32_t sky_sizeof_workspace(uint16_t number_beacons)
 	/* Total space required
      *
      * header - Magic number, size of space, checksum
-     * body - number of beacons, beacon data, gps, request buffer
+     * body - number of beacons, beacon data, gnss, request buffer
      */
 	return sizeof(Sky_ctx_t);
 }
@@ -442,7 +446,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
-/*! \brief Adds the position of the device from gps to the request context
+/*! \brief Adds the position of the device from GNSS to the request context
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
@@ -457,9 +461,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
-			 float lon, uint16_t hpe, float altitude, uint16_t vpe,
-			 float speed, float bearing, time_t timestamp)
+Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
+			  float lon, uint16_t hpe, float altitude, uint16_t vpe,
+			  float speed, float bearing, time_t timestamp)
 {
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -608,6 +612,9 @@ char *sky_perror(Sky_errno_t sky_errno)
 		break;
 	case SKY_ERROR_LOCATION_UNKNOWN:
 		str = "server failed to determine location";
+		break;
+	default:
+		str = "Unknown error code";
 		break;
 	}
 	return str;

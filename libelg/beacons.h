@@ -22,17 +22,8 @@
 #include <time.h>
 
 #define BEACON_MAGIC 0xf0f0
+
 #define MAC_SIZE 6
-#define IPV4_SIZE 4
-#define IPV6_SIZE 16
-
-#define MAX_MACS 2 /* max # of mac addresses */
-#define MAX_IPS 2 // max # of ip addresses
-
-#define MAX_APS 100 // max # of access points
-#define MAX_GPSS 2 // max # of gps
-#define MAX_CELLS 7 // max # of cells
-#define MAX_BLES 5 // max # of blue tooth
 
 /*! \brief Types of beacon
  */

@@ -51,7 +51,7 @@ typedef enum {
 #endif
 
 typedef struct sky_location {
-	float lat, lon; /* GPS info */
+	float lat, lon; /* GNSS info */
 	uint16_t hpe;
 	uint32_t time;
 	Sky_loc_source_t location_source;
@@ -88,7 +88,7 @@ typedef struct sky_ctx {
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
-	Gps_t gps; /* GPS info */
+	Gps_t gps; /* GNSS info */
 	/* Assume worst case is that beacons and gps info takes twice the bare structure size */
 	Sky_cache_t *cache;
 	uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +

@@ -25,21 +25,8 @@
 
 #define SKY_PROTOCOL_VERSION 3
 
-#define URL_SIZE 512
-#define AUTH_SIZE 512
-
 #define MAC_SIZE 6
 #define AES_SIZE 16
-#define IPV4_SIZE 4
-#define IPV6_SIZE 16
-
-#define MAX_MACS 2 // max # of mac addresses
-#define MAX_IPS 2 // max # of ip addresses
-
-#define MAX_APS 100 // max # of access points
-#define MAX_GPSS 2 // max # of gps
-#define MAX_CELLS 7 // max # of cells
-#define MAX_BLES 5 // max # of blue tooth
 
 #define MAX_DEVICE_ID 16
 
@@ -92,7 +79,8 @@ typedef enum {
 	SKY_ERROR_NO_BEACONS,
 	SKY_ERROR_ADD_CACHE,
 	SKY_ERROR_GET_CACHE,
-	SKY_ERROR_LOCATION_UNKNOWN
+	SKY_ERROR_LOCATION_UNKNOWN,
+	SKY_ERROR_MAX
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
@@ -114,7 +102,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
 		      int (*logf)(Sky_log_level_t level, const char *s),
 		      int (*rand_bytes)(uint8_t *rand_buf, uint32_t bufsize));
 
-int32_t sky_sizeof_state(uint8_t *sky_state);
+int32_t sky_sizeof_state(void *sky_state);
 
 int32_t sky_sizeof_workspace(uint16_t number_beacons);
 
@@ -151,9 +139,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 					time_t timestamp, int16_t nrsrp,
 					bool is_connected);
 
-Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
-			 float lon, uint16_t hpe, float altitude, uint16_t vpe,
-			 float speed, float bearing, time_t timestamp);
+Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
+			  float lon, uint16_t hpe, float altitude, uint16_t vpe,
+			  float speed, float bearing, time_t timestamp);
 
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 				    void **request_buf, uint32_t *bufsize,
