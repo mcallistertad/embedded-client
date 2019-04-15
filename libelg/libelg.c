@@ -470,10 +470,7 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  *  @param sky_errno skyErrno is set to the error code
  *  @param request_buf Request to send to Skyhook server
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude from cache if known
- *  @param lon where to save device longitude from cache if known
- *  @param hpe where to save horizontal Positioning Error from cache if known
- *  @param timestamp time in seconds (from 1970 epoch) indicating when fix was computed (from cache)
+ *  @param loc where to save device latitude, longitude etc from cache if known
  *  @param response_size the space required to hold the server response
  *
  *  @return SKY_FINALIZE_REQUEST, SKY_FINALIZE_LOCATION or
@@ -522,10 +519,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *  @param sky_errno skyErrno is set to the error code
  *  @param response_buf buffer holding the skyhook server response
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude from cache if known
- *  @param lon where to save device longitude from cache if known
- *  @param hpe where to save horizontal Positioning Error from cache if known
- *  @param timestamp pointer to time in seconds (from 1970 epoch) indicating when fix was computed (on server)
+ *  @param loc where to save device latitude, longitude etc from cache if known
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
