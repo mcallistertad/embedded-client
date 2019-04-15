@@ -26,38 +26,6 @@ typedef struct sky_header {
 	uint32_t crc32;
 } Sky_header_t;
 
-/*! \brief sky_log_level logging levels
- */
-#ifdef SKY_LIBELG
-typedef enum {
-	SKY_LOG_LEVEL_CRITICAL = 1,
-	SKY_LOG_LEVEL_ERROR,
-	SKY_LOG_LEVEL_WARNING,
-	SKY_LOG_LEVEL_DEBUG,
-	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
-} Sky_log_level_t;
-
-/*! \brief sky_loc_source location source
- */
-typedef enum {
-	SKY_LOCATION_SOURCE_UNKNOWN = 0,
-	SKY_LOCATION_SOURCE_HYBRID,
-	SKY_LOCATION_SOURCE_CELL,
-	SKY_LOCATION_SOURCE_WIFI,
-	SKY_LOCATION_SOURCE_GNSS,
-	SKY_LOCATION_SOURCE_MAX,
-} Sky_loc_source_t;
-
-/*! \brief Skyhook location information
- */
-typedef struct sky_location {
-	float lat, lon; /* GNSS info */
-	uint16_t hpe;
-	uint32_t time;
-	Sky_loc_source_t location_source;
-} Sky_location_t;
-#endif
-
 typedef struct sky_cacheline {
 	int16_t len; /* number of beacons */
 	uint32_t time;
@@ -76,8 +44,6 @@ typedef struct sky_cache {
 	Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 } Sky_cache_t;
 
-#endif
-
 typedef struct sky_ctx {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
 	int (*logf)(Sky_log_level_t level, const char *s);
@@ -95,3 +61,4 @@ typedef struct sky_ctx {
 	uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
 			(sizeof(Gps_t) * 2)];
 } Sky_ctx_t;
+#endif

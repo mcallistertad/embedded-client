@@ -28,10 +28,6 @@
 
 #define MAX_DEVICE_ID 16
 
-#ifndef SKY_LIBELG
-typedef void Sky_ctx_t;
-#endif
-
 /*! \brief API return value
  */
 typedef enum {
@@ -49,7 +45,6 @@ typedef enum {
 
 /*! \brief sky_loc_source location source
  */
-#ifndef SKY_LIBELG
 typedef enum {
 	SKY_LOCATION_SOURCE_UNKNOWN = 0,
 	SKY_LOCATION_SOURCE_HYBRID,
@@ -58,18 +53,15 @@ typedef enum {
 	SKY_LOCATION_SOURCE_GNSS,
 	SKY_LOCATION_SOURCE_MAX,
 } Sky_loc_source_t;
-#endif
 
 /*! \brief Skyhook location information
  */
-#ifndef SKY_LIBELG
 typedef struct sky_location {
 	float lat, lon; /* GNSS info */
 	uint16_t hpe;
 	uint32_t time;
 	Sky_loc_source_t location_source;
 } Sky_location_t;
-#endif
 
 /*! \brief sky_errno Error Codes
  */
@@ -94,7 +86,6 @@ typedef enum {
 
 /*! \brief sky_log_level logging levels
  */
-#ifndef SKY_LIBELG
 typedef enum {
 	SKY_LOG_LEVEL_CRITICAL = 1,
 	SKY_LOG_LEVEL_ERROR,
@@ -102,6 +93,15 @@ typedef enum {
 	SKY_LOG_LEVEL_DEBUG,
 	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
 } Sky_log_level_t;
+
+#ifndef SKY_LIBELG
+typedef void Sky_ctx_t;
+#else
+#include "config.h"
+#include "beacons.h"
+#include "crc32.h"
+#include "workspace.h"
+#include "utilities.h"
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
