@@ -22,13 +22,7 @@
 #include <time.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
-#include "beacons.h"
-#include "config.h"
-#include "response.h"
-#include "crc32.h"
-#include "workspace.h"
 #include "libelg.h"
-#include "utilities.h"
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -151,15 +145,19 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
  *
  *  @return Size of state buffer or 0 to indicate that the buffer was invalid
  */
-int32_t sky_sizeof_state(uint8_t *sky_state)
+int32_t sky_sizeof_state(void *sky_state)
 {
+	Sky_cache_t *c = sky_state;
+
 	/* Cache space required
      *
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-	return sizeof(struct sky_header) +
-	       CACHE_SIZE * (sizeof(Beacon_t) + sizeof(Gps_t));
+	if (!validate_cache(c))
+		return 0;
+	else
+		return c->header.size;
 }
 
 /*! \brief Determines the size of the workspace required to build request
@@ -173,7 +171,7 @@ int32_t sky_sizeof_workspace(uint16_t number_beacons)
 	/* Total space required
      *
      * header - Magic number, size of space, checksum
-     * body - number of beacons, beacon data, gps, request buffer
+     * body - number of beacons, beacon data, gnss, request buffer
      */
 	return sizeof(Sky_ctx_t);
 }
@@ -191,6 +189,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
 			   Sky_errno_t *sky_errno, uint8_t number_beacons)
 {
 	int i;
+	Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
 
 	if (!sky_open_flag) {
 		sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -201,8 +200,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 		return NULL;
 	}
-
-	Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
 
 	/* update header in workspace */
 	ctx->header.magic = SKY_MAGIC;
@@ -442,7 +439,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
-/*! \brief Adds the position of the device from gps to the request context
+/*! \brief Adds the position of the device from GNSS to the request context
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
@@ -457,9 +454,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
-			 float lon, uint16_t hpe, float altitude, uint16_t vpe,
-			 float speed, float bearing, time_t timestamp)
+Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
+			  float lon, uint16_t hpe, float altitude, uint16_t vpe,
+			  float speed, float bearing, time_t timestamp)
 {
 	return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -470,10 +467,7 @@ Sky_status_t sky_add_gps(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  *  @param sky_errno skyErrno is set to the error code
  *  @param request_buf Request to send to Skyhook server
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude from cache if known
- *  @param lon where to save device longitude from cache if known
- *  @param hpe where to save horizontal Positioning Error from cache if known
- *  @param timestamp time in seconds (from 1970 epoch) indicating when fix was computed (from cache)
+ *  @param loc where to save device latitude, longitude etc from cache if known
  *  @param response_size the space required to hold the server response
  *
  *  @return SKY_FINALIZE_REQUEST, SKY_FINALIZE_LOCATION or
@@ -522,10 +516,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  *  @param sky_errno skyErrno is set to the error code
  *  @param response_buf buffer holding the skyhook server response
  *  @param bufsize Request size in bytes
- *  @param lat where to save device latitude from cache if known
- *  @param lon where to save device longitude from cache if known
- *  @param hpe where to save horizontal Positioning Error from cache if known
- *  @param timestamp pointer to time in seconds (from 1970 epoch) indicating when fix was computed (on server)
+ *  @param loc where to save device latitude, longitude etc from cache if known
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -543,7 +534,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	loc->lon = -75.229619;
 	loc->hpe = 25;
 	loc->time = time(NULL);
-	loc->location_source = SKY_LOCATION_SOURCE_AP;
+	loc->location_source = SKY_LOCATION_SOURCE_WIFI;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 
@@ -614,6 +605,9 @@ char *sky_perror(Sky_errno_t sky_errno)
 		break;
 	case SKY_ERROR_LOCATION_UNKNOWN:
 		str = "server failed to determine location";
+		break;
+	default:
+		str = "Unknown error code";
 		break;
 	}
 	return str;

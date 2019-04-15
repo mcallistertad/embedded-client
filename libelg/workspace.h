@@ -26,34 +26,6 @@ typedef struct sky_header {
 	uint32_t crc32;
 } Sky_header_t;
 
-/*! \brief sky_log_level logging levels
- */
-#ifdef SKY_LIBELG
-typedef enum {
-	SKY_LOG_LEVEL_CRITICAL = 1,
-	SKY_LOG_LEVEL_ERROR,
-	SKY_LOG_LEVEL_WARNING,
-	SKY_LOG_LEVEL_DEBUG,
-	SKY_LOG_LEVEL_ALL = SKY_LOG_LEVEL_DEBUG,
-} Sky_log_level_t;
-
-/*! \brief sky_loc_source location source
- */
-typedef enum {
-	SKY_LOCATION_SOURCE_CELL = 0,
-	SKY_LOCATION_SOURCE_AP,
-	SKY_LOCATION_SOURCE_MAX,
-} Sky_loc_source_t;
-
-#endif
-
-typedef struct sky_location {
-	float lat, lon; /* GPS info */
-	uint16_t hpe;
-	uint32_t time;
-	Sky_loc_source_t location_source;
-} Sky_location_t;
-
 typedef struct sky_cacheline {
 	int16_t len; /* number of beacons */
 	uint32_t time;
@@ -72,8 +44,6 @@ typedef struct sky_cache {
 	Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 } Sky_cache_t;
 
-#endif
-
 typedef struct sky_ctx {
 	Sky_header_t header; /* magic, size, timestamp, crc32 */
 	int (*logf)(Sky_log_level_t level, const char *s);
@@ -85,9 +55,10 @@ typedef struct sky_ctx {
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
-	Gps_t gps; /* GPS info */
+	Gps_t gps; /* GNSS info */
 	/* Assume worst case is that beacons and gps info takes twice the bare structure size */
 	Sky_cache_t *cache;
 	uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
 			(sizeof(Gps_t) * 2)];
 } Sky_ctx_t;
+#endif

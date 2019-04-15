@@ -22,11 +22,6 @@
 #include <stdarg.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBELG 1
-#include "beacons.h"
-#include "config.h"
-#include "response.h"
-#include "workspace.h"
-#include "crc32.h"
 #include "libelg.h"
 
 /*! \brief set sky_errno and return Sky_status
