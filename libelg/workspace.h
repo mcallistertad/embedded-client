@@ -40,19 +40,23 @@ typedef enum {
 /*! \brief sky_loc_source location source
  */
 typedef enum {
-	SKY_LOCATION_SOURCE_CELL = 0,
-	SKY_LOCATION_SOURCE_AP,
+	SKY_LOCATION_SOURCE_UNKNOWN = 0,
+	SKY_LOCATION_SOURCE_HYBRID,
+	SKY_LOCATION_SOURCE_CELL,
+	SKY_LOCATION_SOURCE_WIFI,
+	SKY_LOCATION_SOURCE_GNSS,
 	SKY_LOCATION_SOURCE_MAX,
 } Sky_loc_source_t;
 
-#endif
-
+/*! \brief Skyhook location information
+ */
 typedef struct sky_location {
-	float lat, lon; /* GPS info */
+	float lat, lon; /* GNSS info */
 	uint16_t hpe;
 	uint32_t time;
 	Sky_loc_source_t location_source;
 } Sky_location_t;
+#endif
 
 typedef struct sky_cacheline {
 	int16_t len; /* number of beacons */
@@ -85,7 +89,7 @@ typedef struct sky_ctx {
 	int16_t ap_len; /* number of AP beacons in list (0 == none) */
 	int16_t ap_low; /* first of AP beacons in list (0 based index) */
 	int16_t connected; /* which beacon is conneted (-1 == none) */
-	Gps_t gps; /* GPS info */
+	Gps_t gps; /* GNSS info */
 	/* Assume worst case is that beacons and gps info takes twice the bare structure size */
 	Sky_cache_t *cache;
 	uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
