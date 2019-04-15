@@ -23,8 +23,6 @@
 #ifndef SKY_LIBELG_H
 #define SKY_LIBELG_H
 
-#define SKY_PROTOCOL_VERSION 3
-
 #define MAC_SIZE 6
 #define AES_SIZE 16
 
