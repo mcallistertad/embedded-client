@@ -48,14 +48,15 @@ typedef enum {
 	SKY_LOCATION_SOURCE_MAX,
 } Sky_loc_source_t;
 
-#endif
-
+/*! \brief Skyhook location information
+ */
 typedef struct sky_location {
 	float lat, lon; /* GNSS info */
 	uint16_t hpe;
 	uint32_t time;
 	Sky_loc_source_t location_source;
 } Sky_location_t;
+#endif
 
 typedef struct sky_cacheline {
 	int16_t len; /* number of beacons */

@@ -62,6 +62,17 @@ typedef enum {
 } Sky_loc_source_t;
 #endif
 
+/*! \brief Skyhook location information
+ */
+#ifndef SKY_LIBELG
+typedef struct sky_location {
+	float lat, lon; /* GNSS info */
+	uint16_t hpe;
+	uint32_t time;
+	Sky_loc_source_t location_source;
+} Sky_location_t;
+#endif
+
 /*! \brief sky_errno Error Codes
  */
 typedef enum {
