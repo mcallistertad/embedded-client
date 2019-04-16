@@ -29,7 +29,7 @@ Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c);
 Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
-#define get_cache(ctx) (find_best_match(ctx, 0))
+int get_cache(Sky_ctx_t *ctx);
 int find_best_match(Sky_ctx_t *ctx, bool put);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
 			bool is_connected);
