@@ -302,6 +302,28 @@ uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
 	return ctx->cache->sky_id_len;
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (ctx logf)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return logf
+ */
+Sky_loggerfn_t get_ctx_logf(Sky_ctx_t *ctx)
+{
+	return ctx->logf;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_id_len
+ */
+Sky_randfn_t get_ctx_rand_bytes(Sky_ctx_t *ctx)
+{
+	return ctx->rand_bytes;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (count beacons)
  *
  *  @param ctx workspace buffer

@@ -31,8 +31,8 @@ static uint32_t sky_open_flag = 0;
 static Sky_cache_t cache;
 
 /*! \brief keep track of logging function */
-static int (*sky_rand_bytes)(uint8_t *rand_buf, uint32_t bufsize);
-static int (*sky_logf)(Sky_log_level_t level, const char *s);
+static Sky_randfn_t sky_rand_bytes;
+static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
 
 /* Local functions */
@@ -64,9 +64,8 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
 		      uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
 		      uint8_t aes_key[16], void *state_buf,
-		      Sky_log_level_t min_level,
-		      int (*logf)(Sky_log_level_t level, const char *s),
-		      int (*rand_bytes)(uint8_t *rand_buf, uint32_t bufsize))
+		      Sky_log_level_t min_level, Sky_loggerfn_t logf,
+		      Sky_randfn_t rand_bytes)
 {
 	Sky_cache_t *sky_state = state_buf;
 	int i = 0;
@@ -500,21 +499,21 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 	}
 
 	/* encode request */
-    int rc = serialize_request(ctx);
+	int rc = serialize_request(ctx);
 
-    if (rc > 0) {
-        *request_buf = ctx->request;
-        *bufsize = rc;
-        *response_size = 100; // FIXME: value this properly.
+	if (rc > 0) {
+		*request_buf = ctx->request;
+		*bufsize = rc;
+		*response_size = 100; // FIXME: value this properly.
 
-        *sky_errno = SKY_ERROR_NONE;
+		*sky_errno = SKY_ERROR_NONE;
 
-    	return SKY_FINALIZE_REQUEST;
-    } else {
-        *sky_errno = SKY_ERROR;
+		return SKY_FINALIZE_REQUEST;
+	} else {
+		*sky_errno = SKY_ERROR;
 
-        return SKY_FINALIZE_ERROR;
-    }
+		return SKY_FINALIZE_ERROR;
+	}
 }
 
 /*! \brief decodes a Skyhook server response
@@ -535,7 +534,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
 	/* decode response to get lat/lon */
-    deserialize_response(ctx, response_buf, bufsize, loc);
+	deserialize_response(ctx, response_buf, bufsize, loc);
 
 	/* if failed sky_return(sky_error, SKY_ERROR_LOCATION_UNKNOWN) */
 	loc->time = time(NULL);
