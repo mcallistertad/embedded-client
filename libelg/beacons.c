@@ -40,11 +40,11 @@ static int similar(uint8_t macA[], uint8_t macB[])
 	/* Return 1 (true) if OUIs are identical and no more than 1 hex digits
      * differ between the two MACs. Else return 0 (false).
      */
-	if (memcmp(macA, macB, 3) != 0)
-		return 0;
-
 	size_t num_diff = 0; // Num hex digits which differ
 	size_t i;
+
+	if (memcmp(macA, macB, 3) != 0)
+		return 0;
 
 	for (i = 3; i < MAC_SIZE; i++) {
 		if (((macA[i] & 0xF0) != (macB[i] & 0xF0) && ++num_diff > 1) ||
@@ -284,7 +284,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-Sky_status_t beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
+static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
 {
 	int j, ret = 0;
 
@@ -503,9 +503,9 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  *
  *  @param ctx Skyhook request context
  *
- *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ *  @return cacheline index or -1
  */
-Sky_status_t get_cache(Sky_ctx_t *ctx)
+int get_cache(Sky_ctx_t *ctx)
 {
 	uint32_t now = time(NULL);
 

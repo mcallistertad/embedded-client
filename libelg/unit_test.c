@@ -152,14 +152,14 @@ Sky_status_t nv_cache_save(void *p)
 			if (fwrite(p, c->header.size, 1, fio) == 1) {
 				printf("nv_cache_save: cache size %d (%lu)\n",
 				       c->header.size, sizeof(Sky_cache_t));
-				return 0;
+				return SKY_SUCCESS;
 			} else
 				printf("fwrite failed\n");
 		} else
 			printf("fopen failed\n");
 	} else
 		printf("nv_cache_save: failed to validate cache\n");
-	return -1;
+	return SKY_ERROR;
 }
 
 /*! \brief validate fundamental functionality of the ELG IoT library
@@ -172,7 +172,7 @@ Sky_status_t nv_cache_save(void *p)
 int main(int ac, char **av)
 {
 	int i;
-	Sky_errno_t sky_errno = -1;
+	Sky_errno_t sky_errno = SKY_ERROR_MAX;
 	Sky_ctx_t *ctx;
 	uint32_t *p;
 	uint32_t bufsize;
