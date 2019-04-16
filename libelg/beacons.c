@@ -368,6 +368,10 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 	/* score each cache line wrt beacon match ratio */
 	for (i = 0; i < CACHE_SIZE; i++) {
 		score[i] = 0;
+		/* Discard old cachelines */
+		if ((uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
+		    (CACHE_AGE_THRESHOLD * 60 * 60))
+			ctx->cache->cacheline[i].time = 0;
 		if (put && ctx->cache->cacheline[i].time == 0)
 			score[i] =
 				TOTAL_BEACONS; /* looking for match for put, fill empty cache first */
@@ -394,7 +398,13 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 
 	/* if match is for get, must meet threshold */
 	if (!put) {
-		if (best * 100 > CACHE_MATCH_THRESHOLD) {
+		if (ctx->len <= CACHE_BEACON_THRESHOLD && best * 100 == 100) {
+			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+			       "%s: Only %d beacons; pick cache %d of 0..%d score %.2f",
+			       __FUNCTION__, ctx->len, bestc, CACHE_SIZE - 1,
+			       score[bestc] * 100);
+			return bestc;
+		} else if (best * 100 > CACHE_MATCH_THRESHOLD) {
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "%s: location in cache, pick cache %d of 0..%d score %.2f",
 			       __FUNCTION__, bestc, CACHE_SIZE - 1,
@@ -424,6 +434,12 @@ int find_oldest(Sky_ctx_t *ctx)
 	int oldest = time(NULL);
 
 	for (i = 0; i < CACHE_SIZE; i++) {
+		/* Discard old cachelines */
+		if ((uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
+		    (CACHE_AGE_THRESHOLD * 60 * 60)) {
+			ctx->cache->cacheline[i].time = 0;
+			return i;
+		}
 		if (ctx->cache->cacheline[i].time == 0)
 			return i;
 		else if (ctx->cache->cacheline[i].time < oldest) {
@@ -437,7 +453,6 @@ int find_oldest(Sky_ctx_t *ctx)
 }
 
 /*! \brief add location to cache
- *  if beacon is AP, filter
  *
  *  @param ctx Skyhook request context
  *  @param loc pointer to location info
@@ -448,9 +463,16 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
 	int i = -1;
 	int j;
+	uint32_t now = time(NULL);
+
+	/* compare current time to Mar 1st 2019 */
+	if (now <= 1551398400) {
+		logfmt(ctx, SKY_LOG_LEVEL_ERROR,
+		       "%s: Don't have good time of day!", __FUNCTION__);
+		return SKY_ERROR;
+	}
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s:", __FUNCTION__);
-
 	dump_workspace(ctx);
 	dump_cache(ctx);
 
@@ -471,7 +493,26 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 		ctx->cache->cacheline[i].len = ctx->len;
 		ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
 		ctx->cache->cacheline[i].loc = *loc;
-		ctx->cache->cacheline[i].time = time(NULL);
+		ctx->cache->cacheline[i].time = now;
 	}
 	return SKY_SUCCESS;
+}
+
+/*! \brief get location from cache
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ */
+Sky_status_t get_cache(Sky_ctx_t *ctx)
+{
+	uint32_t now = time(NULL);
+
+	/* compare current time to Mar 1st 2019 */
+	if (now <= 1551398400) {
+		logfmt(ctx, SKY_LOG_LEVEL_ERROR,
+		       "%s: Don't have good time of day!", __FUNCTION__);
+		return SKY_ERROR;
+	}
+	return find_best_match(ctx, 0);
 }
