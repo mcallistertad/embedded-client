@@ -510,7 +510,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
 		return SKY_FINALIZE_REQUEST;
 	} else {
-		*sky_errno = SKY_ERROR;
+		*sky_errno = SKY_ERROR_ENCODE_ERROR;
 
 		return SKY_FINALIZE_ERROR;
 	}
@@ -584,6 +584,9 @@ char *sky_perror(Sky_errno_t sky_errno)
 		break;
 	case SKY_ERROR_BAD_STATE:
 		str = "The state buffer is corrupt";
+		break;
+	case SKY_ERROR_ENCODE_ERROR:
+		str = "The request could not be encoded";
 		break;
 	case SKY_ERROR_DECODE_ERROR:
 		str = "The response could not be decoded";
