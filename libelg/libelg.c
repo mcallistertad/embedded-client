@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include "../.submodules/tiny-AES128-C/aes.h"
-#define SKY_LIBELG 1
+#define SKY_LIBELG
 #include "libelg.h"
+#include "proto.h"
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -499,15 +499,22 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 		return SKY_FINALIZE_LOCATION;
 	}
 
-	/* TODO encode request */
-	strcpy((void *)ctx->request, "SKYHOOK REQUEST MSG");
+	/* encode request */
+    int rc = serialize_request(ctx);
 
-	*request_buf = ctx->request;
-	*bufsize = strlen((void *)ctx->request);
-	*response_size = sizeof(ctx->request);
+    if (rc > 0) {
+        *request_buf = ctx->request;
+        *bufsize = rc;
+        *response_size = 100; // FIXME: value this properly.
 
-	*sky_errno = SKY_ERROR_NONE;
-	return SKY_FINALIZE_REQUEST;
+        *sky_errno = SKY_ERROR_NONE;
+
+    	return SKY_FINALIZE_REQUEST;
+    } else {
+        *sky_errno = SKY_ERROR;
+
+        return SKY_FINALIZE_ERROR;
+    }
 }
 
 /*! \brief decodes a Skyhook server response
@@ -526,15 +533,12 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 {
 	if (!loc)
 		sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-	/* Validate response from server */
 
 	/* decode response to get lat/lon */
+    deserialize_response(ctx, response_buf, bufsize, loc);
+
 	/* if failed sky_return(sky_error, SKY_ERROR_LOCATION_UNKNOWN) */
-	loc->lat = 40.161250;
-	loc->lon = -75.229619;
-	loc->hpe = 25;
 	loc->time = time(NULL);
-	loc->location_source = SKY_LOCATION_SOURCE_WIFI;
 
 	logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 

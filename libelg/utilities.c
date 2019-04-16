@@ -427,7 +427,7 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > ctx->ap_len) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -474,7 +474,7 @@ int32_t get_num_gsm(Sky_ctx_t *ctx)
  *
  *  @return beacon ci info
  */
-uint64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -554,7 +554,7 @@ int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+bool get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_gsm(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
@@ -686,7 +686,7 @@ int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
 	if (ctx == NULL || idx > (ctx->len - get_num_nbiot(ctx))) {
 		// logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);

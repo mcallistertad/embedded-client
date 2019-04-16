@@ -6,6 +6,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 
+#include "el.pb.h"
 #include "proto.h"
 #include "aes.h"
 
@@ -324,9 +325,7 @@ int32_t serialize_request(Sky_ctx_t* ctx)
 int32_t deserialize_response(Sky_ctx_t* ctx,
                              uint8_t* buf,
                              uint32_t buf_len,
-                             float* lat,
-                             float* lon,
-                             uint32_t* hpe)
+                             Sky_location_t* loc)
 {
     // We assume that buf contains the response message in its entirety. (Since
     // the server closes the connection after sending the response, the client
@@ -391,9 +390,10 @@ int32_t deserialize_response(Sky_ctx_t* ctx,
     }
     else
     {
-        *lat = rs.lat;
-        *lon = rs.lon;
-        *hpe = rs.hpe;
+        loc->lat = rs.lat;
+        loc->lon = rs.lon;
+        loc->hpe = (uint16_t) rs.hpe;
+        loc->location_source = (Sky_loc_source_t) rs.source;
 
         return 0;
     }
