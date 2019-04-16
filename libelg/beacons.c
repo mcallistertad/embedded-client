@@ -374,7 +374,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 			ctx->cache->cacheline[i].time = 0;
 		if (put && ctx->cache->cacheline[i].time == 0)
 			score[i] =
-				TOTAL_BEACONS; /* looking for match for put, fill empty cache first */
+				ctx->len; /* looking for match for put, fill empty cache first */
 		else if (ctx->cache->cacheline[i].time == 0)
 			continue; /* looking for match for get, ignore empty cache */
 		else
@@ -404,14 +404,15 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 			       __FUNCTION__, ctx->len, bestc, CACHE_SIZE - 1,
 			       score[bestc] * 100);
 			return bestc;
-		} else if (best * 100 > CACHE_MATCH_THRESHOLD) {
+		} else if (ctx->len > CACHE_BEACON_THRESHOLD &&
+			   best * 100 > CACHE_MATCH_THRESHOLD) {
 			logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 			       "%s: location in cache, pick cache %d of 0..%d score %.2f",
 			       __FUNCTION__, bestc, CACHE_SIZE - 1,
 			       score[bestc] * 100);
 			return bestc;
 		}
-	} else if (bestc >= 0) {
+	} else if (bestc >= 0) { /* match is for put */
 		logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
 		       "%s: save location in best cache, %d of 0..%d score %.2f",
 		       __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
