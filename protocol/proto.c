@@ -228,16 +228,18 @@ int32_t serialize_request(Sky_ctx_t* ctx)
     // Initialize crypto_info.
     CryptoInfo rq_crypto_info;
 
-    unsigned char aes_iv_buf[16];
+    // FIXME: Properly value IV if the user has not provided a rand_bytes()
+    // function. Otherwise, and until then, it will get filled with
+    // quasi-random stack scheisse.
+    //
+    if (ctx->rand_bytes != NULL)
+        ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
 
-    arc4random_buf(aes_iv_buf, sizeof(aes_iv_buf));
-
-    memcpy(rq_crypto_info.iv.bytes, aes_iv_buf, sizeof(aes_iv_buf));
     rq_crypto_info.iv.size=16;
 
     struct AES_ctx aes_ctx;
 
-    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), aes_iv_buf);
+    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), rq_crypto_info.iv.bytes);
 
     // Initialize request body.
     Rq rq;
