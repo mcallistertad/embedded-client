@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "test_config.h"
+#include "config.h"
 
 /* returns number of result bytes that were successfully parsed */
 uint32_t hex2bin(

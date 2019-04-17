@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include "test_send.h"
+#include "send.h"
 
 bool hostname_to_ip(char *hostname, char *ip, uint16_t ip_len)
 {

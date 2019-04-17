@@ -28,10 +28,6 @@ unit_test: ${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
 	$(CC) -lc -o ${BIN_DIR}/unit_test \
 	${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
 
-eg_client: ${BUILD_DIR}/eg_client.o ${BIN_DIR}/libel.a
-	$(CC) -lc -o ${BIN_DIR}/eg_client \
-	${BUILD_DIR}/eg_client.o ${BIN_DIR}/libel.a
-
 ${BIN_DIR}/libel.a: ${GENERATED_SRCS} ${LIBELG_OBJS}
 	ar rcs $@ ${LIBELG_OBJS}
 
@@ -47,9 +43,6 @@ ${BUILD_DIR}/el.pb.o: ${SKY_PROTO_DIR}/el.pb.c
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 ${BUILD_DIR}/%.o: %.c
-	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
-
-${BUILD_DIR}/eg_client.o:
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:

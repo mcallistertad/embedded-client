@@ -22,12 +22,12 @@
 #include <time.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 
-#include "libelg.h"
+#include "libel.h"
 #include "crc32.h"
 #include "beacons.h"
 
-#include "test_send.h"
-#include "test_config.h"
+#include "send.h"
+#include "config.h"
 
 #define SCAN_LIST_SIZE 5
 
