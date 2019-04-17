@@ -6,21 +6,21 @@
 #define MAX_SCANS 1000
 
 typedef struct wifi_scan {
-	int8_t num_aps;
-	Sky_beacon_type_t wifi_type;
-	Sky_beacon_type_t cell_type;
-	union Wifi {
-		struct ap *aps;
-		struct ble *ble;
-	} wifi;
-	union Cell {
-		struct cdma cdma;
-		struct gsm gsm;
-		struct lte lte;
-		struct nbiot nbiot;
-		struct umts umts;
-	} cell;
-	Gps_t gps;
+    int8_t num_aps;
+    Sky_beacon_type_t wifi_type;
+    Sky_beacon_type_t cell_type;
+    union Wifi {
+        struct ap *aps;
+        struct ble *ble;
+    } wifi;
+    union Cell {
+        struct cdma cdma;
+        struct gsm gsm;
+        struct lte lte;
+        struct nbiot nbiot;
+        struct umts umts;
+    } cell;
+    Gps_t gps;
 } WifiScan_t;
 
 

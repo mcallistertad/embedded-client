@@ -57,18 +57,18 @@ int32_t bin2hex(char *buff, int32_t buff_len, uint8_t *data, int32_t data_len) {
 
 int load_config(char *filename, Config_t *config, int client_id)
 {
-	char line[100];
-	char str[32];
-	char *p;
-	bool client_found = false;
-	int val;
+    char line[100];
+    char str[32];
+    char *p;
+    bool client_found = false;
+    int val;
 
-	FILE *fp = fopen(filename, "r");
-	if (fp == NULL) {
-		printf("Error: unable to open config file - %s", filename);
-		return -1;
-	}
-	while (fgets(line, sizeof(line), fp)) {
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        printf("Error: unable to open config file - %s", filename);
+        return -1;
+    }
+    while (fgets(line, sizeof(line), fp)) {
         if (strlen(line) < 4)
             continue;
 
@@ -85,8 +85,8 @@ int load_config(char *filename, Config_t *config, int client_id)
         }
 
         if (sscanf(line, "KEY %s", str) == 1) {
-			hex2bin(str, KEY_SIZE * 2, config->key, KEY_SIZE);
-			continue;
+            hex2bin(str, KEY_SIZE * 2, config->key, KEY_SIZE);
+            continue;
 
         }
 
@@ -98,56 +98,56 @@ int load_config(char *filename, Config_t *config, int client_id)
         if (sscanf(line, "CLIENT_ID %d", &val) == 1) {
 
             if (client_found)
-            	break;
+                break;
 
-        	if (val == client_id || client_id == 0)
-        		client_found = true;
-        	else
-        		continue;
+            if (val == client_id || client_id == 0)
+                client_found = true;
+            else
+                continue;
             config->client_id = (uint16_t) (val & 0xFFFF);
             continue;
         }
 
         if (client_found) {
 
-			if (sscanf(line, "SCAN_FILE %256s", config->scan_file) == 1) {
-				continue;
-			}
+            if (sscanf(line, "SCAN_FILE %256s", config->scan_file) == 1) {
+                continue;
+            }
 
-			if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
-				hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
-				continue;
-			}
+            if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
+                hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
+                continue;
+            }
 
-			if (sscanf(line, "DELAY %d", &val) == 1) {
-				config->delay = (uint16_t) (val & 0xFFFF);
-				continue;
-			}
+            if (sscanf(line, "DELAY %d", &val) == 1) {
+                config->delay = (uint16_t) (val & 0xFFFF);
+                continue;
+            }
         }
-	}
-	fclose(fp);
-	print_config(config);
-	printf("Config Loaded\n");
+    }
+    fclose(fp);
+    print_config(config);
+    printf("Config Loaded\n");
 
-	return 0;
+    return 0;
 
 }
 
 void print_config(Config_t *config) {
-	char key[KEY_SIZE * 2 + 1];
-	bin2hex(key, KEY_SIZE * 2, config->key, KEY_SIZE);
-	key[KEY_SIZE * 2] = '\0';
-	char device[MAC_SIZE * 2 + 1];
-	bin2hex(device, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
-	device[MAC_SIZE * 2] = '\0';
+    char key[KEY_SIZE * 2 + 1];
+    bin2hex(key, KEY_SIZE * 2, config->key, KEY_SIZE);
+    key[KEY_SIZE * 2] = '\0';
+    char device[MAC_SIZE * 2 + 1];
+    bin2hex(device, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
+    device[MAC_SIZE * 2] = '\0';
 
-	printf("Configuration for Client #%d\n",config->client_id);
-	printf("Server: %s\n",config->server);
-	printf("Port: %d\n",config->port);
-	printf("Key: %32s\n",key);
-	printf("Partner Id: %d\n",config->partner_id);
-	printf("Device: %12s\n",device);
-	printf("Scan File: %s\n",config->scan_file);
-	printf("Delay: %d\n",config->delay);
+    printf("Configuration for Client #%d\n",config->client_id);
+    printf("Server: %s\n",config->server);
+    printf("Port: %d\n",config->port);
+    printf("Key: %32s\n",key);
+    printf("Partner Id: %d\n",config->partner_id);
+    printf("Device: %12s\n",device);
+    printf("Scan File: %s\n",config->scan_file);
+    printf("Delay: %d\n",config->delay);
 
 }

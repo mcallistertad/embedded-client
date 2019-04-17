@@ -19,10 +19,10 @@
 
 /* ------- Standin for Geoff's stuff --------------------------- */
 struct Ap {
-	uint8_t mac[6];
-	uint32_t age; // ms
-	uint32_t channel;
-	int32_t rssi;
+    uint8_t mac[6];
+    uint32_t age; // ms
+    uint32_t channel;
+    int32_t rssi;
     bool connected;
 };
 

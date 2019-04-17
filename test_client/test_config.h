@@ -6,16 +6,16 @@
 
 typedef struct client_config {
 
-	uint16_t port;
-	uint16_t partner_id;
-	uint16_t client_id;
-	uint16_t delay;
+    uint16_t port;
+    uint16_t partner_id;
+    uint16_t client_id;
+    uint16_t delay;
 
-	char server[80];
-	char scan_file[256];
+    char server[80];
+    char scan_file[256];
 
-	uint8_t device_mac[MAC_SIZE];
-	uint8_t key[KEY_SIZE];
+    uint8_t device_mac[MAC_SIZE];
+    uint8_t key[KEY_SIZE];
 } Config_t;
 
 uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);
