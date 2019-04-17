@@ -241,7 +241,7 @@ bool Rq_callback(
     return true;
 }
 
-int32_t serialize_request(Sky_ctx_t *ctx)
+int32_t serialize_request(Sky_ctx_t *ctx, uint8_t* buf, uint32_t buf_len)
 {
     // Initialize request header.
     RqHeader rq_hdr;
@@ -259,10 +259,6 @@ int32_t serialize_request(Sky_ctx_t *ctx)
         ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
 
     rq_crypto_info.iv.size = 16;
-
-    struct AES_ctx aes_ctx;
-
-    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), rq_crypto_info.iv.bytes);
 
     // Initialize request body.
     Rq rq;
@@ -299,13 +295,17 @@ int32_t serialize_request(Sky_ctx_t *ctx)
 
     pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
-    size_t buf_len = get_ctx_request_size(ctx);
+    size_t total_length = 1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length;
+
+    // Exit if we've been called just for the purpose of determining how much
+    // buffer space is necessary.
+    //
+    if (buf == NULL)
+        return total_length;
 
     // Return an error indication if the supplied buffer is too small.
-    if (1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length > buf_len)
+    if (total_length > buf_len)
         return -1;
-
-    uint8_t *buf = get_ctx_request(ctx);
 
     *buf = (uint8_t)hdr_size;
 
@@ -340,9 +340,14 @@ int32_t serialize_request(Sky_ctx_t *ctx)
         return -1;
 
     // Encrypt the (serialized) request body.
+    //
     // TODO: value the padding bytes explicitly instead of just letting them be
     // whatever is in the buffer.
     //
+    struct AES_ctx aes_ctx;
+
+    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), rq_crypto_info.iv.bytes);
+
     AES_CBC_encrypt_buffer(&aes_ctx, buf, rq_size + aes_padding_length);
 
     return bytes_written + aes_padding_length;

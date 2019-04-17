@@ -58,7 +58,5 @@ typedef struct sky_ctx {
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     Sky_cache_t *cache;
-    uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
-                    (sizeof(Gps_t) * 2)];
 } Sky_ctx_t;
 #endif

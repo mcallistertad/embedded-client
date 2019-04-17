@@ -213,28 +213,6 @@ void dump_cache(Sky_ctx_t *ctx)
     }
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (ctx request)
- *
- *  @param ctx workspace buffer
- *
- *  @return pointer to request buffer
- */
-uint8_t *get_ctx_request(Sky_ctx_t *ctx)
-{
-    return ctx->request;
-}
-
-/*! \brief field extraction for dynamic use of Nanopb (ctx request_size)
- *
- *  @param ctx workspace buffer
- *
- *  @return size of request buffer
- */
-size_t get_ctx_request_size(Sky_ctx_t *ctx)
-{
-    return sizeof(ctx->request);
-}
-
 /*! \brief field extraction for dynamic use of Nanopb (ctx partner_id)
  *
  *  @param ctx workspace buffer

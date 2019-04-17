@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     if (ret_code == -1)
         exit(-1);
 
-    // Using cache
+    // Uncomment in order to enable cache.
     //  nv_space = nv_cache(nv_space, config.client_id);
 
     // Initialize the Skyhook resources
@@ -271,15 +271,34 @@ int main(int argc, char *argv[])
     default:
         ret_status = SKY_ERROR;
     }
+
     if (ret_status == SKY_SUCCESS)
         printf("Cell added\n");
     else
         printf("sky_add_ap_beacon sky_errno contains '%s'",
                 sky_perror(sky_errno));
 
-    // Finalize the request by check the cache
+    // Determine how big the network request buffer must be, and allocate a
+    // buffer of that length. This function must be called for each request.
+    ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
+
+    if (ret_status == SKY_ERROR)
+    {
+        printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
+        exit(-1);
+    }
+    else
+        printf("Required buffer size = %d\n", request_size);
+
+    prequest = malloc(request_size);
+
+    // Finalize the request. This will return either SKY_FINALIZE_LOCATION, in
+    // which case the loc parameter will contain the location result which was
+    // obtained from the cache, or SKY_FINALIZE_REQUEST, which means that the
+    // request buffer must be sent to the Skyhook server.
     Sky_finalize_t finalize = sky_finalize_request(
-            ctx, &sky_errno, &prequest, &request_size, &loc, &response_size);
+            ctx, &sky_errno, prequest, request_size, &loc, &response_size);
+
     if (finalize == SKY_FINALIZE_ERROR) {
         printf("sky_finalize_request sky_errno contains '%s'",
                 sky_perror(sky_errno));
@@ -289,31 +308,49 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    // Send the request to the server
-    response = malloc(response_size * sizeof(uint8_t));
-    int32_t rc = send_request((char *)prequest, (int)request_size, response,
-            response_size, config.server, config.port);
-    if (rc > 0)
-        printf("Received response from server\n");
-    else {
-        printf("Bad response from server\n");
-        ret_status = sky_close(&sky_errno, &pstate);
+    switch (finalize) {
+    case SKY_FINALIZE_REQUEST:
+        // Need to send the request to the server.
+        response = malloc(response_size * sizeof(uint8_t));
+
+        printf("Sending request of length %d to server\n", request_size);
+
+        int32_t rc = send_request((char *)prequest, (int)request_size, response,
+                response_size, config.server, config.port);
+
+        if (rc > 0)
+            printf("Received response of length %d from server\n", rc);
+        else {
+            printf("Bad response from server\n");
+            ret_status = sky_close(&sky_errno, &pstate);
+            if (ret_status != SKY_SUCCESS)
+                printf("sky_close sky_errno contains '%s'\n",
+                        sky_perror(sky_errno));
+            exit(-1);
+        }
+
+        // Decode the response from server or cache
+        ret_status = sky_decode_response(ctx, &sky_errno, response, bufsize, &loc);
+
         if (ret_status != SKY_SUCCESS)
-            printf("sky_close sky_errno contains '%s'\n",
+            printf("sky_decode_response error: '%s'\n",
                     sky_perror(sky_errno));
+        break;
+    case SKY_FINALIZE_LOCATION:
+        // Location was found in the cache. No need to go to server.
+        printf("Location found in cache\n");
+        break;
+    case SKY_FINALIZE_ERROR:
+        printf("Error finalizing request\n");
         exit(-1);
+        break;
     }
 
-    // Decode the response from server or cache
-    ret_status = sky_decode_response(ctx, &sky_errno, response, bufsize, &loc);
-    if (ret_status == SKY_SUCCESS)
-        printf("sky_decode_response: lat: %.6f, lon: %.6f, hpe: %d, source: %d\n",
-                loc.lat, loc.lon, loc.hpe, loc.location_source);
-    else
-        printf("sky_decode_response sky_errno contains '%s'\n",
-                sky_perror(sky_errno));
+    printf("Skyhook location: lat: %.6f, lon: %.6f, hpe: %d, source: %d\n",
+           loc.lat, loc.lon, loc.hpe, loc.location_source);
 
     ret_status = sky_close(&sky_errno, &pstate);
+
     if (ret_status != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 

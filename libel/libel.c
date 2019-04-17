@@ -489,7 +489,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
  *          SKY_FINALIZE_ERROR and sets sky_errno with error code
  */
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        void **request_buf, uint32_t *bufsize, Sky_location_t *loc,
+        void *request_buf, uint32_t bufsize, Sky_location_t *loc,
         uint32_t *response_size)
 {
     int c;
@@ -513,12 +513,15 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         return SKY_FINALIZE_LOCATION;
     }
 
+    if (request_buf == NULL) {
+        *sky_errno = SKY_ERROR_BAD_PARAMETERS;
+        return SKY_FINALIZE_ERROR;
+    }
+
     /* encode request */
-    int rc = serialize_request(ctx);
+    int rc = serialize_request(ctx, request_buf, bufsize);
 
     if (rc > 0) {
-        *request_buf = ctx->request;
-        *bufsize = rc;
         *response_size = 100; // FIXME: value this properly.
 
         *sky_errno = SKY_ERROR_NONE;
@@ -528,6 +531,40 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         *sky_errno = SKY_ERROR_ENCODE_ERROR;
 
         return SKY_FINALIZE_ERROR;
+    }
+}
+
+/*! \brief Determines the required size of the network request buffer
+ *
+ *  @param ctx Skyhook request context
+ *  @param size parameter which will be set to the size value
+ *  @param sky_errno skyErrno is set to the error code
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
+{
+    if (!validate_workspace(ctx)) {
+        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
+        return SKY_ERROR;
+    }
+
+    if (size == NULL) {
+        *sky_errno = SKY_ERROR_BAD_PARAMETERS;
+        return SKY_ERROR;
+    }
+
+    /* encode request into the bit bucket, just to determine the length of the
+     * encoded message */
+    int rc = serialize_request(ctx, NULL, 0);
+
+    if (rc > 0) {
+        *size = (uint32_t) rc;
+        *sky_errno = SKY_ERROR_NONE;
+        return SKY_SUCCESS;
+    } else {
+        *sky_errno = SKY_ERROR_ENCODE_ERROR;
+        return SKY_ERROR;
     }
 }
 
