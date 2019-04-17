@@ -281,7 +281,36 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         uint16_t tac, uint32_t e_cellid, uint16_t mcc, uint16_t mnc,
         time_t timestamp, int16_t rsrp, bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Decrement the number of beacons expected to be added */
+    ctx->expect--;
+
+    /* Create GSM beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_LTE;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+        b.lte.age = ctx->header.time - timestamp;
+    else
+        b.lte.age = 0;
+    b.lte.tac = tac;
+    b.lte.eucid = e_cellid;
+    b.lte.mcc = mcc;
+    b.lte.mnc = mnc;
+    b.lte.rssi = rsrp;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a gsm cell beacon to the request context

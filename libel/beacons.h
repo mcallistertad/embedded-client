@@ -98,6 +98,7 @@ struct lte {
     uint32_t eucid;
     uint16_t mcc;
     uint16_t mnc;
+    uint16_t tac;
     int16_t rssi;
 };
 
