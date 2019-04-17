@@ -192,8 +192,7 @@ int main(int ac, char **av)
     srand((unsigned)time(NULL));
 
     if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-                nv_cache(), SKY_LOG_LEVEL_ALL, &logger,
-                &rand_bytes) == SKY_ERROR) {
+                nv_cache(), SKY_LOG_LEVEL_ALL, &logger, NULL) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }

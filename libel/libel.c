@@ -122,7 +122,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     cache.sky_id_len = id_len;
     sky_min_level = min_level;
     sky_logf = logf;
-    sky_rand_bytes = rand_bytes;
+    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     cache.sky_aes_key_id = aes_key_id;

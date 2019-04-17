@@ -20,6 +20,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBEL 1
 #include "libel.h"
@@ -714,4 +715,23 @@ int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx)
         return 0;
     }
     return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.age;
+}
+
+/*! \brief generate random byte sequence
+ *
+ *  @param rand_buf pointer to buffer where rand bytes are put
+ *  @param bufsize length of rand bytes
+ *
+ *  @returns 0 for failure, length of rand sequence for success
+ */
+int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
+{
+    int i;
+
+    if (!rand_buf)
+        return 0;
+
+    for (i = 0; i < bufsize; i++)
+        rand_buf[i] = rand() % 256;
+    return bufsize;
 }

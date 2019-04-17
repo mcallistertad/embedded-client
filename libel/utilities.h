@@ -73,4 +73,5 @@ int64_t get_nbiot_lac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
+int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif
