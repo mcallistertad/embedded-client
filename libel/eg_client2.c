@@ -21,7 +21,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
-#include "libelg.h"
+#include "libel.h"
 #include "crc32.h"
 
 /* included as a convienient structure to hold test scan info */
@@ -37,10 +37,10 @@ void *nv_space;
 void set_mac(uint8_t *mac)
 {
     uint8_t refs[5][MAC_SIZE] = { { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e },
-                      { 0xe4, 0x75, 0x64, 0xb2, 0xf5, 0x7e },
-                      { 0xf4, 0x65, 0x64, 0xb2, 0xf5, 0x7e },
-                      { 0x14, 0x55, 0x64, 0xb2, 0xf5, 0x7e },
-                      { 0x24, 0x45, 0x64, 0xb2, 0xf5, 0x7e } };
+        { 0xe4, 0x75, 0x64, 0xb2, 0xf5, 0x7e },
+        { 0xf4, 0x65, 0x64, 0xb2, 0xf5, 0x7e },
+        { 0x14, 0x55, 0x64, 0xb2, 0xf5, 0x7e },
+        { 0x24, 0x45, 0x64, 0xb2, 0xf5, 0x7e } };
 
     if (rand() % 7 == 0) {
         /* Virtual MAC */
@@ -71,14 +71,14 @@ void set_mac(uint8_t *mac)
 int logger(Sky_log_level_t level, const char *s)
 {
     printf("Skyhook libELG %s: %.*s\n",
-           level == SKY_LOG_LEVEL_CRITICAL ?
-               "CRIT" :
-               level == SKY_LOG_LEVEL_ERROR ?
-               "ERRR" :
-               level == SKY_LOG_LEVEL_WARNING ?
-               "WARN" :
-               level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-           80, s);
+            level == SKY_LOG_LEVEL_CRITICAL ?
+                    "CRIT" :
+                    level == SKY_LOG_LEVEL_ERROR ?
+                    "ERRR" :
+                    level == SKY_LOG_LEVEL_WARNING ?
+                    "WARN" :
+                    level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+            80, s);
     return 0;
 }
 
@@ -117,9 +117,9 @@ void *nv_cache(void)
 
     if ((fio = fopen("nv_cache", "r")) != NULL) {
         if (fread((void *)&tmp, sizeof(tmp), 1, fio) == 1 &&
-            tmp.crc32 == sky_crc32(&tmp.magic,
-                       (uint8_t *)&tmp.crc32 -
-                           (uint8_t *)&tmp.magic)) {
+                tmp.crc32 ==
+                        sky_crc32(&tmp.magic, (uint8_t *)&tmp.crc32 -
+                                                      (uint8_t *)&tmp.magic)) {
             nv_space = malloc(tmp.size);
             rewind(fio);
             if (fread(nv_space, tmp.size, 1, fio) == 1)
@@ -146,11 +146,10 @@ Sky_status_t nv_cache_save(void *p)
     } *c = p;
 
     if (c->crc32 ==
-        sky_crc32(&c->magic, (uint8_t *)&c->crc32 - (uint8_t *)&c->magic)) {
+            sky_crc32(&c->magic, (uint8_t *)&c->crc32 - (uint8_t *)&c->magic)) {
         if ((fio = fopen("nv_cache", "w+")) != NULL) {
             if (fwrite(p, c->size, 1, fio) == 1) {
-                printf("nv_cache_save: cache size %d\n",
-                       c->size);
+                printf("nv_cache_save: cache size %d\n", c->size);
                 return 0;
             } else
                 printf("fwrite failed\n");
@@ -175,9 +174,8 @@ int main(int ac, char **av)
     Sky_ctx_t *ctx;
     uint32_t *p;
     uint32_t bufsize;
-    uint8_t aes_key[AES_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e,
-                      0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e,
-                      0xd4, 0x85, 0x64, 0xb2 };
+    uint8_t aes_key[AES_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e, 0xd4,
+        0x85, 0x64, 0xb2, 0xf5, 0x7e, 0xd4, 0x85, 0x64, 0xb2 };
     uint8_t mac[MAC_SIZE] = { 0xd4, 0x85, 0x64, 0xb2, 0xf5, 0x7e };
     time_t timestamp = time(NULL);
     uint32_t ch = 65;
@@ -192,8 +190,8 @@ int main(int ac, char **av)
     srand((unsigned)time(NULL));
 
     if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-             nv_cache(), SKY_LOG_LEVEL_ALL, &logger,
-             &rand_bytes) == SKY_ERROR) {
+                nv_cache(), SKY_LOG_LEVEL_ALL, &logger,
+                &rand_bytes) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
@@ -225,14 +223,14 @@ int main(int ac, char **av)
 
     for (i = 0; i < 25; i++) {
         if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp,
-                      b[i].ap.rssi, ch, 1))
+                    b[i].ap.rssi, ch, 1))
             printf("sky_add_ap_beacon sky_errno contains '%s'\n",
-                   sky_perror(sky_errno));
+                    sky_perror(sky_errno));
         else
             printf("Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
-                   i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1],
-                   b[i].ap.mac[2], b[i].ap.mac[3], b[i].ap.mac[4],
-                   b[i].ap.mac[5], b[i].ap.rssi);
+                    i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1],
+                    b[i].ap.mac[2], b[i].ap.mac[3], b[i].ap.mac[4],
+                    b[i].ap.mac[5], b[i].ap.rssi);
     }
 
     for (i = 0; i < 3; i++) {
@@ -244,17 +242,15 @@ int main(int ac, char **av)
     }
 
     for (i = 0; i < 3; i++) {
-        if (sky_add_cell_nb_iot_beacon(
-                ctx, &sky_errno, b[i].nbiot.mcc, b[i].nbiot.mnc,
-                b[i].nbiot.e_cellid, b[i].nbiot.tac, timestamp,
-                b[i].nbiot.rssi, 1))
+        if (sky_add_cell_nb_iot_beacon(ctx, &sky_errno, b[i].nbiot.mcc,
+                    b[i].nbiot.mnc, b[i].nbiot.e_cellid, b[i].nbiot.tac,
+                    timestamp, b[i].nbiot.rssi, 1))
             printf("sky_add_nbiot_beacon sky_errno contains '%s'\n",
-                   sky_perror(sky_errno));
+                    sky_perror(sky_errno));
         else
             printf("Added Test Beacon % 2d: Type: %d, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d\n",
-                   i, b[i].nbiot.type, b[i].nbiot.mcc,
-                   b[i].nbiot.mnc, b[i].nbiot.e_cellid,
-                   b[i].nbiot.tac, b[i].nbiot.rssi);
+                    i, b[i].nbiot.type, b[i].nbiot.mcc, b[i].nbiot.mnc,
+                    b[i].nbiot.e_cellid, b[i].nbiot.tac, b[i].nbiot.rssi);
     }
 
     for (i = 0; i < 2; i++) {
@@ -266,26 +262,24 @@ int main(int ac, char **av)
     }
 
     for (i = 0; i < 2; i++) {
-        if (sky_add_cell_gsm_beacon(ctx, &sky_errno, b[i].gsm.lac,
-                        b[i].gsm.ci, b[i].gsm.mcc,
-                        b[i].gsm.mnc, timestamp,
-                        b[i].gsm.rssi, 1))
+        if (sky_add_cell_gsm_beacon(ctx, &sky_errno, b[i].gsm.lac, b[i].gsm.ci,
+                    b[i].gsm.mcc, b[i].gsm.mnc, timestamp, b[i].gsm.rssi, 1))
             printf("sky_add_gsm_beacon sky_errno contains '%s'\n",
-                   sky_perror(sky_errno));
+                    sky_perror(sky_errno));
         else
             printf("Added Test Beacon % 2d: Type: %d, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d\n",
-                   i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ci,
-                   b[i].gsm.mcc, b[i].gsm.mnc, b[i].gsm.rssi);
+                    i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ci, b[i].gsm.mcc,
+                    b[i].gsm.mnc, b[i].gsm.rssi);
     }
 
-    switch (sky_finalize_request(ctx, &sky_errno, &prequest, &request_size,
-                     &loc, &response_size)) {
+    switch (sky_finalize_request(
+            ctx, &sky_errno, &prequest, &request_size, &loc, &response_size)) {
     case SKY_FINALIZE_LOCATION:
-        printf("sky_finalize_request: GPS: %.6f,%.6f,%d\n", loc.lat,
-               loc.lon, loc.hpe);
+        printf("sky_finalize_request: GPS: %.6f,%.6f,%d\n", loc.lat, loc.lon,
+                loc.hpe);
         if (sky_close(&sky_errno, &pstate))
             printf("sky_close sky_errno contains '%s'\n",
-                   sky_perror(sky_errno));
+                    sky_perror(sky_errno));
         if (pstate != NULL)
             nv_cache_save(pstate);
         exit(0);
@@ -293,10 +287,10 @@ int main(int ac, char **av)
     default:
     case SKY_FINALIZE_ERROR:
         printf("sky_finalize_request sky_errno contains '%s'\n",
-               sky_perror(sky_errno));
+                sky_perror(sky_errno));
         if (sky_close(&sky_errno, &pstate))
             printf("sky_close sky_errno contains '%s'\n",
-                   sky_perror(sky_errno));
+                    sky_perror(sky_errno));
         exit(-1);
         break;
     case SKY_FINALIZE_REQUEST:
@@ -307,11 +301,10 @@ int main(int ac, char **av)
 
     if (sky_decode_response(ctx, &sky_errno, NULL, 0, &loc))
         printf("sky_decode_response sky_errno contains '%s'\n",
-               sky_perror(sky_errno));
+                sky_perror(sky_errno));
 
     if (sky_close(&sky_errno, &pstate))
-        printf("sky_close sky_errno contains '%s'\n",
-               sky_perror(sky_errno));
+        printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
     if (pstate != NULL)
         nv_cache_save(pstate);
 }

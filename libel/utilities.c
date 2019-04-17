@@ -1,7 +1,7 @@
-/*! \file libelg/utilities.c
- *  \brief utilities - Skyhook ELG API Version 3.0 (IoT)
+/*! \file libel/utilities.c
+ *  \brief utilities - Skyhook Embedded Library
  *
- * Copyright 2019 Skyhook Inc.
+ * Copyright 2015-present Skyhook Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
-#define SKY_LIBELG 1
-#include "libelg.h"
+#define SKY_LIBEL 1
+#include "libel.h"
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -48,19 +48,18 @@ int validate_workspace(Sky_ctx_t *ctx)
 {
     int i;
 
-    if (ctx != NULL &&
-        ctx->header.crc32 ==
-            sky_crc32(&ctx->header.magic,
-                  (uint8_t *)&ctx->header.crc32 -
-                      (uint8_t *)&ctx->header.magic)) {
+    if (ctx != NULL && ctx->header.crc32 ==
+                               sky_crc32(&ctx->header.magic,
+                                       (uint8_t *)&ctx->header.crc32 -
+                                               (uint8_t *)&ctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
             if (ctx->beacon[i].h.magic != BEACON_MAGIC ||
-                ctx->beacon[i].h.type > SKY_BEACON_MAX)
+                    ctx->beacon[i].h.type > SKY_BEACON_MAX)
                 return false;
         }
     }
     if (ctx == NULL || ctx->len > TOTAL_BEACONS ||
-        ctx->connected > TOTAL_BEACONS)
+            ctx->connected > TOTAL_BEACONS)
         return false;
     return true;
 }
@@ -79,24 +78,21 @@ int validate_cache(Sky_cache_t *c)
         return false;
 
     if (c->len != CACHE_SIZE) {
-        printf("%s: CACHE_SIZE %d vs len %d", __FUNCTION__, CACHE_SIZE,
-               c->len);
+        printf("%s: CACHE_SIZE %d vs len %d", __FUNCTION__, CACHE_SIZE, c->len);
         return false;
     }
 
     if (c->header.crc32 ==
-        sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 -
-                        (uint8_t *)&c->header.magic)) {
+            sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 -
+                                                (uint8_t *)&c->header.magic)) {
         for (i = 0; i < CACHE_SIZE; i++) {
             if (c->cacheline[i].len > TOTAL_BEACONS)
                 return false;
 
             for (j = 0; j < TOTAL_BEACONS; j++) {
-                if (c->cacheline[i].beacon[j].h.magic !=
-                    BEACON_MAGIC)
+                if (c->cacheline[i].beacon[j].h.magic != BEACON_MAGIC)
                     return false;
-                if (c->cacheline[i].beacon[j].h.type >
-                    SKY_BEACON_MAX)
+                if (c->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX)
                     return false;
             }
         }
@@ -143,36 +139,31 @@ void dump_workspace(Sky_ctx_t *ctx)
     int i;
 
     logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-           "WorkSpace: Expect %d, got %d, AP %d starting at %d, connected %d",
-           ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low, ctx->connected);
+            "WorkSpace: Expect %d, got %d, AP %d starting at %d, connected %d",
+            ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low, ctx->connected);
     for (i = 0; i < ctx->len; i++) {
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                   "Beacon % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
-                   i, ctx->beacon[i].ap.mac[0],
-                   ctx->beacon[i].ap.mac[1],
-                   ctx->beacon[i].ap.mac[2],
-                   ctx->beacon[i].ap.mac[3],
-                   ctx->beacon[i].ap.mac[4],
-                   ctx->beacon[i].ap.mac[5],
-                   ctx->beacon[i].ap.rssi);
+                    "Beacon % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
+                    i, ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1],
+                    ctx->beacon[i].ap.mac[2], ctx->beacon[i].ap.mac[3],
+                    ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
+                    ctx->beacon[i].ap.rssi);
             break;
         case SKY_BEACON_GSM:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                   "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
-                   i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
-                   ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
-                   ctx->beacon[i].gsm.rssi);
+                    "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
+                    i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
+                    ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
+                    ctx->beacon[i].gsm.rssi);
             break;
         case SKY_BEACON_NBIOT:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                   "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
-                   i, ctx->beacon[i].nbiot.mcc,
-                   ctx->beacon[i].nbiot.mnc,
-                   ctx->beacon[i].nbiot.e_cellid,
-                   ctx->beacon[i].nbiot.tac,
-                   ctx->beacon[i].nbiot.rssi);
+                    "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+                    i, ctx->beacon[i].nbiot.mcc, ctx->beacon[i].nbiot.mnc,
+                    ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac,
+                    ctx->beacon[i].nbiot.rssi);
             break;
         }
     }
@@ -191,34 +182,30 @@ void dump_cache(Sky_ctx_t *ctx)
     Beacon_t *b;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d", i,
-               CACHE_SIZE);
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d", i, CACHE_SIZE);
         c = &ctx->cache->cacheline[i];
         for (j = 0; j < c->len; j++) {
             b = &c->beacon[j];
             switch (b->h.type) {
             case SKY_BEACON_AP:
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                       "cache % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
-                       i, b->ap.mac[0], b->ap.mac[1],
-                       b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
-                       b->ap.mac[5], b->ap.rssi, c->loc.lat,
-                       c->loc.lon, c->loc.hpe);
+                        "cache % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
+                        i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2],
+                        b->ap.mac[3], b->ap.mac[4], b->ap.mac[5], b->ap.rssi,
+                        c->loc.lat, c->loc.lon, c->loc.hpe);
                 break;
             case SKY_BEACON_GSM:
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                       "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: %d, %.2f,%.2f,%d",
-                       i, b->gsm.lac, b->gsm.ci, b->gsm.mcc,
-                       b->gsm.mnc, b->gsm.rssi, c->loc.lat,
-                       c->loc.lon, c->loc.hpe);
+                        "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: %d, %.2f,%.2f,%d",
+                        i, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc,
+                        b->gsm.rssi, c->loc.lat, c->loc.lon, c->loc.hpe);
                 break;
             case SKY_BEACON_NBIOT:
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                       "cache % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
-                       i, b->nbiot.mcc, b->nbiot.mnc,
-                       b->nbiot.e_cellid, b->nbiot.tac,
-                       b->nbiot.rssi, c->loc.lat, c->loc.lon,
-                       c->loc.hpe);
+                        "cache % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
+                        i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid,
+                        b->nbiot.tac, b->nbiot.rssi, c->loc.lat, c->loc.lon,
+                        c->loc.hpe);
                 break;
             }
         }
@@ -629,8 +616,7 @@ int64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.mcc;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.mcc;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (nbiot/mnc)
@@ -646,8 +632,7 @@ int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.mnc;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.mnc;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (nbiot/e_cellid)
@@ -664,7 +649,7 @@ int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx)
         return 0;
     }
     return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.e_cellid;
+            .nbiot.e_cellid;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (nbiot/tac)
@@ -680,8 +665,7 @@ int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.tac;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.tac;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (nbiot/rssi)
@@ -697,8 +681,7 @@ int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.rssi;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.rssi;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (nbiot/is_connected)
@@ -730,6 +713,5 @@ int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx]
-        .nbiot.age;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.age;
 }

@@ -1,7 +1,7 @@
-/*! \file libelg/workspace.h
- *  \brief Skyhook ELG API workspace structures
+/*! \file libel/workspace.h
+ *  \brief Skyhook Embedded Library
  *
- * Copyright 2019 Skyhook Inc.
+ * Copyright 2015-present Skyhook Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +59,6 @@ typedef struct sky_ctx {
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     Sky_cache_t *cache;
     uint8_t request[(sizeof(Beacon_t) * TOTAL_BEACONS * 2) +
-            (sizeof(Gps_t) * 2)];
+                    (sizeof(Gps_t) * 2)];
 } Sky_ctx_t;
 #endif

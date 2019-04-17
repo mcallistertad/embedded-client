@@ -1,7 +1,7 @@
-/*! \file libelg/utilities.h
- *  \brief Skyhook ELG API workspace structures
+/*! \file libel/utilities.h
+ *  \brief Skyhook Embedded Library workspace structures
  *
- * Copyright 2019 Skyhook Inc.
+ * Copyright 2015-present Skyhook Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #define LOGFMT(ctx, fmt, ...) logfmt(ctx, fmt, ...)
 #else
 #define LOGFMT(ctx, fmt, ...)                                                  \
-    if (0)                                                                 \
+    if (0)                                                                     \
     logfmt(ctx, fmt, ...)
 #endif
 Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
@@ -31,8 +31,8 @@ int validate_cache(Sky_cache_t *c);
 Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
 int get_cache(Sky_ctx_t *ctx);
 int find_best_match(Sky_ctx_t *ctx, bool put);
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b,
-            bool is_connected);
+Sky_status_t add_beacon(
+        Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected);
 int logfmt(Sky_ctx_t *ctx, Sky_log_level_t level, const char *fmt, ...);
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);

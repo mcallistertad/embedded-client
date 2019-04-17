@@ -1,7 +1,7 @@
-/*! \file libelg/beacons.h
- *  \brief Skyhook ELG API intermediate structures
+/*! \file libel/beacons.h
+ *  \brief Skyhook Embedded Library
  *
- * Copyright 2019 Skyhook Inc.
+ * Copyright 2019-present Skyhook Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

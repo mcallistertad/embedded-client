@@ -10,20 +10,18 @@
 
 #include "test_send.h"
 
-bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
+bool hostname_to_ip(char *hostname, char *ip, uint16_t ip_len)
 {
-    struct hostent* he = gethostbyname(hostname);
+    struct hostent *he = gethostbyname(hostname);
 
-    if (he == NULL)
-    {
+    if (he == NULL) {
         printf("Error: unable to host by name\n");
         return false;
     }
 
-    struct in_addr** addr_list = (struct in_addr **) he->h_addr_list;
+    struct in_addr **addr_list = (struct in_addr **)he->h_addr_list;
 
-    for (size_t i = 0; addr_list[i] != NULL; i++)
-    {
+    for (size_t i = 0; addr_list[i] != NULL; i++) {
         //Return the first one;
         strncpy(ip, inet_ntoa(*addr_list[i]), ip_len);
         return true;
@@ -32,9 +30,9 @@ bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
     return false;
 }
 
-
-int send_request(char *request, int req_size, uint8_t *response, int resp_size, char *server, int port) {
-
+int send_request(char *request, int req_size, uint8_t *response, int resp_size,
+        char *server, int port)
+{
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     char ipaddr[16]; // the char representation of an ipv4 address
@@ -56,7 +54,7 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size, 
         printf("Error: cannot open socket\n");
         return -1;
     }
-/*
+    /*
     // Set socket timeout to 10 seconds.
     struct timeval tv = {10, 0};
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval))) {
@@ -65,7 +63,8 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size, 
     }
 */
     // Connect.
-    int32_t rc = connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+    int32_t rc =
+            connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (rc < 0) {
         close(sockfd);
         printf("Error: unable to connect to server\n");
@@ -73,10 +72,11 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size, 
     }
 
     // Send request.
-    rc = send(sockfd, request, (size_t) req_size, 0);
-    if (rc != (int32_t) req_size) {
+    rc = send(sockfd, request, (size_t)req_size, 0);
+    if (rc != (int32_t)req_size) {
         close(sockfd);
-        printf("Error: sent a different number of bytes (%d) from expected\n", rc);
+        printf("Error: sent a different number of bytes (%d) from expected\n",
+                rc);
         return -1;
     }
 
@@ -87,7 +87,6 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size, 
         return -1;
     }
 
-    printf ("resp = %s, len = %d\n", response, rc);
-    return (int) rc;
-
+    printf("resp = %s, len = %d\n", response, rc);
+    return (int)rc;
 }

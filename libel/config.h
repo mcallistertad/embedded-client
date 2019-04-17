@@ -1,7 +1,7 @@
-/*! \file libelg/config.h
- *  \brief Skyhook ELG API Build time parameters
+/*! \file libel/config.h
+ *  \brief Skyhook Embedded Library
  *
- * Copyright 2019 Skyhook Inc.
+ * Copyright 2015-present Skyhook Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@
 /* Change to false to remove all calls to logging */
 #define SKY_DEBUG true
 
-/*! \brief The maximum number of beacons passed to the ELG server in a request
+/*! \brief The maximum number of beacons passed to the server in a request
  */
 #define TOTAL_BEACONS 11
-/*! \brief The maximum number of AP beacons passed to the ELG server in a request
+/*! \brief The maximum number of AP beacons passed to the server in a request
  */
 #define MAX_AP_BEACONS 10
 

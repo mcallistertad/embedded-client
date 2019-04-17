@@ -1,5 +1,5 @@
-/*! \file libelg/crc32.h
- *  \brief Skyhook ELG API simple crc32()
+/*! \file libel/crc32.h
+ *  \brief Skyhook Embedded Library simple crc32()
  *
  *  source: http://www.hackersdelight.org/hdcodetxt/crc.c.txt
  */

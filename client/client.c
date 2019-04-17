@@ -26,45 +26,73 @@ struct Ap {
     bool connected;
 };
 
-static struct Ap aps[] = {
-    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 162, /* rssi */ -150, true},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0xde, 0xad, 0xbe, 0xef, 0xde, 0xad}, /* age */ 2222, /* channel */ 10, /* rssi */ -150, false},
-    { {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}, /* age */ 2222, /* channel */ 160, /* rssi */ -10, false}
-};
+static struct Ap aps[] = { { { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 },
+                                   /* age */ 2222,
+                                   /* channel */ 10,
+                                   /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 162,
+            /* rssi */ -150, true },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad },
+            /* age */ 2222,
+            /* channel */ 10,
+            /* rssi */ -150, false },
+    { { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 },
+            /* age */ 2222,
+            /* channel */ 160,
+            /* rssi */ -10, false } };
 
-uint8_t* get_ap_mac(Sky_ctx_t* ctx, uint32_t idx)
+uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
 {
     return aps[idx].mac;
 }
 
-bool get_ap_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
     return aps[idx].connected;
 }
 
-uint32_t get_num_aps(Sky_ctx_t* ctx)
+uint32_t get_num_aps(Sky_ctx_t *ctx)
 {
     return sizeof(aps) / sizeof(struct Ap);
 }
 
-int64_t get_ap_channel(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx)
 {
     return aps[idx].channel;
 }
 
-int64_t get_ap_rssi(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
     return aps[idx].rssi;
 }
 
-int64_t get_ap_age(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
 {
     return aps[idx].age;
 }
@@ -80,46 +108,46 @@ struct Gsm {
 };
 
 static struct Gsm gsm_cells[] = {
-    {310, 410, 512, 6676, -130, 1000, false}, 
+    { 310, 410, 512, 6676, -130, 1000, false },
     //{510, 610, 513, 6677, -13, 1001, true}
 };
 
-int64_t get_gsm_mcc(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].mcc;
 }
 
-int64_t get_gsm_mnc(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].mnc;
 }
 
-int64_t get_gsm_lac(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].lac;
 }
 
-int64_t get_gsm_ci(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].ci;
 }
 
-bool get_gsm_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+bool get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].connected;
 }
 
-uint32_t get_num_gsm(Sky_ctx_t* ctx)
+uint32_t get_num_gsm(Sky_ctx_t *ctx)
 {
     return sizeof(gsm_cells) / sizeof(struct Gsm);
 }
 
-int64_t get_gsm_rssi(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].rssi;
 }
 
-int64_t get_gsm_age(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx)
 {
     return gsm_cells[idx].age;
 }
@@ -134,66 +162,74 @@ struct Nbiot {
     bool connected;
 };
 
-static struct Nbiot nbiot_cells[] = {
-    {310, 410, 512, 6676, -130, 1000, false}, 
-    {510, 610, 513, 6677, -13, 1001, true}
-};
+static struct Nbiot nbiot_cells[] = { { 310, 410, 512, 6676, -130, 1000,
+                                              false },
+    { 510, 610, 513, 6677, -13, 1001, true } };
 
-int64_t get_nbiot_mcc(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].mcc;
 }
 
-int64_t get_nbiot_mnc(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].mnc;
 }
 
-int64_t get_nbiot_tac(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].tac;
 }
 
-int64_t get_nbiot_ecellid(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].ecid;
 }
 
-bool get_nbiot_is_connected(Sky_ctx_t* ctx, uint32_t idx)
+bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].connected;
 }
 
-uint32_t get_num_nbiot(Sky_ctx_t* ctx)
+uint32_t get_num_nbiot(Sky_ctx_t *ctx)
 {
     return sizeof(nbiot_cells) / sizeof(struct Nbiot);
 }
 
-int64_t get_nbiot_rssi(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].nrsrp;
 }
 
-int64_t get_nbiot_age(Sky_ctx_t* ctx, uint32_t idx)
+int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx)
 {
     return nbiot_cells[idx].age;
 }
 
 static unsigned char buf[1024];
 
-uint8_t *get_ctx_request(Sky_ctx_t *ctx) { return buf; }
-
-size_t get_ctx_request_size(Sky_ctx_t *ctx) { return sizeof(buf); }
-
-uint32_t get_ctx_partner_id(Sky_ctx_t *ctx) { return 2; }
-
-static void hex_str_to_bin(const char* hex_str, uint8_t bin_buff[], size_t buff_len)
+uint8_t *get_ctx_request(Sky_ctx_t *ctx)
 {
-    const char* pos = hex_str;
+    return buf;
+}
+
+size_t get_ctx_request_size(Sky_ctx_t *ctx)
+{
+    return sizeof(buf);
+}
+
+uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
+{
+    return 2;
+}
+
+static void hex_str_to_bin(
+        const char *hex_str, uint8_t bin_buff[], size_t buff_len)
+{
+    const char *pos = hex_str;
     size_t i;
 
-    for (i=0; i < buff_len; i++)
-    {
+    for (i = 0; i < buff_len; i++) {
         sscanf(pos, "%2hhx", &bin_buff[i]);
         pos += 2;
     }
@@ -206,7 +242,10 @@ uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
     return aes_key;
 }
 
-uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx) { return 0; }
+uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx)
+{
+    return 0;
+}
 
 static unsigned char device_id[6]; // e.g., MAC address.
 
@@ -216,24 +255,25 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
     return device_id;
 }
 
-uint32_t get_ctx_id_length(Sky_ctx_t *ctx) { return sizeof(device_id); }
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
+{
+    return sizeof(device_id);
+}
 
 /* ------- End of standin for Geoff's stuff --------------------- */
 
-bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
+bool hostname_to_ip(char *hostname, char *ip, uint16_t ip_len)
 {
-    struct hostent* he = gethostbyname(hostname);
+    struct hostent *he = gethostbyname(hostname);
 
-    if (he == NULL)
-    {
+    if (he == NULL) {
         printf("gethostbyname failed");
         return false;
     }
 
-    struct in_addr** addr_list = (struct in_addr **) he->h_addr_list;
+    struct in_addr **addr_list = (struct in_addr **)he->h_addr_list;
 
-    for (size_t i = 0; addr_list[i] != NULL; i++)
-    {
+    for (size_t i = 0; addr_list[i] != NULL; i++) {
         //Return the first one;
         strncpy(ip, inet_ntoa(*addr_list[i]), ip_len);
         return true;
@@ -242,22 +282,21 @@ bool hostname_to_ip(char* hostname, char* ip, uint16_t ip_len)
     return false;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    (void) argc;
-    (void) argv;
+    (void)argc;
+    (void)argv;
 
     // Serialize request.
     int32_t len = serialize_request(0);
 
-    if (len < 0)
-    {
+    if (len < 0) {
         printf("Failed to serialize (buf too small?)\n");
         exit(-1);
     }
 
     // Write request to a file.
-    FILE* fp = fopen("rq.bin", "wb");
+    FILE *fp = fopen("rq.bin", "wb");
 
     fwrite(buf, len, 1, fp);
     fclose(fp);
@@ -271,8 +310,7 @@ int main(int argc, char** argv)
     char ipaddr[16]; // the char representation of an ipv4 address
 
     // Lookup server ip address.
-    if (!hostname_to_ip(SERVER_HOST, ipaddr, sizeof(ipaddr)))
-    {
+    if (!hostname_to_ip(SERVER_HOST, ipaddr, sizeof(ipaddr))) {
         printf("Could not resolve host %s\n", SERVER_HOST);
         exit(-1);
     }
@@ -285,40 +323,39 @@ int main(int argc, char** argv)
     // Open socket.
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (sockfd == -1)
-    {
+    if (sockfd == -1) {
         printf("cannot open socket\n");
         exit(-1);
     }
 
     // Set socket timeout to 10 seconds.
-    struct timeval tv = {10, 0};
+    struct timeval tv = { 10, 0 };
 
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval)))
-    {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,
+                sizeof(struct timeval))) {
         printf("setsockopt failed\n");
         exit(-1);
     }
 
     // Connect.
-    int32_t rc = connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+    int32_t rc =
+            connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-    if (rc < 0)
-    {
+    if (rc < 0) {
         close(sockfd);
         printf("connect to server failed\n");
         exit(-1);
     }
 
     // Send request.
-    rc = send(sockfd, buf, (size_t) len, 0);
+    rc = send(sockfd, buf, (size_t)len, 0);
 
     printf("Sent %d bytes to server\n", len);
 
-    if (rc != (int32_t)len)
-    {
+    if (rc != (int32_t)len) {
         close(sockfd);
-        printf("send() sent a different number of bytes (%d) from expected\n", rc);
+        printf("send() sent a different number of bytes (%d) from expected\n",
+                rc);
         exit(-1);
     }
 
@@ -328,12 +365,10 @@ int main(int argc, char** argv)
     float lat, lon;
     uint32_t hpe;
 
-    if (deserialize_response(0, get_ctx_request(0), get_ctx_request_size(0), &lat, &lon, &hpe) < 0)
-    {
+    if (deserialize_response(0, get_ctx_request(0), get_ctx_request_size(0),
+                &lat, &lon, &hpe) < 0) {
         printf("deserialization failed!\n");
-    }
-    else
-    {
+    } else {
         printf("lat/lon/hpe = %f/%f/%u\n", lat, lon, hpe);
     }
 }

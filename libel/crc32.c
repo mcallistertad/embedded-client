@@ -1,4 +1,4 @@
-/*! \file libelg/crc32.c
+/*! \file libel/crc32.c
  *  \brief from http://www.hackersdelight.org/hdcodetxt/crc.c.txt
  */
 
