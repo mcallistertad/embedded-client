@@ -172,7 +172,6 @@ static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                    get_nbiot_age);
 }
 
-#if 0
 static bool encode_lte_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
 {
     uint32_t num_beacons = get_num_lte(ctx);
@@ -182,11 +181,10 @@ static bool encode_lte_fields(Sky_ctx_t* ctx, pb_ostream_t* ostream)
         encode_repeated_int_field(ctx, ostream, LteCells_mcc_tag, num_beacons, get_lte_mcc, NULL) &&
         encode_repeated_int_field(ctx, ostream, LteCells_mnc_tag, num_beacons, get_lte_mnc, NULL) &&
         encode_repeated_int_field(ctx, ostream, LteCells_tac_tag, num_beacons, get_lte_tac, NULL) &&
-        encode_repeated_int_field(ctx, ostream, LteCells_eucid_tag, num_beacons, get_lte_ecellid, NULL) &&
+        encode_repeated_int_field(ctx, ostream, LteCells_eucid_tag, num_beacons, get_lte_e_cellid, NULL) &&
         encode_repeated_int_field(ctx, ostream, LteCells_neg_rsrp_tag, num_beacons, get_lte_rssi, flip_sign) &&
         encode_age_field(ctx, ostream, num_beacons, LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
 }
-#endif
 
 static bool encode_submessage(Sky_ctx_t* ctx, pb_ostream_t* ostream, uint32_t tag, EncodeSubmsgCallback func) 
 {
@@ -233,10 +231,8 @@ bool Rq_callback(
                 return encode_submessage(ctx, ostream, field->tag, encode_nbiot_fields);
             break;
         case Rq_lte_cells_tag:
-#if 0
             if (get_num_lte(ctx))
                 return encode_submessage(ctx, ostream, field->tag, encode_lte_fields);
-#endif
             break;
         default:
             break;
