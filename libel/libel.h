@@ -130,7 +130,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         bool is_connected);
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint16_t tac, uint32_t eucid, uint16_t mcc, uint16_t mnc,
+        uint16_t tac, uint32_t e_cellid, uint16_t mcc, uint16_t mnc,
         time_t timestamp, int16_t rsrp, bool is_connected);
 
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,

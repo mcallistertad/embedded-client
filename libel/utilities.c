@@ -717,6 +717,133 @@ int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx)
     return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_NBIOT) + idx].nbiot.age;
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (num lte)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return number of lte beacons
+ */
+int32_t get_num_lte(Sky_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return get_num_beacons(ctx, SKY_BEACON_LTE);
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/mcc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon mcc info
+ */
+int64_t get_lte_mcc(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.mcc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/mnc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon mnc info
+ */
+int64_t get_lte_mnc(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.mnc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/e_cellid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon e cellid info
+ */
+int64_t get_lte_e_cellid(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.e_cellid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/tac)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon tac info
+ */
+int64_t get_lte_tac(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.tac;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/rssi)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon rssi info
+ */
+int64_t get_lte_rssi(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.rssi;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+bool get_lte_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->connected == get_base_beacons(ctx, SKY_BEACON_LTE) + idx;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (lte/timestamp)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon timestamp info
+ */
+int64_t get_lte_age(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_lte(ctx))) {
+        // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.age;
+}
+
 /*! \brief generate random byte sequence
  *
  *  @param rand_buf pointer to buffer where rand bytes are put

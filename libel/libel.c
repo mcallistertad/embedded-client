@@ -305,7 +305,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     else
         b.lte.age = 0;
     b.lte.tac = tac;
-    b.lte.eucid = e_cellid;
+    b.lte.e_cellid = e_cellid;
     b.lte.mcc = mcc;
     b.lte.mnc = mnc;
     b.lte.rssi = rsrp;

@@ -95,7 +95,7 @@ struct lte {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint32_t eucid;
+    uint32_t e_cellid;
     uint16_t mcc;
     uint16_t mnc;
     uint16_t tac;

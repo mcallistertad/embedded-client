@@ -318,7 +318,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     ret = 1;
                 break;
             case SKY_BEACON_LTE:
-                if ((b->lte.eucid == cl->beacon[j].lte.eucid) &&
+                if ((b->lte.e_cellid == cl->beacon[j].lte.e_cellid) &&
                         (b->lte.mcc == cl->beacon[j].lte.mcc) &&
                         (b->lte.mnc == cl->beacon[j].lte.mnc))
                     ret = 1;

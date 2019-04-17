@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
         /*
         case SKY_BEACON_LTE:
             ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno, 0,
-                    lte_cell.eucid, lte_cell.mcc,
+                    lte_cell.e_cellid, lte_cell.mcc,
                     lte_cell.mnc, lte_cell.age,
                     lte_cell.rssi, 1);
             break;
