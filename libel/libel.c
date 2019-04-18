@@ -152,11 +152,9 @@ int32_t sky_sizeof_state(void *sky_state)
 
 /*! \brief Determines the size of the workspace required to build request
  *
- *  @param number_beacons The number of beacons user will add
- *
  *  @return Size of state buffer or 0 to indicate that the buffer was invalid
  */
-int32_t sky_sizeof_workspace(uint16_t number_beacons)
+int32_t sky_sizeof_workspace(void)
 {
     /* Total space required
      *
@@ -171,12 +169,11 @@ int32_t sky_sizeof_workspace(uint16_t number_beacons)
  *  @param workspace_buf Pointer to workspace provided by user
  *  @param bufsize Workspace buffer size (from sky_sizeof_workspace)
  *  @param sky_errno Pointer to error code
- *  @param number_beacons The number of beacons user will add
  *
  *  @return Pointer to the initialized workspace context buffer or NULL
  */
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
-    Sky_errno_t *sky_errno, uint8_t number_beacons)
+Sky_ctx_t *sky_new_request(
+    void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno)
 {
     int i;
     Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
@@ -185,8 +182,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
         sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
         return NULL;
     }
-    if (bufsize != sky_sizeof_workspace(TOTAL_BEACONS) ||
-        workspace_buf == NULL) {
+    if (bufsize != sky_sizeof_workspace() || workspace_buf == NULL) {
         sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
         return NULL;
     }
@@ -202,7 +198,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
     ctx->min_level = sky_min_level;
-    ctx->expect = number_beacons;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++)
@@ -234,12 +229,6 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (ctx->expect == 0)
-        logfmt(ctx, SKY_LOG_LEVEL_WARNING, "adding more beacons than expected");
-
-    /* Decrement the number of beacons expected to be added */
-    ctx->expect--;
 
     /* Create AP beacon */
     b.h.magic = BEACON_MAGIC;
@@ -287,9 +276,6 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Decrement the number of beacons expected to be added */
-    ctx->expect--;
-
     /* Create GSM beacon */
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
@@ -336,9 +322,6 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
-    /* Decrement the number of beacons expected to be added */
-    ctx->expect--;
 
     /* Create GSM beacon */
     b.h.magic = BEACON_MAGIC;
@@ -427,9 +410,6 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
-    /* Decrement the number of beacons expected to be added */
-    ctx->expect--;
 
     /* Create NB IoT beacon */
     b.h.magic = BEACON_MAGIC;

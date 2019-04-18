@@ -140,8 +140,8 @@ void dump_workspace(Sky_ctx_t *ctx)
     int i;
 
     logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-        "WorkSpace: Expect %d, got %d, AP %d starting at %d, connected %d",
-        ctx->expect, ctx->len, ctx->ap_len, ctx->ap_low, ctx->connected);
+        "WorkSpace: Got %d, AP %d starting at %d, connected %d", ctx->len,
+        ctx->ap_len, ctx->ap_low, ctx->connected);
     for (i = 0; i < ctx->len; i++) {
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:

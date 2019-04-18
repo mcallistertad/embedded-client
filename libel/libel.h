@@ -120,10 +120,10 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
 
 int32_t sky_sizeof_state(void *sky_state);
 
-int32_t sky_sizeof_workspace(uint16_t number_beacons);
+int32_t sky_sizeof_workspace(void);
 
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
-    Sky_errno_t *sky_errno, uint8_t number_beacons);
+Sky_ctx_t *sky_new_request(
+    void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t channel,

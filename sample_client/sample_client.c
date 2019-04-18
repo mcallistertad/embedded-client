@@ -65,6 +65,7 @@ struct gsm_cell_scan gsm_cell = { 603, 1, 14962, 1551480950, 16101, -128,
 
 /*! \brief check for saved cache state
  *
+ *  @param nv_space pointer to saved cache state
  *  @param client_id
  *
  *  @returns NULL for failure to restore cache, pointer to cache otherwise
@@ -221,7 +222,7 @@ int main(int argc, char *argv[])
     }
 
     /* Get the size of workspace needed */
-    bufsize = sky_sizeof_workspace(SCAN_LIST_SIZE);
+    bufsize = sky_sizeof_workspace();
     if (bufsize == 0 || bufsize > 4096) {
         printf("sky_sizeof_workspace returned bad value, Can't continue\n");
         exit(-1);
@@ -232,7 +233,7 @@ int main(int argc, char *argv[])
     memset(p, 0, bufsize);
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, &sky_errno, bufsize) != ctx) {
+    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
