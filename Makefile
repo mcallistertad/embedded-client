@@ -5,7 +5,7 @@ CFLAGS = -Wall -Werror -Os -std=c99
 BUILD_DIR = build
 BIN_DIR = bin
 API_DIR = libel
-SKY_PROTO_DIR = protocol
+SKY_PROTO_DIR = $(API_DIR)/protocol
 NANO_PB_DIR = .submodules/nanopb
 AES_DIR = .submodules/tiny-AES128-C
 
