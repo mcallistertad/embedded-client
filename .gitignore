@@ -1,4 +1,9 @@
 doxygen/
 bin/
 build/
+protocol/
+pyutils/
+sample_client/*.o
+sample_client/sample_client
+nv_cache
 tags
