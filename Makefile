@@ -1,4 +1,11 @@
+ARMCC = $(shell which armcc)
+
+ifeq ($(ARMCC), )
 CFLAGS = -Wall -Werror -Os -std=c99
+else
+CC = armcc
+CFLAGS = --c99 -Ospace
+endif
 
 # Disposable build products are deposited in build dir
 # Durable build products are deposited in bin dir
