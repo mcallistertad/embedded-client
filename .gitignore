@@ -1,9 +1,4 @@
 doxygen/
 bin/
+build/
 tags
-a.out
-protocol/elg.pb.c
-protocol/elg.pb.h
-protocol/elg_pb2.py
-pyutils/elg_pb2.py
-rq.bin
