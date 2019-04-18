@@ -114,53 +114,54 @@ typedef int (*Sky_loggerfn_t)(Sky_log_level_t level, const char *s);
 typedef int (*Sky_randfn_t)(uint8_t *rand_buf, uint32_t bufsize);
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
-        uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
-        uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
-        Sky_loggerfn_t logf, Sky_randfn_t rand_bytes);
+    uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
+    uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
+    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes);
 
 int32_t sky_sizeof_state(void *sky_state);
 
 int32_t sky_sizeof_workspace(uint16_t number_beacons);
 
 Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize,
-        Sky_errno_t *sky_errno, uint8_t number_beacons);
+    Sky_errno_t *sky_errno, uint8_t number_beacons);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t channel,
-        bool is_connected);
+    uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t channel,
+    bool is_connected);
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint16_t tac, uint32_t e_cellid, uint16_t mcc, uint16_t mnc,
-        time_t timestamp, int16_t rsrp, bool is_connected);
+    uint16_t tac, uint32_t e_cellid, uint16_t mcc, uint16_t mnc,
+    time_t timestamp, int16_t rsrp, bool is_connected);
 
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint16_t lac, uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp,
-        int16_t rssi, bool is_connected);
+    uint16_t lac, uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp,
+    int16_t rssi, bool is_connected);
 
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint16_t lac, uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp,
-        int16_t rscp, bool is_connected);
+    uint16_t lac, uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp,
+    int16_t rscp, bool is_connected);
 
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint32_t sid, uint16_t nid, uint16_t bsid, time_t timestamp,
-        int16_t rssi, bool is_connected);
+    uint32_t sid, uint16_t nid, uint16_t bsid, time_t timestamp, int16_t rssi,
+    bool is_connected);
 
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        uint16_t mcc, uint16_t mnc, uint32_t e_cellid, uint32_t tac,
-        time_t timestamp, int16_t nrsrp, bool is_connected);
+    uint16_t mcc, uint16_t mnc, uint32_t e_cellid, uint32_t tac,
+    time_t timestamp, int16_t nrsrp, bool is_connected);
 
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
-        float lon, uint16_t hpe, float altitude, uint16_t vpe, float speed,
-        float bearing, time_t timestamp);
+    float lon, uint16_t hpe, float altitude, uint16_t vpe, float speed,
+    float bearing, time_t timestamp);
 
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t* size, Sky_errno_t *sky_errno);
+Sky_status_t sky_sizeof_request_buf(
+    Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
 
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        void *request_buf, uint32_t bufsize, Sky_location_t *loc,
-        uint32_t *response_size);
+    void *request_buf, uint32_t bufsize, Sky_location_t *loc,
+    uint32_t *response_size);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-        void *response_buf, uint32_t bufsize, Sky_location_t *loc);
+    void *response_buf, uint32_t bufsize, Sky_location_t *loc);
 
 char *sky_perror(Sky_errno_t sky_errno);
 
