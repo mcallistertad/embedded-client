@@ -478,10 +478,22 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
             "%s: find_oldest chose cache %d of 0..%d", __FUNCTION__, i,
             CACHE_SIZE - 1);
-    } else
+    } else {
+        if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
+            ctx->cache->cacheline[i].time = 0; /* clear cacheline */
+            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                "%s: Server undetermined location. find_best_match found cache match %d of 0..%d",
+                __FUNCTION__, i, CACHE_SIZE - 1);
+        } else
+            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                "%s: find_best_match found cache match %d of 0..%d",
+                __FUNCTION__, i, CACHE_SIZE - 1);
+    }
+    if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s: find_best_match found cache match %d of 0..%d", __FUNCTION__,
-            i, CACHE_SIZE - 1);
+            "%s: Won't add unknown location to cache", __FUNCTION__);
+        return SKY_ERROR;
+    }
     for (j = 0; j < TOTAL_BEACONS; j++) {
         ctx->cache->cacheline[i].len = ctx->len;
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];

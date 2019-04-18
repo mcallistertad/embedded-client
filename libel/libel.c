@@ -574,9 +574,9 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* decode response to get lat/lon */
-    deserialize_response(ctx, response_buf, bufsize, loc);
+    if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)
+        return sky_return(sky_errno, SKY_ERROR_LOCATION_UNKNOWN);
 
-    /* if failed sky_return(sky_error, SKY_ERROR_LOCATION_UNKNOWN) */
     loc->time = time(NULL);
 
     logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
