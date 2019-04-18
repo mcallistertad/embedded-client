@@ -107,10 +107,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
                 cache.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
-
-        printf("Init cache 0x%08x 0x%08x 0x%08x 0x%08x\n", cache.header.magic,
-                cache.header.size, (uint32_t)cache.header.time,
-                cache.header.crc32);
     }
 
     /* Sanity check */
