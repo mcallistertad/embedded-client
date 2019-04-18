@@ -544,28 +544,21 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
  */
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
-    if (!validate_workspace(ctx)) {
-        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
-        return SKY_ERROR;
-    }
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (size == NULL) {
-        *sky_errno = SKY_ERROR_BAD_PARAMETERS;
-        return SKY_ERROR;
-    }
-
+    if (size == NULL)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+        
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
     int rc = serialize_request(ctx, NULL, 0);
 
     if (rc > 0) {
         *size = (uint32_t) rc;
-        *sky_errno = SKY_ERROR_NONE;
-        return SKY_SUCCESS;
-    } else {
-        *sky_errno = SKY_ERROR_ENCODE_ERROR;
-        return SKY_ERROR;
-    }
+        return sky_return(sky_errno, SKY_ERROR_NONE);
+    } else
+        return sky_return(sky_errno, SKY_ERROR_ENCODE_ERROR);
 }
 
 /*! \brief decodes a Skyhook server response
