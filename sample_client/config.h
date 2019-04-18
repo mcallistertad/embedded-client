@@ -5,6 +5,7 @@
 #define KEY_SIZE 16
 
 typedef struct client_config {
+    char *filename;
     uint16_t port;
     uint16_t partner_id;
     uint16_t client_id;
@@ -18,7 +19,7 @@ typedef struct client_config {
 } Config_t;
 
 uint32_t hex2bin(
-        char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);
+    char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);
 
 int32_t bin2hex(char *buff, int32_t buff_len, uint8_t *data, int32_t data_len);
 

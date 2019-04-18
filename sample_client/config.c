@@ -1,3 +1,20 @@
+/*! \file sample_client/config.h
+ *  \brief Skyhook Embedded Library
+ *
+ * Copyright 2015-present Skyhook Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,9 +24,17 @@
 
 #include "config.h"
 
-/* returns number of result bytes that were successfully parsed */
+/*! \brief convert ascii hex string to binary
+ *
+ *  @param hexstr pointer to the hex string
+ *  @param hexlen length of the hex string
+ *  @param result pointer to the result buffer
+ *  @param reslen length of the result buffer
+ *
+ *  @return number of result bytes that were successfully parsed
+ */
 uint32_t hex2bin(
-        char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen)
+    char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen)
 {
     uint32_t i, j = 0, k = 0;
 
@@ -37,26 +62,43 @@ uint32_t hex2bin(
     return j;
 }
 
-int32_t bin2hex(char *buff, int32_t buff_len, uint8_t *data, int32_t data_len)
+/*! \brief convert binary buffer to hex string
+ *
+ *  @param result pointer to the hex string
+ *  @param reslen length of the hex string
+ *  @param bin pointer to the binary buffer
+ *  @param binlen length of the binary buffer
+ *
+ *  @return 0 for success and -1 if result buffer is 
+ */
+int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
 {
     const char *hex = "0123456789ABCDEF";
 
     char *p;
     int32_t i;
 
-    if (buff_len < 2 * data_len)
+    if (reslen < 2 * binlen)
         return -1;
 
-    p = buff;
+    p = result;
 
-    for (i = 0; i < data_len; i++) {
-        *p++ = hex[data[i] >> 4 & 0x0F];
-        *p++ = hex[data[i] & 0x0F];
+    for (i = 0; i < binlen; i++) {
+        *p++ = hex[bin[i] >> 4 & 0x0F];
+        *p++ = hex[bin[i] & 0x0F];
     }
 
     return 0;
 }
 
+/*! \brief read configuration from a file
+ *
+ *  @param filename pointer to the filename
+ *  @param config pointer to structure where config is stored
+ *  @param client_id the client id that must match
+ *
+ *  @return 0 for success and -1 if result buffer is 
+ */
 int load_config(char *filename, Config_t *config, int client_id)
 {
     char line[100];
@@ -124,12 +166,21 @@ int load_config(char *filename, Config_t *config, int client_id)
             }
         }
     }
+    config->filename = filename;
     fclose(fp);
-    printf("Config Loaded\n");
-
+    if (client_found)
+        printf("Client ID Config Loaded\n");
+    else
+        printf("Config Loaded\n");
     return 0;
 }
 
+/*! \brief print configuration
+ *
+ *  @param config pointer to structure where config is stored
+ *
+ *  @return void
+ */
 void print_config(Config_t *config)
 {
     char key[KEY_SIZE * 2 + 1];
@@ -139,6 +190,7 @@ void print_config(Config_t *config)
     bin2hex(device, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
     device[MAC_SIZE * 2] = '\0';
 
+    printf("Configuration file: %s\n", config->filename);
     printf("Configuration for Client #%d\n", config->client_id);
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
