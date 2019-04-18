@@ -23,7 +23,7 @@ To build just the library in a Unix-like environment:
 
     $ make
 
-To build the sample client:
+To build and run the sample client:
 
     $ cd sample_client
     $ make
