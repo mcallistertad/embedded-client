@@ -87,6 +87,5 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size,
         return -1;
     }
 
-    printf("resp = %s, len = %d\n", response, rc);
     return (int)rc;
 }
