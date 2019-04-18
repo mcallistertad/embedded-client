@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
         exit(-1);
     // print_config(&config);
 
-    /* Uncomment in order to enable cache. */
+    /* Comment in order to disable cache loading */
     nv_space = nv_cache(nv_space, config.client_id);
 
     /* Initialize the Skyhook resources */
