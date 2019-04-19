@@ -291,7 +291,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
             switch (b->h.type) {
             case SKY_BEACON_AP:
                 if ((memcmp(b->ap.mac, cl->beacon[j].ap.mac, MAC_SIZE) == 0) &&
-                    (b->ap.channel == cl->beacon[j].ap.channel)) {
+                    (b->ap.freq == cl->beacon[j].ap.freq)) {
                     ret = 1;
                 }
                 break;

@@ -48,7 +48,7 @@ uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
 
 int32_t get_num_aps(Sky_ctx_t *ctx);
 uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_ap_freq(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx);

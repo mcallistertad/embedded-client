@@ -45,16 +45,8 @@ struct ap {
     uint16_t type; /* sky_beacon_type_t */
     uint8_t mac[MAC_SIZE];
     uint32_t age;
-    uint32_t channel;
+    uint32_t freq;
     int8_t rssi;
-    uint8_t flag; /* bit fields:                                        */
-    /* bit 0: 1 if the device is currently connected to this AP. 0      */
-    /* otherwise. bits 1-3: Band indicator. Allowable values:           */
-    /*                                             0: unknown           */
-    /*                                             1: 2.4 GHz           */
-    /*                                             2: 5 GHz             */
-    /*                                             3-7: Reserved        */
-    /* bits 4-7: Reserved                                               */
 };
 
 // http://wiki.opencellid.org/wiki/API

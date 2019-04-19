@@ -120,7 +120,7 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
            encode_repeated_int_field(
                ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
            encode_repeated_int_field(ctx, ostream, Aps_channel_number_tag,
-               num_beacons, get_ap_channel, NULL) &&
+               num_beacons, get_ap_freq, NULL) &&
            encode_repeated_int_field(ctx, ostream, Aps_neg_rssi_tag,
                num_beacons, get_ap_rssi, flip_sign) &&
            encode_age_field(ctx, ostream, num_beacons,
@@ -132,8 +132,7 @@ static bool encode_gsm_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_gsm(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               GsmCells_connected_idx_plus_1_tag,
-               get_gsm_is_connected) &&
+               GsmCells_connected_idx_plus_1_tag, get_gsm_is_connected) &&
            encode_repeated_int_field(ctx, ostream, GsmCells_mcc_tag,
                num_beacons, get_gsm_mcc, NULL) &&
            encode_repeated_int_field(ctx, ostream, GsmCells_mnc_tag,
@@ -153,8 +152,7 @@ static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_nbiot(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               NbiotCells_connected_idx_plus_1_tag,
-               get_nbiot_is_connected) &&
+               NbiotCells_connected_idx_plus_1_tag, get_nbiot_is_connected) &&
            encode_repeated_int_field(ctx, ostream, NbiotCells_mcc_tag,
                num_beacons, get_nbiot_mcc, NULL) &&
            encode_repeated_int_field(ctx, ostream, NbiotCells_mnc_tag,
@@ -175,8 +173,7 @@ static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_lte(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               LteCells_connected_idx_plus_1_tag,
-               get_lte_is_connected) &&
+               LteCells_connected_idx_plus_1_tag, get_lte_is_connected) &&
            encode_repeated_int_field(ctx, ostream, LteCells_mcc_tag,
                num_beacons, get_lte_mcc, NULL) &&
            encode_repeated_int_field(ctx, ostream, LteCells_mnc_tag,

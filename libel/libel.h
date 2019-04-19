@@ -126,7 +126,7 @@ Sky_ctx_t *sky_new_request(
     void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-    uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t channel,
+    uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t freq,
     bool is_connected);
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,

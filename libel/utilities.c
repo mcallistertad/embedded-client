@@ -376,20 +376,20 @@ uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
     return ctx->beacon[ctx->ap_low + idx].ap.mac;
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (AP/channel)
+/*! \brief field extraction for dynamic use of Nanopb (AP/freq)
  *
  *  @param ctx workspace buffer
  *  @param idx index into beacons
  *
  *  @return beacon channel info
  */
-int64_t get_ap_channel(Sky_ctx_t *ctx, uint32_t idx)
+int64_t get_ap_freq(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || idx > ctx->ap_len) {
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].ap.channel;
+    return ctx->beacon[ctx->ap_low + idx].ap.freq;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/rssi)
