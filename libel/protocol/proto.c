@@ -116,7 +116,7 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_aps(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               Aps_connected_beacon_idx_plus_1_tag, get_ap_is_connected) &&
+               Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
            encode_repeated_int_field(
                ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
            encode_repeated_int_field(ctx, ostream, Aps_channel_number_tag,
@@ -132,7 +132,7 @@ static bool encode_gsm_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_gsm(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               GsmCells_connected_beacon_idx_plus_1_tag,
+               GsmCells_connected_idx_plus_1_tag,
                get_gsm_is_connected) &&
            encode_repeated_int_field(ctx, ostream, GsmCells_mcc_tag,
                num_beacons, get_gsm_mcc, NULL) &&
@@ -153,7 +153,7 @@ static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_nbiot(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               NbiotCells_connected_beacon_idx_plus_1_tag,
+               NbiotCells_connected_idx_plus_1_tag,
                get_nbiot_is_connected) &&
            encode_repeated_int_field(ctx, ostream, NbiotCells_mcc_tag,
                num_beacons, get_nbiot_mcc, NULL) &&
@@ -163,7 +163,7 @@ static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                num_beacons, get_nbiot_tac, NULL) &&
            encode_repeated_int_field(ctx, ostream, NbiotCells_e_cellid_tag,
                num_beacons, get_nbiot_ecellid, NULL) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_neg_nrsrp_tag,
+           encode_repeated_int_field(ctx, ostream, NbiotCells_neg_rssi_tag,
                num_beacons, get_nbiot_rssi, flip_sign) &&
            encode_age_field(ctx, ostream, num_beacons,
                NbiotCells_common_age_plus_1_tag, NbiotCells_age_tag,
@@ -175,7 +175,7 @@ static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     uint32_t num_beacons = get_num_lte(ctx);
 
     return encode_connected_field(ctx, ostream, num_beacons,
-               LteCells_connected_beacon_idx_plus_1_tag,
+               LteCells_connected_idx_plus_1_tag,
                get_lte_is_connected) &&
            encode_repeated_int_field(ctx, ostream, LteCells_mcc_tag,
                num_beacons, get_lte_mcc, NULL) &&
@@ -185,7 +185,7 @@ static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                num_beacons, get_lte_tac, NULL) &&
            encode_repeated_int_field(ctx, ostream, LteCells_eucid_tag,
                num_beacons, get_lte_e_cellid, NULL) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_neg_rsrp_tag,
+           encode_repeated_int_field(ctx, ostream, LteCells_neg_rssi_tag,
                num_beacons, get_lte_rssi, flip_sign) &&
            encode_age_field(ctx, ostream, num_beacons,
                LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
