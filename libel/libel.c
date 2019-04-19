@@ -358,7 +358,33 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint16_t lac, uint32_t ucid, uint16_t mcc, uint16_t mnc, time_t timestamp,
     int16_t rscp, bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create UMTS beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_UMTS;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+        b.umts.age = ctx->header.time - timestamp;
+    else
+        b.umts.age = 0;
+    b.umts.lac = lac;
+    b.umts.ucid = ucid;
+    b.umts.mcc = mcc;
+    b.umts.mnc = mnc;
+    b.umts.rssi = rscp;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a cdma cell beacon to the request context
@@ -378,7 +404,32 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint32_t sid, uint16_t nid, uint16_t bsid, time_t timestamp, int16_t rssi,
     bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create GSM beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_CDMA;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+        b.gsm.age = ctx->header.time - timestamp;
+    else
+        b.cdma.age = 0;
+    b.cdma.sid = sid;
+    b.cdma.nid = nid;
+    b.cdma.bsid = bsid;
+    b.cdma.rssi = rssi;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a nb_iot cell beacon to the request context
