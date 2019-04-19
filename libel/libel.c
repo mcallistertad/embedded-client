@@ -236,7 +236,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     memcpy(b.ap.mac, mac, MAC_SIZE);
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
         b.ap.age = ctx->header.time - timestamp;
     else
         b.ap.age = 0;
@@ -280,7 +280,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
@@ -327,7 +327,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     b.h.type = SKY_BEACON_GSM;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
@@ -415,7 +415,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     b.h.type = SKY_BEACON_NBIOT;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && ctx->header.time > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;

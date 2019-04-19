@@ -75,11 +75,11 @@ struct cdma {
 struct umts {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint32_t ci;
-    uint32_t age;
+    uint16_t lac;
+    uint32_t ucid;
     uint16_t mcc; // country
     uint16_t mnc;
-    uint16_t lac;
+    uint32_t age;
     int16_t rssi;
 };
 
@@ -134,13 +134,12 @@ typedef union beacon {
 typedef struct gps {
     double lat;
     double lon;
-    float hdop;
-    float alt; // altitude
     float hpe;
+    float alt; // altitude
+    float vpe;
     float speed;
+    float bearing;
     uint32_t age;
-    uint8_t nsat;
-    uint8_t fix;
 } Gps_t;
 
 #endif

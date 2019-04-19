@@ -146,25 +146,25 @@ void dump_workspace(Sky_ctx_t *ctx)
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
-                i, ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1],
-                ctx->beacon[i].ap.mac[2], ctx->beacon[i].ap.mac[3],
-                ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
-                ctx->beacon[i].ap.rssi);
+                "Beacon % 2d: Age: %d Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
+                i, ctx->beacon[i].ap.age, ctx->beacon[i].ap.mac[0],
+                ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
+                ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4],
+                ctx->beacon[i].ap.mac[5], ctx->beacon[i].ap.rssi);
             break;
         case SKY_BEACON_GSM:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
-                i, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
-                ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc,
-                ctx->beacon[i].gsm.rssi);
+                "Beacon % 2d: Age: %d Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
+                i, ctx->beacon[i].gsm.age, ctx->beacon[i].gsm.lac,
+                ctx->beacon[i].gsm.ci, ctx->beacon[i].gsm.mcc,
+                ctx->beacon[i].gsm.mnc, ctx->beacon[i].gsm.rssi);
             break;
         case SKY_BEACON_NBIOT:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
-                i, ctx->beacon[i].nbiot.mcc, ctx->beacon[i].nbiot.mnc,
-                ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac,
-                ctx->beacon[i].nbiot.rssi);
+                "Beacon % 2d: Age: %d Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+                i, ctx->beacon[i].nbiot.age, ctx->beacon[i].nbiot.mcc,
+                ctx->beacon[i].nbiot.mnc, ctx->beacon[i].nbiot.e_cellid,
+                ctx->beacon[i].nbiot.tac, ctx->beacon[i].nbiot.rssi);
             break;
         }
     }
