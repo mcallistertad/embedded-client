@@ -1,4 +1,4 @@
-/*! \file sample_client/config.h
+/*! \file sample_client/config.c
  *  \brief Skyhook Embedded Library
  *
  * Copyright 2015-present Skyhook Inc.
@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include "libel.h"
 #include "config.h"
 
 /*! \brief convert ascii hex string to binary
@@ -129,7 +130,7 @@ int load_config(char *filename, Config_t *config, int client_id)
         }
 
         if (sscanf(line, "KEY %s", str) == 1) {
-            hex2bin(str, KEY_SIZE * 2, config->key, KEY_SIZE);
+            hex2bin(str, AES_SIZE * 2, config->key, AES_SIZE);
             continue;
         }
 
@@ -183,9 +184,9 @@ int load_config(char *filename, Config_t *config, int client_id)
  */
 void print_config(Config_t *config)
 {
-    char key[KEY_SIZE * 2 + 1];
-    bin2hex(key, KEY_SIZE * 2, config->key, KEY_SIZE);
-    key[KEY_SIZE * 2] = '\0';
+    char key[AES_SIZE * 2 + 1];
+    bin2hex(key, AES_SIZE * 2, config->key, AES_SIZE);
+    key[AES_SIZE * 2] = '\0';
     char device[MAC_SIZE * 2 + 1];
     bin2hex(device, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
     device[MAC_SIZE * 2] = '\0';
