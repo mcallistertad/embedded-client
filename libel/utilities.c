@@ -564,7 +564,7 @@ int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].gsm.age;
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_GSM) + idx].gsm.age;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num nbiot)

@@ -50,19 +50,6 @@ struct ap_scan aps[] = { { "283B8264E08B", 1551481188, 0, -88 },
     { "B482FEA46221", 1551481188, 0, -89 },
     { "EC22809E00DB", 1551481188, 0, -90 } };
 
-struct gsm_cell_scan {
-    uint16_t mcc;
-    uint16_t mnc;
-    uint32_t ci;
-    uint32_t age;
-    uint16_t lac;
-    int16_t rssi;
-    uint16_t type;
-};
-
-struct gsm_cell_scan gsm_cell = { 603, 1, 14962, 1551480950, 16101, -128,
-    SKY_BEACON_GSM };
-
 /*! \brief check for saved cache state
  *
  *  @param nv_space pointer to saved cache state
@@ -251,36 +238,59 @@ int main(int argc, char *argv[])
                 sky_perror(sky_errno));
     }
 
-    /* Add Cell to the request */
-    switch (gsm_cell.type) {
-    case SKY_BEACON_GSM:
-        ret_status =
-            sky_add_cell_gsm_beacon(ctx, &sky_errno, gsm_cell.lac, gsm_cell.ci,
-                gsm_cell.mcc, gsm_cell.mnc, gsm_cell.age, gsm_cell.rssi, 1);
-        break;
-        /*
-        case SKY_BEACON_LTE:
-            ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno, 0,
-                    lte_cell.e_cellid, lte_cell.mcc,
-                    lte_cell.mnc, lte_cell.age,
-                    lte_cell.rssi, 1);
-            break;
-        case SKY_BEACON_NBIOT:
-            ret_status = sky_add_cell_nb_iot_beacon(ctx, &sky_errno, scan.cell.nbiot.mcc,
-                    nbiot_cell.mnc, nbiot_cell.e_cellid,
-                    nbiot_cell.tac, nbiot_cell.age,
-                    nbiot_cell.rssi, 1);
-            break;
-*/
-    default:
-        ret_status = SKY_ERROR;
-    }
+    /* Add GSM cell */
+    ret_status =
+        sky_add_cell_gsm_beacon(ctx,
+                                &sky_errno,
+                                16101, // lac
+                                14962, // ci
+                                603,   // mcc
+                                1,     // mnc
+                                1555699719, // timestamp
+                                -100,  // rssi
+                                0);    // serving
 
     if (ret_status == SKY_SUCCESS)
         printf("Cell added\n");
     else
         printf(
-            "sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            "Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add LTE cell */
+    ret_status =
+        sky_add_cell_lte_beacon(ctx,
+                                &sky_errno,
+                                12345,    // tac
+                                27907073, // eucid
+                                311,      // mcc
+                                480,      // mnc
+                                1555699719, // timestamp
+                                -100,     // rssi
+                                1);       // serving
+
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell added\n");
+    else
+        printf(
+            "Error adding LTE cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add NBIOT cell */
+    ret_status =
+        sky_add_cell_nb_iot_beacon(ctx,
+                                   &sky_errno,
+                                   311,       // mcc
+                                   480,       // mnc
+                                   209979678, // eucid
+                                   25187,     // tac
+                                   1555699719, // timestamp
+                                   -143,      // rssi
+                                   0);        // serving
+
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell added\n");
+    else
+        printf(
+            "Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
 
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
