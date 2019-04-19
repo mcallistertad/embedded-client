@@ -180,8 +180,6 @@ int main(int ac, char **av)
     time_t timestamp = time(NULL);
     uint32_t ch = 65;
     void *pstate;
-    void *prequest;
-    uint32_t request_size;
     uint32_t response_size;
     Sky_beacon_type_t t;
     Beacon_t b[25];
@@ -196,7 +194,7 @@ int main(int ac, char **av)
         exit(-1);
     }
     /* Test sky_sizeof_workspace */
-    bufsize = sky_sizeof_workspace(SCAN_LIST_SIZE);
+    bufsize = sky_sizeof_workspace();
 
     /* sky_sizeof_workspace should return a value below 5k and above 0 */
     if (bufsize == 0 || bufsize > 4096) {
@@ -210,7 +208,7 @@ int main(int ac, char **av)
     /* initialize the workspace */
     memset(p, 0, bufsize);
 
-    if (sky_new_request(ctx, bufsize, &sky_errno, bufsize) != ctx) {
+    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
@@ -222,7 +220,7 @@ int main(int ac, char **av)
         b[i].ap.magic = BEACON_MAGIC;
         b[i].ap.type = SKY_BEACON_AP;
         set_mac(b[i].ap.mac);
-        b[i].ap.channel = b[i].ap.mac[0];
+        b[i].ap.freq = b[i].ap.mac[0];
         b[i].ap.rssi = rand() % 128;
     }
 
@@ -286,8 +284,17 @@ int main(int ac, char **av)
                 b[i].gsm.mnc, b[i].gsm.rssi);
     }
 
+    /* Determine how big the network request buffer must be, and allocate a */
+    /* buffer of that length. This function must be called for each request. */
+    if (sky_sizeof_request_buf(ctx, &bufsize, &sky_errno) == SKY_ERROR) {
+        printf("Error getting size of request buffer: %s\n",
+            sky_perror(sky_errno));
+        exit(-1);
+    } else
+        printf("Required buffer size = %d\n", bufsize);
+
     switch (sky_finalize_request(
-        ctx, &sky_errno, &prequest, &request_size, &loc, &response_size)) {
+        ctx, &sky_errno, malloc(bufsize), bufsize, &loc, &response_size)) {
     case SKY_FINALIZE_LOCATION:
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
             "sky_finalize_request: GPS: %.6f,%.6f,%d", loc.lat, loc.lon,
@@ -312,9 +319,6 @@ int main(int ac, char **av)
     case SKY_FINALIZE_REQUEST:
         break;
     }
-    if (strcmp((char *)prequest, "SKYHOOK REQUEST MSG"))
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "sky_finalize_request bad request buffer");
     dump_workspace(ctx);
 
     for (t = SKY_BEACON_AP; t != SKY_BEACON_MAX; t++) {
@@ -326,8 +330,8 @@ int main(int ac, char **av)
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
                     "get_ap_mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X", i,
                     m[0], m[1], m[2], m[3], m[4], m[5]);
-                logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "get_ap_channel:   %d, %d", i,
-                    get_ap_channel(ctx, i));
+                logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "get_ap_freq:   %d, %d", i,
+                    get_ap_freq(ctx, i));
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "get_ap_rssi:      %d, %d", i,
                     get_ap_rssi(ctx, i));
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
