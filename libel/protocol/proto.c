@@ -286,6 +286,8 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     // Account for necessary encryption padding.
     size_t aes_padding_length = (16 - rq_size % 16) % 16;
 
+    rq_size += aes_padding_length;
+
     rq_crypto_info.aes_padding_length = aes_padding_length;
 
     size_t crypto_info_size;
@@ -293,7 +295,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
 
     rq_hdr.crypto_info_length = crypto_info_size;
-    rq_hdr.rq_length = rq_size + aes_padding_length;
+    rq_hdr.rq_length = rq_size;
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
@@ -301,8 +303,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
-    size_t total_length =
-        1 + hdr_size + rq_hdr.crypto_info_length + rq_hdr.rq_length;
+    size_t total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
@@ -318,7 +319,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     int32_t bytes_written = 1;
 
-    pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, buf_len);
+    pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
 
     if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
         bytes_written += hdr_ostream.bytes_written;
@@ -327,7 +328,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     // Serialize the crypto_info message.
     pb_ostream_t crypto_info_ostream =
-        pb_ostream_from_buffer(buf + bytes_written, buf_len - bytes_written);
+        pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
 
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
         bytes_written += crypto_info_ostream.bytes_written;
@@ -339,7 +340,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     buf += bytes_written;
 
     pb_ostream_t rq_ostream =
-        pb_ostream_from_buffer(buf, buf_len - bytes_written);
+        pb_ostream_from_buffer(buf, rq_size);
 
     if (pb_encode(&rq_ostream, Rq_fields, &rq))
         bytes_written += rq_ostream.bytes_written;
@@ -355,7 +356,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), rq_crypto_info.iv.bytes);
 
-    AES_CBC_encrypt_buffer(&aes_ctx, buf, rq_size + aes_padding_length);
+    AES_CBC_encrypt_buffer(&aes_ctx, buf, rq_size);
 
     return bytes_written + aes_padding_length;
 }
