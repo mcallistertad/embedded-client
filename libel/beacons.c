@@ -286,7 +286,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
     int j, ret = 0;
 
     /* score each cache line wrt beacon match ratio */
-    for (j = 0; j < TOTAL_BEACONS; j++)
+    for (j = 0; ret == 0 && j < cl->len; j++)
         if (b->h.type == cl->beacon[j].h.type) {
             switch (b->h.type) {
             case SKY_BEACON_AP:
@@ -352,44 +352,57 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
 int find_best_match(Sky_ctx_t *ctx, bool put)
 {
     int i, j;
-    float ratio[CACHE_SIZE] = { 0 };
+    float ratio[CACHE_SIZE];
     int score[CACHE_SIZE];
     float bestratio = 0;
     int bestscore = 0;
     int bestc = -1;
 
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: %s", __FUNCTION__,
+        put ? "for save to cache" : "for get from cache");
+    dump_workspace(ctx);
+    dump_cache(ctx);
+
     /* score each cache line wrt beacon match ratio */
     for (i = 0; i < CACHE_SIZE; i++) {
-        score[i] = 0;
+        ratio[i] = score[i] = 0;
         /* Discard old cachelines */
         if ((uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
             (CACHE_AGE_THRESHOLD * 60 * 60))
             ctx->cache->cacheline[i].time = 0;
         if (put && ctx->cache->cacheline[i].time == 0)
-            score[i] =
-                ctx->len; /* looking for match for put, fill empty cache first */
-        else if (!put && ctx->cache->cacheline[i].time == 0)
-            continue; /* looking for match for get, ignore empty cache */
-        else
-            for (j = 0; j < ctx->cache->cacheline[i].len; j++) {
+            /* looking for match for put, empty cacheline = 1st choice */
+            score[i] = TOTAL_BEACONS * 2;
+        else if (!put && ctx->cache->cacheline[i].time == 0) {
+            /* looking for match for get, ignore empty cache */
+            continue;
+        } else {
+            /* Non empty cacheline - count matching beacons */
+            for (j = 0; j < ctx->len; j++) {
                 if (beacon_in_cache(
                         ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
+                    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "%s: Beacon %d matches cache %d of 0..%d MAC %02X:%02X:%02X:%02X:%02X:%02X",
+                        __FUNCTION__, j, i, CACHE_SIZE - 1,
+                        ctx->beacon[j].ap.mac[0], ctx->beacon[j].ap.mac[1],
+                        ctx->beacon[j].ap.mac[2], ctx->beacon[j].ap.mac[3],
+                        ctx->beacon[j].ap.mac[4], ctx->beacon[j].ap.mac[5]);
                     score[i] = score[i] + 1.0;
                 }
             }
+        }
     }
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->len == 0 || ctx->cache->cacheline[i].len == 0) {
-            ratio[i] = 0.0;
-            score[i] = 0;
-        } else {
-            // score = intersection(A, B) / union(A, B)
-            ratio[i] =
-                ratio[i] / (ctx->len + ctx->cache->cacheline[i].len - score[i]);
-        }
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f",
-            __FUNCTION__, i, score[i] * 100);
+        // score = intersection(A, B) / union(A, B)
+        if (score[i] == TOTAL_BEACONS * 2)
+            ratio[i] = 1.0;
+        else
+            ratio[i] = (float)score[i] /
+                       (ctx->len + ctx->cache->cacheline[i].len - score[i]);
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f (%d/%d)",
+            __FUNCTION__, i, ratio[i] * 100, score[i],
+            ctx->len + ctx->cache->cacheline[i].len - score[i]);
         if (ratio[i] > bestratio) {
             bestratio = ratio[i];
             bestscore = score[i];
@@ -418,6 +431,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
         return bestc;
     }
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache match failed", __FUNCTION__);
     return -1;
 }
 
@@ -472,10 +486,6 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
             __FUNCTION__);
         return SKY_ERROR;
     }
-
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s:", __FUNCTION__);
-    dump_workspace(ctx);
-    dump_cache(ctx);
 
     /* Find best match in cache */
     /*    yes - add entry here */
