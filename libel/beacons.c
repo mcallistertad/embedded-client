@@ -352,8 +352,10 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
 int find_best_match(Sky_ctx_t *ctx, bool put)
 {
     int i, j;
-    float score[CACHE_SIZE];
-    float best = 0;
+    float ratio[CACHE_SIZE] = { 0 };
+    int score[CACHE_SIZE];
+    float bestratio = 0;
+    int bestscore = 0;
     int bestc = -1;
 
     /* score each cache line wrt beacon match ratio */
@@ -366,7 +368,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         if (put && ctx->cache->cacheline[i].time == 0)
             score[i] =
                 ctx->len; /* looking for match for put, fill empty cache first */
-        else if (ctx->cache->cacheline[i].time == 0)
+        else if (!put && ctx->cache->cacheline[i].time == 0)
             continue; /* looking for match for get, ignore empty cache */
         else
             for (j = 0; j < ctx->cache->cacheline[i].len; j++) {
@@ -378,25 +380,33 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     }
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        score[i] /= ctx->len;
+        if (ctx->len == 0 || ctx->cache->cacheline[i].len == 0) {
+            ratio[i] = 0.0;
+            score[i] = 0;
+        } else {
+            // score = intersection(A, B) / union(A, B)
+            ratio[i] =
+                ratio[i] / (ctx->len + ctx->cache->cacheline[i].len - score[i]);
+        }
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f",
             __FUNCTION__, i, score[i] * 100);
-        if (score[i] > best) {
-            best = score[i];
+        if (ratio[i] > bestratio) {
+            bestratio = ratio[i];
+            bestscore = score[i];
             bestc = i;
         }
     }
 
     /* if match is for get, must meet threshold */
     if (!put) {
-        if (ctx->len <= CACHE_BEACON_THRESHOLD && best * 100 == 100) {
+        if (ctx->len <= CACHE_BEACON_THRESHOLD && bestscore == ctx->len) {
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
                 "%s: Only %d beacons; pick cache %d of 0..%d score %.2f",
                 __FUNCTION__, ctx->len, bestc, CACHE_SIZE - 1,
-                score[bestc] * 100);
+                ratio[bestc] * 100);
             return bestc;
         } else if (ctx->len > CACHE_BEACON_THRESHOLD &&
-                   best * 100 > CACHE_MATCH_THRESHOLD) {
+                   bestratio * 100 > CACHE_MATCH_THRESHOLD) {
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
                 "%s: location in cache, pick cache %d of 0..%d score %.2f",
                 __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
