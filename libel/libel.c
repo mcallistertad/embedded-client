@@ -213,13 +213,13 @@ Sky_ctx_t *sky_new_request(
  *  @param mac pointer to mac address of the Wi-Fi beacon
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rssi Received Signal Strength Intensity, -10 through -127, -1 if unknown
- *  @param freq Frequency Channel in MHz, -1 if unknown
+ *  @param channel center frequency of channel in MHz, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-    uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t freq,
+    uint8_t mac[6], time_t timestamp, int16_t rssi, int32_t channel,
     bool is_connected)
 {
     Beacon_t b;
@@ -240,7 +240,9 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.ap.age = ctx->header.time - timestamp;
     else
         b.ap.age = 0;
-    b.ap.freq = freq;
+    if (channel < 2400 || channel > 6000)
+        channel = 0; /* 0's not sent to server */
+    b.ap.freq = channel;
     b.ap.rssi = rssi;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
