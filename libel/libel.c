@@ -124,7 +124,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     sky_open_flag = true;
 
-    (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library\n");
+    (*logf)(
+        SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }

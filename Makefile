@@ -7,7 +7,7 @@ CC = armcc
 CFLAGS = --c99 -Ospace -DVERSION=\"$(GIT_VERSION)\"
 endif
 
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+GIT_VERSION := $(shell git describe --dirty --always --tags)
 
 # Disposable build products are deposited in build dir
 # Durable build products are deposited in bin dir
