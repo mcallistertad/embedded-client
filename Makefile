@@ -1,11 +1,13 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Werror -Os -std=c99
+CFLAGS = -Wall -Werror -Os -std=c99 -DVERSION=\"$(GIT_VERSION)\"
 else
 CC = armcc
-CFLAGS = --c99 -Ospace
+CFLAGS = --c99 -Ospace -DVERSION=\"$(GIT_VERSION)\"
 endif
+
+GIT_VERSION := $(shell git describe --dirty --always --tags)
 
 # Disposable build products are deposited in build dir
 # Durable build products are deposited in bin dir
