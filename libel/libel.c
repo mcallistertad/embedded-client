@@ -450,6 +450,19 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
     float lon, uint16_t hpe, float altitude, uint16_t vpe, float speed,
     float bearing, time_t timestamp)
 {
+    if (!validate_workspace(ctx)) {
+        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
+        return SKY_FINALIZE_ERROR;
+    }
+
+    ctx->gps.lat = lat;
+    ctx->gps.lon = lon;
+    ctx->gps.hpe = hpe;
+    ctx->gps.alt = altitude;
+    ctx->gps.vpe = vpe;
+    ctx->gps.speed = speed;
+    ctx->gps.bearing = bearing;
+    ctx->gps.timestamp = timestamp;
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
