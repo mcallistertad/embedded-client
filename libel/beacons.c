@@ -394,12 +394,13 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     }
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        // score = intersection(A, B) / union(A, B)
-        if (score[i] == TOTAL_BEACONS * 2)
+        if (score[i] == TOTAL_BEACONS * 2) {
             ratio[i] = 1.0;
-        else
+        } else {
+            // score = intersection(A, B) / union(A, B)
             ratio[i] = (float)score[i] /
                        (ctx->len + ctx->cache->cacheline[i].len - score[i]);
+        }
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f (%d/%d)",
             __FUNCTION__, i, ratio[i] * 100, score[i],
             ctx->len + ctx->cache->cacheline[i].len - score[i]);
