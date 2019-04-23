@@ -462,7 +462,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
     ctx->gps.vpe = vpe;
     ctx->gps.speed = speed;
     ctx->gps.bearing = bearing;
-    ctx->gps.timestamp = timestamp;
+    ctx->gps.age = timestamp;
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
