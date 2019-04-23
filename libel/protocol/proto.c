@@ -16,6 +16,7 @@ typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
 static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 {
+    size_t i;
     // This is a wrapper function around get_ap_mac(). It converts the 8-byte
     // mac array to an uint64_t.
     //
@@ -23,7 +24,7 @@ static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 
     uint64_t ret_val = 0;
 
-    for (size_t i = 0; i < 6; i++)
+    for (i = 0; i < 6; i++)
         ret_val = ret_val * 256 + mac[i];
 
     return ret_val;
@@ -37,14 +38,16 @@ static int64_t flip_sign(int64_t value)
 static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     uint32_t tag, uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
+    size_t i;
+    int64_t data;
+    // Get and encode the field size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
     // Encode field tag.
     if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
         return false;
 
-    // Get and encode the field size.
-    pb_ostream_t substream = PB_OSTREAM_SIZING;
-
-    for (size_t i = 0; i < num_elems; i++) {
+    for (i = 0; i < num_elems; i++) {
         int64_t data = getter(ctx, i);
 
         if (wrapper != NULL)
@@ -58,8 +61,8 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
         return false;
 
     // Now encode the field for real.
-    for (size_t i = 0; i < num_elems; i++) {
-        int64_t data = getter(ctx, i);
+    for (i = 0; i < num_elems; i++) {
+        data = getter(ctx, i);
 
         if (wrapper != NULL)
             data = wrapper(data);
@@ -76,8 +79,9 @@ static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     bool (*callback)(Sky_ctx_t *, uint32_t idx))
 {
     bool retval = true;
+    size_t i;
 
-    for (size_t i = 0; i < num_beacons; i++) {
+    for (i = 0; i < num_beacons; i++) {
         if (callback(ctx, i)) {
             retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) &&
                      pb_encode_varint(ostream, i + 1);
@@ -96,8 +100,9 @@ static bool encode_age_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     // all ages are the same.
     int64_t age = getter(ctx, 0);
     bool ages_all_same = true;
+    size_t i;
 
-    for (size_t i = 1; ages_all_same && i < num_beacons; i++) {
+    for (i = 1; ages_all_same && i < num_beacons; i++) {
         if (getter(ctx, i) != age)
             ages_all_same = false;
     }
@@ -191,12 +196,12 @@ static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 static bool encode_submessage(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     uint32_t tag, EncodeSubmsgCallback func)
 {
+    // Get and encode the submessage size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
     // Encode the submessage tag.
     if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
         return false;
-
-    // Get and encode the submessage size.
-    pb_ostream_t substream = PB_OSTREAM_SIZING;
 
     if (!func(ctx, &substream))
         return false;
@@ -249,13 +254,19 @@ bool Rq_callback(
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 {
-    // Initialize request header.
+    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
+    int32_t bytes_written;
+    struct AES_ctx aes_ctx;
+
     RqHeader rq_hdr;
 
-    rq_hdr.partner_id = get_ctx_partner_id(ctx);
-
-    // Initialize crypto_info.
     CryptoInfo rq_crypto_info;
+
+    Rq rq;
+
+    pb_ostream_t hdr_ostream, crypto_info_ostream, rq_ostream;
+
+    rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // FIXME: Properly value IV if the user has not provided a rand_bytes()
     // function. Otherwise, and until then, it will get filled with
@@ -264,10 +275,8 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     if (ctx->rand_bytes != NULL)
         ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
 
+    // Initialize crypto_info
     rq_crypto_info.iv.size = 16;
-
-    // Initialize request body.
-    Rq rq;
 
     memset(&rq, 0, sizeof(rq));
 
@@ -280,30 +289,26 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     rq.device_id.size = get_ctx_id_length(ctx);
 
     // Create and serialize the request header message.
-    size_t rq_size;
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
     // Account for necessary encryption padding.
-    size_t aes_padding_length = (16 - rq_size % 16) % 16;
+    aes_padding_length = (16 - rq_size % 16) % 16;
 
     rq_size += aes_padding_length;
 
     rq_crypto_info.aes_padding_length = aes_padding_length;
 
-    size_t crypto_info_size;
-
     pb_get_encoded_size(&crypto_info_size, CryptoInfo_fields, &rq_crypto_info);
 
+    // Initialize request header.
     rq_hdr.crypto_info_length = crypto_info_size;
     rq_hdr.rq_length = rq_size;
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
-    size_t hdr_size;
-
     pb_get_encoded_size(&hdr_size, RqHeader_fields, &rq_hdr);
 
-    size_t total_length = 1 + hdr_size + crypto_info_size + rq_size;
+    total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
@@ -317,9 +322,9 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     *buf = (uint8_t)hdr_size;
 
-    int32_t bytes_written = 1;
+    bytes_written = 1;
 
-    pb_ostream_t hdr_ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
+    hdr_ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
 
     if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
         bytes_written += hdr_ostream.bytes_written;
@@ -327,7 +332,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
         return -1;
 
     // Serialize the crypto_info message.
-    pb_ostream_t crypto_info_ostream =
+    crypto_info_ostream =
         pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
 
     if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
@@ -339,9 +344,10 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     //
     buf += bytes_written;
 
-    pb_ostream_t rq_ostream =
+    rq_ostream =
         pb_ostream_from_buffer(buf, rq_size);
 
+    // Initialize request body.
     if (pb_encode(&rq_ostream, Rq_fields, &rq))
         bytes_written += rq_ostream.bytes_written;
     else
@@ -352,7 +358,6 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     // TODO: value the padding bytes explicitly instead of just letting them be
     // whatever is in the buffer.
     //
-    struct AES_ctx aes_ctx;
 
     AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), rq_crypto_info.iv.bytes);
 
@@ -364,6 +369,17 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 int32_t deserialize_response(
     Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
+    uint8_t hdr_size = *buf;
+    struct AES_ctx aes_ctx;
+
+    RsHeader header;
+
+    Rs rs = Rs_init_default;
+
+    CryptoInfo crypto_info;
+
+    pb_istream_t body_info_istream, hdr_istream, crypto_info_istream;
+
     // We assume that buf contains the response message in its entirety. (Since
     // the server closes the connection after sending the response, the client
     // doesn't need to know how many bytes to read - it just keeps reading
@@ -375,16 +391,12 @@ int32_t deserialize_response(
     if (buf_len < 1)
         return -1;
 
-    uint8_t hdr_size = *buf;
-
     buf += 1;
-
-    RsHeader header;
 
     if (buf_len < 1 + hdr_size)
         return -1;
 
-    pb_istream_t hdr_istream = pb_istream_from_buffer(buf, hdr_size);
+    hdr_istream = pb_istream_from_buffer(buf, hdr_size);
 
     if (!pb_decode(&hdr_istream, RsHeader_fields, &header)) {
         return -1;
@@ -393,12 +405,10 @@ int32_t deserialize_response(
     buf += hdr_size;
 
     // Deserialize the crypto_info.
-    CryptoInfo crypto_info;
-
     if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
         return -1;
 
-    pb_istream_t crypto_info_istream =
+    crypto_info_istream =
         pb_istream_from_buffer(buf, header.crypto_info_length);
 
     if (!pb_decode(&crypto_info_istream, CryptoInfo_fields, &crypto_info)) {
@@ -408,17 +418,14 @@ int32_t deserialize_response(
     buf += header.crypto_info_length;
 
     // Decrypt the response body.
-    struct AES_ctx aes_ctx;
-
     AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), crypto_info.iv.bytes);
 
     AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
 
     // Deserialize the response body.
-    pb_istream_t body_info_istream = pb_istream_from_buffer(
+    body_info_istream = pb_istream_from_buffer(
         buf, header.rs_length - crypto_info.aes_padding_length);
 
-    Rs rs = Rs_init_default;
 
     if (!pb_decode(&body_info_istream, Rs_fields, &rs)) {
         return -1;

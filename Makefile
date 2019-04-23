@@ -1,10 +1,10 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Werror -Os -std=c99 -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\"
 else
 CC = armcc
-CFLAGS = --c99 -Ospace -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\"
 endif
 
 GIT_VERSION := $(shell git describe --dirty --always --tags)
