@@ -450,10 +450,8 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat,
     float lon, uint16_t hpe, float altitude, uint16_t vpe, float speed,
     float bearing, time_t timestamp)
 {
-    if (!validate_workspace(ctx)) {
-        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
-        return SKY_FINALIZE_ERROR;
-    }
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
     ctx->gps.lat = lat;
     ctx->gps.lon = lon;
@@ -482,7 +480,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     void *request_buf, uint32_t bufsize, Sky_location_t *loc,
     uint32_t *response_size)
 {
-    int c;
+    int c, rc;
 
     if (!validate_workspace(ctx)) {
         *sky_errno = SKY_ERROR_BAD_WORKSPACE;
@@ -509,7 +507,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     }
 
     /* encode request */
-    int rc = serialize_request(ctx, request_buf, bufsize);
+    rc = serialize_request(ctx, request_buf, bufsize);
 
     if (rc > 0) {
         *response_size = 100; // FIXME: value this properly.
@@ -535,6 +533,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 Sky_status_t sky_sizeof_request_buf(
     Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
+    int rc;
+
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
@@ -543,7 +543,7 @@ Sky_status_t sky_sizeof_request_buf(
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
-    int rc = serialize_request(ctx, NULL, 0);
+    rc = serialize_request(ctx, NULL, 0);
 
     if (rc > 0) {
         *size = (uint32_t)rc;
