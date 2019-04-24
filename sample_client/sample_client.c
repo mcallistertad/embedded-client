@@ -35,19 +35,16 @@ struct ap_scan {
     char mac[MAC_SIZE * 2];
     uint32_t age;
     uint32_t channel;
-    int8_t rssi;
+    int16_t rssi;
 };
 
-struct ap_scan aps[] = { { "283B8264E08B", 1551481188, 0, -88 },
-    { "826AB092DC99", 1551481188, 0, -93 },
-    { "283B823629F0", 1551481188, 0, -90 },
-    { "283B821C712A", 1551481188, 0, -77 },
-    { "0024D2E08E5D", 1551481188, 0, -92 },
-    { "283B821CC232", 1551481188, 0, -91 },
-    { "74DADA5E1015", 1551481188, 0, -88 },
-    { "FC75164E9CA2", 1551481188, 0, -88 },
-    { "B482FEA46221", 1551481188, 0, -89 },
-    { "EC22809E00DB", 1551481188, 0, -90 } };
+/* some rssi values intentionally out of range */
+struct ap_scan aps[] = { { "283B8264E08B", 300, 0, -8 },
+    { "826AB092DC99", 300, 0, -130 }, { "283B823629F0", 300, 0, -90 },
+    { "283B821C712A", 300, 0, -77 }, { "0024D2E08E5D", 300, 0, -92 },
+    { "283B821CC232", 300, 0, -91 }, { "74DADA5E1015", 300, 0, -88 },
+    { "FC75164E9CA2", 300, 0, -88 }, { "B482FEA46221", 300, 0, -89 },
+    { "EC22809E00DB", 300, 0, -90 } };
 
 /*! \brief check for saved cache state
  *
@@ -177,6 +174,7 @@ int main(int argc, char *argv[])
     uint8_t *response;
     uint32_t request_size;
     uint32_t response_size;
+    uint32_t timestamp;
     Sky_location_t loc;
     void *nv_space = NULL;
     char *configfile = NULL;
@@ -197,9 +195,11 @@ int main(int argc, char *argv[])
     /* Comment in order to disable cache loading */
     nv_space = nv_cache(nv_space, 1);
 
+    timestamp = time(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
-    if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, config.partner_id, config.partner_id, config.key,
-            nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes) == SKY_ERROR) {
+    if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, config.partner_id,
+            config.partner_id, config.key, nv_space, SKY_LOG_LEVEL_ALL, &logger,
+            &rand_bytes) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
         hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE);
-        ret_status = sky_add_ap_beacon(
-            ctx, &sky_errno, mac, aps[i].age, aps[i].rssi, aps[i].channel, 1);
+        ret_status = sky_add_ap_beacon(ctx, &sky_errno, mac,
+            timestamp - aps[i].age, aps[i].rssi, aps[i].channel, 1);
         if (ret_status == SKY_SUCCESS)
             printf("AP #%d added\n", i);
         else
@@ -235,57 +235,50 @@ int main(int argc, char *argv[])
     }
 
     /* Add GSM cell */
-    ret_status =
-        sky_add_cell_gsm_beacon(ctx,
-                                &sky_errno,
-                                16101, // lac
-                                14962, // ci
-                                603,   // mcc
-                                1,     // mnc
-                                1555699719, // timestamp
-                                -100,  // rssi
-                                0);    // serving
+    ret_status = sky_add_cell_gsm_beacon(ctx, &sky_errno,
+        16101, // lac
+        14962, // ci
+        603, // mcc
+        1, // mnc
+        timestamp - 315, // timestamp
+        -100, // rssi
+        0); // serving
 
     if (ret_status == SKY_SUCCESS)
         printf("Cell added\n");
     else
-        printf(
-            "Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
-/*
-    ret_status =
-        sky_add_cell_lte_beacon(ctx,
-                                &sky_errno,
-                                12345,    // tac
-                                27907073, // eucid
-                                311,      // mcc
-                                480,      // mnc
-                                1555699719, // timestamp
-                                -100,     // rssi
-                                1);       // serving
+        printf("Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
+#if 0
+    /* Add LTE cell */
+    ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
+        12345, // tac
+        27907073, // eucid
+        311, // mcc
+        480, // mnc
+        timestamp - 315, // timestamp
+        -100, // rssi
+        1); // serving
 
     if (ret_status == SKY_SUCCESS)
         printf("Cell added\n");
     else
-        printf(
-            "Error adding LTE cell: '%s'\n", sky_perror(sky_errno));
+        printf("Error adding LTE cell: '%s'\n", sky_perror(sky_errno));
 
-     ret_status =
-        sky_add_cell_nb_iot_beacon(ctx,
-                                   &sky_errno,
-                                   311,       // mcc
-                                   480,       // mnc
-                                   209979678, // eucid
-                                   25187,     // tac
-                                   1555699719, // timestamp
-                                   -143,      // rssi
-                                   0);        // serving
+    /* Add NBIOT cell */
+    ret_status = sky_add_cell_nb_iot_beacon(ctx, &sky_errno,
+        311, // mcc
+        480, // mnc
+        209979678, // eucid
+        25187, // tac
+        timestamp - 315, // timestamp
+        -143, // rssi
+        0); // serving
 
     if (ret_status == SKY_SUCCESS)
         printf("Cell added\n");
     else
-        printf(
-            "Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
-*/
+        printf("Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
+#endif
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
     ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
@@ -319,7 +312,7 @@ int main(int argc, char *argv[])
     case SKY_FINALIZE_REQUEST:
         /* Need to send the request to the server. */
         response = malloc(response_size * sizeof(uint8_t));
-        printf("server=%s, port=%d\n",config.server,config.port);
+        printf("server=%s, port=%d\n", config.server, config.port);
         printf("Sending request of length %d to server\n", request_size);
 
         int32_t rc = send_request((char *)prequest, (int)request_size, response,

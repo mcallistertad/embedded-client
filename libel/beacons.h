@@ -46,7 +46,7 @@ struct ap {
     uint8_t mac[MAC_SIZE];
     uint32_t age;
     uint32_t freq;
-    int8_t rssi;
+    int16_t rssi;
 };
 
 // http://wiki.opencellid.org/wiki/API
