@@ -100,12 +100,11 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
  *
  *  @return 0 for success and -1 if result buffer is 
  */
-int load_config(char *filename, Config_t *config, int client_id)
+int load_config(char *filename, Config_t *config)
 {
     char line[100];
     char str[32];
     char *p;
-    bool client_found = false;
     int val;
 
     FILE *fp = fopen(filename, "r");
@@ -139,40 +138,15 @@ int load_config(char *filename, Config_t *config, int client_id)
             continue;
         }
 
-        if (sscanf(line, "CLIENT_ID %d", &val) == 1) {
-            if (client_found)
-                break;
+		if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
+			hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
+			continue;
+		}
 
-            if (val == client_id || client_id == 0)
-                client_found = true;
-            else
-                continue;
-            config->client_id = (uint16_t)(val & 0xFFFF);
-            continue;
-        }
-
-        if (client_found) {
-            if (sscanf(line, "SCAN_FILE %256s", config->scan_file) == 1) {
-                continue;
-            }
-
-            if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
-                hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
-                continue;
-            }
-
-            if (sscanf(line, "DELAY %d", &val) == 1) {
-                config->delay = (uint16_t)(val & 0xFFFF);
-                continue;
-            }
-        }
     }
     config->filename = filename;
     fclose(fp);
-    if (client_found)
-        printf("Client ID Config Loaded\n");
-    else
-        printf("Config Loaded\n");
+    printf("Config Loaded\n");
     return 0;
 }
 
@@ -192,12 +166,9 @@ void print_config(Config_t *config)
     device[MAC_SIZE * 2] = '\0';
 
     printf("Configuration file: %s\n", config->filename);
-    printf("Configuration for Client #%d\n", config->client_id);
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
     printf("Key: %32s\n", key);
     printf("Partner Id: %d\n", config->partner_id);
     printf("Device: %12s\n", device);
-    printf("Scan File: %s\n", config->scan_file);
-    printf("Delay: %d\n", config->delay);
 }

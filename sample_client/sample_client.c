@@ -22,9 +22,8 @@
 #include <time.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 
+#define SKY_LIBEL 1
 #include "libel.h"
-#include "crc32.h"
-#include "beacons.h"
 
 #include "send.h"
 #include "config.h"
@@ -184,25 +183,22 @@ int main(int argc, char *argv[])
 
     Config_t config;
     int ret_code = 0;
-    int id = 0;
-    if (argc > 2)
-        id = atoi(argv[2]);
     if (argc > 1)
         configfile = argv[1];
     else
         configfile = "sample_client.conf";
 
     /* Load the configuration */
-    ret_code = load_config(configfile, &config, id);
+    ret_code = load_config(configfile, &config);
     if (ret_code == -1)
         exit(-1);
     // print_config(&config);
 
     /* Comment in order to disable cache loading */
-    nv_space = nv_cache(nv_space, config.client_id);
+    nv_space = nv_cache(nv_space, 1);
 
     /* Initialize the Skyhook resources */
-    if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, 1, 1, config.key,
+    if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, config.partner_id, config.partner_id, config.key,
             nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
@@ -255,8 +251,7 @@ int main(int argc, char *argv[])
     else
         printf(
             "Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add LTE cell */
+/*
     ret_status =
         sky_add_cell_lte_beacon(ctx,
                                 &sky_errno,
@@ -274,8 +269,7 @@ int main(int argc, char *argv[])
         printf(
             "Error adding LTE cell: '%s'\n", sky_perror(sky_errno));
 
-    /* Add NBIOT cell */
-    ret_status =
+     ret_status =
         sky_add_cell_nb_iot_beacon(ctx,
                                    &sky_errno,
                                    311,       // mcc
@@ -291,7 +285,7 @@ int main(int argc, char *argv[])
     else
         printf(
             "Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
-
+*/
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
     ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
@@ -325,7 +319,7 @@ int main(int argc, char *argv[])
     case SKY_FINALIZE_REQUEST:
         /* Need to send the request to the server. */
         response = malloc(response_size * sizeof(uint8_t));
-
+        printf("server=%s, port=%d\n",config.server,config.port);
         printf("Sending request of length %d to server\n", request_size);
 
         int32_t rc = send_request((char *)prequest, (int)request_size, response,
@@ -368,7 +362,7 @@ int main(int argc, char *argv[])
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
     if (pstate != NULL)
-        nv_cache_save(pstate, config.client_id);
+        nv_cache_save(pstate, 1);
 
     printf("Done.\n\n");
 }

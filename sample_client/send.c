@@ -46,7 +46,7 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size,
     // Init server address struct and set ip and port.
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serv_addr.sin_addr.s_addr = inet_addr(ipaddr);
 
     // Open socket.
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -54,14 +54,14 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size,
         printf("Error: cannot open socket\n");
         return -1;
     }
-    /*
+    
     // Set socket timeout to 10 seconds.
     struct timeval tv = {10, 0};
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval))) {
         printf("Error: setsockopt failed\n");
         return -1;
     }
-*/
+
     // Connect.
     int32_t rc =
         connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));

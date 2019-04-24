@@ -24,11 +24,8 @@ typedef struct client_config {
     char *filename;
     uint16_t port;
     uint16_t partner_id;
-    uint16_t client_id;
-    uint16_t delay;
 
     char server[80];
-    char scan_file[256];
 
     uint8_t device_mac[MAC_SIZE];
     uint8_t key[AES_SIZE];
@@ -39,7 +36,7 @@ uint32_t hex2bin(
 
 int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen);
 
-int load_config(char *filename, Config_t *config, int client_id);
+int load_config(char *filename, Config_t *config);
 
 void print_config(Config_t *config);
 
