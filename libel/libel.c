@@ -565,8 +565,8 @@ Sky_status_t sky_sizeof_request_buf(
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     void *response_buf, uint32_t bufsize, Sky_location_t *loc)
 {
-    if (!loc)
-        sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    if (loc == NULL || response_buf == NULL || bufsize == 0)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)

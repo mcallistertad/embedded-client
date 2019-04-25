@@ -103,9 +103,6 @@ static Sky_status_t insert_beacon(
     for (i = 0; i < ctx->len; i++)
         if (ctx->beacon[i].h.type >= b->h.type)
             break;
-    if (b->h.type == SKY_BEACON_AP)
-        /* note first AP */
-        ctx->ap_low = i;
 
     /* add beacon at the end */
     if (i == ctx->len) {
@@ -152,17 +149,16 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         return SKY_ERROR;
 
     /* what share of the range of rssi values does each beacon represent */
-    band_range = (ctx->beacon[ctx->ap_low + ctx->ap_len - 1].ap.rssi -
-                     ctx->beacon[ctx->ap_low].ap.rssi) /
-                 (float)ctx->ap_len;
+    band_range =
+        (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
+        (float)ctx->ap_len;
 
     logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
-        (ctx->beacon[ctx->ap_low + ctx->ap_len - 1].ap.rssi -
-            ctx->beacon[ctx->ap_low].ap.rssi),
+        (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi),
         band_range);
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
     for (i = 0; i < ctx->ap_len; i++)
-        ideal_rssi[i] = ctx->beacon[ctx->ap_low].ap.rssi + i * band_range;
+        ideal_rssi[i] = ctx->beacon[0].ap.rssi + i * band_range;
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
@@ -188,8 +184,7 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     int i, j;
     int cmp;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-        "filter_virtual_aps: ap_low: %d, ap_len: %d of %d APs", ctx->ap_low,
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "filter_virtual_aps: ap_len: %d of %d APs",
         (int)ctx->ap_len, (int)ctx->len);
     dump_workspace(ctx);
 
@@ -200,14 +195,14 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     }
 
     /* look for any AP beacon that is 'similar' to another */
-    if (ctx->beacon[ctx->ap_low].h.type != SKY_BEACON_AP) {
+    if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
         logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: beacon type not AP",
             __FUNCTION__);
         return SKY_ERROR;
     }
 
-    for (j = ctx->ap_low; j <= ctx->ap_low + ctx->ap_len; j++) {
-        for (i = j + 1; i <= ctx->ap_low + ctx->ap_len; i++) {
+    for (j = 0; j <= ctx->ap_len; j++) {
+        for (i = j + 1; i <= ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) <
                 0) {
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -366,28 +361,41 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     /* score each cache line wrt beacon match ratio */
     for (i = 0; i < CACHE_SIZE; i++) {
         ratio[i] = score[i] = 0;
-        /* Discard old cachelines */
-        if ((uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
-            (CACHE_AGE_THRESHOLD * 60 * 60))
-            ctx->cache->cacheline[i].time = 0;
-        if (put && ctx->cache->cacheline[i].time == 0)
+        if (put && (ctx->cache->cacheline[i].time == 0 ||
+                       (uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
+                           (CACHE_AGE_THRESHOLD * 60 * 60))) {
             /* looking for match for put, empty cacheline = 1st choice */
             score[i] = TOTAL_BEACONS * 2;
-        else if (!put && ctx->cache->cacheline[i].time == 0) {
+        } else if (!put && ctx->cache->cacheline[i].time == 0) {
             /* looking for match for get, ignore empty cache */
             continue;
         } else {
             /* Non empty cacheline - count matching beacons */
-            for (j = 0; j < ctx->len; j++) {
-                if (beacon_in_cache(
-                        ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
-                    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                        "%s: Beacon %d matches cache %d of 0..%d MAC %02X:%02X:%02X:%02X:%02X:%02X",
-                        __FUNCTION__, j, i, CACHE_SIZE - 1,
-                        ctx->beacon[j].ap.mac[0], ctx->beacon[j].ap.mac[1],
-                        ctx->beacon[j].ap.mac[2], ctx->beacon[j].ap.mac[3],
-                        ctx->beacon[j].ap.mac[4], ctx->beacon[j].ap.mac[5]);
-                    score[i] = score[i] + 1.0;
+            if (ctx->ap_len) {
+                for (j = 0; j < ctx->ap_len; j++) {
+                    if (beacon_in_cache(
+                            ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
+                        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                            "%s: Beacon %d matches cache %d of 0..%d MAC %02X:%02X:%02X:%02X:%02X:%02X",
+                            __FUNCTION__, j, i, CACHE_SIZE - 1,
+                            ctx->beacon[j].ap.mac[0], ctx->beacon[j].ap.mac[1],
+                            ctx->beacon[j].ap.mac[2], ctx->beacon[j].ap.mac[3],
+                            ctx->beacon[j].ap.mac[4], ctx->beacon[j].ap.mac[5]);
+                        score[i] = score[i] + 1.0;
+                    }
+                }
+            } else {
+                for (j = ctx->ap_len - 1; j < ctx->len; j++) {
+                    if (beacon_in_cache(
+                            ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
+                        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                            "%s: Beacon %d matches cache %d of 0..%d MAC %02X:%02X:%02X:%02X:%02X:%02X",
+                            __FUNCTION__, j, i, CACHE_SIZE - 1,
+                            ctx->beacon[j].ap.mac[0], ctx->beacon[j].ap.mac[1],
+                            ctx->beacon[j].ap.mac[2], ctx->beacon[j].ap.mac[3],
+                            ctx->beacon[j].ap.mac[4], ctx->beacon[j].ap.mac[5]);
+                        score[i] = score[i] + 1.0;
+                    }
                 }
             }
         }
@@ -397,17 +405,24 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         if (score[i] == TOTAL_BEACONS * 2) {
             ratio[i] = 1.0;
         } else {
-            // score = intersection(A, B) / union(A, B)
-            ratio[i] = (float)score[i] /
-                       (ctx->len + ctx->cache->cacheline[i].len - score[i]);
-        }
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f (%d/%d)",
-            __FUNCTION__, i, ratio[i] * 100, score[i],
-            ctx->len + ctx->cache->cacheline[i].len - score[i]);
-        if (ratio[i] > bestratio) {
-            bestratio = ratio[i];
-            bestscore = score[i];
-            bestc = i;
+            if (ctx->ap_len) {
+                // score = intersection(A, B) / union(A, B)
+                ratio[i] =
+                    (float)score[i] /
+                    (ctx->ap_len + ctx->cache->cacheline[i].ap_len - score[i]);
+            } else {
+                // if all cell beacons match
+                ratio[i] = (score[i] == ctx->len - ctx->ap_len) ? 100.0 : 0.0;
+            }
+            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+                "%s: cache: %d: score %.2f (%d/%d)", __FUNCTION__, i,
+                ratio[i] * 100, score[i],
+                ctx->len + ctx->cache->cacheline[i].len - score[i]);
+            if (ratio[i] > bestratio) {
+                bestratio = ratio[i];
+                bestscore = score[i];
+                bestc = i;
+            }
         }
     }
 
@@ -515,6 +530,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     }
     for (j = 0; j < TOTAL_BEACONS; j++) {
         ctx->cache->cacheline[i].len = ctx->len;
+        ctx->cache->cacheline[i].ap_len = ctx->ap_len;
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
         ctx->cache->cacheline[i].loc = *loc;
         ctx->cache->cacheline[i].time = now;

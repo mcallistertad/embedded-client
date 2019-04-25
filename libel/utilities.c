@@ -139,9 +139,8 @@ void dump_workspace(Sky_ctx_t *ctx)
 {
     int i;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-        "WorkSpace: Got %d, AP %d starting at %d, connected %d", ctx->len,
-        ctx->ap_len, ctx->ap_low, ctx->connected);
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d, AP %d, connected %d",
+        ctx->len, ctx->ap_len, ctx->connected);
     for (i = 0; i < ctx->len; i++) {
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
@@ -334,7 +333,7 @@ int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
         return 0;
     }
     if (t == SKY_BEACON_AP) {
-        if (ctx->beacon[ctx->ap_low].h.type == t)
+        if (ctx->beacon[0].h.type == t)
             return i;
     } else {
         for (i = ctx->ap_len; i < ctx->len; i++) {
@@ -373,7 +372,7 @@ uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].ap.mac;
+    return ctx->beacon[idx].ap.mac;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/freq)
@@ -389,7 +388,7 @@ int64_t get_ap_freq(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].ap.freq;
+    return ctx->beacon[idx].ap.freq;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/rssi)
@@ -405,7 +404,7 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].ap.rssi;
+    return ctx->beacon[idx].ap.rssi;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/is_connected)
@@ -421,7 +420,7 @@ bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->ap_low + idx == ctx->connected;
+    return idx == ctx->connected;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/timestamp)
@@ -437,7 +436,7 @@ int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
         // logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: bad param", __FUNCTION__);
         return 0;
     }
-    return ctx->beacon[ctx->ap_low + idx].ap.age;
+    return ctx->beacon[idx].ap.age;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num gsm)

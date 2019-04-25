@@ -28,6 +28,7 @@ typedef struct sky_header {
 
 typedef struct sky_cacheline {
     int16_t len; /* number of beacons */
+    int16_t ap_len; /* number of AP beacons in list (0 == none) */
     uint32_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
@@ -52,7 +53,6 @@ typedef struct sky_ctx {
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
-    int16_t ap_low; /* first of AP beacons in list (0 based index) */
     int16_t connected; /* which beacon is conneted (-1 == none) */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
