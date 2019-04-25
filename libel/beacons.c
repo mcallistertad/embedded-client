@@ -404,25 +404,24 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     for (i = 0; i < CACHE_SIZE; i++) {
         if (score[i] == TOTAL_BEACONS * 2) {
             ratio[i] = 1.0;
-        } else {
-            if (ctx->ap_len) {
-                // score = intersection(A, B) / union(A, B)
-                ratio[i] =
-                    (float)score[i] /
-                    (ctx->ap_len + ctx->cache->cacheline[i].ap_len - score[i]);
-            } else {
-                // if all cell beacons match
-                ratio[i] = (score[i] == ctx->len - ctx->ap_len) ? 100.0 : 0.0;
-            }
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s: cache: %d: score %.2f (%d/%d)", __FUNCTION__, i,
-                ratio[i] * 100, score[i],
-                ctx->len + ctx->cache->cacheline[i].len - score[i]);
-            if (ratio[i] > bestratio) {
-                bestratio = ratio[i];
-                bestscore = score[i];
-                bestc = i;
-            }
+        } else if (ctx->ap_len && ctx->cache->cacheline[i].ap_len) {
+            // score = intersection(A, B) / union(A, B)
+            ratio[i] =
+                (float)score[i] /
+                (ctx->ap_len + ctx->cache->cacheline[i].ap_len - score[i]);
+        } else if (ctx->len - ctx->ap_len &&
+                   ctx->cache->cacheline[i].len -
+                       ctx->cache->cacheline[i].ap_len) {
+            // if all cell beacons match
+            ratio[i] = (score[i] == ctx->len - ctx->ap_len) ? 100.0 : 0.0;
+        }
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f (%d/%d)",
+            __FUNCTION__, i, ratio[i] * 100, score[i],
+            ctx->len + ctx->cache->cacheline[i].len - score[i]);
+        if (ratio[i] > bestratio) {
+            bestratio = ratio[i];
+            bestscore = score[i];
+            bestc = i;
         }
     }
 
