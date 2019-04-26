@@ -17,6 +17,7 @@ typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 {
     size_t i;
+
     // This is a wrapper function around get_ap_mac(). It converts the 8-byte
     // mac array to an uint64_t.
     //
@@ -39,7 +40,7 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     uint32_t tag, uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
     size_t i;
-    int64_t data;
+
     // Get and encode the field size.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
 
@@ -62,7 +63,7 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
 
     // Now encode the field for real.
     for (i = 0; i < num_elems; i++) {
-        data = getter(ctx, i);
+        int64_t data = getter(ctx, i);
 
         if (wrapper != NULL)
             data = wrapper(data);
@@ -264,7 +265,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     Rq rq;
 
-    pb_ostream_t hdr_ostream, crypto_info_ostream, rq_ostream;
+    pb_ostream_t ostream;
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
@@ -324,19 +325,18 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     bytes_written = 1;
 
-    hdr_ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
+    ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
 
-    if (pb_encode(&hdr_ostream, RqHeader_fields, &rq_hdr))
-        bytes_written += hdr_ostream.bytes_written;
+    if (pb_encode(&ostream, RqHeader_fields, &rq_hdr))
+        bytes_written += ostream.bytes_written;
     else
         return -1;
 
     // Serialize the crypto_info message.
-    crypto_info_ostream =
-        pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
+    ostream = pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
 
-    if (pb_encode(&crypto_info_ostream, CryptoInfo_fields, &rq_crypto_info))
-        bytes_written += crypto_info_ostream.bytes_written;
+    if (pb_encode(&ostream, CryptoInfo_fields, &rq_crypto_info))
+        bytes_written += ostream.bytes_written;
     else
         return -1;
 
@@ -344,12 +344,11 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     //
     buf += bytes_written;
 
-    rq_ostream =
-        pb_ostream_from_buffer(buf, rq_size);
+    ostream = pb_ostream_from_buffer(buf, rq_size);
 
     // Initialize request body.
-    if (pb_encode(&rq_ostream, Rq_fields, &rq))
-        bytes_written += rq_ostream.bytes_written;
+    if (pb_encode(&ostream, Rq_fields, &rq))
+        bytes_written += ostream.bytes_written;
     else
         return -1;
 
@@ -378,7 +377,7 @@ int32_t deserialize_response(
 
     CryptoInfo crypto_info;
 
-    pb_istream_t body_info_istream, hdr_istream, crypto_info_istream;
+    pb_istream_t istream;
 
     // We assume that buf contains the response message in its entirety. (Since
     // the server closes the connection after sending the response, the client
@@ -396,9 +395,9 @@ int32_t deserialize_response(
     if (buf_len < 1 + hdr_size)
         return -1;
 
-    hdr_istream = pb_istream_from_buffer(buf, hdr_size);
+    istream = pb_istream_from_buffer(buf, hdr_size);
 
-    if (!pb_decode(&hdr_istream, RsHeader_fields, &header)) {
+    if (!pb_decode(&istream, RsHeader_fields, &header)) {
         return -1;
     }
 
@@ -408,10 +407,9 @@ int32_t deserialize_response(
     if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
         return -1;
 
-    crypto_info_istream =
-        pb_istream_from_buffer(buf, header.crypto_info_length);
+    istream = pb_istream_from_buffer(buf, header.crypto_info_length);
 
-    if (!pb_decode(&crypto_info_istream, CryptoInfo_fields, &crypto_info)) {
+    if (!pb_decode(&istream, CryptoInfo_fields, &crypto_info)) {
         return -1;
     }
 
@@ -423,11 +421,10 @@ int32_t deserialize_response(
     AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
 
     // Deserialize the response body.
-    body_info_istream = pb_istream_from_buffer(
+    istream = pb_istream_from_buffer(
         buf, header.rs_length - crypto_info.aes_padding_length);
 
-
-    if (!pb_decode(&body_info_istream, Rs_fields, &rs)) {
+    if (!pb_decode(&istream, Rs_fields, &rs)) {
         return -1;
     } else {
         loc->lat = rs.lat;
