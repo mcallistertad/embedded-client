@@ -244,9 +244,9 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (channel < 2400 || channel > 6000)
         channel = 0; /* 0's not sent to server */
     if (rssi > -10)
-        rssi = -10;
+        rssi = -1;
     else if (rssi < -127)
-        rssi = -127;
+        rssi = -1;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
 
@@ -292,9 +292,9 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     else
         b.lte.age = 0;
     if (rsrp > -40)
-        rsrp = -40;
+        rsrp = -1;
     else if (rsrp < -140)
-        rsrp = -140;
+        rsrp = -1;
     b.lte.tac = tac;
     b.lte.e_cellid = e_cellid;
     b.lte.mcc = mcc;
@@ -343,9 +343,9 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     else
         b.gsm.age = 0;
     if (rssi > -32)
-        rssi = -32;
+        rssi = -1;
     else if (rssi < -128)
-        rssi = -128;
+        rssi = -1;
     b.gsm.lac = lac;
     b.gsm.ci = ci;
     b.gsm.mcc = mcc;
@@ -373,7 +373,37 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint16_t lac, uint32_t ucid, uint16_t mcc, uint16_t mnc, time_t timestamp,
     int16_t rscp, bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create GSM beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_UMTS;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
+        b.umts.age = ctx->header.time - timestamp;
+    else
+        b.umts.age = 0;
+    if (rscp > -20)
+        rscp = -1;
+    else if (rscp < -120)
+        rscp = -1;
+    b.umts.lac = lac;
+    b.umts.ucid = ucid;
+    b.umts.mcc = mcc;
+    b.umts.mnc = mnc;
+    b.umts.rssi = rscp;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a cdma cell beacon to the request context
@@ -393,7 +423,36 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint32_t sid, uint16_t nid, uint16_t bsid, time_t timestamp, int16_t rssi,
     bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create GSM beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_CDMA;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
+        b.cdma.age = ctx->header.time - timestamp;
+    else
+        b.cdma.age = 0;
+    if (rssi > -49)
+        rssi = -1;
+    else if (rssi < -140)
+        rssi = -1;
+    b.cdma.sid = sid;
+    b.cdma.nid = nid;
+    b.cdma.bsid = bsid;
+    b.cdma.rssi = rssi;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a nb_iot cell beacon to the request context
