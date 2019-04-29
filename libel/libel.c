@@ -243,9 +243,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.ap.age = 0;
     if (channel < 2400 || channel > 6000)
         channel = 0; /* 0's not sent to server */
-    if (rssi > -10)
-        rssi = -1;
-    else if (rssi < -127)
+    if (rssi > -10 || rssi < -127)
         rssi = -1;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
@@ -282,7 +280,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Create GSM beacon */
+    /* Create LTE beacon */
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
@@ -291,9 +289,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
-    if (rsrp > -40)
-        rsrp = -1;
-    else if (rsrp < -140)
+    if (rsrp > -40 || rsrp < -140)
         rsrp = -1;
     b.lte.tac = tac;
     b.lte.e_cellid = e_cellid;
@@ -342,9 +338,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
-    if (rssi > -32)
-        rssi = -1;
-    else if (rssi < -128)
+    if (rssi > -32 || rssi < -128)
         rssi = -1;
     b.gsm.lac = lac;
     b.gsm.ci = ci;
@@ -384,7 +378,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Create GSM beacon */
+    /* Create UMTS beacon */
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_UMTS;
     /* If beacon has meaningful timestamp */
@@ -393,9 +387,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.umts.age = ctx->header.time - timestamp;
     else
         b.umts.age = 0;
-    if (rscp > -20)
-        rscp = -1;
-    else if (rscp < -120)
+    if (rscp > -20 || rscp < -120)
         rscp = -1;
     b.umts.lac = lac;
     b.umts.ucid = ucid;
@@ -434,7 +426,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Create GSM beacon */
+    /* Create CDMA beacon */
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_CDMA;
     /* If beacon has meaningful timestamp */
@@ -443,9 +435,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.cdma.age = ctx->header.time - timestamp;
     else
         b.cdma.age = 0;
-    if (rssi > -49)
-        rssi = -1;
-    else if (rssi < -140)
+    if (rssi > -49 || rssi < -140)
         rssi = -1;
     b.cdma.sid = sid;
     b.cdma.nid = nid;
@@ -493,10 +483,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;
-    if (nrsrp > -44)
-        nrsrp = -44;
-    else if (nrsrp < -156)
-        nrsrp = -156;
+    if (nrsrp > -44 || nrsrp < -156)
+        nrsrp = -1;
     b.nbiot.mcc = mcc;
     b.nbiot.mnc = mnc;
     b.nbiot.e_cellid = e_cellid;
