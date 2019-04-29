@@ -429,8 +429,9 @@ int32_t deserialize_response(
     } else {
         loc->lat = rs.lat;
         loc->lon = rs.lon;
-        loc->hpe = (uint16_t)rs.hpe;
-        loc->location_source = (Sky_loc_source_t)rs.source;
+        loc->hpe = (uint16_t) rs.hpe;
+        loc->location_source = (Sky_loc_source_t) rs.source;
+        loc->location_status = (Sky_loc_status_t) rs.status;
 
         return 0;
     }
