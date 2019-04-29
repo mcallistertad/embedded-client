@@ -581,8 +581,8 @@ Sky_status_t sky_sizeof_request_buf(
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     void *response_buf, uint32_t bufsize, Sky_location_t *loc)
 {
-    if (!loc)
-        sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    if (loc == NULL || response_buf == NULL || bufsize == 0)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)
@@ -665,6 +665,44 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     default:
         str = "Unknown error code";
+        break;
+    }
+    return str;
+}
+
+/*! \brief returns a string which describes the meaning of Sky_beacon_type_t
+ *
+ *  @param b beacon type
+ *
+ *  @return pointer to string or NULL if the code is invalid
+ */
+char *sky_pbeacon(Beacon_t *b)
+{
+    register char *str = NULL;
+    switch (b->h.type) {
+    case SKY_BEACON_AP:
+        str = "Wi-Fi";
+        break;
+    case SKY_BEACON_BLE:
+        str = "Bluetooth";
+        break;
+    case SKY_BEACON_CDMA:
+        str = "CDMA";
+        break;
+    case SKY_BEACON_GSM:
+        str = "GSM";
+        break;
+    case SKY_BEACON_LTE:
+        str = "LTE";
+        break;
+    case SKY_BEACON_NBIOT:
+        str = "NB-IoT";
+        break;
+    case SKY_BEACON_UMTS:
+        str = "UMTS";
+        break;
+    default:
+        str = "Unknown";
         break;
     }
     return str;
