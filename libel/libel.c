@@ -654,6 +654,44 @@ char *sky_perror(Sky_errno_t sky_errno)
     return str;
 }
 
+/*! \brief returns a string which describes the meaning of Sky_beacon_type_t
+ *
+ *  @param b beacon type
+ *
+ *  @return pointer to string or NULL if the code is invalid
+ */
+char *sky_pbeacon(Beacon_t *b)
+{
+    register char *str = NULL;
+    switch (b->h.type) {
+    case SKY_BEACON_AP:
+        str = "Wi-Fi";
+        break;
+    case SKY_BEACON_BLE:
+        str = "Bluetooth";
+        break;
+    case SKY_BEACON_CDMA:
+        str = "CDMA";
+        break;
+    case SKY_BEACON_GSM:
+        str = "GSM";
+        break;
+    case SKY_BEACON_LTE:
+        str = "LTE";
+        break;
+    case SKY_BEACON_NBIOT:
+        str = "NB-IoT";
+        break;
+    case SKY_BEACON_UMTS:
+        str = "UMTS";
+        break;
+    default:
+        str = "Unknown";
+        break;
+    }
+    return str;
+}
+
 /*! \brief clean up library resourses
  *
  *  @param sky_errno skyErrno is set to the error code
