@@ -32,6 +32,21 @@ Sky_cache_t nv_space;
  */
 #define SCAN_LIST_SIZE 100
 
+/*! \brief time function
+ *
+ *  @param t where to save the time
+ *
+ *  @returns the time in seconds since the epoc (linux time)
+ */
+
+static time_t mytime(time_t *t)
+{
+    if (t != NULL) {
+        return time(t);
+    } else
+        return time(NULL);
+}
+
 /*! \brief set mac address. 30% are virtual AP
  *
  *  @param mac pointer to mac address
@@ -189,7 +204,8 @@ int main(int ac, char **av)
     srand((unsigned)time(NULL));
 
     if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key,
-            nv_cache(), SKY_LOG_LEVEL_ALL, &logger, NULL) == SKY_ERROR) {
+            nv_cache(), SKY_LOG_LEVEL_ALL, &logger, NULL,
+            &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }

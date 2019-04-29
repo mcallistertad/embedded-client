@@ -361,9 +361,10 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     /* score each cache line wrt beacon match ratio */
     for (i = 0; i < CACHE_SIZE; i++) {
         ratio[i] = score[i] = 0;
-        if (put && (ctx->cache->cacheline[i].time == 0 ||
-                       (uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
-                           (CACHE_AGE_THRESHOLD * 60 * 60))) {
+        if (put &&
+            (ctx->cache->cacheline[i].time == 0 ||
+                (uint32_t)(*ctx->gettime)(NULL)-ctx->cache->cacheline[i].time >
+                    (CACHE_AGE_THRESHOLD * 60 * 60))) {
             /* looking for match for put, empty cacheline = 1st choice */
             score[i] = TOTAL_BEACONS * 2;
         } else if (!put && ctx->cache->cacheline[i].time == 0) {
@@ -452,11 +453,11 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     uint32_t oldestc = 0;
-    int oldest = time(NULL);
+    int oldest = (*ctx->gettime)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
         /* Discard old cachelines */
-        if ((uint32_t)time(NULL) - ctx->cache->cacheline[i].time >
+        if ((uint32_t)(*ctx->gettime)(NULL)-ctx->cache->cacheline[i].time >
             (CACHE_AGE_THRESHOLD * 60 * 60)) {
             ctx->cache->cacheline[i].time = 0;
             return i;
@@ -484,7 +485,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
     int i = -1;
     int j;
-    uint32_t now = time(NULL);
+    uint32_t now = (*ctx->gettime)(NULL);
 
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
@@ -536,7 +537,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  */
 int get_cache(Sky_ctx_t *ctx)
 {
-    uint32_t now = time(NULL);
+    uint32_t now = (*ctx->gettime)(NULL);
 
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
