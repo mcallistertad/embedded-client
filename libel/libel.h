@@ -93,6 +93,7 @@ typedef enum {
     SKY_ERROR_ADD_CACHE,
     SKY_ERROR_GET_CACHE,
     SKY_ERROR_LOCATION_UNKNOWN,
+    SKY_ERROR_SERVER_ERROR,
     SKY_ERROR_MAX
 } Sky_errno_t;
 

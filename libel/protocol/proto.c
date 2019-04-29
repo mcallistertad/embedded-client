@@ -255,7 +255,8 @@ bool Rq_callback(
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 {
-    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
+    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size,
+        total_length;
     int32_t bytes_written;
     struct AES_ctx aes_ctx;
 
@@ -401,13 +402,14 @@ int32_t deserialize_response(
         return -1;
     }
 
-    loc->location_status = (Sky_loc_status_t) header.status;
+    loc->location_status = (Sky_loc_status_t)header.status;
 
     if (header.rs_length) {
         buf += hdr_size;
 
         // Deserialize the crypto_info.
-        if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
+        if (buf_len <
+            1 + hdr_size + header.crypto_info_length + header.rs_length)
             return -1;
 
         istream = pb_istream_from_buffer(buf, header.crypto_info_length);
@@ -432,8 +434,8 @@ int32_t deserialize_response(
         } else {
             loc->lat = rs.lat;
             loc->lon = rs.lon;
-            loc->hpe = (uint16_t) rs.hpe;
-            loc->location_source = (Sky_loc_source_t) rs.source;
+            loc->hpe = (uint16_t)rs.hpe;
+            loc->location_source = (Sky_loc_source_t)rs.source;
         }
     }
 

@@ -587,6 +587,8 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)
         return sky_return(sky_errno, SKY_ERROR_LOCATION_UNKNOWN);
+    else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS)
+        return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
 
     loc->time = time(NULL);
 
@@ -662,6 +664,9 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     case SKY_ERROR_LOCATION_UNKNOWN:
         str = "server failed to determine location";
+        break;
+    case SKY_ERROR_SERVER_ERROR:
+        str = "server responded with an error";
         break;
     default:
         str = "Unknown error code";
