@@ -401,38 +401,41 @@ int32_t deserialize_response(
         return -1;
     }
 
-    buf += hdr_size;
+    loc->location_status = (Sky_loc_status_t) header.status;
 
-    // Deserialize the crypto_info.
-    if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
-        return -1;
+    if (header.rs_length) {
+        buf += hdr_size;
 
-    istream = pb_istream_from_buffer(buf, header.crypto_info_length);
+        // Deserialize the crypto_info.
+        if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
+            return -1;
 
-    if (!pb_decode(&istream, CryptoInfo_fields, &crypto_info)) {
-        return -1;
+        istream = pb_istream_from_buffer(buf, header.crypto_info_length);
+
+        if (!pb_decode(&istream, CryptoInfo_fields, &crypto_info)) {
+            return -1;
+        }
+
+        buf += header.crypto_info_length;
+
+        // Decrypt the response body.
+        AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), crypto_info.iv.bytes);
+
+        AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
+
+        // Deserialize the response body.
+        istream = pb_istream_from_buffer(
+            buf, header.rs_length - crypto_info.aes_padding_length);
+
+        if (!pb_decode(&istream, Rs_fields, &rs)) {
+            return -1;
+        } else {
+            loc->lat = rs.lat;
+            loc->lon = rs.lon;
+            loc->hpe = (uint16_t) rs.hpe;
+            loc->location_source = (Sky_loc_source_t) rs.source;
+        }
     }
 
-    buf += header.crypto_info_length;
-
-    // Decrypt the response body.
-    AES_init_ctx_iv(&aes_ctx, get_ctx_aes_key(ctx), crypto_info.iv.bytes);
-
-    AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
-
-    // Deserialize the response body.
-    istream = pb_istream_from_buffer(
-        buf, header.rs_length - crypto_info.aes_padding_length);
-
-    if (!pb_decode(&istream, Rs_fields, &rs)) {
-        return -1;
-    } else {
-        loc->lat = rs.lat;
-        loc->lon = rs.lon;
-        loc->hpe = (uint16_t) rs.hpe;
-        loc->location_source = (Sky_loc_source_t) rs.source;
-        loc->location_status = (Sky_loc_status_t) rs.status;
-
-        return 0;
-    }
+    return 0;
 }
