@@ -154,6 +154,20 @@ int logger(Sky_log_level_t level, const char *s)
     return 0;
 }
 
+/*! \brief time function
+ *
+ *  @param t where to save the time
+ *
+ *  @returns the time in seconds since the epoc (linux time)
+ */
+static time_t mytime(time_t *t)
+{
+    if (t != NULL) {
+        return time(t);
+    } else
+        return time(NULL);
+}
+
 /*! \brief validate fundamental functionality of the Embedded Library
  *
  *  @param argc count
@@ -195,11 +209,11 @@ int main(int argc, char *argv[])
     /* Comment in order to disable cache loading */
     nv_space = nv_cache(nv_space, 1);
 
-    timestamp = time(NULL); /* time scans were prepared */
+    timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
     if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, config.partner_id,
             config.partner_id, config.key, nv_space, SKY_LOG_LEVEL_ALL, &logger,
-            &rand_bytes) == SKY_ERROR) {
+            &rand_bytes, &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }

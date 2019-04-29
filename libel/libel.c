@@ -34,6 +34,7 @@ static Sky_cache_t cache;
 static Sky_randfn_t sky_rand_bytes;
 static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
+static Sky_timefn_t sky_time;
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
@@ -53,6 +54,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *  @param min_level logging function is called for msg with equal or greater level
  *  @param logf pointer to logging function
  *  @param rand_bytes pointer to random function
+ *  @param gettime pointer to time function
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -64,7 +66,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
     uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes)
+    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
     Sky_cache_t *sky_state = state_buf;
     int i = 0;
@@ -75,6 +77,11 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
 
     if (sky_state != NULL && !validate_cache(sky_state))
         sky_state = NULL;
+
+    sky_min_level = min_level;
+    sky_logf = logf;
+    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
+    sky_time = (gettime == NULL) ? &time : gettime;
 
     /* if open already */
     if (sky_open_flag && sky_state) {
@@ -94,7 +101,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     else {
         cache.header.magic = SKY_MAGIC;
         cache.header.size = sizeof(cache);
-        cache.header.time = (uint32_t)time(NULL);
+        cache.header.time = (uint32_t)(*sky_time)(NULL);
         cache.header.crc32 = sky_crc32(&cache.header.magic,
             (uint8_t *)&cache.header.crc32 - (uint8_t *)&cache.header.magic);
         cache.len = CACHE_SIZE;
@@ -115,9 +122,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     cache.sky_id_len = id_len;
-    sky_min_level = min_level;
-    sky_logf = logf;
-    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     cache.sky_aes_key_id = aes_key_id;
@@ -191,14 +195,14 @@ Sky_ctx_t *sky_new_request(
     /* update header in workspace */
     ctx->header.magic = SKY_MAGIC;
     ctx->header.size = bufsize;
-    ctx->header.time = (uint32_t)time(NULL);
+    ctx->header.time = (uint32_t)(*sky_time)(NULL);
     ctx->header.crc32 = sky_crc32(&ctx->header.magic,
         (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->cache = &cache;
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
-    ctx->min_level = sky_min_level;
+    ctx->gettime = sky_time;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++)
@@ -635,7 +639,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)
         return sky_return(sky_errno, SKY_ERROR_LOCATION_UNKNOWN);
 
-    loc->time = time(NULL);
+    loc->time = (*ctx->gettime)(NULL);
 
     logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 

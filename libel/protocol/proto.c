@@ -255,7 +255,8 @@ bool Rq_callback(
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 {
-    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
+    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size,
+        total_length;
     int32_t bytes_written;
     struct AES_ctx aes_ctx;
 
@@ -284,7 +285,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells =
         rq.umts_cells = ctx;
 
-    rq.timestamp = (int64_t)time(NULL);
+    rq.timestamp = (int64_t)ctx->gettime(NULL);
 
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
