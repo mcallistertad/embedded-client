@@ -243,6 +243,10 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.ap.age = 0;
     if (channel < 2400 || channel > 6000)
         channel = 0; /* 0's not sent to server */
+    if (rssi > -10)
+        rssi = -10;
+    else if (rssi < -127)
+        rssi = -127;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
 
@@ -287,6 +291,10 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
+    if (rsrp > -40)
+        rsrp = -40;
+    else if (rsrp < -140)
+        rsrp = -140;
     b.lte.tac = tac;
     b.lte.e_cellid = e_cellid;
     b.lte.mcc = mcc;
@@ -334,6 +342,10 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
+    if (rssi > -32)
+        rssi = -32;
+    else if (rssi < -128)
+        rssi = -128;
     b.gsm.lac = lac;
     b.gsm.ci = ci;
     b.gsm.mcc = mcc;
@@ -422,6 +434,10 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;
+    if (nrsrp > -44)
+        nrsrp = -44;
+    else if (nrsrp < -156)
+        nrsrp = -156;
     b.nbiot.mcc = mcc;
     b.nbiot.mnc = mnc;
     b.nbiot.e_cellid = e_cellid;
