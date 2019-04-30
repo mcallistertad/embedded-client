@@ -71,7 +71,7 @@ int validate_workspace(Sky_ctx_t *ctx)
  *
  *  @return true if cache is valid, else false
  */
-int validate_cache(Sky_cache_t *c)
+int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
 {
     int i, j;
 
@@ -79,7 +79,9 @@ int validate_cache(Sky_cache_t *c)
         return false;
 
     if (c->len != CACHE_SIZE) {
-        printf("%s: CACHE_SIZE %d vs len %d", __FUNCTION__, CACHE_SIZE, c->len);
+        if (logf != NULL)
+            (*logf)(SKY_LOG_LEVEL_DEBUG,
+                "Cache validation failed: too big for CACHE_SIZE");
         return false;
     }
 
@@ -87,14 +89,26 @@ int validate_cache(Sky_cache_t *c)
         sky_crc32(&c->header.magic,
             (uint8_t *)&c->header.crc32 - (uint8_t *)&c->header.magic)) {
         for (i = 0; i < CACHE_SIZE; i++) {
-            if (c->cacheline[i].len > TOTAL_BEACONS)
+            if (c->cacheline[i].len > TOTAL_BEACONS) {
+                if (logf != NULL)
+                    (*logf)(SKY_LOG_LEVEL_DEBUG,
+                        "Cache validation failed: too many beacons for TOTAL_BEACONS");
                 return false;
+            }
 
             for (j = 0; j < TOTAL_BEACONS; j++) {
-                if (c->cacheline[i].beacon[j].h.magic != BEACON_MAGIC)
+                if (c->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
+                    if (logf != NULL)
+                        (*logf)(SKY_LOG_LEVEL_DEBUG,
+                            "Cache validation failed: Bad beacon info");
                     return false;
-                if (c->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX)
+                }
+                if (c->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
+                    if (logf != NULL)
+                        (*logf)(SKY_LOG_LEVEL_DEBUG,
+                            "Cache validation failed: Bad beacon type");
                     return false;
+                }
             }
         }
     } else
@@ -139,13 +153,14 @@ void dump_workspace(Sky_ctx_t *ctx)
 {
     int i;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d, AP %d, connected %d",
-        ctx->len, ctx->ap_len, ctx->connected);
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+        "WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len,
+        ctx->ap_len, ctx->connected);
     for (i = 0; i < ctx->len; i++) {
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon % 2d: Age: %d Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
+                "Beacon % 2d: Age: %d Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
                 i, ctx->beacon[i].ap.age, ctx->beacon[i].ap.mac[0],
                 ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
                 ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4],
@@ -189,7 +204,7 @@ void dump_cache(Sky_ctx_t *ctx)
             switch (b->h.type) {
             case SKY_BEACON_AP:
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache % 2d: Type: AP, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
+                    "cache % 2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
                     i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3],
                     b->ap.mac[4], b->ap.mac[5], b->ap.rssi, c->loc.lat,
                     c->loc.lon, c->loc.hpe);
@@ -202,7 +217,7 @@ void dump_cache(Sky_ctx_t *ctx)
                 break;
             case SKY_BEACON_NBIOT:
                 logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache % 2d: Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
+                    "cache % 2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
                     i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid,
                     b->nbiot.tac, b->nbiot.rssi, c->loc.lat, c->loc.lon,
                     c->loc.hpe);

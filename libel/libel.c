@@ -75,7 +75,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? 16 : id_len;
 
-    if (sky_state != NULL && !validate_cache(sky_state))
+    if (sky_state != NULL && !validate_cache(sky_state, logf))
         sky_state = NULL;
 
     sky_min_level = min_level;
@@ -128,8 +128,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     sky_open_flag = true;
 
-    (*logf)(
-        SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
+    if (logf != NULL)
+        (*logf)(SKY_LOG_LEVEL_DEBUG,
+            "Skyhook Embedded Library (Version: " VERSION ")");
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -149,7 +150,7 @@ int32_t sky_sizeof_state(void *sky_state)
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (!validate_cache(c))
+    if (!validate_cache(c, NULL))
         return 0;
     else
         return c->header.size;

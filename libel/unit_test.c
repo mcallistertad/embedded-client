@@ -138,7 +138,7 @@ void *nv_cache(void)
                         (uint8_t *)&nv_space.header.magic)) {
             if (fread(p + sizeof(Sky_header_t),
                     nv_space.header.size - sizeof(Sky_header_t), 1, fio) == 1) {
-                if (validate_cache(&nv_space)) {
+                if (validate_cache(&nv_space, &logger)) {
                     printf("validate_cache: Restoring Cache\n");
                     return &nv_space;
                 } else
@@ -160,7 +160,7 @@ Sky_status_t nv_cache_save(void *p)
     FILE *fio;
     Sky_cache_t *c = p;
 
-    if (validate_cache(c)) {
+    if (validate_cache(c, &logger)) {
         if ((fio = fopen("nv_cache", "w+")) != NULL) {
             if (fwrite(p, c->header.size, 1, fio) == 1) {
                 printf("nv_cache_save: cache size %d (%lu)\n", c->header.size,
@@ -248,7 +248,7 @@ int main(int ac, char **av)
                 sky_perror(sky_errno));
         else
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
+                "Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d",
                 i, b[i].ap.type, b[i].ap.mac[0], b[i].ap.mac[1], b[i].ap.mac[2],
                 b[i].ap.mac[3], b[i].ap.mac[4], b[i].ap.mac[5], b[i].ap.rssi);
     }
@@ -272,7 +272,7 @@ int main(int ac, char **av)
                 sky_perror(sky_errno));
         else
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Added Test Beacon % 2d: Type: %d, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d\n",
+                "Added Test Beacon % 2d: Type: %d, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
                 i, b[i].nbiot.type, b[i].nbiot.mcc, b[i].nbiot.mnc,
                 b[i].nbiot.e_cellid, b[i].nbiot.tac, b[i].nbiot.rssi);
     }
@@ -295,7 +295,7 @@ int main(int ac, char **av)
                 sky_perror(sky_errno));
         else
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Added Test Beacon % 2d: Type: %d, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d\n",
+                "Added Test Beacon % 2d: Type: %d, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d",
                 i, b[i].gsm.type, b[i].gsm.lac, b[i].gsm.ci, b[i].gsm.mcc,
                 b[i].gsm.mnc, b[i].gsm.rssi);
     }
@@ -317,7 +317,7 @@ int main(int ac, char **av)
             loc.hpe);
         if (sky_close(&sky_errno, &pstate))
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
+                "sky_close sky_errno contains '%s'", sky_perror(sky_errno));
         if (pstate != NULL)
             nv_cache_save(pstate);
         exit(0);
@@ -329,7 +329,7 @@ int main(int ac, char **av)
             sky_perror(sky_errno));
         if (sky_close(&sky_errno, &pstate))
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
+                "sky_close sky_errno contains '%s'", sky_perror(sky_errno));
         exit(-1);
         break;
     case SKY_FINALIZE_REQUEST:
@@ -396,11 +396,11 @@ int main(int ac, char **av)
 
     if (sky_decode_response(ctx, &sky_errno, NULL, 0, &loc))
         logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "sky_decode_response sky_errno contains '%s'\n",
+            "sky_decode_response sky_errno contains '%s'",
             sky_perror(sky_errno));
 
     if (sky_close(&sky_errno, &pstate))
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "sky_close sky_errno contains '%s'\n",
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "sky_close sky_errno contains '%s'",
             sky_perror(sky_errno));
     if (pstate != NULL)
         nv_cache_save(pstate);

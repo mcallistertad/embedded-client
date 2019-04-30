@@ -73,7 +73,7 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
         sizeof(Beacon_t) * (ctx->len - index - 1));
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d", index);
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: %d", __FUNCTION__, index);
     ctx->len -= 1;
     return SKY_SUCCESS;
 }
@@ -92,12 +92,13 @@ static Sky_status_t insert_beacon(
 {
     int i;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "Insert_beacon: type %d", b->h.type);
     /* sanity checks */
     if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC ||
-        b->h.type >= SKY_BEACON_MAX)
+        b->h.type >= SKY_BEACON_MAX) {
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Invalid params. Beacon type %s",
+            __FUNCTION__, sky_pbeacon(b));
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "Insert_beacon: Done type %d", b->h.type);
+    }
 
     /* find correct position to insert based on type */
     for (i = 0; i < ctx->len; i++)
@@ -117,8 +118,6 @@ static Sky_status_t insert_beacon(
                     break;
         }
         /* shift beacons to make room for the new one */
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "shift beacons to make room for the new one (%d)", i);
         memmove(&ctx->beacon[i + 1], &ctx->beacon[i],
             sizeof(Beacon_t) * (ctx->len - i));
         ctx->beacon[i] = *b;
@@ -127,6 +126,8 @@ static Sky_status_t insert_beacon(
     /* report back the position beacon was added */
     if (index != NULL)
         *index = i;
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d)",
+        sky_pbeacon(b), i);
 
     if (b->h.type == SKY_BEACON_AP)
         ctx->ap_len++;
@@ -153,7 +154,7 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
         (float)ctx->ap_len;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: range: %d band: %.2f", __FUNCTION__,
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi),
         band_range);
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
@@ -167,7 +168,8 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
             worst = fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]);
             reject = i;
             logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "reject: %d, ideal %.2f worst %.2f", i, ideal_rssi[i], worst);
+                "%s: reject: %d, ideal %.2f worst %.2f", __FUNCTION__, i,
+                ideal_rssi[i], worst);
         }
     }
     return remove_beacon(ctx, reject);
@@ -184,19 +186,19 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     int i, j;
     int cmp;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "filter_virtual_aps: ap_len: %d of %d APs",
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: ap_len: %d of %d APs", __FUNCTION__,
         (int)ctx->ap_len, (int)ctx->len);
     dump_workspace(ctx);
 
     if (ctx->ap_len < MAX_AP_BEACONS) {
-        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: too many AP beacons",
+        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: too many WiFi beacons",
             __FUNCTION__);
         return SKY_ERROR;
     }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
-        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: beacon type not AP",
+        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: beacon type not WiFi",
             __FUNCTION__);
         return SKY_ERROR;
     }
@@ -219,7 +221,7 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
             }
         }
     }
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "filter_virtual_aps: no match");
+    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: no match", __FUNCTION__);
     return SKY_ERROR;
 }
 
@@ -242,8 +244,8 @@ Sky_status_t add_beacon(
     if (b->h.type != SKY_BEACON_AP &&
         ctx->len - ctx->ap_len > (TOTAL_BEACONS - MAX_AP_BEACONS)) {
         logfmt(ctx, SKY_LOG_LEVEL_WARNING,
-            "%s: too many (b->h.type: %d) (ctx->len - ctx->ap_len: %d)",
-            __FUNCTION__, b->h.type, ctx->len - ctx->ap_len);
+            "%s: too many (b->h.type: %s) (ctx->len - ctx->ap_len: %d)",
+            __FUNCTION__, sky_pbeacon(b), ctx->len - ctx->ap_len);
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
     }
 
