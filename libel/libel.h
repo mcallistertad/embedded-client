@@ -54,6 +54,16 @@ typedef enum {
     SKY_LOCATION_SOURCE_MAX,
 } Sky_loc_source_t;
 
+/*! \brief sky_loc_status location status
+ */
+typedef enum {
+    SKY_LOCATION_STATUS_SUCCESS = 0,
+    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
+    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
+    SKY_LOCATION_STATUS_DECODE_ERROR,
+    SKY_LOCATION_STATUS_API_SERVER_ERROR,
+} Sky_loc_status_t;
+
 /*! \brief Skyhook location information
  */
 typedef struct sky_location {
@@ -61,6 +71,7 @@ typedef struct sky_location {
     uint16_t hpe;
     uint32_t time;
     Sky_loc_source_t location_source;
+    Sky_loc_status_t location_status;
 } Sky_location_t;
 
 /*! \brief sky_errno Error Codes
@@ -82,6 +93,7 @@ typedef enum {
     SKY_ERROR_ADD_CACHE,
     SKY_ERROR_GET_CACHE,
     SKY_ERROR_LOCATION_UNKNOWN,
+    SKY_ERROR_SERVER_ERROR,
     SKY_ERROR_MAX
 } Sky_errno_t;
 
