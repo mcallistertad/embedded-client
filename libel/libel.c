@@ -586,11 +586,12 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Response decode failure", __FUNCTION__);
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Response decode failure",
+            __FUNCTION__);
         return sky_return(sky_errno, SKY_ERROR_DECODE_ERROR);
-    }
-    else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Server error. Status: %d", __FUNCTION__, loc->location_status);
+    } else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Server error. Status: %s",
+            __FUNCTION__, sky_pserver_status(loc->location_status));
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
 
@@ -674,6 +675,43 @@ char *sky_perror(Sky_errno_t sky_errno)
     return str;
 }
 
+/*! \brief returns a string which describes the meaning of Sky_loc_status_t codes
+ *
+ *  @param status Error code for which to provide descriptive string
+ *
+ *  @return pointer to string or NULL if the code is invalid
+    SKY_LOCATION_STATUS_SUCCESS = 0,
+    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
+    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
+    SKY_LOCATION_STATUS_DECODE_ERROR,
+    SKY_LOCATION_STATUS_API_SERVER_ERROR,
+
+ */
+char *sky_pserver_status(Sky_loc_status_t status)
+{
+    register char *str = NULL;
+    switch (status) {
+    case SKY_LOCATION_STATUS_SUCCESS:
+        str = "Server success";
+        break;
+    case SKY_LOCATION_STATUS_UNSPECIFIED_ERROR:
+        str = "Server reports unspecified error";
+        break;
+    case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
+        str = "Server reports bad partner id error";
+        break;
+    case SKY_LOCATION_STATUS_DECODE_ERROR:
+        str = "Error decoding response body";
+        break;
+    case SKY_LOCATION_STATUS_API_SERVER_ERROR:
+        str = "Server error determining location";
+        break;
+    default:
+        str = "Unknown server status";
+        break;
+    }
+    return str;
+}
 /*! \brief clean up library resourses
  *
  *  @param sky_errno skyErrno is set to the error code
