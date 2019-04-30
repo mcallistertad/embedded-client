@@ -34,6 +34,7 @@ static Sky_cache_t cache;
 static Sky_randfn_t sky_rand_bytes;
 static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
+static Sky_timefn_t sky_time;
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
@@ -53,6 +54,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *  @param min_level logging function is called for msg with equal or greater level
  *  @param logf pointer to logging function
  *  @param rand_bytes pointer to random function
+ *  @param gettime pointer to time function
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -64,7 +66,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     uint32_t id_len, uint32_t partner_id, uint32_t aes_key_id,
     uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes)
+    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
     Sky_cache_t *sky_state = state_buf;
     int i = 0;
@@ -75,6 +77,11 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
 
     if (sky_state != NULL && !validate_cache(sky_state))
         sky_state = NULL;
+
+    sky_min_level = min_level;
+    sky_logf = logf;
+    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
+    sky_time = (gettime == NULL) ? &time : gettime;
 
     /* if open already */
     if (sky_open_flag && sky_state) {
@@ -94,7 +101,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     else {
         cache.header.magic = SKY_MAGIC;
         cache.header.size = sizeof(cache);
-        cache.header.time = (uint32_t)time(NULL);
+        cache.header.time = (uint32_t)(*sky_time)(NULL);
         cache.header.crc32 = sky_crc32(&cache.header.magic,
             (uint8_t *)&cache.header.crc32 - (uint8_t *)&cache.header.magic);
         cache.len = CACHE_SIZE;
@@ -115,9 +122,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     cache.sky_id_len = id_len;
-    sky_min_level = min_level;
-    sky_logf = logf;
-    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     cache.sky_aes_key_id = aes_key_id;
@@ -191,14 +195,14 @@ Sky_ctx_t *sky_new_request(
     /* update header in workspace */
     ctx->header.magic = SKY_MAGIC;
     ctx->header.size = bufsize;
-    ctx->header.time = (uint32_t)time(NULL);
+    ctx->header.time = (uint32_t)(*sky_time)(NULL);
     ctx->header.crc32 = sky_crc32(&ctx->header.magic,
         (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->cache = &cache;
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
-    ctx->min_level = sky_min_level;
+    ctx->gettime = sky_time;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++)
@@ -243,10 +247,8 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.ap.age = 0;
     if (channel < 2400 || channel > 6000)
         channel = 0; /* 0's not sent to server */
-    if (rssi > -10)
-        rssi = -10;
-    else if (rssi < -127)
-        rssi = -127;
+    if (rssi > -10 || rssi < -127)
+        rssi = -1;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
 
@@ -282,7 +284,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Create GSM beacon */
+    /* Create LTE beacon */
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
@@ -291,10 +293,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
-    if (rsrp > -40)
-        rsrp = -40;
-    else if (rsrp < -140)
-        rsrp = -140;
+    if (rsrp > -40 || rsrp < -140)
+        rsrp = -1;
     b.lte.tac = tac;
     b.lte.e_cellid = e_cellid;
     b.lte.mcc = mcc;
@@ -342,10 +342,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
-    if (rssi > -32)
-        rssi = -32;
-    else if (rssi < -128)
-        rssi = -128;
+    if (rssi > -32 || rssi < -128)
+        rssi = -1;
     b.gsm.lac = lac;
     b.gsm.ci = ci;
     b.gsm.mcc = mcc;
@@ -373,7 +371,35 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint16_t lac, uint32_t ucid, uint16_t mcc, uint16_t mnc, time_t timestamp,
     int16_t rscp, bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create UMTS beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_UMTS;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
+        b.umts.age = ctx->header.time - timestamp;
+    else
+        b.umts.age = 0;
+    if (rscp > -20 || rscp < -120)
+        rscp = -1;
+    b.umts.lac = lac;
+    b.umts.ucid = ucid;
+    b.umts.mcc = mcc;
+    b.umts.mnc = mnc;
+    b.umts.rssi = rscp;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a cdma cell beacon to the request context
@@ -393,7 +419,34 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     uint32_t sid, uint16_t nid, uint16_t bsid, time_t timestamp, int16_t rssi,
     bool is_connected)
 {
-    return sky_return(sky_errno, SKY_ERROR_NONE);
+    Beacon_t b;
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (TOTAL_BEACONS - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create CDMA beacon */
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_CDMA;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
+        b.cdma.age = ctx->header.time - timestamp;
+    else
+        b.cdma.age = 0;
+    if (rssi > -49 || rssi < -140)
+        rssi = -1;
+    b.cdma.sid = sid;
+    b.cdma.nid = nid;
+    b.cdma.bsid = bsid;
+    b.cdma.rssi = rssi;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
 /*! \brief Adds a nb_iot cell beacon to the request context
@@ -434,10 +487,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;
-    if (nrsrp > -44)
-        nrsrp = -44;
-    else if (nrsrp < -156)
-        nrsrp = -156;
+    if (nrsrp > -44 || nrsrp < -156)
+        nrsrp = -1;
     b.nbiot.mcc = mcc;
     b.nbiot.mnc = mnc;
     b.nbiot.e_cellid = e_cellid;
@@ -581,8 +632,8 @@ Sky_status_t sky_sizeof_request_buf(
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     void *response_buf, uint32_t bufsize, Sky_location_t *loc)
 {
-    if (!loc)
-        sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    if (loc == NULL || response_buf == NULL || bufsize == 0)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
@@ -595,7 +646,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
 
-    loc->time = time(NULL);
+    loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
     if (add_cache(ctx, loc) == SKY_ERROR) {
@@ -680,12 +731,6 @@ char *sky_perror(Sky_errno_t sky_errno)
  *  @param status Error code for which to provide descriptive string
  *
  *  @return pointer to string or NULL if the code is invalid
-    SKY_LOCATION_STATUS_SUCCESS = 0,
-    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
-    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
-    SKY_LOCATION_STATUS_DECODE_ERROR,
-    SKY_LOCATION_STATUS_API_SERVER_ERROR,
-
  */
 char *sky_pserver_status(Sky_loc_status_t status)
 {
@@ -712,6 +757,45 @@ char *sky_pserver_status(Sky_loc_status_t status)
     }
     return str;
 }
+
+/*! \brief returns a string which describes the meaning of Sky_beacon_type_t
+ *
+ *  @param b beacon type
+ *
+ *  @return pointer to string or NULL if the code is invalid
+ */
+char *sky_pbeacon(Beacon_t *b)
+{
+    register char *str = NULL;
+    switch (b->h.type) {
+    case SKY_BEACON_AP:
+        str = "Wi-Fi";
+        break;
+    case SKY_BEACON_BLE:
+        str = "Bluetooth";
+        break;
+    case SKY_BEACON_CDMA:
+        str = "CDMA";
+        break;
+    case SKY_BEACON_GSM:
+        str = "GSM";
+        break;
+    case SKY_BEACON_LTE:
+        str = "LTE";
+        break;
+    case SKY_BEACON_NBIOT:
+        str = "NB-IoT";
+        break;
+    case SKY_BEACON_UMTS:
+        str = "UMTS";
+        break;
+    default:
+        str = "Unknown";
+        break;
+    }
+    return str;
+}
+
 /*! \brief clean up library resourses
  *
  *  @param sky_errno skyErrno is set to the error code

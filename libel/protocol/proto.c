@@ -285,7 +285,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells =
         rq.umts_cells = ctx;
 
-    rq.timestamp = (int64_t)time(NULL);
+    rq.timestamp = (int64_t)ctx->gettime(NULL);
 
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
