@@ -181,6 +181,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
 char *sky_perror(Sky_errno_t sky_errno);
 
+char *sky_pserver_status(Sky_loc_status_t status);
 #ifdef SKY_LIBEL
 char *sky_pbeacon(Beacon_t *b);
 #endif

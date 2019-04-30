@@ -636,14 +636,17 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* decode response to get lat/lon */
-    if (deserialize_response(ctx, response_buf, bufsize, loc) < 0)
-        return sky_return(sky_errno, SKY_ERROR_LOCATION_UNKNOWN);
-    else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS)
+    if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Response decode failure",
+            __FUNCTION__);
+        return sky_return(sky_errno, SKY_ERROR_DECODE_ERROR);
+    } else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Server error. Status: %s",
+            __FUNCTION__, sky_pserver_status(loc->location_status));
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
+    }
 
     loc->time = (*ctx->gettime)(NULL);
-
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s", __FUNCTION__);
 
     /* Add location and current beacons to Cache */
     if (add_cache(ctx, loc) == SKY_ERROR) {
@@ -651,9 +654,6 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
             "sky_decode_response: failed to add to cache");
         return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
     }
-
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: dump cache", __FUNCTION__);
-    dump_cache(ctx);
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -721,6 +721,38 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     default:
         str = "Unknown error code";
+        break;
+    }
+    return str;
+}
+
+/*! \brief returns a string which describes the meaning of Sky_loc_status_t codes
+ *
+ *  @param status Error code for which to provide descriptive string
+ *
+ *  @return pointer to string or NULL if the code is invalid
+ */
+char *sky_pserver_status(Sky_loc_status_t status)
+{
+    register char *str = NULL;
+    switch (status) {
+    case SKY_LOCATION_STATUS_SUCCESS:
+        str = "Server success";
+        break;
+    case SKY_LOCATION_STATUS_UNSPECIFIED_ERROR:
+        str = "Server reports unspecified error";
+        break;
+    case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
+        str = "Server reports bad partner id error";
+        break;
+    case SKY_LOCATION_STATUS_DECODE_ERROR:
+        str = "Error decoding response body";
+        break;
+    case SKY_LOCATION_STATUS_API_SERVER_ERROR:
+        str = "Server error determining location";
+        break;
+    default:
+        str = "Unknown server status";
         break;
     }
     return str;
