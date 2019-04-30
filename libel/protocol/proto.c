@@ -437,6 +437,11 @@ int32_t deserialize_response(
             loc->hpe = (uint16_t)rs.hpe;
             loc->location_source = (Sky_loc_source_t)rs.source;
         }
+    } else {
+        loc->lat = 0;
+        loc->lon = 0;
+        loc->hpe = 0;
+        loc->location_source = 0;
     }
 
     return 0;
