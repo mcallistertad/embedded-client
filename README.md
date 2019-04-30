@@ -14,7 +14,14 @@ submodules in this repo. In order to ensure that these dependency repos are
 properly populated, be sure to add the `--recursive` option to the `git
 clone` command when cloning this repo.
 
-All submodules are contained within the `.submodules` directory.
+All submodules are contained within the `.submodules` directory. These are:
+
+    .submodules/embedded-lib-protocol
+        https://github.com:SkyhookWireless/embedded-lib-protocol
+    .submodules/nanopb
+        https://github.com/nanopb/nanopb
+    .submodules/tiny-AES128-C
+        https://github.com/kokke/tiny-AES-c
 
 Library Contents
 ----------------
