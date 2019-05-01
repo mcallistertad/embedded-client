@@ -200,6 +200,7 @@ Sky_ctx_t *sky_new_request(
         (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->cache = &cache;
+    ctx->min_level = sky_min_level;
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
