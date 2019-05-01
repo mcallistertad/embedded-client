@@ -148,6 +148,14 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     if (ctx->ap_len < MAX_AP_BEACONS)
         return SKY_ERROR;
 
+    /* if the rssi range is small, throw away middle beacon */
+    if (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi <
+        ctx->ap_len) {
+        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Warning: rssi range is small. Discarding one beacon...");
+        return remove_beacon(ctx, ctx->ap_len / 2);
+    }
+
     /* what share of the range of rssi values does each beacon represent */
     band_range =
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
@@ -162,7 +170,7 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
-    for (i = 1, reject = -1, worst = 0; i < ctx->ap_len - 2; i++) {
+    for (i = 1, reject = ctx->ap_len / 2, worst = 0; i < ctx->ap_len - 2; i++) {
         if (fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]) > worst) {
             worst = fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]);
             reject = i;

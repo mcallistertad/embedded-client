@@ -69,6 +69,7 @@ void set_mac(uint8_t *mac)
     } else if (rand() % 7 != 0) {
         /* rand MAC */
         memcpy(mac, refs[rand() % 5], sizeof(refs[0]));
+        mac[rand() % 3] = (rand() % 256);
         printf("Rand MAC\n");
     } else {
         /* Non Virtual MAC */
@@ -237,7 +238,7 @@ int main(int ac, char **av)
         b[i].ap.type = SKY_BEACON_AP;
         set_mac(b[i].ap.mac);
         b[i].ap.freq = b[i].ap.mac[0];
-        b[i].ap.rssi = rand() % 128;
+        b[i].ap.rssi = -rand() % 128;
     }
 
     for (i = 0; i < 25; i++) {
