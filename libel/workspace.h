@@ -47,8 +47,8 @@ typedef struct sky_cache {
 
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    int (*logf)(Sky_log_level_t level, const char *s);
-    int (*rand_bytes)(uint8_t *rand_buf, uint32_t buf_len);
+    Sky_loggerfn_t logf;
+    Sky_randfn_t rand_bytes;
     Sky_log_level_t min_level;
     Sky_timefn_t gettime;
     int16_t len; /* number of beacons in list (0 == none) */

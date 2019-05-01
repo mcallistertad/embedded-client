@@ -75,7 +75,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? 16 : id_len;
 
-    if (sky_state != NULL && !validate_cache(sky_state))
+    if (sky_state != NULL && !validate_cache(sky_state, logf))
         sky_state = NULL;
 
     sky_min_level = min_level;
@@ -128,8 +128,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id,
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     sky_open_flag = true;
 
-    (*logf)(
-        SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
+    if (logf != NULL)
+        (*logf)(SKY_LOG_LEVEL_DEBUG,
+            "Skyhook Embedded Library (Version: " VERSION ")");
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
@@ -149,7 +150,7 @@ int32_t sky_sizeof_state(void *sky_state)
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (!validate_cache(c))
+    if (!validate_cache(c, NULL))
         return 0;
     else
         return c->header.size;
@@ -638,12 +639,11 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Response decode failure",
-            __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Response decode failure")
         return sky_return(sky_errno, SKY_ERROR_DECODE_ERROR);
     } else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: Server error. Status: %s",
-            __FUNCTION__, sky_pserver_status(loc->location_status));
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Server error. Status: %s",
+            sky_pserver_status(loc->location_status))
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
 
@@ -651,8 +651,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
 
     /* Add location and current beacons to Cache */
     if (add_cache(ctx, loc) == SKY_ERROR) {
-        logfmt(ctx, SKY_LOG_LEVEL_ERROR,
-            "sky_decode_response: failed to add to cache");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
         return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
     }
 

@@ -73,7 +73,7 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
         sizeof(Beacon_t) * (ctx->len - index - 1));
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d", index);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "idx:%d", index)
     ctx->len -= 1;
     return SKY_SUCCESS;
 }
@@ -92,12 +92,13 @@ static Sky_status_t insert_beacon(
 {
     int i;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "Insert_beacon: type %d", b->h.type);
     /* sanity checks */
     if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC ||
-        b->h.type >= SKY_BEACON_MAX)
+        b->h.type >= SKY_BEACON_MAX) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Invalid params. Beacon type %s",
+            sky_pbeacon(b))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "Insert_beacon: Done type %d", b->h.type);
+    }
 
     /* find correct position to insert based on type */
     for (i = 0; i < ctx->len; i++)
@@ -117,8 +118,6 @@ static Sky_status_t insert_beacon(
                     break;
         }
         /* shift beacons to make room for the new one */
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "shift beacons to make room for the new one (%d)", i);
         memmove(&ctx->beacon[i + 1], &ctx->beacon[i],
             sizeof(Beacon_t) * (ctx->len - i));
         ctx->beacon[i] = *b;
@@ -127,6 +126,8 @@ static Sky_status_t insert_beacon(
     /* report back the position beacon was added */
     if (index != NULL)
         *index = i;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d)",
+        sky_pbeacon(b), i);
 
     if (b->h.type == SKY_BEACON_AP)
         ctx->ap_len++;
@@ -161,9 +162,9 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
         (float)ctx->ap_len;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi),
-        band_range);
+        band_range)
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
     for (i = 0; i < ctx->ap_len; i++)
         ideal_rssi[i] = ctx->beacon[0].ap.rssi + i * band_range;
@@ -174,8 +175,8 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         if (fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]) > worst) {
             worst = fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]);
             reject = i;
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "reject: %d, ideal %.2f worst %.2f", i, ideal_rssi[i], worst);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "reject: %d, ideal %.2f worst %.2f", i, ideal_rssi[i], worst)
         }
     }
     return remove_beacon(ctx, reject);
@@ -192,20 +193,18 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     int i, j;
     int cmp;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "filter_virtual_aps: ap_len: %d of %d APs",
-        (int)ctx->ap_len, (int)ctx->len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d of %d APs", (int)ctx->ap_len,
+        (int)ctx->len)
     dump_workspace(ctx);
 
     if (ctx->ap_len < MAX_AP_BEACONS) {
-        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: too many AP beacons",
-            __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "too many WiFi beacons")
         return SKY_ERROR;
     }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
-        logfmt(ctx, SKY_LOG_LEVEL_CRITICAL, "%s: beacon type not AP",
-            __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi")
         return SKY_ERROR;
     }
 
@@ -213,21 +212,21 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
         for (i = j + 1; i <= ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) <
                 0) {
-                logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "remove_beacon: %d similar to %d", j, i);
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "remove_beacon: %d similar to %d", j, i)
                 dump_workspace(ctx);
                 remove_beacon(ctx, j);
                 return SKY_SUCCESS;
             } else if (cmp > 0) {
-                logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "remove_beacon: %d similar to %d", i, j);
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "remove_beacon: %d similar to %d", i, j)
                 dump_workspace(ctx);
                 remove_beacon(ctx, i);
                 return SKY_SUCCESS;
             }
         }
     }
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "filter_virtual_aps: no match");
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match")
     return SKY_ERROR;
 }
 
@@ -249,9 +248,9 @@ Sky_status_t add_beacon(
     /* check if maximum number of non-AP beacons already added */
     if (b->h.type != SKY_BEACON_AP &&
         ctx->len - ctx->ap_len > (TOTAL_BEACONS - MAX_AP_BEACONS)) {
-        logfmt(ctx, SKY_LOG_LEVEL_WARNING,
-            "%s: too many (b->h.type: %d) (ctx->len - ctx->ap_len: %d)",
-            __FUNCTION__, b->h.type, ctx->len - ctx->ap_len);
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING,
+            "too many (b->h.type: %s) (ctx->len - ctx->ap_len: %d)",
+            sky_pbeacon(b), ctx->len - ctx->ap_len)
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
     }
 
@@ -268,8 +267,7 @@ Sky_status_t add_beacon(
     /* beacon is AP and need filter */
     if (filter_virtual_aps(ctx) == SKY_ERROR)
         if (filter_by_rssi(ctx) == SKY_ERROR) {
-            logfmt(
-                ctx, SKY_LOG_LEVEL_ERROR, "%s: failed to filter", __FUNCTION__);
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
         }
 
@@ -361,8 +359,8 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     int bestscore = 0;
     int bestc = -1;
 
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: %s", __FUNCTION__,
-        put ? "for save to cache" : "for get from cache");
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s",
+        put ? "for save to cache" : "for get from cache")
     dump_workspace(ctx);
     dump_cache(ctx);
 
@@ -391,10 +389,9 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             for (j = start; j < end; j++) {
                 if (beacon_in_cache(
                         ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
-                    logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                        "%s: Beacon %d type %s matches cache %d of 0..%d",
-                        __FUNCTION__, j, sky_pbeacon(&ctx->beacon[j]), i,
-                        CACHE_SIZE - 1);
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "Beacon %d type %s matches cache %d of 0..%d", j,
+                        sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE - 1)
                     score[i] = score[i] + 1.0;
                 }
             }
@@ -415,9 +412,9 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             // if all cell beacons match
             ratio[i] = (score[i] == ctx->len - ctx->ap_len) ? 100.0 : 0.0;
         }
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache: %d: score %.2f (%d/%d)",
-            __FUNCTION__, i, ratio[i] * 100, score[i],
-            ctx->len + ctx->cache->cacheline[i].len - score[i]);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %.2f (%d/%d)", i,
+            ratio[i] * 100, score[i],
+            ctx->len + ctx->cache->cacheline[i].len - score[i])
         if (ratio[i] > bestratio) {
             bestratio = ratio[i];
             bestscore = score[i];
@@ -428,25 +425,24 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     /* if match is for get, must meet threshold */
     if (!put) {
         if (ctx->len <= CACHE_BEACON_THRESHOLD && bestscore == ctx->len) {
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s: Only %d beacons; pick cache %d of 0..%d score %.2f",
-                __FUNCTION__, ctx->len, bestc, CACHE_SIZE - 1,
-                ratio[bestc] * 100);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Only %d beacons; pick cache %d of 0..%d score %.2f", ctx->len,
+                bestc, CACHE_SIZE - 1, ratio[bestc] * 100)
             return bestc;
         } else if (ctx->len > CACHE_BEACON_THRESHOLD &&
                    bestratio * 100 > CACHE_MATCH_THRESHOLD) {
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s: location in cache, pick cache %d of 0..%d score %.2f",
-                __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "location in cache, pick cache %d of 0..%d score %.2f", bestc,
+                CACHE_SIZE - 1, score[bestc] * 100)
             return bestc;
         }
     } else if (bestc >= 0) { /* match is for put */
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s: save location in best cache, %d of 0..%d score %.2f",
-            __FUNCTION__, bestc, CACHE_SIZE - 1, score[bestc] * 100);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "save location in best cache, %d of 0..%d score %.2f", bestc,
+            CACHE_SIZE - 1, score[bestc] * 100);
         return bestc;
     }
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cache match failed", __FUNCTION__);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed");
     return -1;
 }
 
@@ -477,8 +473,8 @@ int find_oldest(Sky_ctx_t *ctx)
             oldestc = i;
         }
     }
-    logfmt(ctx, SKY_LOG_LEVEL_DEBUG, "%s: cacheline %d oldest time %d",
-        __FUNCTION__, oldestc, oldest);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc,
+        oldest);
     return oldestc;
 }
 
@@ -497,8 +493,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
-        logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: Don't have good time of day!",
-            __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!")
         return SKY_ERROR;
     }
 
@@ -508,23 +503,21 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     /*    yes - add entryu here */
     if ((i = find_best_match(ctx, 1)) < 0) {
         i = find_oldest(ctx);
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s: find_oldest chose cache %d of 0..%d", __FUNCTION__, i,
-            CACHE_SIZE - 1);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d",
+            i, CACHE_SIZE - 1)
     } else {
         if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
             ctx->cache->cacheline[i].time = 0; /* clear cacheline */
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s: Server undetermined location. find_best_match found cache match %d of 0..%d",
-                __FUNCTION__, i, CACHE_SIZE - 1);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Server undetermined location. find_best_match found cache match %d of 0..%d",
+                i, CACHE_SIZE - 1);
         } else
-            logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s: find_best_match found cache match %d of 0..%d",
-                __FUNCTION__, i, CACHE_SIZE - 1);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "find_best_match found cache match %d of 0..%d", i,
+                CACHE_SIZE - 1);
     }
     if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s: Won't add unknown location to cache", __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Won't add unknown location to cache")
         return SKY_ERROR;
     }
     for (j = 0; j < TOTAL_BEACONS; j++) {
@@ -549,8 +542,7 @@ int get_cache(Sky_ctx_t *ctx)
 
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
-        logfmt(ctx, SKY_LOG_LEVEL_ERROR, "%s: Don't have good time of day!",
-            __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!")
         return SKY_ERROR;
     }
     return find_best_match(ctx, 0);
