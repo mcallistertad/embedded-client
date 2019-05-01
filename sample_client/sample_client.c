@@ -140,7 +140,7 @@ int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
  *
  *  @returns 0 for success or negative number for error
  */
-int logger(Sky_log_level_t level, const char *s)
+int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
         level == SKY_LOG_LEVEL_CRITICAL ?

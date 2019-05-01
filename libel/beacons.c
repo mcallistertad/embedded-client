@@ -152,8 +152,8 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     /* if the rssi range is small, throw away middle beacon */
     if (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi <
         ctx->ap_len) {
-        logfmt(ctx, SKY_LOG_LEVEL_DEBUG,
-            "Warning: rssi range is small. Discarding one beacon...");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Warning: rssi range is small. Discarding one beacon...")
         return remove_beacon(ctx, ctx->ap_len / 2);
     }
 
