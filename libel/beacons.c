@@ -126,7 +126,7 @@ static Sky_status_t insert_beacon(
     /* report back the position beacon was added */
     if (index != NULL)
         *index = i;
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d)",
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d",
         sky_pbeacon(b), i);
 
     if (b->h.type == SKY_BEACON_AP)
@@ -160,14 +160,14 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     /* what share of the range of rssi values does each beacon represent */
     band_range =
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
-        (float)ctx->ap_len;
+        ((float)ctx->ap_len - 1);
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi),
         band_range)
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
     for (i = 0; i < ctx->ap_len; i++)
-        ideal_rssi[i] = ctx->beacon[0].ap.rssi + i * band_range;
+        ideal_rssi[i] = ctx->beacon[0].ap.rssi + (i * band_range);
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
