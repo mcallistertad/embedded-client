@@ -109,7 +109,7 @@ typedef enum {
 
 /*! \brief pointer to logger callback function
  */
-typedef int (*Sky_loggerfn_t)(Sky_log_level_t level, const char *s);
+typedef int (*Sky_loggerfn_t)(Sky_log_level_t level, char *s);
 
 /*! \brief pointer to random bytes callback function
  */
