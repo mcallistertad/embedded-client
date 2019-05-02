@@ -360,8 +360,9 @@ int main(int argc, char *argv[])
         break;
     }
 
-    printf("Skyhook location: lat: %.6f, lon: %.6f, hpe: %d, source: %d\n",
-        loc.lat, loc.lon, loc.hpe, loc.location_source);
+    printf("Skyhook location: status: %s, lat: %.6f, lon: %.6f, hpe: %d, source: %d\n",
+            sky_pserver_status(loc.location_status), loc.lat, loc.lon, loc.hpe,
+            loc.location_source);
 
     ret_status = sky_close(&sky_errno, &pstate);
 
