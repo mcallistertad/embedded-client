@@ -90,7 +90,7 @@ void set_mac(uint8_t *mac)
  */
 int logger(Sky_log_level_t level, char *s)
 {
-    printf("Skyhook libEL %s: %.*s\n",
+    printf("libEL %s: %.*s\n",
         level == SKY_LOG_LEVEL_CRITICAL ?
             "CRIT" :
             level == SKY_LOG_LEVEL_ERROR ?
@@ -98,7 +98,7 @@ int logger(Sky_log_level_t level, char *s)
             level == SKY_LOG_LEVEL_WARNING ?
             "WARN" :
             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-        80, s);
+        100, s);
     return 0;
 }
 

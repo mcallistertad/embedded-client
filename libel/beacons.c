@@ -146,7 +146,7 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     float band_range, worst;
     float ideal_rssi[MAX_AP_BEACONS + 1];
 
-    if (ctx->ap_len < MAX_AP_BEACONS)
+    if (ctx->ap_len <= MAX_AP_BEACONS)
         return SKY_ERROR;
 
     /* if the rssi range is small, throw away middle beacon */
@@ -161,6 +161,16 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     band_range =
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) /
         ((float)ctx->ap_len - 1);
+<<<<<<< Updated upstream
+=======
+
+    /* if the rssi range is small, throw away middle beacon */
+    if (band_range < 0.5) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Warning: rssi range is small. Discarding one beacon...")
+        return remove_beacon(ctx, ctx->ap_len / 2);
+    }
+>>>>>>> Stashed changes
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band: %.2f",
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi),
@@ -175,9 +185,10 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         if (fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]) > worst) {
             worst = fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]);
             reject = i;
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "reject: %d, ideal %.2f worst %.2f", i, ideal_rssi[i], worst)
         }
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s: %d, ideal %.1f fit %.1f",
+            (reject == i) ? "reject" : "      ", i, ideal_rssi[i],
+            fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]))
     }
     return remove_beacon(ctx, reject);
 }
@@ -197,7 +208,7 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
         (int)ctx->len)
     dump_workspace(ctx);
 
-    if (ctx->ap_len < MAX_AP_BEACONS) {
+    if (ctx->ap_len <= MAX_AP_BEACONS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "too many WiFi beacons")
         return SKY_ERROR;
     }

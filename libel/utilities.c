@@ -117,6 +117,22 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
 }
 
 #if SKY_DEBUG
+/*! \brief basename return pointer to the basename of path or path
+ *
+ *  @param path pathname of file
+ *
+ *  @return pointer to basename or whole path
+ */
+static const char *basename(const char *path)
+{
+    const char *p = strrchr(path, '/');
+
+    if (p == NULL)
+        return path;
+    else
+        return p + 1;
+}
+
 /*! \brief formatted logging to user provided function
  *
  *  @param ctx workspace buffer
@@ -126,17 +142,19 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
  *
  *  @return 0 for success
  */
-int logfmt(
-    const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...)
+int logfmt(const char *file, const char *function, Sky_ctx_t *ctx,
+    Sky_log_level_t level, char *fmt, ...)
 {
 #if SKY_DEBUG
     va_list ap;
-    char buf[96];
+    char buf[100];
     int ret, n;
     if (level > ctx->min_level || function == NULL)
         return -1;
-    memset(buf, '\0', 24);
-    n = strlen(strncpy(buf, function, 20));
+    memset(buf, '\0', sizeof(buf));
+    n = strlen(strncpy(buf, basename(file), 20));
+    buf[n++] = ':';
+    n += strlen(strncpy(buf + n, function, 20));
     buf[n++] = '(';
     buf[n++] = ')';
     buf[n++] = ' ';
