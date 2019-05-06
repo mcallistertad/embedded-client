@@ -117,6 +117,29 @@ static bool encode_age_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     }
 }
 
+static bool encode_freq_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
+    uint32_t num_beacons, uint32_t tag1, uint32_t tag2, DataGetter getter)
+{
+    // Encode age fields. Optimization: send only a single common age value if
+    // all ages are the same.
+    int64_t freq = getter(ctx, 0);
+    bool freq_all_same = true;
+    size_t i;
+
+    for (i = 1; freq_all_same && i < num_beacons; i++) {
+        if (getter(ctx, i) != freq)
+            freq_all_same = false;
+    }
+
+    if (num_beacons > 1 && freq_all_same) {
+        return pb_encode_tag(ostream, PB_WT_VARINT, tag1) &&
+               pb_encode_varint(ostream, freq + 1);
+    } else {
+        return encode_repeated_int_field(
+            ctx, ostream, tag2, num_beacons, getter, NULL);
+    }
+}
+
 static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
@@ -125,8 +148,8 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
            encode_repeated_int_field(
                ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
-           encode_repeated_int_field(ctx, ostream, Aps_channel_number_tag,
-               num_beacons, get_ap_freq, NULL) &&
+           encode_freq_field(ctx, ostream, num_beacons,
+               Aps_common_frequency_tag, Aps_frequency_tag, get_ap_freq) &&
            encode_repeated_int_field(ctx, ostream, Aps_neg_rssi_tag,
                num_beacons, get_ap_rssi, flip_sign) &&
            encode_age_field(ctx, ostream, num_beacons,
