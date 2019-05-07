@@ -258,10 +258,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
-    // FIXME: Properly value IV if the user has not provided a rand_bytes()
-    // function. Otherwise, and until then, it will get filled with
-    // quasi-random stack scheisse.
-    //
+    // sky_new_request initializes rand_bytes if user does not
     if (ctx->rand_bytes != NULL)
         ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
 
