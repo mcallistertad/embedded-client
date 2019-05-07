@@ -36,8 +36,8 @@ static int64_t flip_sign(int64_t value)
     return -value;
 }
 
-static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
-    uint32_t tag, uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
+static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
+    uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
     size_t i;
 
@@ -75,17 +75,15 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     return true;
 }
 
-static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
-    uint32_t num_beacons, uint32_t tag,
-    bool (*callback)(Sky_ctx_t *, uint32_t idx))
+static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+    uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
 
     for (i = 0; i < num_beacons; i++) {
         if (callback(ctx, i)) {
-            retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) &&
-                     pb_encode_varint(ostream, i + 1);
+            retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, i + 1);
 
             break;
         }
@@ -94,49 +92,24 @@ static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     return retval;
 }
 
-static bool encode_age_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
-    uint32_t num_beacons, uint32_t tag1, uint32_t tag2, DataGetter getter)
+static bool encode_repeated_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+    uint32_t tag1, uint32_t tag2, DataGetter getter)
 {
-    // Encode age fields. Optimization: send only a single common age value if
+    // Encode fields. Optimization: send only a single common value if
     // all ages are the same.
-    int64_t age = getter(ctx, 0);
-    bool ages_all_same = true;
+    int64_t value = getter(ctx, 0);
+    bool value_all_same = true;
     size_t i;
 
-    for (i = 1; ages_all_same && i < num_beacons; i++) {
-        if (getter(ctx, i) != age)
-            ages_all_same = false;
+    for (i = 1; value_all_same && i < num_beacons; i++) {
+        if (getter(ctx, i) != value)
+            value_all_same = false;
     }
 
-    if (num_beacons > 1 && ages_all_same) {
-        return pb_encode_tag(ostream, PB_WT_VARINT, tag1) &&
-               pb_encode_varint(ostream, age + 1);
+    if (num_beacons > 1 && value_all_same) {
+        return pb_encode_tag(ostream, PB_WT_VARINT, tag1) && pb_encode_varint(ostream, value + 1);
     } else {
-        return encode_repeated_int_field(
-            ctx, ostream, tag2, num_beacons, getter, NULL);
-    }
-}
-
-static bool encode_freq_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
-    uint32_t num_beacons, uint32_t tag1, uint32_t tag2, DataGetter getter)
-{
-    // Encode age fields. Optimization: send only a single common age value if
-    // all ages are the same.
-    int64_t freq = getter(ctx, 0);
-    bool freq_all_same = true;
-    size_t i;
-
-    for (i = 1; freq_all_same && i < num_beacons; i++) {
-        if (getter(ctx, i) != freq)
-            freq_all_same = false;
-    }
-
-    if (num_beacons > 1 && freq_all_same) {
-        return pb_encode_tag(ostream, PB_WT_VARINT, tag1) &&
-               pb_encode_varint(ostream, freq + 1);
-    } else {
-        return encode_repeated_int_field(
-            ctx, ostream, tag2, num_beacons, getter, NULL);
+        return encode_repeated_int_field(ctx, ostream, tag2, num_beacons, getter, NULL);
     }
 }
 
@@ -144,81 +117,79 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
-    return encode_connected_field(ctx, ostream, num_beacons,
-               Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
+    return encode_connected_field(
+               ctx, ostream, num_beacons, Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
+           encode_repeated_int_field(ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
+           encode_repeated_field(ctx, ostream, num_beacons, Aps_common_frequency_tag,
+               Aps_frequency_tag, get_ap_freq) &&
            encode_repeated_int_field(
-               ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
-           encode_freq_field(ctx, ostream, num_beacons,
-               Aps_common_frequency_tag, Aps_frequency_tag, get_ap_freq) &&
-           encode_repeated_int_field(ctx, ostream, Aps_neg_rssi_tag,
-               num_beacons, get_ap_rssi, flip_sign) &&
-           encode_age_field(ctx, ostream, num_beacons,
-               Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
+               ctx, ostream, Aps_neg_rssi_tag, num_beacons, get_ap_rssi, flip_sign) &&
+           encode_repeated_field(
+               ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
 
 static bool encode_gsm_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_gsm(ctx);
 
-    return encode_connected_field(ctx, ostream, num_beacons,
-               GsmCells_connected_idx_plus_1_tag, get_gsm_is_connected) &&
-           encode_repeated_int_field(ctx, ostream, GsmCells_mcc_tag,
-               num_beacons, get_gsm_mcc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, GsmCells_mnc_tag,
-               num_beacons, get_gsm_mnc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, GsmCells_lac_tag,
-               num_beacons, get_gsm_lac, NULL) &&
+    return encode_connected_field(ctx, ostream, num_beacons, GsmCells_connected_idx_plus_1_tag,
+               get_gsm_is_connected) &&
+           encode_repeated_int_field(
+               ctx, ostream, GsmCells_mcc_tag, num_beacons, get_gsm_mcc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, GsmCells_mnc_tag, num_beacons, get_gsm_mnc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, GsmCells_lac_tag, num_beacons, get_gsm_lac, NULL) &&
            encode_repeated_int_field(
                ctx, ostream, GsmCells_ci_tag, num_beacons, get_gsm_ci, NULL) &&
-           encode_repeated_int_field(ctx, ostream, GsmCells_neg_rssi_tag,
-               num_beacons, get_gsm_rssi, flip_sign) &&
-           encode_age_field(ctx, ostream, num_beacons,
-               GsmCells_common_age_plus_1_tag, GsmCells_age_tag, get_gsm_age);
+           encode_repeated_int_field(
+               ctx, ostream, GsmCells_neg_rssi_tag, num_beacons, get_gsm_rssi, flip_sign) &&
+           encode_repeated_field(ctx, ostream, num_beacons, GsmCells_common_age_plus_1_tag,
+               GsmCells_age_tag, get_gsm_age);
 }
 
 static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_nbiot(ctx);
 
-    return encode_connected_field(ctx, ostream, num_beacons,
-               NbiotCells_connected_idx_plus_1_tag, get_nbiot_is_connected) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_mcc_tag,
-               num_beacons, get_nbiot_mcc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_mnc_tag,
-               num_beacons, get_nbiot_mnc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_tac_tag,
-               num_beacons, get_nbiot_tac, NULL) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_e_cellid_tag,
-               num_beacons, get_nbiot_ecellid, NULL) &&
-           encode_repeated_int_field(ctx, ostream, NbiotCells_neg_rssi_tag,
-               num_beacons, get_nbiot_rssi, flip_sign) &&
-           encode_age_field(ctx, ostream, num_beacons,
-               NbiotCells_common_age_plus_1_tag, NbiotCells_age_tag,
-               get_nbiot_age);
+    return encode_connected_field(ctx, ostream, num_beacons, NbiotCells_connected_idx_plus_1_tag,
+               get_nbiot_is_connected) &&
+           encode_repeated_int_field(
+               ctx, ostream, NbiotCells_mcc_tag, num_beacons, get_nbiot_mcc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, NbiotCells_mnc_tag, num_beacons, get_nbiot_mnc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, NbiotCells_tac_tag, num_beacons, get_nbiot_tac, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, NbiotCells_e_cellid_tag, num_beacons, get_nbiot_ecellid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, NbiotCells_neg_rssi_tag, num_beacons, get_nbiot_rssi, flip_sign) &&
+           encode_repeated_field(ctx, ostream, num_beacons, NbiotCells_common_age_plus_1_tag,
+               NbiotCells_age_tag, get_nbiot_age);
 }
 
 static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_lte(ctx);
 
-    return encode_connected_field(ctx, ostream, num_beacons,
-               LteCells_connected_idx_plus_1_tag, get_lte_is_connected) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_mcc_tag,
-               num_beacons, get_lte_mcc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_mnc_tag,
-               num_beacons, get_lte_mnc, NULL) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_tac_tag,
-               num_beacons, get_lte_tac, NULL) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_eucid_tag,
-               num_beacons, get_lte_e_cellid, NULL) &&
-           encode_repeated_int_field(ctx, ostream, LteCells_neg_rssi_tag,
-               num_beacons, get_lte_rssi, flip_sign) &&
-           encode_age_field(ctx, ostream, num_beacons,
-               LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
+    return encode_connected_field(ctx, ostream, num_beacons, LteCells_connected_idx_plus_1_tag,
+               get_lte_is_connected) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_mcc_tag, num_beacons, get_lte_mcc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_mnc_tag, num_beacons, get_lte_mnc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_tac_tag, num_beacons, get_lte_tac, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_eucid_tag, num_beacons, get_lte_e_cellid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_neg_rssi_tag, num_beacons, get_lte_rssi, flip_sign) &&
+           encode_repeated_field(ctx, ostream, num_beacons, LteCells_common_age_plus_1_tag,
+               LteCells_age_tag, get_lte_age);
 }
 
-static bool encode_submessage(Sky_ctx_t *ctx, pb_ostream_t *ostream,
-    uint32_t tag, EncodeSubmsgCallback func)
+static bool encode_submessage(
+    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
 {
     // Get and encode the submessage size.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
@@ -240,8 +211,7 @@ static bool encode_submessage(Sky_ctx_t *ctx, pb_ostream_t *ostream,
     return true;
 }
 
-bool Rq_callback(
-    pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
+bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
     Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
 
@@ -251,23 +221,19 @@ bool Rq_callback(
     switch (field->tag) {
     case Rq_aps_tag:
         if (get_num_aps(ctx))
-            return encode_submessage(
-                ctx, ostream, field->tag, encode_ap_fields);
+            return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
         break;
     case Rq_gsm_cells_tag:
         if (get_num_gsm(ctx))
-            return encode_submessage(
-                ctx, ostream, field->tag, encode_gsm_fields);
+            return encode_submessage(ctx, ostream, field->tag, encode_gsm_fields);
         break;
     case Rq_nbiot_cells_tag:
         if (get_num_nbiot(ctx))
-            return encode_submessage(
-                ctx, ostream, field->tag, encode_nbiot_fields);
+            return encode_submessage(ctx, ostream, field->tag, encode_nbiot_fields);
         break;
     case Rq_lte_cells_tag:
         if (get_num_lte(ctx))
-            return encode_submessage(
-                ctx, ostream, field->tag, encode_lte_fields);
+            return encode_submessage(ctx, ostream, field->tag, encode_lte_fields);
         break;
     default:
         break;
@@ -278,8 +244,7 @@ bool Rq_callback(
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 {
-    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size,
-        total_length;
+    size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
     struct AES_ctx aes_ctx;
 
@@ -305,8 +270,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells =
-        rq.umts_cells = ctx;
+    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells = ctx;
 
     rq.timestamp = (int64_t)ctx->gettime(NULL);
 
@@ -389,8 +353,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     return bytes_written + aes_padding_length;
 }
 
-int32_t deserialize_response(
-    Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
+int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
     uint8_t hdr_size = *buf;
     struct AES_ctx aes_ctx;
@@ -431,8 +394,7 @@ int32_t deserialize_response(
         buf += hdr_size;
 
         // Deserialize the crypto_info.
-        if (buf_len <
-            1 + hdr_size + header.crypto_info_length + header.rs_length)
+        if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
             return -1;
 
         istream = pb_istream_from_buffer(buf, header.crypto_info_length);
@@ -449,8 +411,7 @@ int32_t deserialize_response(
         AES_CBC_decrypt_buffer(&aes_ctx, buf, header.rs_length);
 
         // Deserialize the response body.
-        istream = pb_istream_from_buffer(
-            buf, header.rs_length - crypto_info.aes_padding_length);
+        istream = pb_istream_from_buffer(buf, header.rs_length - crypto_info.aes_padding_length);
 
         if (!pb_decode(&istream, Rs_fields, &rs)) {
             return -1;

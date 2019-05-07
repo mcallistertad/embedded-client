@@ -31,8 +31,7 @@ typedef struct client_config {
     uint8_t key[AES_SIZE];
 } Config_t;
 
-uint32_t hex2bin(
-    char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);
+uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);
 
 int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen);
 
