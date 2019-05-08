@@ -197,12 +197,11 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     int i, j;
     int cmp;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d of %d APs", (int)ctx->ap_len,
-        (int)ctx->len)
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons",
+        (int)ctx->ap_len, (int)ctx->len)
     dump_workspace(ctx);
 
     if (ctx->ap_len <= MAX_AP_BEACONS) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "too many WiFi beacons")
         return SKY_ERROR;
     }
 
