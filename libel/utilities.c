@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -117,6 +118,22 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
 }
 
 #if SKY_DEBUG
+/*! \brief basename return pointer to the basename of path or path
+ *
+ *  @param path pathname of file
+ *
+ *  @return pointer to basename or whole path
+ */
+static const char *basename(const char *path)
+{
+    const char *p = strrchr(path, '/');
+
+    if (p == NULL)
+        return path;
+    else
+        return p + 1;
+}
+
 /*! \brief formatted logging to user provided function
  *
  *  @param ctx workspace buffer
@@ -126,17 +143,19 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
  *
  *  @return 0 for success
  */
-int logfmt(
-    const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...)
+int logfmt(const char *file, const char *function, Sky_ctx_t *ctx,
+    Sky_log_level_t level, char *fmt, ...)
 {
 #if SKY_DEBUG
     va_list ap;
-    char buf[96];
+    char buf[100];
     int ret, n;
     if (level > ctx->min_level || function == NULL)
         return -1;
-    memset(buf, '\0', 24);
-    n = strlen(strncpy(buf, function, 20));
+    memset(buf, '\0', sizeof(buf));
+    n = strlen(strncpy(buf, basename(file), 20));
+    buf[n++] = ':';
+    n += strlen(strncpy(buf + n, function, 20));
     buf[n++] = '(';
     buf[n++] = ')';
     buf[n++] = ' ';
@@ -212,22 +231,32 @@ void dump_cache(Sky_ctx_t *ctx)
             switch (b->h.type) {
             case SKY_BEACON_AP:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache % 2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, %.2f,%.2f,%d",
+                    "cache % 2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, GPS:%d.%06d,%d.%06d,%d",
                     i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3],
-                    b->ap.mac[4], b->ap.mac[5], b->ap.rssi, c->loc.lat,
-                    c->loc.lon, c->loc.hpe)
+                    b->ap.mac[4], b->ap.mac[5], b->ap.rssi, (int)c->loc.lat,
+                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
+                    (int)c->loc.lon,
+                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
+                    c->loc.hpe)
                 break;
             case SKY_BEACON_GSM:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: %d, %.2f,%.2f,%d",
+                    "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: GPS:%d.%06d,%d.%06d,%d",
                     i, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc,
-                    b->gsm.rssi, c->loc.lat, c->loc.lon, c->loc.hpe)
+                    b->gsm.rssi, (int)c->loc.lat,
+                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
+                    (int)c->loc.lon,
+                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
+                    c->loc.hpe)
                 break;
             case SKY_BEACON_NBIOT:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache % 2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: %d, %.2f,%.2f,%d",
+                    "cache % 2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: GPS:%d.%06d,%d.%06d,%d",
                     i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid,
-                    b->nbiot.tac, b->nbiot.rssi, c->loc.lat, c->loc.lon,
+                    b->nbiot.tac, b->nbiot.rssi, (int)c->loc.lat,
+                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
+                    (int)c->loc.lon,
+                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
                     c->loc.hpe)
                 break;
             }

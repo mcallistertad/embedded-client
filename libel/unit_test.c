@@ -21,6 +21,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <time.h>
+#include <math.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBEL 1
 #include "libel.h"
@@ -90,7 +91,7 @@ void set_mac(uint8_t *mac)
  */
 int logger(Sky_log_level_t level, char *s)
 {
-    printf("Skyhook libEL %s: %.*s\n",
+    printf("libEL %s: %.*s\n",
         level == SKY_LOG_LEVEL_CRITICAL ?
             "CRIT" :
             level == SKY_LOG_LEVEL_ERROR ?
@@ -98,7 +99,7 @@ int logger(Sky_log_level_t level, char *s)
             level == SKY_LOG_LEVEL_WARNING ?
             "WARN" :
             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-        80, s);
+        100, s);
     return 0;
 }
 
@@ -317,8 +318,9 @@ int main(int ac, char **av)
         ctx, &sky_errno, malloc(bufsize), bufsize, &loc, &response_size)) {
     case SKY_FINALIZE_LOCATION:
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "sky_finalize_request: GPS: %.6f,%.6f,%d", loc.lat, loc.lon,
-            loc.hpe)
+            "sky_finalize_request: GPS: %d.%06d,%d.%06d,%d", (int)loc.lat,
+            (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
+            (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe)
         if (sky_close(&sky_errno, &pstate))
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "sky_close sky_errno contains '%s'", sky_perror(sky_errno))

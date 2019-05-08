@@ -20,6 +20,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <time.h>
+#include <math.h>
 #include "../.submodules/tiny-AES128-C/aes.h"
 
 #define SKY_LIBEL 1
@@ -150,7 +151,7 @@ int logger(Sky_log_level_t level, char *s)
             level == SKY_LOG_LEVEL_WARNING ?
             "WARN" :
             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-        80, s);
+        100, s);
     return 0;
 }
 
@@ -360,9 +361,12 @@ int main(int argc, char *argv[])
         break;
     }
 
-    printf("Skyhook location: status: %s, lat: %.6f, lon: %.6f, hpe: %d, source: %d\n",
-            sky_pserver_status(loc.location_status), loc.lat, loc.lon, loc.hpe,
-            loc.location_source);
+    printf(
+        "Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
+        sky_pserver_status(loc.location_status), (int)loc.lat,
+        (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
+        (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe,
+        loc.location_source);
 
     ret_status = sky_close(&sky_errno, &pstate);
 
