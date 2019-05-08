@@ -30,8 +30,8 @@ bool hostname_to_ip(char *hostname, char *ip, uint16_t ip_len)
     return false;
 }
 
-int send_request(char *request, int req_size, uint8_t *response, int resp_size,
-    char *server, int port)
+int send_request(
+    char *request, int req_size, uint8_t *response, int resp_size, char *server, int port)
 {
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
@@ -54,17 +54,16 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size,
         printf("Error: cannot open socket\n");
         return -1;
     }
-    
+
     // Set socket timeout to 10 seconds.
-    struct timeval tv = {10, 0};
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval))) {
+    struct timeval tv = { 10, 0 };
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval))) {
         printf("Error: setsockopt failed\n");
         return -1;
     }
 
     // Connect.
-    int32_t rc =
-        connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    int32_t rc = connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (rc < 0) {
         close(sockfd);
         printf("Error: unable to connect to server\n");
@@ -75,8 +74,7 @@ int send_request(char *request, int req_size, uint8_t *response, int resp_size,
     rc = send(sockfd, request, (size_t)req_size, 0);
     if (rc != (int32_t)req_size) {
         close(sockfd);
-        printf(
-            "Error: sent a different number of bytes (%d) from expected\n", rc);
+        printf("Error: sent a different number of bytes (%d) from expected\n", rc);
         return -1;
     }
 

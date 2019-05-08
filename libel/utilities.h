@@ -29,8 +29,7 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
 Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
 int get_cache(Sky_ctx_t *ctx);
 int find_best_match(Sky_ctx_t *ctx, bool put);
-Sky_status_t add_beacon(
-    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected);
+Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected);
 #if SKY_DEBUG
 int logfmt(const char *file, const char *function, Sky_ctx_t *ctx,
     Sky_log_level_t level, char *fmt, ...);

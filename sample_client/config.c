@@ -34,8 +34,7 @@
  *
  *  @return number of result bytes that were successfully parsed
  */
-uint32_t hex2bin(
-    char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen)
+uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen)
 {
     uint32_t i, j = 0, k = 0;
 
@@ -138,11 +137,10 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
 
-		if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
-			hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
-			continue;
-		}
-
+        if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
+            hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
+            continue;
+        }
     }
     config->filename = filename;
     fclose(fp);
