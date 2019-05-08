@@ -36,7 +36,7 @@ LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 lib: ${BIN_DIR} ${BUILD_DIR} ${BIN_DIR}/libel.a
 
 unit_test: ${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
-	$(CC) -lc -o ${BIN_DIR}/unit_test \
+	$(CC) -lc -lm -o ${BIN_DIR}/unit_test \
 	${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
 
 ${BIN_DIR}/libel.a: ${GENERATED_SRCS} ${LIBELG_OBJS}
