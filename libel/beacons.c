@@ -433,7 +433,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     } else if (bestc >= 0) { /* match is for put */
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
             "save location in best cache, %d of 0..%d score %d", bestc,
-            CACHE_SIZE - 1, (int)round(ratio[bestc] * 100)
+            CACHE_SIZE - 1, (int)round(ratio[bestc] * 100))
         return bestc;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed");
