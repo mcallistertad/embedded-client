@@ -23,11 +23,7 @@ All submodules are contained within the `.submodules` directory. These are:
     .submodules/tiny-AES128-C
         https://github.com/kokke/tiny-AES-c
 
-Development of this library used version 3.3.0 of the Google Protocol Buffers
-compiler (protoc) and version 0.3.9.2 of nanopb (plain-C support for Google
-Protocol Buffers).
-
-The protoc compiler must be available before the library can be built.
+The [Google Protocol Buffers](https://developers.google.com/protocol-buffers/) protoc compiler is required in order to build the library. Version 3.3.0 or later is recommended.
 
 Library Contents
 ----------------
@@ -85,7 +81,7 @@ To build just the library in a Unix-like environment:
 
     $ make
 
-To build and run the sample client:
+To build and run the sample client (after building the library itself):
 
     $ cd sample_client
     $ make
