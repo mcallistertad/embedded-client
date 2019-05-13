@@ -137,8 +137,8 @@ static const char *basename(const char *path)
  *  @return 0 for success
  */
 
-int logfmt(const char *file, const char *function, Sky_ctx_t *ctx,
-    Sky_log_level_t level, char *fmt, ...)
+int logfmt(
+    const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...)
 {
 #if SKY_DEBUG
     va_list ap;
@@ -222,31 +222,24 @@ void dump_cache(Sky_ctx_t *ctx)
             case SKY_BEACON_AP:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache % 2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, GPS:%d.%06d,%d.%06d,%d",
-                    i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3],
-                    b->ap.mac[4], b->ap.mac[5], b->ap.rssi, (int)c->loc.lat,
-                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
-                    (int)c->loc.lon,
-                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
-                    c->loc.hpe)
+                    i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
+                    b->ap.mac[5], b->ap.rssi, (int)c->loc.lat,
+                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))), (int)c->loc.lon,
+                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))), c->loc.hpe)
                 break;
             case SKY_BEACON_GSM:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache % 2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d: GPS:%d.%06d,%d.%06d,%d",
-                    i, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc,
-                    b->gsm.rssi, (int)c->loc.lat,
-                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
-                    (int)c->loc.lon,
-                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
-                    c->loc.hpe)
+                    i, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc, b->gsm.rssi, (int)c->loc.lat,
+                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))), (int)c->loc.lon,
+                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))), c->loc.hpe)
                 break;
             case SKY_BEACON_NBIOT:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache % 2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d: GPS:%d.%06d,%d.%06d,%d",
-                    i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid,
-                    b->nbiot.tac, b->nbiot.rssi, (int)c->loc.lat,
-                    (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
-                    (int)c->loc.lon,
-                    (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
+                    i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid, b->nbiot.tac, b->nbiot.rssi,
+                    (int)c->loc.lat, (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
+                    (int)c->loc.lon, (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
                     c->loc.hpe)
                 break;
             }
