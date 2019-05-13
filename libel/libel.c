@@ -200,8 +200,10 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->gettime = sky_time;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
-    for (i = 0; i < TOTAL_BEACONS; i++)
+    for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
+        ctx->beacon[i].h.type = SKY_BEACON_MAX;
+    }
     ctx->connected = -1; /* all unconnected */
     return ctx;
 }

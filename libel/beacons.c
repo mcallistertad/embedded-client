@@ -205,8 +205,8 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
         return SKY_ERROR;
     }
 
-    for (j = 0; j <= ctx->ap_len; j++) {
-        for (i = j + 1; i <= ctx->ap_len; i++) {
+    for (j = 0; j < ctx->ap_len; j++) {
+        for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
                 dump_workspace(ctx);

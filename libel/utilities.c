@@ -50,16 +50,30 @@ int validate_workspace(Sky_ctx_t *ctx)
 {
     int i;
 
-    if (ctx != NULL &&
-        ctx->header.crc32 == sky_crc32(&ctx->header.magic,
+    if (ctx == NULL) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
+        return false;
+    }
+    if (ctx->len > TOTAL_BEACONS) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
+        return false;
+    }
+    if (ctx->connected > TOTAL_BEACONS) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad connected value");
+        return false;
+    }
+    if (ctx->header.crc32 == sky_crc32(&ctx->header.magic,
                                  (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
-            if (ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX)
+            if (ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon #%d of %d", i, TOTAL_BEACONS);
                 return false;
+            }
         }
-    }
-    if (ctx == NULL || ctx->len > TOTAL_BEACONS || ctx->connected > TOTAL_BEACONS)
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "CRC check failed");
         return false;
+    }
     return true;
 }
 
