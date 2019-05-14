@@ -194,10 +194,11 @@ void dump_workspace(Sky_ctx_t *ctx)
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon % 2d: Age: %d Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                ctx->beacon[i].ap.age, ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1],
-                ctx->beacon[i].ap.mac[2], ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4],
-                ctx->beacon[i].ap.mac[5], ctx->beacon[i].ap.rssi)
+                "Beacon % 2d: Age: %d Type: WiFi, %sMAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
+                ctx->beacon[i].ap.age, ctx->beacon[i].ap.in_cache ? "cached " : "       ",
+                ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
+                ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
+                ctx->beacon[i].ap.rssi)
             break;
         case SKY_BEACON_GSM:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -228,7 +229,8 @@ void dump_cache(Sky_ctx_t *ctx)
     Beacon_t *b;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d", i, CACHE_SIZE)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s", i, CACHE_SIZE,
+            ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "")
         c = &ctx->cache->cacheline[i];
         for (j = 0; j < c->len; j++) {
             b = &c->beacon[j];

@@ -247,6 +247,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
         rssi = -1;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
+    b.ap.in_cache = false;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -634,7 +635,6 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             sky_pserver_status(loc->location_status))
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
-
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */

@@ -43,6 +43,7 @@ typedef struct sky_cache {
     uint8_t sky_aes_key[16]; /* aes key */
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
+    Sky_cacheline_t *newest;
 } Sky_cache_t;
 
 typedef struct sky_ctx {
@@ -53,6 +54,7 @@ typedef struct sky_ctx {
     Sky_timefn_t gettime;
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
+    bool in_cache[TOTAL_BEACONS]; /* beacon in cache */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
     int16_t connected; /* which beacon is conneted (-1 == none) */
     Gps_t gps; /* GNSS info */
