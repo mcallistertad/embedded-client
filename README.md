@@ -9,6 +9,7 @@ geolocation of the device on which it runs.
 Dependencies
 ------------
 
+### Git Submodules
 The library depends on several third-party repos which are included as
 submodules in this repo. In order to ensure that these dependency repos are
 properly populated, be sure to add the `--recursive` option to the `git
@@ -23,7 +24,11 @@ All submodules are contained within the `.submodules` directory. These are:
     .submodules/tiny-AES128-C
         https://github.com/kokke/tiny-AES-c
 
-The [Google Protocol Buffers](https://developers.google.com/protocol-buffers/) protoc compiler is required in order to build the library. Version 3.3.0 or later is recommended.
+### Google Protocol Buffers
+The client/server network protocol used by the Skyhook library is based on [Google Protocol Buffers](https://developers.google.com/protocol-buffers/). Therefore the following components are required to build the library:
+* Python version 3.6.0 or later
+* Google Protocol Buffers `protoc` compiler version 3.3.0 or later
+* Google protobuf Python module version 3.7.1 or later
 
 Library Contents
 ----------------
