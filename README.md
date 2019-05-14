@@ -4,7 +4,8 @@ Skyhook embedded-lib
 The Skyhook embeeded-lib is a small library written in C. It is intended to be
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
-geolocation of the device on which it runs.
+geolocation of the device on which it runs. This repo also includes a sample client application
+which illustrates how the library can be used by your application (see below).
 
 Dependencies
 ------------
@@ -85,6 +86,8 @@ Build Directions
 To build just the library in a Unix-like environment:
 
     $ make
+
+This creates the file `bin/libel.a`, which can then be statically linked into your executable (in a Unix-like environment). Of course it may be necessary to modify the provided Makefile (or replace it altogether) in order to build the library for your platform.
 
 To build and run the sample client (after building the library itself):
 
