@@ -308,9 +308,8 @@ int main(int ac, char **av)
     switch (sky_finalize_request(ctx, &sky_errno, malloc(bufsize), bufsize, &loc, &response_size)) {
     case SKY_FINALIZE_LOCATION:
 
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "sky_finalize_request: GPS: %d.%06d,%d.%06d,%d", (int)loc.lat,
-            (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sky_finalize_request: GPS: %d.%06d,%d.%06d,%d",
+            (int)loc.lat, (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
             (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe)
 
         if (sky_close(&sky_errno, &pstate))

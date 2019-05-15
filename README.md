@@ -4,11 +4,13 @@ Skyhook embedded-lib
 The Skyhook embeeded-lib is a small library written in C. It is intended to be
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
-geolocation of the device on which it runs.
+geolocation of the device on which it runs. This repo also includes a sample client application
+which illustrates how the library can be used by your application (see below).
 
 Dependencies
 ------------
 
+### Git Submodules
 The library depends on several third-party repos which are included as
 submodules in this repo. In order to ensure that these dependency repos are
 properly populated, be sure to add the `--recursive` option to the `git
@@ -23,7 +25,11 @@ All submodules are contained within the `.submodules` directory. These are:
     .submodules/tiny-AES128-C
         https://github.com/kokke/tiny-AES-c
 
-The [Google Protocol Buffers](https://developers.google.com/protocol-buffers/) protoc compiler is required in order to build the library. Version 3.3.0 or later is recommended.
+### Google Protocol Buffers
+The client/server network protocol used by the Skyhook library is based on [Google Protocol Buffers](https://developers.google.com/protocol-buffers/). Therefore the following components are required to build the library:
+* Python version 3.6.0 or later
+* Google Protocol Buffers `protoc` compiler version 3.3.0 or later
+* Google protobuf Python module version 3.7.1 or later
 
 Library Contents
 ----------------
@@ -80,6 +86,8 @@ Build Directions
 To build just the library in a Unix-like environment:
 
     $ make
+
+This creates the file `bin/libel.a`, which can then be statically linked into your executable (in a Unix-like environment). Of course it may be necessary to modify the provided Makefile (or replace it altogether) in order to build the library for your platform.
 
 To build and run the sample client (after building the library itself):
 
