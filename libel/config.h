@@ -40,6 +40,10 @@
  */
 #define CACHE_BEACON_THRESHOLD 3
 
+/*! \brief The minimum rssi value preferred for cache matching
+ */
+#define CACHE_RSSI_THRESHOLD -90
+
 /*! \brief The number of entries in the scan/response cache
  */
 #define CACHE_SIZE 1

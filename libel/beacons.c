@@ -155,6 +155,12 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         return remove_beacon(ctx, ctx->ap_len / 2);
     }
 
+    /* if beacon with min RSSI is below threshold, throw it out */
+    if (ctx->beacon[0].ap.rssi < CACHE_RSSI_THRESHOLD) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Discarding beacon %d with very weak strength", 0)
+        return remove_beacon(ctx, 0);
+    }
+
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band range: %d.%02d",
         (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi), (int)band_range,
         (int)fabs(round(100 * (band_range - (int)band_range))))
