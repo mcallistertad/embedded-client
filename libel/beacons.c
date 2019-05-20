@@ -495,20 +495,19 @@ int find_oldest(Sky_ctx_t *ctx)
  *
  *  @return void
  */
-void newest_cacheline(Sky_ctx_t *ctx)
+static void update_newest_cacheline(Sky_ctx_t *ctx)
 {
     int i;
-    uint32_t newestc = 0;
     int newest = 0;
 
     for (i = 0; i < CACHE_SIZE; i++) {
         if (ctx->cache->cacheline[i].time > newest) {
             newest = ctx->cache->cacheline[i].time;
-            newestc = i;
+            ctx->cache->newest = &ctx->cache->cacheline[i];
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", newestc);
-    ctx->cache->newest = &ctx->cache->cacheline[newestc];
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest",
+        ctx->cache->newest - &ctx->cache->cacheline[0]);
 }
 
 /*! \brief add location to cache
@@ -540,7 +539,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     } else {
         if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
             ctx->cache->cacheline[i].time = 0; /* clear cacheline */
-            newest_cacheline(ctx);
+            update_newest_cacheline(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Server undetermined location. find_best_match found cache match %d of 0..%d", i,
                 CACHE_SIZE - 1);

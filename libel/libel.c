@@ -205,6 +205,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
     ctx->connected = -1; /* all unconnected */
+    ctx->cache->newest = NULL;
     return ctx;
 }
 
