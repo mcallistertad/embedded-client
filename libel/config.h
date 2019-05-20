@@ -30,7 +30,7 @@
 
 /*! \brief The percentage of beacons that must match in a cached scan/location
  */
-#define CACHE_MATCH_THRESHOLD 70
+#define CACHE_MATCH_THRESHOLD 50
 
 /*! \brief The maximum age (in hr) that a cached value is concidered useful
  */
@@ -39,6 +39,10 @@
 /*! \brief The minimum beacons that use CACHE_MATCH_THRESHOLD, otherwise 100% match required
  */
 #define CACHE_BEACON_THRESHOLD 3
+
+/*! \brief The minimum rssi value preferred for cache matching
+ */
+#define CACHE_RSSI_THRESHOLD -90
 
 /*! \brief The number of entries in the scan/response cache
  */
