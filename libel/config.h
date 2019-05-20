@@ -30,7 +30,7 @@
 
 /*! \brief The percentage of beacons that must match in a cached scan/location
  */
-#define CACHE_MATCH_THRESHOLD 70
+#define CACHE_MATCH_THRESHOLD 50
 
 /*! \brief The maximum age (in hr) that a cached value is concidered useful
  */
