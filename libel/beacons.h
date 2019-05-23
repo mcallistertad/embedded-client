@@ -44,6 +44,7 @@ struct ap {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint8_t mac[MAC_SIZE];
+    uint8_t in_cache; /* beacon is in cache */
     uint32_t age;
     uint32_t freq;
     int16_t rssi;

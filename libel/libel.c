@@ -95,6 +95,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     } else if (sky_state)
         cache = *sky_state;
     else {
+        cache.newest = NULL;
         cache.header.magic = SKY_MAGIC;
         cache.header.size = sizeof(cache);
         cache.header.time = (uint32_t)(*sky_time)(NULL);
@@ -205,6 +206,10 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
     ctx->connected = -1; /* all unconnected */
+    if (ctx->cache->len) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines present", ctx->cache->len)
+        dump_cache(ctx);
+    }
     return ctx;
 }
 
@@ -247,6 +252,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
         rssi = -1;
     b.ap.freq = channel;
     b.ap.rssi = rssi;
+    b.ap.in_cache = false;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -634,7 +640,6 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             sky_pserver_status(loc->location_status))
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
-
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
