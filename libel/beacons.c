@@ -179,7 +179,7 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         }
     }
     if (reject == -1) {
-        /* havn't found a beacon to remove yet due to matching cached beacons */
+        /* haven't found a beacon to remove yet due to matching cached beacons */
         /* Throw away either lowest or highest rssi valued beacons */
         if (!ctx->beacon[ctx->ap_len - 1].ap.in_cache && ctx->beacon[0].ap.in_cache)
             reject = ctx->ap_len - 1;
@@ -255,7 +255,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
 {
     int i = -1;
 
-    /* check if maximum number of non-AP beacons already added */
+    /* don't add any more non-AP beacons if we've already hit the limit of non-AP beacons */
     if (b->h.type != SKY_BEACON_AP && ctx->len - ctx->ap_len > (TOTAL_BEACONS - MAX_AP_BEACONS)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "too many (b->h.type: %s) (ctx->len - ctx->ap_len: %d)",
             sky_pbeacon(b), ctx->len - ctx->ap_len)
@@ -274,7 +274,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
 
     ctx->beacon[i].ap.in_cache = beacon_in_cache(ctx, b, ctx->cache->newest);
 
-    /* beacon is AP and need filter */
+    /* beacon is AP and is subject to filtering */
     if (filter_virtual_aps(ctx) == SKY_ERROR)
         if (filter_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
