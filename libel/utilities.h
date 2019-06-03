@@ -36,6 +36,7 @@ int logfmt(
 #endif
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
+void dump_buf(Sky_ctx_t *ctx, void *p, int n);
 
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
@@ -80,6 +81,16 @@ int64_t get_nbiot_lac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
+
+int32_t get_num_gnss(Sky_ctx_t *ctx);
+float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif

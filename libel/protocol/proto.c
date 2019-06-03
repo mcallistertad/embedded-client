@@ -11,6 +11,7 @@
 #include "aes.h"
 
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
+typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
@@ -69,6 +70,45 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
             data = wrapper(data);
 
         if (!pb_encode_varint(ostream, data))
+            return false;
+    }
+
+    return true;
+}
+
+static bool encode_repeated_float_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
+    uint32_t num_elems, DataGetterf getter, DataWrapper wrapper)
+{
+    size_t i;
+
+    // Get and encode the field size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    // Encode field tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
+        return false;
+
+    for (i = 0; i < num_elems; i++) {
+        float data = getter(ctx, i);
+
+        if (wrapper != NULL)
+            data = wrapper(data);
+
+        if (!pb_encode_fixed32(&substream, (void *)&data))
+            return false;
+    }
+
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+        return false;
+
+    // Now encode the field for real.
+    for (i = 0; i < num_elems; i++) {
+        float data = getter(ctx, i);
+
+        if (wrapper != NULL)
+            data = wrapper(data);
+
+        if (!pb_encode_fixed32(ostream, (void *)&data))
             return false;
     }
 
@@ -188,6 +228,22 @@ static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
 }
 
+static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+{
+    uint32_t num_gnss = get_num_gnss(ctx);
+
+    return encode_repeated_float_field(ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat, NULL) &&
+           encode_repeated_float_field(ctx, ostream, Gnss_lon_tag, num_gnss, get_gnss_lon, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_hpe_tag, num_gnss, get_gnss_hpe, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_alt_tag, num_gnss, get_gnss_alt, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_vpe_tag, num_gnss, get_gnss_vpe, NULL) &&
+           encode_repeated_float_field(
+               ctx, ostream, Gnss_speed_tag, num_gnss, get_gnss_speed, NULL) &&
+           encode_repeated_float_field(
+               ctx, ostream, Gnss_bearing_tag, num_gnss, get_gnss_bearing, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_age_tag, num_gnss, get_gnss_age, NULL);
+}
+
 static bool encode_submessage(
     Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
 {
@@ -235,7 +291,12 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_lte(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_lte_fields);
         break;
+    case Rq_gnss_tag:
+        if (get_num_gnss(ctx))
+            return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
+        break;
     default:
+        printf("Unknown tag\n");
         break;
     }
 
@@ -267,12 +328,16 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells = ctx;
+    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells =
+        rq.gnss = ctx;
 
     rq.timestamp = (int64_t)ctx->gettime(NULL);
 
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
+
+    memcpy(rq.ipaddr.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
+    rq.ipaddr.size = get_ctx_id_length(ctx);
 
     // Create and serialize the request header message.
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
@@ -336,6 +401,8 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
         bytes_written += ostream.bytes_written;
     else
         return -1;
+
+    dump_buf(ctx, buf, rq_size);
 
     // Encrypt the (serialized) request body.
     //

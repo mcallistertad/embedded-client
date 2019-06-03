@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 #define SKY_LIBEL
 #include "libel.h"
 #include "proto.h"
@@ -201,6 +202,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->gettime = sky_time;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
+    ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
@@ -519,6 +521,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
     ctx->gps.lat = lat;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "lat %.6f", ctx->gps.lat);
     ctx->gps.lon = lon;
     ctx->gps.hpe = hpe;
     ctx->gps.alt = altitude;
@@ -574,7 +577,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     rc = serialize_request(ctx, request_buf, bufsize);
 
     if (rc > 0) {
-        *response_size = 100; // FIXME: value this properly.
+        *response_size = rc;
 
         *sky_errno = SKY_ERROR_NONE;
 
@@ -739,7 +742,7 @@ char *sky_pserver_status(Sky_loc_status_t status)
         str = "Server reports bad partner id error";
         break;
     case SKY_LOCATION_STATUS_DECODE_ERROR:
-        str = "Error decoding response body";
+        str = "Server reports error decoding request body";
         break;
     case SKY_LOCATION_STATUS_API_SERVER_ERROR:
         str = "Server error determining location";

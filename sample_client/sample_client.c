@@ -264,6 +264,7 @@ int main(int argc, char *argv[])
         printf("Cell added\n");
     else
         printf("Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
+    sky_add_gnss(ctx, &sky_errno, 41.722651, 76.388422, 100, 219, 40, 0, 0, timestamp - 100);
 #if 0
     /* Add LTE cell */
     ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
