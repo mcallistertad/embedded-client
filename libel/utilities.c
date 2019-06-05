@@ -200,17 +200,38 @@ void dump_workspace(Sky_ctx_t *ctx)
                 ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
                 ctx->beacon[i].ap.rssi)
             break;
+        case SKY_BEACON_CDMA:
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Beacon %-2d: Age: %d Type: CDMA, sid: %d, nid: %d, bsid: %d, rssi: %d", i,
+                ctx->beacon[i].cdma.age, ctx->beacon[i].cdma.sid, ctx->beacon[i].cdma.nid,
+                ctx->beacon[i].cdma.bsid, ctx->beacon[i].cdma.rssi)
+            break;
         case SKY_BEACON_GSM:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Beacon %-2d: Age: %d Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d", i,
                 ctx->beacon[i].gsm.age, ctx->beacon[i].gsm.lac, ctx->beacon[i].gsm.ci,
                 ctx->beacon[i].gsm.mcc, ctx->beacon[i].gsm.mnc, ctx->beacon[i].gsm.rssi)
             break;
+        case SKY_BEACON_LTE:
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Beacon %-2d: Age: %d Type: LTE, e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rssi: %d",
+                i, ctx->beacon[i].lte.age, ctx->beacon[i].lte.e_cellid, ctx->beacon[i].lte.mcc,
+                ctx->beacon[i].lte.mnc, ctx->beacon[i].lte.tac, ctx->beacon[i].lte.rssi)
+            break;
         case SKY_BEACON_NBIOT:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Beacon %-2d: Age: %d Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
                 i, ctx->beacon[i].nbiot.age, ctx->beacon[i].nbiot.mcc, ctx->beacon[i].nbiot.mnc,
                 ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac, ctx->beacon[i].nbiot.rssi)
+            break;
+        case SKY_BEACON_UMTS:
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Beacon %-2d: Age: %d Type: UMTS, lac: %d, ucid: %d, mcc: %d, mnc: %d, rssi: %d", i,
+                ctx->beacon[i].umts.age, ctx->beacon[i].umts.lac, ctx->beacon[i].umts.ucid,
+                ctx->beacon[i].umts.mcc, ctx->beacon[i].umts.mnc, ctx->beacon[i].umts.rssi)
+            break;
+        default:
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %-2d: Type: Unknown", i)
             break;
         }
     }
@@ -263,26 +284,6 @@ void dump_cache(Sky_ctx_t *ctx)
         if (c->len == 0)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "empty")
     }
-}
-
-/*! \brief dump buffer
- *
- *  @param pointer to the buffer
- *  @param length of buffer
- *
- *  @return void
- */
-void dump_buf(Sky_ctx_t *ctx, void *p, int n)
-{
-    int i;
-    uint8_t *buf = p;
-
-    for (i = 0; i < n; i += 16)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "buf: %03d %02X%02X%02X%02X%02X%02X%02X%02X  %02X%02X%02X%02X%02X%02X%02X%02X", i,
-            buf[000 + i], buf[001 + i], buf[002 + i], buf[003 + i], buf[004 + i], buf[005 + i],
-            buf[006 + i], buf[007 + i], buf[010 + i], buf[011 + i], buf[012 + i], buf[013 + i],
-            buf[014 + i], buf[015 + i], buf[016 + i], buf[017 + i]);
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx partner_id)
@@ -894,6 +895,244 @@ int64_t get_lte_age(Sky_ctx_t *ctx, uint32_t idx)
     return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_LTE) + idx].lte.age;
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (num cdma)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return number of cdma beacons
+ */
+int32_t get_num_cdma(Sky_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return get_num_beacons(ctx, SKY_BEACON_CDMA);
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/sid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon sid info
+ */
+int64_t get_cdma_sid(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_CDMA) + idx].cdma.sid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/nid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon nid info
+ */
+int64_t get_cdma_nid(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_CDMA) + idx].cdma.nid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/bsid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon bsid info
+ */
+int64_t get_cdma_bsid(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_CDMA) + idx].cdma.bsid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/rssi)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon rssi info
+ */
+int64_t get_cdma_rssi(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_CDMA) + idx].cdma.rssi;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+bool get_cdma_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->connected == get_base_beacons(ctx, SKY_BEACON_CDMA) + idx;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (cdma/timestamp)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon timestamp info
+ */
+int64_t get_cdma_age(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_cdma(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_CDMA) + idx].cdma.age;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (num umts)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return number of umts beacons
+ */
+int32_t get_num_umts(Sky_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return get_num_beacons(ctx, SKY_BEACON_UMTS);
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/lac)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon lac info
+ */
+int64_t get_umts_lac(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.lac;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/ucid)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon ucid info
+ */
+int64_t get_umts_ucid(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.ucid;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/mcc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon mcc info
+ */
+int64_t get_umts_mcc(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.mcc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/mnc)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon mnc info
+ */
+int64_t get_umts_mnc(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.mnc;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/rssi)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon rssi info
+ */
+int64_t get_umts_rssi(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.rssi;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/is_connected)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon is_connected info
+ */
+bool get_umts_is_connected(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+    return ctx->connected == get_base_beacons(ctx, SKY_BEACON_UMTS) + idx;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (umts/timestamp)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into beacons
+ *
+ *  @return beacon timestamp info
+ */
+int64_t get_umts_age(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || idx > (ctx->len - get_num_umts(ctx))) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
+        return 0;
+    }
+    return ctx->beacon[get_base_beacons(ctx, SKY_BEACON_UMTS) + idx].umts.age;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (num gnss)
  *
  *  @param ctx workspace buffer
@@ -906,8 +1145,8 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
         return 0;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d", ctx->gps.lat == NAN ? 0 : 1);
-    return ctx->gps.lat == NAN ? 0 : 1;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d", isnan(ctx->gps.lat) ? 0 : 1);
+    return isnan(ctx->gps.lat) ? 0 : 1;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lat)
@@ -940,7 +1179,7 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.lon;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.lon;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/hpe)
@@ -956,7 +1195,7 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.hpe;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.hpe;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/alt)
@@ -966,13 +1205,13 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
+float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.alt;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.alt;
 }
 /*! \brief field extraction for dynamic use of Nanopb (gnss/vpe)
  *
@@ -987,7 +1226,7 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.vpe;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.vpe;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/speed)
@@ -1003,7 +1242,7 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.speed;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.speed;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/bearing)
@@ -1019,8 +1258,7 @@ float get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    dump_buf(ctx, (void *)&ctx->gps.bearing, 4);
-    return ctx->gps.lat == NAN ? NAN : ctx->gps.bearing;
+    return isnan(ctx->gps.lat) ? NAN : ctx->gps.bearing;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/timestamp)
@@ -1036,7 +1274,6 @@ int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return 0;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Gnss age: 0x%08X", ctx->gps.age);
     return ctx->gps.age;
 }
 

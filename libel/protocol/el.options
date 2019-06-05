@@ -9,5 +9,4 @@ Rq.gnss          type:FT_CALLBACK, callback_datatype:"void*"
 # Do not change the following values.
 # ------
 Rq.device_id  max_size:16
-Rq.ipaddr  max_size:16
 CryptoInfo.iv max_size:16

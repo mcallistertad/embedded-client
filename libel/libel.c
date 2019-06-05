@@ -521,14 +521,16 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
     ctx->gps.lat = lat;
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "lat %.6f", ctx->gps.lat);
     ctx->gps.lon = lon;
     ctx->gps.hpe = hpe;
     ctx->gps.alt = altitude;
     ctx->gps.vpe = vpe;
     ctx->gps.speed = speed;
     ctx->gps.bearing = bearing;
-    ctx->gps.age = timestamp;
+    if (ctx->header.time > timestamp && timestamp > 1551398400)
+        ctx->gps.age = ctx->header.time - timestamp;
+    else
+        ctx->gps.age = 0;
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
