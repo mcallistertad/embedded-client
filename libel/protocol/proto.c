@@ -242,6 +242,11 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     return true;
 }
 
+int32_t get_maximum_response_size(void)
+{
+    return RsHeader_size + Rs_size + 1;
+}
+
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 {
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
