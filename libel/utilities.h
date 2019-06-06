@@ -99,13 +99,13 @@ bool get_umts_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_umts_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int32_t get_num_gnss(Sky_ctx_t *ctx);
-float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx);
-float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx);
-float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx);
-float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
-float get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);

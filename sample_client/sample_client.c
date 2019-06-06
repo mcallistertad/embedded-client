@@ -41,7 +41,7 @@ struct ap_scan {
 
 /* some rssi values intentionally out of range */
 struct ap_scan aps[] = /* clang-format off */ 
-#if 0
+#if 1
                     { { "283B8264E08B", 300, 3660, -8 },
                       { "826AB092DC99", 300, 3660, -130 },
                       { "283B823629F0", 300, 3660, -90 },
@@ -56,16 +56,16 @@ struct ap_scan aps[] = /* clang-format off */
 {};
 #endif
 
-    /* clang-format on */
+/* clang-format on */
 
-    /*! \brief check for saved cache state
+/*! \brief check for saved cache state
  *
  *  @param nv_space pointer to saved cache state
  *  @param client_id
  *
  *  @returns NULL for failure to restore cache, pointer to cache otherwise
  */
-    void * nv_cache(void *nv_space, uint16_t client_id)
+void *nv_cache(void *nv_space, uint16_t client_id)
 {
     char cache_name[16];
     sprintf(cache_name, "nv_cache_%d", client_id);
@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
         printf("Cell added\n");
     else
         printf("Error adding UMTS cell: '%s'\n", sky_perror(sky_errno));
-#if 0
+#if 1
     sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, timestamp - 100);
 #endif
