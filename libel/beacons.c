@@ -517,6 +517,10 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     int j;
     uint32_t now = (*ctx->gettime)(NULL);
 
+    if (CACHE_SIZE < 1) {
+        return SKY_SUCCESS;
+    }
+
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!")
@@ -545,14 +549,13 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Won't add unknown location to cache")
         return SKY_ERROR;
     }
-    for (j = 0; j < TOTAL_BEACONS; j++) {
-        ctx->cache->cacheline[i].len = ctx->len;
-        ctx->cache->cacheline[i].ap_len = ctx->ap_len;
+    ctx->cache->cacheline[i].len = ctx->len;
+    ctx->cache->cacheline[i].ap_len = ctx->ap_len;
+    ctx->cache->cacheline[i].loc = *loc;
+    ctx->cache->cacheline[i].time = now;
+    ctx->cache->newest = &ctx->cache->cacheline[i];
+    for (j = 0; j < TOTAL_BEACONS; j++)
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
-        ctx->cache->cacheline[i].loc = *loc;
-        ctx->cache->cacheline[i].time = now;
-        ctx->cache->newest = &ctx->cache->cacheline[i];
-    }
     return SKY_SUCCESS;
 }
 
@@ -565,6 +568,10 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 int get_cache(Sky_ctx_t *ctx)
 {
     uint32_t now = (*ctx->gettime)(NULL);
+
+    if (CACHE_SIZE < 1) {
+        return SKY_ERROR;
+    }
 
     /* compare current time to Mar 1st 2019 */
     if (now <= 1551398400) {
