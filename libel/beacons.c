@@ -397,7 +397,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             for (j = start; j < end; j++) {
                 if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %d type %s matches cache %d of 0..%d",
-                        j, sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE - 1)
+                        j, sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE)
                     score[i] = score[i] + 1.0;
                 }
             }
@@ -435,7 +435,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     if (!put) {
         if (ctx->len <= CACHE_BEACON_THRESHOLD && bestscore == ctx->len) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Only %d beacons; pick cache %d of 0..%d score %d",
-                ctx->len, bestc, CACHE_SIZE - 1, (int)round(ratio[bestc] * 100))
+                ctx->len, bestc, CACHE_SIZE, (int)round(ratio[bestc] * 100))
             return bestc;
         } else if (ctx->len > CACHE_BEACON_THRESHOLD && bestratio * 100 > CACHE_MATCH_THRESHOLD) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of 0..%d score %d",
@@ -533,17 +533,17 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     /*    yes - add entryu here */
     if ((i = find_best_match(ctx, 1)) < 0) {
         i = find_oldest(ctx);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d", i, CACHE_SIZE - 1)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d", i, CACHE_SIZE)
     } else {
         if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
             ctx->cache->cacheline[i].time = 0; /* clear cacheline */
             update_newest_cacheline(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Server undetermined location. find_best_match found cache match %d of 0..%d", i,
-                CACHE_SIZE - 1);
+                CACHE_SIZE);
         } else
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_best_match found cache match %d of 0..%d", i,
-                CACHE_SIZE - 1);
+                CACHE_SIZE);
     }
     if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Won't add unknown location to cache")

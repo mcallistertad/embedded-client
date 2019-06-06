@@ -240,6 +240,7 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                ctx, ostream, Gnss_speed_tag, num_gnss, get_gnss_speed, NULL) &&
            encode_repeated_int_field(
                ctx, ostream, Gnss_bearing_tag, num_gnss, get_gnss_bearing, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_nsat_tag, num_gnss, get_gnss_nsat, NULL) &&
            encode_repeated_int_field(ctx, ostream, Gnss_age_tag, num_gnss, get_gnss_age, NULL);
 }
 

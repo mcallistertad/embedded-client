@@ -511,11 +511,13 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
  *  @param speed pointer to speed in meters per second, Nan if unknown
  *  @param bearing pointer to bearing of device in degrees, counterclockwise from north
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param nsat number of satelites used to determine the location, 0 if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, float lon,
-    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, time_t timestamp)
+    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
+    time_t timestamp)
 {
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
@@ -527,6 +529,8 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     ctx->gps.vpe = vpe;
     ctx->gps.speed = speed;
     ctx->gps.bearing = bearing;
+    ctx->gps.nsat = nsat;
+    /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > 1551398400)
         ctx->gps.age = ctx->header.time - timestamp;
     else

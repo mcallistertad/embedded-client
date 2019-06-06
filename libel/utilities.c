@@ -253,10 +253,10 @@ void dump_cache(Sky_ctx_t *ctx)
         c = &ctx->cache->cacheline[i];
         if (c->len == 0 || c->time == 0)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d - empty len:%d ap_len:%d time:%u", i,
-                CACHE_SIZE, c->len, c->ap_len, c->time)
+                ctx->cache->len, c->len, c->ap_len, c->time)
         else {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d", i,
-                CACHE_SIZE, ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "",
+                ctx->cache->len, ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "",
                 (int)c->loc.lat, (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
                 (int)c->loc.lon, (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
                 c->loc.hpe)
@@ -1273,6 +1273,22 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
         return NAN;
     }
     return ctx->gps.bearing;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (gnss/nsat)
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index (unused)
+ *
+ *  @return beacon is_connected info
+ */
+int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL || isnan(ctx->gps.lat)) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
+        return NAN;
+    }
+    return ctx->gps.nsat;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/timestamp)

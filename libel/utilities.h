@@ -106,6 +106,7 @@ int64_t get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);

@@ -140,6 +140,7 @@ typedef struct gps {
     float vpe;
     float speed;
     float bearing;
+    uint32_t nsat;
     uint32_t age;
 } Gps_t;
 
