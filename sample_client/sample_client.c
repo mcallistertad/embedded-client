@@ -41,7 +41,6 @@ struct ap_scan {
 
 /* some rssi values intentionally out of range */
 struct ap_scan aps[] = /* clang-format off */ 
-#if 1
                     { { "283B8264E08B", 300, 3660, -8 },
                       { "826AB092DC99", 300, 3660, -130 },
                       { "283B823629F0", 300, 3660, -90 },
@@ -49,12 +48,8 @@ struct ap_scan aps[] = /* clang-format off */
                       { "0024D2E08E5D", 300, 3660, -92 },
                       { "283B821CC232", 300, 3660, -91 },
                       { "74DADA5E1015", 300, 3660, -88 },
-                      { "FC75164E9CA2", 300, 3660, -88 },
                       { "B482FEA46221", 300, 3660, -89 },
                       { "EC22809E00DB", 300, 3660, -90 } };
-#else
-{};
-#endif
 
 /* clang-format on */
 
@@ -254,7 +249,7 @@ int main(int argc, char *argv[])
         else
             printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
     }
-#if 1
+
     /* Add UMTS cell */
     ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
         16101, // lac
@@ -264,7 +259,10 @@ int main(int argc, char *argv[])
         timestamp - 315, // timestamp
         -100, // rscp
         0); // serving
-#endif
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell UMTS added\n");
+    else
+        printf("Error adding UMTS cell: '%s'\n", sky_perror(sky_errno));
 
     /* Add CDMA cell */
     ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
@@ -274,15 +272,18 @@ int main(int argc, char *argv[])
         timestamp - 315, // timestamp
         -159, // pilot-power
         0); // serving
-
     if (ret_status == SKY_SUCCESS)
-        printf("Cell added\n");
+        printf("Cell CDMA added\n");
     else
-        printf("Error adding UMTS cell: '%s'\n", sky_perror(sky_errno));
-#if 1
+        printf("Error adding CDMA cell: '%s'\n", sky_perror(sky_errno));
+
     sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, timestamp - 100);
-#endif
+    if (ret_status == SKY_SUCCESS)
+        printf("GNSS added\n");
+    else
+        printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
+
 #if 0
     /* Add LTE cell */
     ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,

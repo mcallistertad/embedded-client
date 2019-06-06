@@ -251,49 +251,55 @@ void dump_cache(Sky_ctx_t *ctx)
 
     for (i = 0; i < CACHE_SIZE; i++) {
         c = &ctx->cache->cacheline[i];
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d", i, CACHE_SIZE,
-            ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "", (int)c->loc.lat,
-            (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))), (int)c->loc.lon,
-            (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))), c->loc.hpe)
-        for (j = 0; j < c->len; j++) {
-            b = &c->beacon[j];
-            switch (b->h.type) {
-            case SKY_BEACON_AP:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                    b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
-                    b->ap.mac[5], b->ap.rssi)
-                break;
-            case SKY_BEACON_CDMA:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Type: CDMA, sid: %d, nid: %d, bsid: %d, rssi: %d", i, b->cdma.sid,
-                    b->cdma.nid, b->cdma.bsid, b->cdma.rssi)
-                break;
-            case SKY_BEACON_GSM:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d", i,
-                    b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc, b->gsm.rssi)
-                break;
-            case SKY_BEACON_LTE:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Age: %d Type: LTE, e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rssi: %d",
-                    i, b->lte.age, b->lte.e_cellid, b->lte.mcc, b->lte.mnc, b->lte.tac, b->lte.rssi)
-                break;
-            case SKY_BEACON_NBIOT:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
-                    i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid, b->nbiot.tac, b->nbiot.rssi)
-                break;
-            case SKY_BEACON_UMTS:
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %-2d: Age: %d Type: UMTS, lac: %d, ucid: %d, mcc: %d, mnc: %d, rssi: %d",
-                    i, b->umts.age, b->umts.lac, b->umts.ucid, b->umts.mcc, b->umts.mnc,
-                    b->umts.rssi)
-                break;
+        if (c->len == 0 || c->time == 0)
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d - empty len:%d ap_len:%d time:%u", i,
+                CACHE_SIZE, c->len, c->ap_len, c->time)
+        else {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d", i,
+                CACHE_SIZE, ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "",
+                (int)c->loc.lat, (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
+                (int)c->loc.lon, (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
+                c->loc.hpe)
+            for (j = 0; j < c->len; j++) {
+                b = &c->beacon[j];
+                switch (b->h.type) {
+                case SKY_BEACON_AP:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
+                        b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
+                        b->ap.mac[5], b->ap.rssi)
+                    break;
+                case SKY_BEACON_CDMA:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Type: CDMA, sid: %d, nid: %d, bsid: %d, rssi: %d", i,
+                        b->cdma.sid, b->cdma.nid, b->cdma.bsid, b->cdma.rssi)
+                    break;
+                case SKY_BEACON_GSM:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Type: GSM, lac: %d, ui: %d, mcc: %d, mnc: %d, rssi: %d", i,
+                        b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc, b->gsm.rssi)
+                    break;
+                case SKY_BEACON_LTE:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Age: %d Type: LTE, e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rssi: %d",
+                        i, b->lte.age, b->lte.e_cellid, b->lte.mcc, b->lte.mnc, b->lte.tac,
+                        b->lte.rssi)
+                    break;
+                case SKY_BEACON_NBIOT:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Type: NB-IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+                        i, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid, b->nbiot.tac,
+                        b->nbiot.rssi)
+                    break;
+                case SKY_BEACON_UMTS:
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                        "cache %-2d: Age: %d Type: UMTS, lac: %d, ucid: %d, mcc: %d, mnc: %d, rssi: %d",
+                        i, b->umts.age, b->umts.lac, b->umts.ucid, b->umts.mcc, b->umts.mnc,
+                        b->umts.rssi)
+                    break;
+                }
             }
         }
-        if (c->len == 0)
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "empty")
     }
 }
 

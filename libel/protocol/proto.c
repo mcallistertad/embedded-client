@@ -340,11 +340,6 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     rq.timestamp = (int64_t)ctx->gettime(NULL);
 
-    if (ctx->gps.lat == NAN) {
-        ctx->gps.lat = ctx->gps.lon = ctx->gps.alt = ctx->gps.speed = ctx->gps.bearing = 0.0;
-        ctx->gps.hpe = ctx->gps.vpe = ctx->gps.age = 0;
-    }
-
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
 
