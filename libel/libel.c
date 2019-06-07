@@ -574,7 +574,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     rc = serialize_request(ctx, request_buf, bufsize);
 
     if (rc > 0) {
-        *response_size = 100; // FIXME: value this properly.
+        *response_size = get_maximum_response_size();
 
         *sky_errno = SKY_ERROR_NONE;
 
