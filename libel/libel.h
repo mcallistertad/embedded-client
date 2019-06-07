@@ -28,6 +28,9 @@
 
 #define MAX_DEVICE_ID 16
 
+/* March 1st 2019 */
+#define TIMESTAMP_2019_03_01 1551398400
+
 /*! \brief API return value
  */
 typedef enum {

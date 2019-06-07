@@ -244,7 +244,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     memcpy(b.ap.mac, mac, MAC_SIZE);
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.ap.age = ctx->header.time - timestamp;
     else
         b.ap.age = 0;
@@ -293,7 +293,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
@@ -341,7 +341,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.h.type = SKY_BEACON_GSM;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
@@ -389,7 +389,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.h.type = SKY_BEACON_UMTS;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.umts.age = ctx->header.time - timestamp;
     else
         b.umts.age = 0;
@@ -436,7 +436,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.h.type = SKY_BEACON_CDMA;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.cdma.age = ctx->header.time - timestamp;
     else
         b.cdma.age = 0;
@@ -484,7 +484,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.h.type = SKY_BEACON_NBIOT;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;
@@ -531,7 +531,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     ctx->gps.bearing = bearing;
     ctx->gps.nsat = nsat;
     /* location was determined before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         ctx->gps.age = ctx->header.time - timestamp;
     else
         ctx->gps.age = 0;
@@ -567,7 +567,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* check cache against beacons for match */
-    if ((c = get_cache(ctx)) >= 0) {
+    if ((c = get_from_cache(ctx)) >= 0) {
         if (loc != NULL)
             *loc = ctx->cache->cacheline[c].loc;
         *sky_errno = SKY_ERROR_NONE;
@@ -652,7 +652,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
-    if (add_cache(ctx, loc) == SKY_ERROR) {
+    if (add_to_cache(ctx, loc) == SKY_ERROR) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
         return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
     }

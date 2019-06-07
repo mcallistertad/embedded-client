@@ -511,7 +511,7 @@ static void update_newest_cacheline(Sky_ctx_t *ctx)
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
     int i = -1;
     int j;
@@ -522,7 +522,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     }
 
     /* compare current time to Mar 1st 2019 */
-    if (now <= 1551398400) {
+    if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!")
         return SKY_ERROR;
     }
@@ -565,7 +565,7 @@ Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  *
  *  @return cacheline index or -1
  */
-int get_cache(Sky_ctx_t *ctx)
+int get_from_cache(Sky_ctx_t *ctx)
 {
     uint32_t now = (*ctx->gettime)(NULL);
 
@@ -574,7 +574,7 @@ int get_cache(Sky_ctx_t *ctx)
     }
 
     /* compare current time to Mar 1st 2019 */
-    if (now <= 1551398400) {
+    if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!")
         return SKY_ERROR;
     }

@@ -135,9 +135,9 @@ typedef union beacon {
 typedef struct gps {
     double lat;
     double lon;
-    float hpe;
+    uint32_t hpe;
     float alt; // altitude
-    float vpe;
+    uint32_t vpe;
     float speed;
     float bearing;
     uint32_t nsat;

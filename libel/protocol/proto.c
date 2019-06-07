@@ -11,6 +11,11 @@
 #include "proto.h"
 #include "aes.h"
 
+static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
+
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
 typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
@@ -231,13 +236,16 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
 
-    return encode_repeated_int_field(ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat, NULL) &&
-           encode_repeated_int_field(ctx, ostream, Gnss_lon_tag, num_gnss, get_gnss_lon, NULL) &&
+    return encode_repeated_int_field(
+               ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat_scaled, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_lon_tag, num_gnss, get_gnss_lon_scaled, NULL) &&
            encode_repeated_int_field(ctx, ostream, Gnss_hpe_tag, num_gnss, get_gnss_hpe, NULL) &&
-           encode_repeated_int_field(ctx, ostream, Gnss_alt_tag, num_gnss, get_gnss_alt, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_alt_tag, num_gnss, get_gnss_alt_scaled, NULL) &&
            encode_repeated_int_field(ctx, ostream, Gnss_vpe_tag, num_gnss, get_gnss_vpe, NULL) &&
            encode_repeated_int_field(
-               ctx, ostream, Gnss_speed_tag, num_gnss, get_gnss_speed, NULL) &&
+               ctx, ostream, Gnss_speed_tag, num_gnss, get_gnss_speed_scaled, NULL) &&
            encode_repeated_int_field(
                ctx, ostream, Gnss_bearing_tag, num_gnss, get_gnss_bearing, NULL) &&
            encode_repeated_int_field(ctx, ostream, Gnss_nsat_tag, num_gnss, get_gnss_nsat, NULL) &&
@@ -496,4 +504,24 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     }
 
     return 0;
+}
+
+static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_lat(ctx, idx) * 1000000;
+}
+
+static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_lon(ctx, idx) * 1000000;
+}
+
+static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_alt(ctx, idx) * 10;
+}
+
+static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_speed(ctx, idx) * 10;
 }

@@ -1171,13 +1171,13 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
+float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lat * 1000000;
+    return ctx->gps.lat;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lon)
@@ -1187,13 +1187,13 @@ int64_t get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
+float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.lon * 1000000;
+    return ctx->gps.lon;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/hpe)
@@ -1219,13 +1219,13 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
+float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.alt * 10;
+    return ctx->gps.alt;
 }
 /*! \brief field extraction for dynamic use of Nanopb (gnss/vpe)
  *
@@ -1250,13 +1250,13 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return beacon is_connected info
  */
-int64_t get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
+float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
-    return ctx->gps.speed * 10;
+    return ctx->gps.speed;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/bearing)
