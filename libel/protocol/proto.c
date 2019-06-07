@@ -244,7 +244,8 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 
 int32_t get_maximum_response_size(void)
 {
-    return RsHeader_size + CryptoInfo_size + Rs_size + 1;
+    return RsHeader_size + CryptoInfo_size +
+           AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN) + 1;
 }
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
@@ -265,10 +266,10 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     // sky_new_request initializes rand_bytes if user does not
     if (ctx->rand_bytes != NULL)
-        ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
+        ctx->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
 
     // Initialize crypto_info
-    rq_crypto_info.iv.size = 16;
+    rq_crypto_info.iv.size = AES_BLOCKLEN;
 
     memset(&rq, 0, sizeof(rq));
 
@@ -283,7 +284,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
     // Account for necessary encryption padding.
-    aes_padding_length = (16 - rq_size % 16) % 16;
+    aes_padding_length = (AES_BLOCKLEN - rq_size % AES_BLOCKLEN) % AES_BLOCKLEN;
 
     rq_size += aes_padding_length;
 
