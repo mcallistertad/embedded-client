@@ -28,6 +28,9 @@
 
 #define MAX_DEVICE_ID 16
 
+/* March 1st 2019 */
+#define TIMESTAMP_2019_03_01 1551398400
+
 /*! \brief API return value
  */
 typedef enum {
@@ -160,7 +163,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     bool is_connected);
 
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, float lon,
-    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, time_t timestamp);
+    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
+    time_t timestamp);
 
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
 

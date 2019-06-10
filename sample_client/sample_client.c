@@ -48,9 +48,9 @@ struct ap_scan aps[] = /* clang-format off */
                       { "0024D2E08E5D", 300, 3660, -92 },
                       { "283B821CC232", 300, 3660, -91 },
                       { "74DADA5E1015", 300, 3660, -88 },
-                      { "FC75164E9CA2", 300, 3660, -88 },
                       { "B482FEA46221", 300, 3660, -89 },
                       { "EC22809E00DB", 300, 3660, -90 } };
+
 /* clang-format on */
 
 /*! \brief check for saved cache state
@@ -250,20 +250,40 @@ int main(int argc, char *argv[])
             printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
     }
 
-    /* Add GSM cell */
-    ret_status = sky_add_cell_gsm_beacon(ctx, &sky_errno,
+    /* Add UMTS cell */
+    ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
         16101, // lac
-        14962, // ci
+        14962, // ucid
         603, // mcc
         1, // mnc
         timestamp - 315, // timestamp
-        -100, // rssi
+        -100, // rscp
         0); // serving
-
     if (ret_status == SKY_SUCCESS)
-        printf("Cell added\n");
+        printf("Cell UMTS added\n");
     else
-        printf("Error adding GSM cell: '%s'\n", sky_perror(sky_errno));
+        printf("Error adding UMTS cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add CDMA cell */
+    ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
+        1552, // sid
+        45004, // nid
+        37799, // bsid
+        timestamp - 315, // timestamp
+        -159, // pilot-power
+        0); // serving
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell CDMA added\n");
+    else
+        printf("Error adding CDMA cell: '%s'\n", sky_perror(sky_errno));
+
+    sky_add_gnss(
+        ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
+    if (ret_status == SKY_SUCCESS)
+        printf("GNSS added\n");
+    else
+        printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
+
 #if 0
     /* Add LTE cell */
     ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
