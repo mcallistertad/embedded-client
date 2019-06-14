@@ -535,17 +535,16 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
         i = find_oldest(ctx);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d", i, CACHE_SIZE)
     } else {
-        if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
+        if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
             ctx->cache->cacheline[i].time = 0; /* clear cacheline */
             update_newest_cacheline(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Server undetermined location. find_best_match found cache match %d of 0..%d", i,
-                CACHE_SIZE);
+                "find_best_match found cache match %d of 0..%d, but cleared", i, CACHE_SIZE);
         } else
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_best_match found cache match %d of 0..%d", i,
                 CACHE_SIZE);
     }
-    if (loc->location_source == SKY_LOCATION_SOURCE_UNKNOWN) {
+    if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Won't add unknown location to cache")
         return SKY_ERROR;
     }
