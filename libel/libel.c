@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 #define SKY_LIBEL
 #include "libel.h"
 #include "proto.h"
@@ -201,6 +202,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->gettime = sky_time;
     ctx->len = 0; /* empty */
     ctx->ap_len = 0; /* empty */
+    ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
@@ -242,7 +244,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     memcpy(b.ap.mac, mac, MAC_SIZE);
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.ap.age = ctx->header.time - timestamp;
     else
         b.ap.age = 0;
@@ -291,7 +293,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.lte.age = ctx->header.time - timestamp;
     else
         b.lte.age = 0;
@@ -339,7 +341,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.h.type = SKY_BEACON_GSM;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.gsm.age = ctx->header.time - timestamp;
     else
         b.gsm.age = 0;
@@ -387,7 +389,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.h.type = SKY_BEACON_UMTS;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.umts.age = ctx->header.time - timestamp;
     else
         b.umts.age = 0;
@@ -434,7 +436,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.h.type = SKY_BEACON_CDMA;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.cdma.age = ctx->header.time - timestamp;
     else
         b.cdma.age = 0;
@@ -482,7 +484,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.h.type = SKY_BEACON_NBIOT;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time > timestamp && timestamp > 1551398400)
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.nbiot.age = ctx->header.time - timestamp;
     else
         b.nbiot.age = 0;
@@ -509,11 +511,13 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
  *  @param speed pointer to speed in meters per second, Nan if unknown
  *  @param bearing pointer to bearing of device in degrees, counterclockwise from north
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param nsat number of satelites used to determine the location, 0 if unknown
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, float lon,
-    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, time_t timestamp)
+    uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
+    time_t timestamp)
 {
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
@@ -525,7 +529,12 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     ctx->gps.vpe = vpe;
     ctx->gps.speed = speed;
     ctx->gps.bearing = bearing;
-    ctx->gps.age = timestamp;
+    ctx->gps.nsat = nsat;
+    /* location was determined before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+        ctx->gps.age = ctx->header.time - timestamp;
+    else
+        ctx->gps.age = 0;
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -553,12 +562,12 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
     /* There must be at least one beacon */
     if (ctx->len == 0) {
-        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
+        *sky_errno = SKY_ERROR_NO_BEACONS;
         return SKY_FINALIZE_ERROR;
     }
 
     /* check cache against beacons for match */
-    if ((c = get_cache(ctx)) >= 0) {
+    if ((c = get_from_cache(ctx)) >= 0) {
         if (loc != NULL)
             *loc = ctx->cache->cacheline[c].loc;
         *sky_errno = SKY_ERROR_NONE;
@@ -574,7 +583,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     rc = serialize_request(ctx, request_buf, bufsize);
 
     if (rc > 0) {
-        *response_size = 100; // FIXME: value this properly.
+        *response_size = get_maximum_response_size();
 
         *sky_errno = SKY_ERROR_NONE;
 
@@ -643,7 +652,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
-    if (add_cache(ctx, loc) == SKY_ERROR) {
+    if (add_to_cache(ctx, loc) == SKY_ERROR) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
         return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
     }
@@ -739,7 +748,7 @@ char *sky_pserver_status(Sky_loc_status_t status)
         str = "Server reports bad partner id error";
         break;
     case SKY_LOCATION_STATUS_DECODE_ERROR:
-        str = "Error decoding response body";
+        str = "Server reports error decoding request body";
         break;
     case SKY_LOCATION_STATUS_API_SERVER_ERROR:
         str = "Server error determining location";

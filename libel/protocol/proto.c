@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 #include <pb_encode.h>
 #include <pb_decode.h>
@@ -10,7 +11,13 @@
 #include "proto.h"
 #include "aes.h"
 
+static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
+
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
+typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
@@ -128,6 +135,24 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
 
+static bool encode_cdma_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+{
+    uint32_t num_beacons = get_num_cdma(ctx);
+
+    return encode_connected_field(ctx, ostream, num_beacons, CdmaCells_connected_idx_plus_1_tag,
+               get_cdma_is_connected) &&
+           encode_repeated_int_field(
+               ctx, ostream, CdmaCells_sid_tag, num_beacons, get_cdma_sid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, CdmaCells_nid_tag, num_beacons, get_cdma_nid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, CdmaCells_bsid_tag, num_beacons, get_cdma_bsid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, CdmaCells_neg_rssi_tag, num_beacons, get_cdma_rssi, flip_sign) &&
+           encode_optimized_repeated_field(ctx, ostream, num_beacons,
+               CdmaCells_common_age_plus_1_tag, CdmaCells_age_tag, get_cdma_age);
+}
+
 static bool encode_gsm_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_gsm(ctx);
@@ -148,6 +173,25 @@ static bool encode_gsm_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                GsmCells_common_age_plus_1_tag, GsmCells_age_tag, get_gsm_age);
 }
 
+static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+{
+    uint32_t num_beacons = get_num_lte(ctx);
+
+    return encode_connected_field(ctx, ostream, num_beacons, LteCells_connected_idx_plus_1_tag,
+               get_lte_is_connected) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_mcc_tag, num_beacons, get_lte_mcc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_mnc_tag, num_beacons, get_lte_mnc, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_tac_tag, num_beacons, get_lte_tac, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_eucid_tag, num_beacons, get_lte_e_cellid, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, LteCells_neg_rssi_tag, num_beacons, get_lte_rssi, flip_sign) &&
+           encode_optimized_repeated_field(ctx, ostream, num_beacons,
+               LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
+}
 static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_nbiot(ctx);
@@ -168,24 +212,44 @@ static bool encode_nbiot_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                NbiotCells_common_age_plus_1_tag, NbiotCells_age_tag, get_nbiot_age);
 }
 
-static bool encode_lte_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_umts_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
-    uint32_t num_beacons = get_num_lte(ctx);
+    uint32_t num_beacons = get_num_umts(ctx);
 
-    return encode_connected_field(ctx, ostream, num_beacons, LteCells_connected_idx_plus_1_tag,
-               get_lte_is_connected) &&
+    return encode_connected_field(ctx, ostream, num_beacons, UmtsCells_connected_idx_plus_1_tag,
+               get_umts_is_connected) &&
            encode_repeated_int_field(
-               ctx, ostream, LteCells_mcc_tag, num_beacons, get_lte_mcc, NULL) &&
+               ctx, ostream, UmtsCells_lac_tag, num_beacons, get_umts_lac, NULL) &&
            encode_repeated_int_field(
-               ctx, ostream, LteCells_mnc_tag, num_beacons, get_lte_mnc, NULL) &&
+               ctx, ostream, UmtsCells_ucid_tag, num_beacons, get_umts_ucid, NULL) &&
            encode_repeated_int_field(
-               ctx, ostream, LteCells_tac_tag, num_beacons, get_lte_tac, NULL) &&
+               ctx, ostream, UmtsCells_mcc_tag, num_beacons, get_umts_mcc, NULL) &&
            encode_repeated_int_field(
-               ctx, ostream, LteCells_eucid_tag, num_beacons, get_lte_e_cellid, NULL) &&
+               ctx, ostream, UmtsCells_mnc_tag, num_beacons, get_umts_mnc, NULL) &&
            encode_repeated_int_field(
-               ctx, ostream, LteCells_neg_rssi_tag, num_beacons, get_lte_rssi, flip_sign) &&
+               ctx, ostream, UmtsCells_neg_rssi_tag, num_beacons, get_umts_rssi, flip_sign) &&
            encode_optimized_repeated_field(ctx, ostream, num_beacons,
-               LteCells_common_age_plus_1_tag, LteCells_age_tag, get_lte_age);
+               UmtsCells_common_age_plus_1_tag, UmtsCells_age_tag, get_umts_age);
+}
+
+static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+{
+    uint32_t num_gnss = get_num_gnss(ctx);
+
+    return encode_repeated_int_field(
+               ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat_scaled, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_lon_tag, num_gnss, get_gnss_lon_scaled, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_hpe_tag, num_gnss, get_gnss_hpe, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_alt_tag, num_gnss, get_gnss_alt_scaled, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_vpe_tag, num_gnss, get_gnss_vpe, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_speed_tag, num_gnss, get_gnss_speed_scaled, NULL) &&
+           encode_repeated_int_field(
+               ctx, ostream, Gnss_bearing_tag, num_gnss, get_gnss_bearing, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_nsat_tag, num_gnss, get_gnss_nsat, NULL) &&
+           encode_repeated_int_field(ctx, ostream, Gnss_age_tag, num_gnss, get_gnss_age, NULL);
 }
 
 static bool encode_submessage(
@@ -223,23 +287,42 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_aps(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
         break;
+    case Rq_cdma_cells_tag:
+        if (get_num_cdma(ctx))
+            return encode_submessage(ctx, ostream, field->tag, encode_cdma_fields);
+        break;
     case Rq_gsm_cells_tag:
         if (get_num_gsm(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_gsm_fields);
-        break;
-    case Rq_nbiot_cells_tag:
-        if (get_num_nbiot(ctx))
-            return encode_submessage(ctx, ostream, field->tag, encode_nbiot_fields);
         break;
     case Rq_lte_cells_tag:
         if (get_num_lte(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_lte_fields);
         break;
+    case Rq_nbiot_cells_tag:
+        if (get_num_nbiot(ctx))
+            return encode_submessage(ctx, ostream, field->tag, encode_nbiot_fields);
+        break;
+    case Rq_umts_cells_tag:
+        if (get_num_umts(ctx))
+            return encode_submessage(ctx, ostream, field->tag, encode_umts_fields);
+        break;
+    case Rq_gnss_tag:
+        if (get_num_gnss(ctx))
+            return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
+        break;
     default:
+        printf("Rq_callback() ERROR: unknown tag.\n");
         break;
     }
 
     return true;
+}
+
+int32_t get_maximum_response_size(void)
+{
+    return RsHeader_size + CryptoInfo_size + 1 +
+           AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
 }
 
 int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
@@ -260,14 +343,15 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
 
     // sky_new_request initializes rand_bytes if user does not
     if (ctx->rand_bytes != NULL)
-        ctx->rand_bytes(rq_crypto_info.iv.bytes, 16);
+        ctx->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
 
     // Initialize crypto_info
-    rq_crypto_info.iv.size = 16;
+    rq_crypto_info.iv.size = AES_BLOCKLEN;
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells = ctx;
+    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells =
+        rq.gnss = ctx;
 
     rq.timestamp = (int64_t)ctx->gettime(NULL);
 
@@ -278,7 +362,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
     // Account for necessary encryption padding.
-    aes_padding_length = (16 - rq_size % 16) % 16;
+    aes_padding_length = (AES_BLOCKLEN - rq_size % AES_BLOCKLEN) % AES_BLOCKLEN;
 
     rq_size += aes_padding_length;
 
@@ -426,4 +510,24 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     }
 
     return 0;
+}
+
+static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_lat(ctx, idx) * 1000000;
+}
+
+static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_lon(ctx, idx) * 1000000;
+}
+
+static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_alt(ctx, idx) * 10;
+}
+
+static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
+{
+    return get_gnss_speed(ctx, idx) * 10;
 }

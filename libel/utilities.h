@@ -26,8 +26,8 @@
 Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
-Sky_status_t add_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
-int get_cache(Sky_ctx_t *ctx);
+Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
+int get_from_cache(Sky_ctx_t *ctx);
 int find_best_match(Sky_ctx_t *ctx, bool put);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected);
 #if SKY_DEBUG
@@ -52,6 +52,14 @@ int64_t get_ap_freq(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx);
+
+int32_t get_num_cdma(Sky_ctx_t *ctx);
+int64_t get_cdma_sid(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_cdma_nid(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_cdma_bsid(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_cdma_rssi(Sky_ctx_t *ctx, uint32_t idx);
+bool get_cdma_is_connected(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_cdma_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int32_t get_num_gsm(Sky_ctx_t *ctx);
 int64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx);
@@ -80,6 +88,26 @@ int64_t get_nbiot_lac(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
+
+int32_t get_num_umts(Sky_ctx_t *ctx);
+int64_t get_umts_lac(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_umts_ucid(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_umts_mcc(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_umts_mnc(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_umts_rssi(Sky_ctx_t *ctx, uint32_t idx);
+bool get_umts_is_connected(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_umts_age(Sky_ctx_t *ctx, uint32_t idx);
+
+int32_t get_num_gnss(Sky_ctx_t *ctx);
+float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx);
+float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx);
+int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif
