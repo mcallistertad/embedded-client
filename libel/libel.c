@@ -25,6 +25,13 @@
 #include "libel.h"
 #include "proto.h"
 
+/* A monotonically increasing version number intended to track the client
+ * software version, and which is sent to the server in each request. Clumsier
+ * than just including the Git version string (since it will need to be updated
+ * manually for every release) but cheaper bandwidth-wise.
+ */
+#define SW_VERSION 1
+
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
 
@@ -580,7 +587,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* encode request */
-    rc = serialize_request(ctx, request_buf, bufsize);
+    rc = serialize_request(ctx, request_buf, bufsize, SW_VERSION);
 
     if (rc > 0) {
         *response_size = get_maximum_response_size();
@@ -615,7 +622,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
-    rc = serialize_request(ctx, NULL, 0);
+    rc = serialize_request(ctx, NULL, 0, SW_VERSION);
 
     if (rc > 0) {
         *size = (uint32_t)rc;
