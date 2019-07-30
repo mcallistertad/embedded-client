@@ -108,18 +108,11 @@ int send_request(
     }
 
     // Read response.
-    for (int i = 0; i < 10; i++) {
-        usleep(500);
-        rc = recv(sockfd, response, resp_size, MSG_DONTWAIT /* MSG_WAITALL */);
-        if (rc >= 0)
-            break;
-    }
-    if (rc < 0)
-    {
+    rc = recv(sockfd, response, resp_size, MSG_DONTWAIT /* MSG_WAITALL */);
+    if (rc < 0) {
         printf("Error: unable to receive response\n");
         return -1;
     }
-
     return (int)rc;
 #endif
     return -1;

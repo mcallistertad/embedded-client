@@ -153,7 +153,7 @@ int load_config(char *filename, Config_t *config)
     config->filename = "None";
     config->port = 9758;
     config->partner_id = 2;
-    strcpy(config->server, "192.168.254.70");
+    strcpy(config->server, "192.168.254.77");
     hex2bin("123456123456", MAC_SIZE * 2, config->device_mac, MAC_SIZE);
     hex2bin("000102030405060708090a0b0c0d0e0f", AES_SIZE * 2, config->key, AES_SIZE);
 #endif
