@@ -1201,13 +1201,13 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon hpe info
  */
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.hpe;
 }
@@ -1232,13 +1232,13 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon vpe info
  */
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.vpe;
 }
@@ -1264,13 +1264,13 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon bearing info
  */
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.bearing;
 }
@@ -1280,13 +1280,13 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon nsat info
  */
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.nsat;
 }
