@@ -27,7 +27,7 @@ $ ln -s /usr/bin/pip3 /usr/local/bin/pip
 ```
 (actual paths may differ depending on your system configuration)
 * Google Protocol Buffers `protoc` compiler version 3.3.0 or later. A pre-built binary version of the compiler for Linux x64 (and other platforms) can be downloaded from https://github.com/protocolbuffers/protobuf/releases. For example, download protoc-3.9.0-linux-x86_64.zip (or a more recent version) from that page, and copy bin/protoc from the archive to an appropriate place in your path (e.g., /usr/local/bin). 
-* Google protobuf Python module version 3.7.1 or later (normally installed via `$ pip install protobuf`)
+* Google protobuf Python module version 3.6.1 or later (normally installed via `$ pip install protobuf`)
 
 On Linux, you should see results similar to the below if the appropriate versions are installed and active:
 ```
