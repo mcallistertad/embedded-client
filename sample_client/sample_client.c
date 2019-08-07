@@ -154,7 +154,7 @@ int logger(Sky_log_level_t level, char *s)
             "ERRR" :
             level == SKY_LOG_LEVEL_WARNING ? "WARN" :
                                              level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-        100, s);
+        SKY_LOG_LENGTH, s);
     return 0;
 }
 

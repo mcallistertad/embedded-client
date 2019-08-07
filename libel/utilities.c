@@ -87,8 +87,10 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
 {
     int i, j;
 
-    if (c == NULL)
+    if (c == NULL) {
+        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation: NUL pointer");
         return false;
+    }
 
     if (c->len != CACHE_SIZE) {
         if (logf != NULL)
@@ -119,8 +121,10 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
                 }
             }
         }
-    } else
+    } else {
+        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: crc mismatch!");
         return false;
+    }
     return true;
 }
 
@@ -187,7 +191,7 @@ int logfmt(
 {
 #if SKY_DEBUG
     va_list ap;
-    char buf[100];
+    char buf[SKY_LOG_LENGTH];
     int ret, n;
     if (level > ctx->min_level || function == NULL)
         return -1;

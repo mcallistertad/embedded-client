@@ -101,7 +101,7 @@ int logger(Sky_log_level_t level, char *s)
 
             level == SKY_LOG_LEVEL_WARNING ? "WARN" :
                                              level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
-        80, s);
+        SKY_LOG_LENGTH, s);
     return 0;
 }
 
@@ -148,6 +148,7 @@ void *nv_cache(void)
             }
         }
     }
+    printf("cache restore: failed\n");
     return NULL;
 }
 
