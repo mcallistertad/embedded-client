@@ -241,13 +241,15 @@ int main(int argc, char *argv[])
     /* Add APs to the request */
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
-        hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE);
-        ret_status = sky_add_ap_beacon(
-            ctx, &sky_errno, mac, timestamp - aps[i].age, aps[i].rssi, aps[i].channel, 1);
-        if (ret_status == SKY_SUCCESS)
-            printf("AP #%d added\n", i);
-        else
-            printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+        if (hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
+            ret_status = sky_add_ap_beacon(
+                ctx, &sky_errno, mac, timestamp - aps[i].age, aps[i].rssi, aps[i].channel, 1);
+            if (ret_status == SKY_SUCCESS)
+                printf("AP #%d added\n", i);
+            else
+                printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+        } else
+            printf("Ignoring AP becon with bad MAC Address '%s' index %d\n", aps[i].mac, i + 1);
     }
 
     /* Add UMTS cell */
