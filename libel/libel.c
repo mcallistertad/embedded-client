@@ -249,7 +249,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
         "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %.24s", mac[0], mac[1],
-        mac[2], mac[3], mac[4], mac[5], rssi, channel, is_connected ? "true" : "false",
+        mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
         ctime((const time_t *)&timestamp))
 
     if (!sky_open_flag)
