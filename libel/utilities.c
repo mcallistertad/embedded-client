@@ -229,11 +229,11 @@ void dump_workspace(Sky_ctx_t *ctx)
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon %-2d: Age: %d Type: WiFi, %sMAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                ctx->beacon[i].ap.age, ctx->beacon[i].ap.in_cache ? "cached " : "       ",
+                "Beacon %-2d: Age: %d Type: WiFi, %sMAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, freq: %d",
+                i, ctx->beacon[i].ap.age, ctx->beacon[i].ap.in_cache ? "cached " : "       ",
                 ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
                 ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
-                ctx->beacon[i].ap.rssi)
+                ctx->beacon[i].ap.rssi, ctx->beacon[i].ap.freq)
             break;
         case SKY_BEACON_CDMA:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -300,9 +300,9 @@ void dump_cache(Sky_ctx_t *ctx)
                 switch (b->h.type) {
                 case SKY_BEACON_AP:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                        "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                        b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
-                        b->ap.mac[5], b->ap.rssi)
+                        "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, freq %d",
+                        i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
+                        b->ap.mac[5], b->ap.rssi, b->ap.freq)
                     break;
                 case SKY_BEACON_CDMA:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
