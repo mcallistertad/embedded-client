@@ -35,7 +35,7 @@
 struct ap_scan {
     char mac[MAC_SIZE * 2];
     uint32_t age;
-    uint32_t channel;
+    uint32_t frequency;
     int16_t rssi;
 };
 
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
         uint8_t mac[MAC_SIZE];
         if (hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
             ret_status = sky_add_ap_beacon(
-                ctx, &sky_errno, mac, timestamp - aps[i].age, aps[i].rssi, aps[i].channel, 1);
+                ctx, &sky_errno, mac, timestamp - aps[i].age, aps[i].rssi, aps[i].frequency, 1);
             if (ret_status == SKY_SUCCESS)
                 printf("AP #%d added\n", i);
             else
