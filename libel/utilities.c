@@ -87,8 +87,10 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
 {
     int i, j;
 
-    if (c == NULL)
+    if (c == NULL) {
+        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation: NUL pointer");
         return false;
+    }
 
     if (c->len != CACHE_SIZE) {
         if (logf != NULL)
@@ -119,8 +121,41 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
                 }
             }
         }
-    } else
+    } else {
+        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: crc mismatch!");
         return false;
+    }
+    return true;
+}
+
+/*! \brief validate mac address
+ *
+ *  @param mac pointer to mac address
+ *  @param ctx pointer to context
+ *
+ *  @return true if mac address not all zeros or ones
+ */
+int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
+{
+    int i;
+
+    if (mac[0] == 0 || mac[0] == 0xff) {
+        if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
+            mac[0] == mac[5]) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Invalid mac address");
+            return false;
+        }
+    }
+
+    /* reject if this mac already added */
+    for (i = 0; i < ctx->len; i++) {
+        if (mac == ctx->beacon[i].ap.mac)
+            continue;
+        if (memcmp(mac, ctx->beacon[i].ap.mac, MAC_SIZE) == 0) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon with duplicate mac address");
+            return false;
+        }
+    }
     return true;
 }
 
@@ -156,7 +191,7 @@ int logfmt(
 {
 #if SKY_DEBUG
     va_list ap;
-    char buf[100];
+    char buf[SKY_LOG_LENGTH];
     int ret, n;
     if (level > ctx->min_level || function == NULL)
         return -1;
@@ -194,11 +229,11 @@ void dump_workspace(Sky_ctx_t *ctx)
         switch (ctx->beacon[i].h.type) {
         case SKY_BEACON_AP:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Beacon %-2d: Age: %d Type: WiFi, %sMAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                ctx->beacon[i].ap.age, ctx->beacon[i].ap.in_cache ? "cached " : "       ",
+                "Beacon %-2d: Age: %d Type: WiFi, %sMAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, freq: %d",
+                i, ctx->beacon[i].ap.age, ctx->beacon[i].ap.in_cache ? "cached " : "       ",
                 ctx->beacon[i].ap.mac[0], ctx->beacon[i].ap.mac[1], ctx->beacon[i].ap.mac[2],
                 ctx->beacon[i].ap.mac[3], ctx->beacon[i].ap.mac[4], ctx->beacon[i].ap.mac[5],
-                ctx->beacon[i].ap.rssi)
+                ctx->beacon[i].ap.rssi, ctx->beacon[i].ap.freq)
             break;
         case SKY_BEACON_CDMA:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -251,10 +286,10 @@ void dump_cache(Sky_ctx_t *ctx)
 
     for (i = 0; i < CACHE_SIZE; i++) {
         c = &ctx->cache->cacheline[i];
-        if (c->len == 0 || c->time == 0)
+        if (c->len == 0 || c->time == 0) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d - empty len:%d ap_len:%d time:%u", i,
                 ctx->cache->len, c->len, c->ap_len, c->time)
-        else {
+        } else {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d", i,
                 ctx->cache->len, ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "",
                 (int)c->loc.lat, (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
@@ -265,9 +300,9 @@ void dump_cache(Sky_ctx_t *ctx)
                 switch (b->h.type) {
                 case SKY_BEACON_AP:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                        "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d", i,
-                        b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
-                        b->ap.mac[5], b->ap.rssi)
+                        "cache %-2d: Type: WiFi, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d, freq %d",
+                        i, b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4],
+                        b->ap.mac[5], b->ap.rssi, b->ap.freq)
                     break;
                 case SKY_BEACON_CDMA:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -1201,13 +1236,13 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon hpe info
  */
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.hpe;
 }
@@ -1232,13 +1267,13 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon vpe info
  */
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.vpe;
 }
@@ -1264,13 +1299,13 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon bearing info
  */
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.bearing;
 }
@@ -1280,13 +1315,13 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx workspace buffer
  *  @param idx index (unused)
  *
- *  @return beacon is_connected info
+ *  @return beacon nsat info
  */
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
-        return NAN;
+        return 0;
     }
     return ctx->gps.nsat;
 }

@@ -7,7 +7,7 @@ CLIENT_SRCS = sample_client.c send.c config.c
 CLIENT_OBJS = $(CLIENT_SRCS:.c=.o)
 
 ${CLIENT_NAME}: ${CLIENT_OBJS} ${LIB_DIR}/libel.a
-	$(CC) -lc -lm -o ${CLIENT_NAME} ${CLIENT_OBJS} ${LIB_DIR}/libel.a
+	$(CC) -lc -o ${CLIENT_NAME} ${CLIENT_OBJS} ${LIB_DIR}/libel.a -lm
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<

@@ -325,15 +325,14 @@ int32_t get_maximum_response_size(void)
            AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
 }
 
-int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
+int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version)
 {
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
     struct AES_ctx aes_ctx;
 
-    RqHeader rq_hdr;
-
-    CryptoInfo rq_crypto_info;
+    RqHeader rq_hdr = RqHeader_init_default;
+    CryptoInfo rq_crypto_info = CryptoInfo_init_default;
 
     Rq rq;
 
@@ -373,6 +372,7 @@ int32_t serialize_request(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len)
     // Initialize request header.
     rq_hdr.crypto_info_length = crypto_info_size;
     rq_hdr.rq_length = rq_size;
+    rq_hdr.sw_version = sw_version;
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
