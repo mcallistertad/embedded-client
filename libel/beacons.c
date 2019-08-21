@@ -25,6 +25,7 @@
 #include "libel.h"
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
+#define NOMINAL_RSSI(b) ((b) == -1 ? (-90) : (b))
 
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
@@ -113,7 +114,8 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         /* if AP, add in rssi order */
         if (b->h.type == SKY_BEACON_AP) {
             for (; i < ctx->ap_len; i++)
-                if (ctx->beacon[i].h.type != SKY_BEACON_AP || ctx->beacon[i].ap.rssi > b->ap.rssi)
+                if (ctx->beacon[i].h.type != SKY_BEACON_AP ||
+                    NOMINAL_RSSI(ctx->beacon[i].ap.rssi) > b->ap.rssi)
                     break;
         }
         /* shift beacons to make room for the new one */
@@ -147,8 +149,9 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         return SKY_ERROR;
 
     /* what share of the range of rssi values does each beacon represent */
-    band_range =
-        (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi) / ((float)ctx->ap_len - 1);
+    band_range = (NOMINAL_RSSI(ctx->beacon[ctx->ap_len - 1].ap.rssi) -
+                     NOMINAL_RSSI(ctx->beacon[0].ap.rssi)) /
+                 ((float)ctx->ap_len - 1);
 
     /* if the rssi range is small, throw away middle beacon */
 
@@ -158,25 +161,26 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     }
 
     /* if beacon with min RSSI is below threshold, throw it out */
-    if (ctx->beacon[0].ap.rssi < -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
+    if (NOMINAL_RSSI(ctx->beacon[0].ap.rssi) < -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Discarding beacon %d with very weak strength", 0)
         return remove_beacon(ctx, 0);
     }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band range: %d.%02d",
-        (ctx->beacon[ctx->ap_len - 1].ap.rssi - ctx->beacon[0].ap.rssi), (int)band_range,
-        (int)fabs(round(100 * (band_range - (int)band_range))))
+        (NOMINAL_RSSI(ctx->beacon[ctx->ap_len - 1].ap.rssi) - NOMINAL_RSSI(ctx->beacon[0].ap.rssi)),
+        (int)band_range, (int)fabs(round(100 * (band_range - (int)band_range))))
 
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
     for (i = 0; i < ctx->ap_len; i++)
-        ideal_rssi[i] = ctx->beacon[0].ap.rssi + (i * band_range);
+        ideal_rssi[i] = NOMINAL_RSSI(ctx->beacon[0].ap.rssi) + (i * band_range);
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
     /* unless all the middle candidates are in the cache */
     for (i = 1, reject = -1, worst = 0; i < ctx->ap_len - 1; i++) {
-        if (!ctx->beacon[i].ap.in_cache && fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]) > worst) {
-            worst = fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]);
+        if (!ctx->beacon[i].ap.in_cache &&
+            fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]) > worst) {
+            worst = fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]);
             reject = i;
         }
     }
@@ -194,9 +198,10 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
             (reject == i) ? "remove" : "      ", i,
             ctx->beacon[i].ap.in_cache ? "cached" : "      ", (int)ideal_rssi[i],
             (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
-            (int)fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]), ideal_rssi[i],
-            (int)fabs(round(100 * (fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i]) -
-                                      (int)fabs(ctx->beacon[i].ap.rssi - ideal_rssi[i])))),
+            (int)fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]), ideal_rssi[i],
+            (int)fabs(
+                round(100 * (fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]) -
+                                (int)fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i])))),
             ctx->beacon[i].ap.rssi)
     }
 #endif
