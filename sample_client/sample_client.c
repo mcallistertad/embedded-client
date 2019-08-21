@@ -348,7 +348,10 @@ int main(int argc, char *argv[])
         /* Need to send the request to the server. */
         response = malloc(response_size * sizeof(uint8_t));
         printf("server=%s, port=%d\n", config.server, config.port);
-        printf("Sending request of length %d to server\n", request_size);
+        printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
+            request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
+        if (response == NULL)
+            exit(-1);
 
         int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
             config.server, config.port);

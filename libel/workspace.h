@@ -20,10 +20,10 @@
 
 #define SKY_MAGIC 0xD1967805
 typedef struct sky_header {
-    uint32_t magic;
-    uint32_t size;
-    uint32_t time;
-    uint32_t crc32;
+    uint32_t magic; /* SKY_MAGIC */
+    uint32_t size; /* total number of bytes in structure */
+    uint32_t time; /* timestamp when structure was allocated */
+    uint32_t crc32; /* crc32 over header */
 } Sky_header_t;
 
 typedef struct sky_cacheline {
@@ -33,6 +33,20 @@ typedef struct sky_cacheline {
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
+
+/* Access the cache config parameters */
+#define CONFIG(cache, param) (cache->config.param)
+
+typedef struct sky_config_pad {
+    uint32_t last_config_time; /* time when the last new config was received */
+    uint32_t total_beacons;
+    uint32_t max_ap_beacons;
+    uint32_t cache_match_threshold;
+    uint32_t cache_age_threshold;
+    uint32_t cache_beacon_threshold;
+    uint32_t cache_neg_rssi_threshold;
+    /* add more configuration params here */
+} Sky_config_t;
 
 typedef struct sky_cache {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
@@ -44,6 +58,7 @@ typedef struct sky_cache {
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
     Sky_cacheline_t *newest;
+    Sky_config_t config; /* dynamic config parameters */
 } Sky_cache_t;
 
 typedef struct sky_ctx {
