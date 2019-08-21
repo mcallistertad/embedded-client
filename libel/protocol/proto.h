@@ -16,8 +16,4 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
 // Calculate the maximum buffer space needed for the ELG server response
 int32_t get_maximum_response_size(void);
 
-// Process any configuration overrides
-bool config_overrides(Sky_cache_t *c, Rs *rs);
-void config_defaults(Sky_cache_t *c);
-
 #endif

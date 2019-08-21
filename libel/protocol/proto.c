@@ -11,6 +11,7 @@
 #include "proto.h"
 #include "aes.h"
 
+static bool apply_config_overrides(Sky_cache_t *c, Rs *rs);
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
@@ -321,12 +322,14 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 
 int32_t get_maximum_response_size(void)
 {
-    return RsHeader_size + CryptoInfo_size + 1 + MAX_CLIENTCONFIG_SIZE +
-           AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
+    return RsHeader_size + CryptoInfo_size + 1 +
+           AES_BLOCKLEN *
+               ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE + AES_BLOCKLEN - 1) /
+                   AES_BLOCKLEN);
 }
 
 int32_t serialize_request(
-    Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool config)
+    Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
 {
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
@@ -374,7 +377,7 @@ int32_t serialize_request(
     rq_hdr.crypto_info_length = crypto_info_size;
     rq_hdr.rq_length = rq_size;
     rq_hdr.sw_version = sw_version;
-    rq_hdr.request_client_conf = config ? 1 : 0;
+    rq_hdr.request_client_conf = request_config ? 1 : 0;
 
     // First byte of message on wire is the length (in bytes) of the request
     // header.
@@ -504,10 +507,10 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->hpe = (uint16_t)rs.hpe;
             loc->location_source = (Sky_loc_source_t)rs.source;
         }
-        if (config_overrides(ctx->cache, &rs)) {
-            CONFIG(ctx->cache, last_config) = (*ctx->gettime)(NULL);
+        if (apply_config_overrides(ctx->cache, &rs)) {
+            CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
             if (ctx->logf)
-                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New override received");
+                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
     } else {
         loc->lat = 0;
@@ -545,7 +548,7 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return bool true if new override is recived from server
  */
-bool config_overrides(Sky_cache_t *c, Rs *rs)
+static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
 {
     bool override = false;
 
@@ -553,34 +556,29 @@ bool config_overrides(Sky_cache_t *c, Rs *rs)
     if (rs->config.total_beacons != 0 && rs->config.total_beacons != CONFIG(c, total_beacons)) {
         if (rs->config.total_beacons < TOTAL_BEACONS && rs->config.total_beacons > 1) {
             CONFIG(c, total_beacons) = rs->config.total_beacons;
-            override = true;
         }
     }
     if (rs->config.max_ap_beacons != 0 && rs->config.max_ap_beacons != CONFIG(c, max_ap_beacons)) {
         if (rs->config.max_ap_beacons < MAX_AP_BEACONS) {
             CONFIG(c, max_ap_beacons) = rs->config.max_ap_beacons;
-            override = true;
         }
     }
     if (rs->config.cache_match_threshold != 0 &&
         rs->config.cache_match_threshold != CONFIG(c, cache_match_threshold)) {
         if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold < 100) {
             CONFIG(c, cache_match_threshold) = rs->config.cache_match_threshold;
-            override = true;
         }
     }
     if (rs->config.cache_age_threshold != 0 &&
         rs->config.cache_age_threshold != CONFIG(c, cache_age_threshold)) {
         if (rs->config.cache_age_threshold < 9000) {
             CONFIG(c, cache_age_threshold) = rs->config.cache_age_threshold;
-            override = true;
         }
     }
     if (rs->config.cache_beacon_threshold != 0 &&
         rs->config.cache_beacon_threshold != CONFIG(c, cache_beacon_threshold)) {
         if (rs->config.cache_beacon_threshold < rs->config.total_beacons) {
             CONFIG(c, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
-            override = true;
         }
     }
     if (rs->config.cache_neg_rssi_threshold != 0 &&
@@ -588,33 +586,13 @@ bool config_overrides(Sky_cache_t *c, Rs *rs)
         if (rs->config.cache_neg_rssi_threshold >= 10 &&
             rs->config.cache_neg_rssi_threshold < 128) {
             CONFIG(c, cache_neg_rssi_threshold) = rs->config.cache_neg_rssi_threshold;
-            override = true;
         }
     }
+    override = (rs->config.total_beacons != 0 || rs->config.max_ap_beacons != 0 ||
+                rs->config.cache_match_threshold != 0 || rs->config.cache_age_threshold != 0 ||
+                rs->config.cache_beacon_threshold != 0 || rs->config.cache_neg_rssi_threshold != 0);
+
     /* Add new config parameters here */
 
     return override;
-}
-
-/*! \brief set dynamic config parameter defaults
- *
- *  @param cache buffer
- *
- *  @return void
- */
-void config_defaults(Sky_cache_t *c)
-{
-    if (CONFIG(c, total_beacons) == 0)
-        CONFIG(c, total_beacons) = TOTAL_BEACONS;
-    if (CONFIG(c, max_ap_beacons) == 0)
-        CONFIG(c, max_ap_beacons) = MAX_AP_BEACONS;
-    if (CONFIG(c, cache_match_threshold) == 0)
-        CONFIG(c, cache_match_threshold) = CACHE_MATCH_THRESHOLD;
-    if (CONFIG(c, cache_age_threshold) == 0)
-        CONFIG(c, cache_age_threshold) = CACHE_AGE_THRESHOLD;
-    if (CONFIG(c, cache_beacon_threshold) == 0)
-        CONFIG(c, cache_beacon_threshold) = CACHE_BEACON_THRESHOLD;
-    if (CONFIG(c, cache_neg_rssi_threshold) == 0)
-        CONFIG(c, cache_neg_rssi_threshold) = CACHE_RSSI_THRESHOLD;
-    /* Add new config parameters here */
 }

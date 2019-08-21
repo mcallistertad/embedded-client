@@ -394,7 +394,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         ratio[i] = score[i] = 0;
         if (put && (ctx->cache->cacheline[i].time == 0 ||
                        (uint32_t)(*ctx->gettime)(NULL)-ctx->cache->cacheline[i].time >
-                           (CONFIG(ctx->cache, total_beacons) * 60 * 60))) {
+                           (CONFIG(ctx->cache, cache_age_threshold) * 60 * 60))) {
             /* looking for match for put, empty cacheline = 1st choice */
             score[i] = CONFIG(ctx->cache, total_beacons) * 2;
         } else if (!put && ctx->cache->cacheline[i].time == 0) {
@@ -426,16 +426,13 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: fill empty cacheline", i)
         } else if (ctx->ap_len && ctx->cache->cacheline[i].ap_len) {
             // score = intersection(A, B) / union(A, B)
-
-            ratio[i] = (float)score[i] / (ctx->ap_len +
-                                             MIN(ctx->cache->cacheline[i].ap_len,
-                                                 CONFIG(ctx->cache, max_ap_beacons)) -
-                                             score[i]);
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d)", i,
-                (int)round(ratio[i] * 100), score[i],
-                ctx->ap_len +
+            float unionAB =
+                (ctx->ap_len +
                     MIN(ctx->cache->cacheline[i].ap_len, CONFIG(ctx->cache, max_ap_beacons)) -
-                    score[i])
+                    score[i]);
+            ratio[i] = (float)score[i] / unionAB;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d)", i,
+                (int)round(ratio[i] * 100), score[i], unionAB)
 
         } else if (ctx->len - ctx->ap_len &&
                    ctx->cache->cacheline[i].len - ctx->cache->cacheline[i].ap_len) {

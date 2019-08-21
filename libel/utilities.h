@@ -37,7 +37,7 @@ int logfmt(
 #endif
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
-
+void config_defaults(Sky_cache_t *c);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 

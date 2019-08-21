@@ -32,6 +32,9 @@
  */
 #define SW_VERSION 1
 
+/* Interval in seconds between requests for config params */
+#define CONFIG_REQUEST_INTERVAL (24 * 60 * 60) /* 24 hours */
+
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
 
@@ -72,7 +75,7 @@ Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky
         memmove(c, sky_state, sky_state->header.size);
         config_defaults(c);
         if (update)
-            c->config.last_config = 0; /* force an update */
+            c->config.last_config_time = 0; /* force an update */
         return sky_return(sky_errno, SKY_ERROR_NONE);
     }
     return sky_return(sky_errno, SKY_ERROR_BAD_STATE);
@@ -138,7 +141,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         cache.header.crc32 = sky_crc32(
             &cache.header.magic, (uint8_t *)&cache.header.crc32 - (uint8_t *)&cache.header.magic);
         cache.len = CACHE_SIZE;
-        cache.config.last_config = 0;
+        cache.config.last_config_time = 0;
         config_defaults(&cache);
         for (i = 0; i < CACHE_SIZE; i++) {
             for (j = 0; j < TOTAL_BEACONS; j++) {
@@ -682,15 +685,15 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
         ctx->len, bufsize)
 
-    if (ctx->cache->config.last_config == 0)
+    if (ctx->cache->config.last_config_time == 0)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Requesting new dynamic configuration parameters")
     else
-        LOGFMT(
-            ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d", ctx->cache->config.last_config)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
+            ctx->cache->config.last_config_time)
 
     /* encode request */
     rc = serialize_request(
-        ctx, request_buf, bufsize, SW_VERSION, ctx->cache->config.last_config == 0);
+        ctx, request_buf, bufsize, SW_VERSION, ctx->cache->config.last_config_time == 0);
 
     if (rc > 0) {
         *response_size = get_maximum_response_size();
@@ -727,13 +730,15 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
-    rq_config = (ctx->cache->config.last_config == 0) ||
-                (((*ctx->gettime)(NULL)-ctx->cache->config.last_config) / 60 > 2) /* min */;
-    //                (ctx->header.time - ctx->cache->config.last_config) / 3600 > 24 /* hr */;
-    if (rq_config)
-        ctx->cache->config.last_config = 0; /* force request on next serialize */
+    rq_config =
+        (ctx->cache->config.last_config_time == 0) ||
+        (((*ctx->gettime)(NULL)-ctx->cache->config.last_config_time) > CONFIG_REQUEST_INTERVAL);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && ctx->cache->config.last_config != 0 ? "Timeout" : rq_config ? "Forced" : "No");
+        rq_config && ctx->cache->config.last_config_time != 0 ? "Timeout" :
+                                                                rq_config ? "Forced" : "No");
+
+    if (rq_config)
+        ctx->cache->config.last_config_time = 0; /* request on next serialize */
     rc = serialize_request(ctx, NULL, 0, SW_VERSION, rq_config);
 
     if (rc > 0) {

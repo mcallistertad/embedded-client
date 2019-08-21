@@ -271,10 +271,11 @@ void dump_workspace(Sky_ctx_t *ctx)
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI)",
+        "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec",
         CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
         CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
-        CONFIG(ctx->cache, cache_beacon_threshold), CONFIG(ctx->cache, cache_neg_rssi_threshold))
+        CONFIG(ctx->cache, cache_beacon_threshold), CONFIG(ctx->cache, cache_neg_rssi_threshold),
+        ctx->header.time - CONFIG(ctx->cache, last_config_time))
 }
 
 /*! \brief dump the beacons in the cache
@@ -340,6 +341,29 @@ void dump_cache(Sky_ctx_t *ctx)
             }
         }
     }
+}
+
+/*! \brief set dynamic config parameter defaults
+ *
+ *  @param cache buffer
+ *
+ *  @return void
+ */
+void config_defaults(Sky_cache_t *c)
+{
+    if (CONFIG(c, total_beacons) == 0)
+        CONFIG(c, total_beacons) = TOTAL_BEACONS;
+    if (CONFIG(c, max_ap_beacons) == 0)
+        CONFIG(c, max_ap_beacons) = MAX_AP_BEACONS;
+    if (CONFIG(c, cache_match_threshold) == 0)
+        CONFIG(c, cache_match_threshold) = CACHE_MATCH_THRESHOLD;
+    if (CONFIG(c, cache_age_threshold) == 0)
+        CONFIG(c, cache_age_threshold) = CACHE_AGE_THRESHOLD;
+    if (CONFIG(c, cache_beacon_threshold) == 0)
+        CONFIG(c, cache_beacon_threshold) = CACHE_BEACON_THRESHOLD;
+    if (CONFIG(c, cache_neg_rssi_threshold) == 0)
+        CONFIG(c, cache_neg_rssi_threshold) = CACHE_RSSI_THRESHOLD;
+    /* Add new config parameters here */
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx partner_id)

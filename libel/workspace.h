@@ -20,10 +20,10 @@
 
 #define SKY_MAGIC 0xD1967805
 typedef struct sky_header {
-    uint32_t magic;
-    uint32_t size;
-    uint32_t time;
-    uint32_t crc32;
+    uint32_t magic; /* SKY_MAGIC */
+    uint32_t size; /* total number of bytes in structure */
+    uint32_t time; /* timestamp when structure was allocated */
+    uint32_t crc32; /* crc32 over header */
 } Sky_header_t;
 
 typedef struct sky_cacheline {
@@ -38,14 +38,14 @@ typedef struct sky_cacheline {
 #define CONFIG(cache, param) (cache->config.param)
 
 typedef struct sky_config_pad {
-    uint32_t last_config;
+    uint32_t last_config_time; /* time when the last new config was received */
     uint32_t total_beacons;
     uint32_t max_ap_beacons;
     uint32_t cache_match_threshold;
     uint32_t cache_age_threshold;
     uint32_t cache_beacon_threshold;
     uint32_t cache_neg_rssi_threshold;
-    /* add more configuratio params here */
+    /* add more configuration params here */
 } Sky_config_t;
 
 typedef struct sky_cache {
