@@ -115,7 +115,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         if (b->h.type == SKY_BEACON_AP) {
             for (; i < ctx->ap_len; i++)
                 if (ctx->beacon[i].h.type != SKY_BEACON_AP ||
-                    NOMINAL_RSSI(ctx->beacon[i].ap.rssi) > b->ap.rssi)
+                    NOMINAL_RSSI(ctx->beacon[i].ap.rssi) > NOMINAL_RSSI(b->ap.rssi))
                     break;
         }
         /* shift beacons to make room for the new one */
