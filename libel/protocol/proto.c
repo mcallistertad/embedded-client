@@ -508,10 +508,11 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_source = (Sky_loc_source_t)rs.source;
         }
         if (apply_config_overrides(ctx->cache, &rs)) {
-            CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
             if (ctx->logf)
                 (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
+        if (CONFIG(ctx->cache, last_config_time) == 0)
+            CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
     } else {
         loc->lat = 0;
         loc->lon = 0;
