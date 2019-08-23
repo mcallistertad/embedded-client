@@ -426,7 +426,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: fill empty cacheline", i)
         } else if (ctx->ap_len && ctx->cache->cacheline[i].ap_len) {
             // score = intersection(A, B) / union(A, B)
-            float unionAB =
+            int unionAB =
                 (ctx->ap_len +
                     MIN(ctx->cache->cacheline[i].ap_len, CONFIG(ctx->cache, max_ap_beacons)) -
                     score[i]);
