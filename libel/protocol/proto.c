@@ -578,7 +578,7 @@ static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
     }
     if (rs->config.cache_beacon_threshold != 0 &&
         rs->config.cache_beacon_threshold != CONFIG(c, cache_beacon_threshold)) {
-        if (rs->config.cache_beacon_threshold < rs->config.total_beacons) {
+        if (rs->config.cache_beacon_threshold < CONFIG(c, total_beacons)) {
             CONFIG(c, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
         }
     }
