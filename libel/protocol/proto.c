@@ -566,7 +566,7 @@ static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
     }
     if (rs->config.cache_match_threshold != 0 &&
         rs->config.cache_match_threshold != CONFIG(c, cache_match_threshold)) {
-        if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold < 100) {
+        if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold <= 100) {
             CONFIG(c, cache_match_threshold) = rs->config.cache_match_threshold;
         }
     }
