@@ -49,4 +49,8 @@
  */
 #define CACHE_SIZE 1
 
+/*! \brief The maximum space the dynamic configuration parameters may take up in bytes
+ */
+#define MAX_CLIENTCONFIG_SIZE 100
+
 #endif
