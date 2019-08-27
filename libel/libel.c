@@ -668,7 +668,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %s",
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %d",
             (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
             (int)cached_time)
