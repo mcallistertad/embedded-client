@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
         }
 
         /* Decode the response from server or cache */
-        ret_status = sky_decode_response(ctx, &sky_errno, response, bufsize, &loc);
+        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, &loc);
 
         if (ret_status != SKY_SUCCESS)
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
