@@ -291,9 +291,9 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %.24s", mac[0], mac[1],
+        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %d", mac[0], mac[1],
         mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
-        ctime((const time_t *)&timestamp))
+        (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -346,8 +346,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, %.24s", e_cellid, mcc, mnc,
-        tac, rsrp, is_connected ? "true" : "false", ctime((const time_t *)&timestamp))
+        "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, %d", e_cellid, mcc, mnc,
+        tac, rsrp, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -398,8 +398,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, %.24s", lac, ci, mcc, mnc, rssi,
-        is_connected ? "true" : "false", ctime((const time_t *)&timestamp))
+        "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, %d", lac, ci, mcc, mnc, rssi,
+        is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -450,8 +450,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, %.24s", lac, ucid, mcc, mnc,
-        rscp, is_connected ? "true" : "false", ctime((const time_t *)&timestamp))
+        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, %d", lac, ucid, mcc, mnc,
+        rscp, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -500,8 +500,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, %.24s", sid,
-        nid, bsid, rssi, is_connected ? "true" : "false", ctime((const time_t *)&timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, %d", sid,
+        nid, bsid, rssi, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -552,8 +552,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, %.24s", mcc, mnc, e_cellid,
-        tac, nrsrp, is_connected ? "true" : "false", ctime((const time_t *)&timestamp))
+        "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, %d", mcc, mnc, e_cellid,
+        tac, nrsrp, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -609,9 +609,9 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
         (int)fabs(round(1000000 * (lon - (int)lon))), hpe, (int)altitude,
         (int)fabs(round(100 * (altitude - (int)altitude))), vpe)
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing: %d.%01d, nsat: %d, %.24s", (int)speed,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing: %d.%01d, nsat: %d, %d", (int)speed,
         (int)fabs(round(10 * (speed - (int)speed))), (int)bearing,
-        (int)fabs(round(1 * (bearing - (int)bearing))), nsat, ctime((const time_t *)&timestamp))
+        (int)fabs(round(1 * (bearing - (int)bearing))), nsat, (int)timestamp)
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
@@ -668,10 +668,10 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %s",
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %d",
             (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
-            ctime((const time_t *)&cached_time))
+            (int)cached_time)
 #endif
         return SKY_FINALIZE_LOCATION;
     }
