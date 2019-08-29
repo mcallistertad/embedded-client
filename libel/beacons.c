@@ -139,7 +139,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
@@ -216,9 +216,9 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR otherwise
+ *  @return true if beacon removed or false otherwise
  */
-static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
+static bool filter_virtual_aps(Sky_ctx_t *ctx)
 {
     int i, j;
     int cmp, rm, keep;
@@ -230,13 +230,13 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     dump_workspace(ctx);
 
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
-        return SKY_ERROR;
+        return false;
     }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi")
-        return SKY_ERROR;
+        return false;
     }
 
     keep = rm = -1;
@@ -266,12 +266,12 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
                     cached ? " (cached)" : "")
                 remove_beacon(ctx, rm);
-                return SKY_SUCCESS;
+                return true;
             }
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match")
-    return SKY_ERROR;
+    return false;
 }
 
 /*! \brief add beacon to list
@@ -313,7 +313,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
     /* beacon is AP and is subject to filtering */
-    if (filter_virtual_aps(ctx) == SKY_ERROR)
+    if (!filter_virtual_aps(ctx))
         if (filter_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
