@@ -497,8 +497,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold))
         return bestc;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed score %d (vs %d)",
-        (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed")
     return -1;
 }
 
