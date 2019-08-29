@@ -239,13 +239,27 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     for (j = 0; j < ctx->ap_len; j++) {
         for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
-                remove_beacon(ctx, j);
-                return SKY_SUCCESS;
+                if (!ctx->beacon[j].ap.in_cache) {
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
+                    remove_beacon(ctx, j);
+                    return SKY_SUCCESS;
+                } else {
+                    LOGFMT(
+                        ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d (cached)", i, j)
+                    remove_beacon(ctx, i);
+                    return SKY_SUCCESS;
+                }
             } else if (cmp > 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", i, j)
-                remove_beacon(ctx, i);
-                return SKY_SUCCESS;
+                if (!ctx->beacon[i].ap.in_cache) {
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", i, j)
+                    remove_beacon(ctx, i);
+                    return SKY_SUCCESS;
+                } else {
+                    LOGFMT(
+                        ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d (cached)", j, i)
+                    remove_beacon(ctx, j);
+                    return SKY_SUCCESS;
+                }
             }
         }
     }
