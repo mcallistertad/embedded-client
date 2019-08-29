@@ -67,7 +67,7 @@ void set_mac(uint8_t *mac)
     if (rand() % 3 == 0) {
         /* Virtual MAC */
         memcpy(mac, refs[0], sizeof(refs[0]));
-        mac[rand() % 2 + 4] ^= (0x01 << (rand() % 7));
+        mac[rand() % 2 + 4] ^= (0x01 << (rand() % 8));
         printf("Virt MAC\n");
     } else if (rand() % 3 != 0) {
         /* rand MAC */

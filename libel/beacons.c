@@ -211,15 +211,18 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
+ *         When similar, remove beacon with highesr mac address
+ *         unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR otherwise
  */
 static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp;
+    int cmp, rm, keep;
+    bool cached;
 
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
@@ -236,30 +239,34 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
         return SKY_ERROR;
     }
 
+    keep = rm = -1;
+    cached = false;
     for (j = 0; j < ctx->ap_len; j++) {
         for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
-                if (!ctx->beacon[j].ap.in_cache) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
-                    remove_beacon(ctx, j);
-                    return SKY_SUCCESS;
+                if (ctx->beacon[j].ap.in_cache) {
+                    rm = i;
+                    keep = j;
+                    cached = true;
                 } else {
-                    LOGFMT(
-                        ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d (cached)", i, j)
-                    remove_beacon(ctx, i);
-                    return SKY_SUCCESS;
+                    rm = j;
+                    keep = i;
                 }
             } else if (cmp > 0) {
-                if (!ctx->beacon[i].ap.in_cache) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", i, j)
-                    remove_beacon(ctx, i);
-                    return SKY_SUCCESS;
+                if (ctx->beacon[i].ap.in_cache) {
+                    rm = j;
+                    keep = i;
+                    cached = true;
                 } else {
-                    LOGFMT(
-                        ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d (cached)", j, i)
-                    remove_beacon(ctx, j);
-                    return SKY_SUCCESS;
+                    rm = i;
+                    keep = j;
                 }
+            }
+            if (rm != -1) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
+                    cached ? " (cached)" : "")
+                remove_beacon(ctx, rm);
+                return SKY_SUCCESS;
             }
         }
     }
