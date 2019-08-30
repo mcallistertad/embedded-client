@@ -1,387 +1,522 @@
 validate_cache: Restoring Cache
-Rand( -777 )
-libEL DEBG: Skyhook Embedded Library (Version: 0.1.1-79-g70462ea-dirty)
+Rand( -878 )
+libEL DEBG: Skyhook Embedded Library (Version: 1.1.0-7-g03566b6-dirty)
 libEL DEBG: libel.c:sky_new_request() 5 cachelines present
 libEL DEBG: utilities.c:dump_cache() cache: 0 of 5 GPS:-101.223572,44.629398,351
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :0 : Type: WiFi, MAC D4:A3:64:B2:F5:7E rssi: -115, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 0 :1 : Type: WiFi, MAC D4:5D:64:69:F5:7E rssi: -112, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 0 :1 : Type: WiFi, MAC D4:85:64:B2:F5:7C rssi: -109, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :2 : Type: WiFi, MAC E4:75:64:B2:F5:7E rssi: -90, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :3 : Type: WiFi, MAC D4:85:8F:B2:A6:7E rssi: -38, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :4 : Type: WiFi, MAC E4:75:52:B2:F5:7E rssi: -23, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 0 :5 : Type: WiFi, MAC D4:85:64:B2:F7:7E rssi: -20, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 0 :5 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -20, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :6 : Type: NB-IoT, mcc: 237, mnc: 734, e_cellid: 253189921, tac: 959, rssi: -145
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :7 : Type: NB-IoT, mcc: 254, mnc: 139, e_cellid: 35326949, tac: 46327, rssi: -104
-libEL DEBG: utilities.c:dump_cache() cache: 1 of 5<-newest GPS:-94.784805,51.879089,309
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :0 : Type: WiFi, MAC D4:85:64:B2:F5:76 rssi: -121, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :1 : Type: WiFi, MAC 5B:85:64:F1:F5:7E rssi: -112, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :2 : Type: WiFi, MAC E4:EF:64:B2:F5:7E rssi: -94, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :3 : Type: WiFi, MAC D4:85:64:B2:F5:3E rssi: -1, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :4 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -39, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :5 : Type: WiFi, MAC 17:85:64:B2:F5:7E rssi: -12, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :6 : Type: NB-IoT, mcc: 567, mnc: 119, e_cellid: 200564759, tac: 46074, rssi: -107
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :7 : Type: NB-IoT, mcc: 511, mnc: 420, e_cellid: 67017019, tac: 51091, rssi: -90
+libEL DEBG: utilities.c:dump_cache() cache: 1 of 5<-newest GPS:-95.342064,40.714916,454
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :0 : Type: WiFi, MAC D4:85:64:B2:F4:7E rssi: -124, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :1 : Type: WiFi, MAC DE:65:64:B2:F5:7E rssi: -119, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :2 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -102, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :3 : Type: WiFi, MAC D4:02:64:B2:F5:1D rssi: -69, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :4 : Type: WiFi, MAC F4:5F:64:B2:F5:7E rssi: -46, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :5 : Type: WiFi, MAC F4:65:64:B2:F5:7E rssi: -23, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :6 : Type: NB-IoT, mcc: 501, mnc: 14, e_cellid: 157954272, tac: 10235, rssi: -98
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :7 : Type: NB-IoT, mcc: 231, mnc: 222, e_cellid: 265101120, tac: 28659, rssi: -98
 libEL DEBG: utilities.c:dump_cache() cache: 2 of 5 - empty len:0 ap_len:0 time:0
 libEL DEBG: utilities.c:dump_cache() cache: 3 of 5 - empty len:0 ap_len:0 time:0
 libEL DEBG: utilities.c:dump_cache() cache: 4 of 5 - empty len:0 ap_len:0 time:0
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 0 beacons, WiFi 0, connected -1
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: unit_test.c:main() ctx: magic:D1967805 size:00000200 crc:1B7FB429
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: unit_test.c:main() ctx: magic:D1967805 size:00000200 crc:924C7D54
+Non-Virt MAC
+Non-Virt MAC
+Rand MAC
 Virt MAC
+Rand MAC
+Non-Virt MAC
+Virt MAC
+Rand MAC
+Non-Virt MAC
 Rand MAC
 Known MAC
 Known MAC
 Known MAC
-Virt MAC
-Virt MAC
 Non-Virt MAC
+Virt MAC
+Known MAC
 Rand MAC
-Known MAC
+Virt MAC
+Virt MAC
+Non-Virt MAC
+Virt MAC
 Virt MAC
 Non-Virt MAC
 Virt MAC
 Non-Virt MAC
-Non-Virt MAC
-Virt MAC
-Known MAC
-Known MAC
-Non-Virt MAC
-Virt MAC
-Known MAC
-Known MAC
-Virt MAC
-Known MAC
-Known MAC
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:3E, rssi: -61, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: libel.c:sky_add_ap_beacon() 80:85:64:B2:F5:70, rssi: -88, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
-libEL DEBG: unit_test.c:main() Added Test Beacon  0: Type: 1, MAC D4:85:64:B2:F5:3E rssi: -61
-libEL DEBG: libel.c:sky_add_ap_beacon() F4:65:9D:B2:F5:7E, rssi: -44, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  0: Type: 1, MAC 80:85:64:B2:F5:70 rssi: -88
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:E4:64:36:F5:7E, rssi: -87, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
-libEL DEBG: unit_test.c:main() Added Test Beacon  1: Type: 1, MAC F4:65:9D:B2:F5:7E rssi: -44
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -30, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
-libEL DEBG: unit_test.c:main() Added Test Beacon  2: Type: 1, MAC E4:75:64:B2:F5:7E rssi: -30
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:7E, rssi: -102, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  1: Type: 1, MAC D4:E4:64:36:F5:7E rssi: -87
+libEL DEBG: libel.c:sky_add_ap_beacon() E4:69:64:B2:F5:7E, rssi: -110, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
-libEL DEBG: unit_test.c:main() Added Test Beacon  3: Type: 1, MAC D4:85:64:B2:F5:7E rssi: -102
-libEL DEBG: libel.c:sky_add_ap_beacon() F4:65:64:B2:F5:7E, rssi: -76, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
-libEL DEBG: unit_test.c:main() Added Test Beacon  4: Type: 1, MAC F4:65:64:B2:F5:7E rssi: -76
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:3E, rssi: -59, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:7A, rssi: -78, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
-libEL DEBG: unit_test.c:main() Added Test Beacon  6: Type: 1, MAC D4:85:64:B2:F5:7A rssi: -78
-libEL DEBG: libel.c:sky_add_ap_beacon() 9D:85:64:B2:59:7E, rssi: -58, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  2: Type: 1, MAC E4:69:64:B2:F5:7E rssi: -110
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:E5:7E, rssi: -80, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 3
+libEL DEBG: unit_test.c:main() Added Test Beacon  3: Type: 1, MAC D4:85:64:B2:E5:7E rssi: -80
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:C0:B2:F5:7E, rssi: -18, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 4
-libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 4
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -102, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7A rssi: -78, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC F4:65:64:B2:F5:7E rssi: -76, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC 9D:85:64:B2:59:7E rssi: -58, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 0 similar to 1
-libEL DEBG: beacons.c:remove_beacon() idx:0
-libEL DEBG: unit_test.c:main() Added Test Beacon  7: Type: 1, MAC 9D:85:64:B2:59:7E rssi: -58
-libEL DEBG: libel.c:sky_add_ap_beacon() F4:65:D2:B2:F5:7E, rssi: -71, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
-libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 2
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7A rssi: -78, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC F4:65:64:B2:F5:7E rssi: -76, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC F4:65:D2:B2:F5:7E rssi: -71, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC 9D:85:64:B2:59:7E rssi: -58, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 48 band range: 8.00
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -78.00 fit  0.00 (-78)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -70.00 fit  6.00 (-76)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -62.00 fit  9.00 (-71)
-libEL DEBG: beacons.c:filter_by_rssi()       : 3 , cached ideal -54.00 fit  7.00 (-61)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -46.00 fit 12.00 (-58)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -38.00 fit  6.00 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
-libEL DEBG: beacons.c:remove_beacon() idx:4
-libEL DEBG: unit_test.c:main() Added Test Beacon  8: Type: 1, MAC F4:65:D2:B2:F5:7E rssi: -71
-libEL DEBG: libel.c:sky_add_ap_beacon() F4:65:64:B2:F5:7E, rssi: -102, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:B5:7E, rssi: -94, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  4: Type: 1, MAC D4:85:C0:B2:F5:7E rssi: -18
+libEL DEBG: libel.c:sky_add_ap_beacon() 20:85:64:6B:F5:7E, rssi: -68, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 4
+libEL DEBG: unit_test.c:main() Added Test Beacon  5: Type: 1, MAC 20:85:64:6B:F5:7E rssi: -68
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F7:7E, rssi: -113, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
 libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7A rssi: -78, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC F4:65:64:B2:F5:7E rssi: -76, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC F4:65:D2:B2:F5:7E rssi: -71, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F7:7E rssi: -113, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC E4:69:64:B2:F5:7E rssi: -110, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:E4:64:36:F5:7E rssi: -87, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:E5:7E rssi: -80, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC 20:85:64:6B:F5:7E rssi: -68, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 64 band range: 10.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -94.00 fit  0.00 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -83.33 fit  5.33 (-78)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -72.67 fit  3.33 (-76)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -62.00 fit  9.00 (-71)
-libEL DEBG: beacons.c:filter_by_rssi()       : 4 , cached ideal -51.33 fit  9.67 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -40.67 fit  3.33 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
-libEL DEBG: beacons.c:remove_beacon() idx:3
-libEL DEBG: unit_test.c:main() Added Test Beacon  10: Type: 1, MAC D4:85:64:B2:B5:7E rssi: -94
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:63:B2:14:7E, rssi: -5, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
-libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7A rssi: -78, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC F4:65:64:B2:F5:7E rssi: -76, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 64 band range: 10.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -94.00 fit  0.00 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -83.33 fit  6.67 (-1)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -72.67 fit  5.33 (-78)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -62.00 fit 14.00 (-76)
-libEL DEBG: beacons.c:filter_by_rssi()       : 4 , cached ideal -51.33 fit  9.67 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -40.67 fit  3.33 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
-libEL DEBG: beacons.c:remove_beacon() idx:3
-libEL DEBG: unit_test.c:main() Added Test Beacon  11: Type: 1, MAC D4:85:63:B2:14:7E rssi: -5
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F4:7E, rssi: -79, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
-libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 2
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -79, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7A rssi: -78, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 64 band range: 10.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -94.00 fit  0.00 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -83.33 fit  6.67 (-1)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -72.67 fit  6.33 (-79)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -62.00 fit 16.00 (-78)
-libEL DEBG: beacons.c:filter_by_rssi()       : 4 , cached ideal -51.33 fit  9.67 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -40.67 fit  3.33 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
-libEL DEBG: beacons.c:remove_beacon() idx:3
-libEL DEBG: unit_test.c:main() Added Test Beacon  12: Type: 1, MAC D4:85:64:B2:F4:7E rssi: -79
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:09:B2:23:7E, rssi: -61, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 4
-libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 4
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -79, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC D4:85:09:B2:23:7E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 64 band range: 10.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -94.00 fit  0.00 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -83.33 fit  6.67 (-1)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -72.67 fit  6.33 (-79)
-libEL DEBG: beacons.c:filter_by_rssi()       : 3 , cached ideal -62.00 fit  1.00 (-61)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -51.33 fit  9.67 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -40.67 fit  3.33 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
-libEL DEBG: beacons.c:remove_beacon() idx:4
-libEL DEBG: unit_test.c:main() Added Test Beacon  13: Type: 1, MAC D4:85:09:B2:23:7E rssi: -61
-libEL DEBG: libel.c:sky_add_ap_beacon() 43:85:64:B2:F5:B9, rssi: -35, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: beacons.c:filter_by_rssi() range: 95 band range: 15.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -113.00 fit  0.00 (-113)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -97.17 fit 12.83 (-110)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -81.33 fit  6.67 (-88)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -65.50 fit 21.50 (-87)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -49.67 fit 30.33 (-80)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 5 ,        ideal -33.83 fit 34.17 (-68)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:5
+libEL DEBG: unit_test.c:main() Added Test Beacon  6: Type: 1, MAC D4:85:64:B2:F7:7E rssi: -113
+libEL DEBG: libel.c:sky_add_ap_beacon() E4:C4:64:B2:F5:7E, rssi: -26, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 5
 libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 5
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -79, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:65:9D:B2:F5:7E rssi: -44, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F7:7E rssi: -113, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC E4:69:64:B2:F5:7E rssi: -110, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:E4:64:36:F5:7E rssi: -87, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:E5:7E rssi: -80, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 64 band range: 10.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -94.00 fit  0.00 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -83.33 fit  6.67 (-1)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -72.67 fit  6.33 (-79)
-libEL DEBG: beacons.c:filter_by_rssi()       : 3 , cached ideal -62.00 fit  1.00 (-61)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -51.33 fit  7.33 (-44)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -40.67 fit  5.67 (-35)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
+libEL DEBG: beacons.c:filter_by_rssi() range: 95 band range: 15.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -113.00 fit  0.00 (-113)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -97.17 fit 12.83 (-110)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -81.33 fit  6.67 (-88)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -65.50 fit 21.50 (-87)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -49.67 fit 30.33 (-80)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -33.83 fit  7.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
 libEL DEBG: beacons.c:remove_beacon() idx:4
-libEL DEBG: unit_test.c:main() Added Test Beacon  14: Type: 1, MAC 43:85:64:B2:F5:B9 rssi: -35
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:3E, rssi: -80, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -70, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -5, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:5B:64:7D:F5:7E, rssi: -101, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
+libEL DEBG: unit_test.c:main() Added Test Beacon  7: Type: 1, MAC E4:C4:64:B2:F5:7E rssi: -26
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:D2:B2:F5:59, rssi: -62, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 4
 libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -79, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 4
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F7:7E rssi: -113, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC E4:69:64:B2:F5:7E rssi: -110, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:E4:64:36:F5:7E rssi: -87, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 71 band range: 11.83
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -101.00 fit  0.00 (-101)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -89.17 fit  4.83 (-94)
-libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -77.33 fit 12.67 (-1)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -65.50 fit 13.50 (-79)
-libEL DEBG: beacons.c:filter_by_rssi()       : 4 , cached ideal -53.67 fit  7.33 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -41.83 fit  6.83 (-35)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -30.00 fit  0.00 (-30)
+libEL DEBG: beacons.c:filter_by_rssi() range: 95 band range: 15.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -113.00 fit  0.00 (-113)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -97.17 fit 12.83 (-110)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -81.33 fit  6.67 (-88)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -65.50 fit 21.50 (-87)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -49.67 fit 12.33 (-62)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -33.83 fit  7.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
 libEL DEBG: beacons.c:remove_beacon() idx:3
-libEL DEBG: unit_test.c:main() Added Test Beacon  18: Type: 1, MAC D4:5B:64:7D:F5:7E rssi: -101
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F4:7E, rssi: -13, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 6
+libEL DEBG: unit_test.c:main() Added Test Beacon  8: Type: 1, MAC D4:85:D2:B2:F5:59 rssi: -62
+libEL DEBG: libel.c:sky_add_ap_beacon() F4:DF:64:B2:F5:7E, rssi: -38, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 4
 libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
-libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 6
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:63:B2:14:7E rssi: -1, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -13, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 4
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F7:7E rssi: -113, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC E4:69:64:B2:F5:7E rssi: -110, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:filter_virtual_aps() no match
-libEL DEBG: beacons.c:filter_by_rssi() range: 88 band range: 14.67
-libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -101.00 fit  0.00 (-101)
-libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -86.33 fit  7.67 (-94)
-libEL DEBG: beacons.c:filter_by_rssi() remove: 2 ,        ideal -71.67 fit 18.33 (-1)
-libEL DEBG: beacons.c:filter_by_rssi()       : 3 , cached ideal -57.00 fit  4.00 (-61)
-libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -42.33 fit  7.33 (-35)
-libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -27.67 fit  2.33 (-30)
-libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -13.00 fit  0.00 (-13)
-libEL DEBG: beacons.c:remove_beacon() idx:2
-libEL DEBG: unit_test.c:main() Added Test Beacon  19: Type: 1, MAC D4:85:64:B2:F4:7E rssi: -13
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -106, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -100, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:FD:7E, rssi: -98, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: beacons.c:filter_by_rssi() range: 95 band range: 15.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -113.00 fit  0.00 (-113)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 1 ,        ideal -97.17 fit 12.83 (-110)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -81.33 fit  6.67 (-88)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -65.50 fit  3.50 (-62)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -49.67 fit 11.67 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -33.83 fit  7.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  9: Type: 1, MAC F4:DF:64:B2:F5:7E rssi: -38
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:7E, rssi: -93, freq 65, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
 libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:FD:7E rssi: -98, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -13, freq: 0
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 1 similar to 6
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F7:7E rssi: -113, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -93, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 0 similar to 1
+libEL DEBG: beacons.c:remove_beacon() idx:0
+libEL DEBG: unit_test.c:main() Added Test Beacon  10: Type: 1, MAC D4:85:64:B2:F5:7E rssi: -93
+libEL DEBG: libel.c:sky_add_ap_beacon() F4:65:64:B2:F5:7E, rssi: -77, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 2
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -93, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC 80:85:64:B2:F5:70 rssi: -88, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 75 band range: 12.50
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -93.00 fit  0.00 (-93)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 1 ,        ideal -80.50 fit  7.50 (-88)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 , cached ideal -68.00 fit  9.00 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -55.50 fit  6.50 (-62)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -43.00 fit  5.00 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -30.50 fit  4.50 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
 libEL DEBG: beacons.c:remove_beacon() idx:1
-libEL DEBG: unit_test.c:main() Added Test Beacon  22: Type: 1, MAC D4:85:64:B2:FD:7E rssi: -98
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -25, freq 65, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  11: Type: 1, MAC F4:65:64:B2:F5:7E rssi: -77
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:7E, rssi: -27, freq 65, connect true, 1567088605
 libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
 libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_ap_beacon() E4:75:64:B2:F5:7E, rssi: -69, freq 65, connect true, Mon Aug 26 20:10:30 2019
-libEL DEBG: utilities.c:validate_mac() Beacon with duplicate mac address
-libEL DEBG: unit_test.c:main() sky_add_ap_beacon sky_errno contains 'Validation of parameters failed'
-libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, nrsrp: -71, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:AF:64:3D:F5:7E, rssi: -93, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -93, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:AF:64:3D:F5:7E rssi: -93, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 75 band range: 12.50
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -93.00 fit  0.00 (-93)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 1 ,        ideal -80.50 fit 12.50 (-93)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 , cached ideal -68.00 fit  9.00 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -55.50 fit  6.50 (-62)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -43.00 fit  5.00 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -30.50 fit  4.50 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  13: Type: 1, MAC D4:AF:64:3D:F5:7E rssi: -93
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:5E, rssi: -102, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -93, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 1 similar to 0
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  14: Type: 1, MAC D4:85:64:B2:F5:5E rssi: -102
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:7E, rssi: -91, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:7E rssi: -91, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 1 similar to 0
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  15: Type: 1, MAC D4:85:64:B2:F5:7E rssi: -91
+libEL DEBG: libel.c:sky_add_ap_beacon() AC:65:64:B2:F5:7E, rssi: -58, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 3
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 3
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:D2:B2:F5:59 rssi: -62, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC AC:65:64:B2:F5:7E rssi: -58, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 84 band range: 14.00
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -102.00 fit  0.00 (-102)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 , cached ideal -88.00 fit 11.00 (-77)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 2 ,        ideal -74.00 fit 12.00 (-62)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -60.00 fit  2.00 (-58)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -46.00 fit  8.00 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.00 fit  6.00 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:2
+libEL DEBG: unit_test.c:main() Added Test Beacon  16: Type: 1, MAC AC:65:64:B2:F5:7E rssi: -58
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:FE, rssi: -87, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:FE rssi: -87, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC AC:65:64:B2:F5:7E rssi: -58, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 1 similar to 0
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  17: Type: 1, MAC D4:85:64:B2:F5:FE rssi: -87
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:E5:7E, rssi: -46, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 3
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 3
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC AC:65:64:B2:F5:7E rssi: -58, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:E5:7E rssi: -46, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 84 band range: 14.00
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -102.00 fit  0.00 (-102)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 , cached ideal -88.00 fit 11.00 (-77)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 2 ,        ideal -74.00 fit 16.00 (-58)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -60.00 fit 14.00 (-46)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -46.00 fit  8.00 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.00 fit  6.00 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:2
+libEL DEBG: unit_test.c:main() Added Test Beacon  18: Type: 1, MAC D4:85:64:B2:E5:7E rssi: -46
+libEL DEBG: libel.c:sky_add_ap_beacon() EC:85:64:57:F5:7E, rssi: -73, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 2
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC EC:85:64:57:F5:7E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:E5:7E rssi: -46, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 84 band range: 14.00
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -102.00 fit  0.00 (-102)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 , cached ideal -88.00 fit 11.00 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -74.00 fit  1.00 (-73)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -60.00 fit 14.00 (-46)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -46.00 fit  8.00 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.00 fit  6.00 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:3
+libEL DEBG: unit_test.c:main() Added Test Beacon  19: Type: 1, MAC EC:85:64:57:F5:7E rssi: -73
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:75:7E, rssi: -107, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 0
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC EC:85:64:57:F5:7E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 89 band range: 14.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -107.00 fit  0.00 (-107)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -92.17 fit  9.83 (-102)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 , cached ideal -77.33 fit  0.33 (-77)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 3 ,        ideal -62.50 fit 10.50 (-73)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -47.67 fit  9.67 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.83 fit  6.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:3
+libEL DEBG: unit_test.c:main() Added Test Beacon  20: Type: 1, MAC D4:85:64:B2:75:7E rssi: -107
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:B5:7E, rssi: -65, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 3
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 3
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -65, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() remove_beacon: 3 similar to 0
+libEL DEBG: beacons.c:remove_beacon() idx:3
+libEL DEBG: unit_test.c:main() Added Test Beacon  21: Type: 1, MAC D4:85:64:B2:B5:7E rssi: -65
+libEL DEBG: libel.c:sky_add_ap_beacon() 99:85:64:D1:F5:7E, rssi: -69, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 3
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 3
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -102, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC 99:85:64:D1:F5:7E rssi: -69, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 89 band range: 14.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -107.00 fit  0.00 (-107)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 1 ,        ideal -92.17 fit  9.83 (-102)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 , cached ideal -77.33 fit  0.33 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -62.50 fit  6.50 (-69)
+libEL DEBG: beacons.c:filter_by_rssi()       : 4 ,        ideal -47.67 fit  9.67 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.83 fit  6.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:1
+libEL DEBG: unit_test.c:main() Added Test Beacon  22: Type: 1, MAC 99:85:64:D1:F5:7E rssi: -69
+libEL DEBG: libel.c:sky_add_ap_beacon() D4:85:64:B2:F5:5E, rssi: -73, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 2
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 2
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC 99:85:64:D1:F5:7E rssi: -69, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC F4:DF:64:B2:F5:7E rssi: -38, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 89 band range: 14.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -107.00 fit  0.00 (-107)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 , cached ideal -92.17 fit 15.17 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 ,        ideal -77.33 fit  4.33 (-73)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -62.50 fit  6.50 (-69)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -47.67 fit  9.67 (-38)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.83 fit  6.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:4
+libEL DEBG: unit_test.c:main() Added Test Beacon  23: Type: 1, MAC D4:85:64:B2:F5:5E rssi: -73
+libEL DEBG: libel.c:sky_add_ap_beacon() 2A:85:64:C6:F5:7E, rssi: -85, freq 65, connect true, 1567088605
+libEL DEBG: beacons.c:insert_beacon() Beacon type Wi-Fi inserted idx: 1
+libEL DEBG: beacons.c:filter_virtual_aps() ap_len: 7 APs of 7 beacons
+libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 7 beacons, WiFi 7, connected 1
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC 2A:85:64:C6:F5:7E rssi: -85, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC 99:85:64:D1:F5:7E rssi: -69, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
+libEL DEBG: beacons.c:filter_virtual_aps() no match
+libEL DEBG: beacons.c:filter_by_rssi() range: 89 band range: 14.83
+libEL DEBG: beacons.c:filter_by_rssi()       : 0 ,        ideal -107.00 fit  0.00 (-107)
+libEL DEBG: beacons.c:filter_by_rssi()       : 1 ,        ideal -92.17 fit  7.17 (-85)
+libEL DEBG: beacons.c:filter_by_rssi()       : 2 , cached ideal -77.33 fit  0.33 (-77)
+libEL DEBG: beacons.c:filter_by_rssi()       : 3 ,        ideal -62.50 fit 10.50 (-73)
+libEL DEBG: beacons.c:filter_by_rssi() remove: 4 ,        ideal -47.67 fit 21.33 (-69)
+libEL DEBG: beacons.c:filter_by_rssi()       : 5 ,        ideal -32.83 fit  6.83 (-26)
+libEL DEBG: beacons.c:filter_by_rssi()       : 6 ,        ideal -18.00 fit  0.00 (-18)
+libEL DEBG: beacons.c:remove_beacon() idx:4
+libEL DEBG: unit_test.c:main() Added Test Beacon  24: Type: 1, MAC 2A:85:64:C6:F5:7E rssi: -85
+libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, nrsrp: -56, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type NB-IoT inserted idx: 6
-libEL DEBG: unit_test.c:main() Added Test Beacon  0: Type: 6, mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, rssi: -71
-libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, nrsrp: -130, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  0: Type: 6, mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, rssi: -56
+libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, nrsrp: -128, connect true, 1567088605
 libEL DEBG: beacons.c:insert_beacon() Beacon type NB-IoT inserted idx: 6
-libEL DEBG: unit_test.c:main() Added Test Beacon  1: Type: 6, mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, rssi: -130
-libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 266, mnc: 660, e_cellid: 88636810, tac: 29995, nrsrp: -92, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: unit_test.c:main() Added Test Beacon  1: Type: 6, mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, rssi: -128
+libEL DEBG: libel.c:sky_add_cell_nb_iot_() mcc: 710, mnc: 309, e_cellid: 79262854, tac: 38007, nrsrp: -84, connect true, 1567088605
 libEL DEBG: unit_test.c:main() sky_add_nbiot_beacon sky_errno contains 'Too many beacons'
-libEL DEBG: libel.c:sky_add_cell_gsm_bea() lac: 23928, ci: 40987, mcc: 359, mnc: 829, rssi: -76, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: libel.c:sky_add_cell_gsm_bea() lac: 53610, ci: 33432, mcc: 708, mnc: 430, rssi: -86, connect true, 1567088605
 libEL DEBG: unit_test.c:main() sky_add_gsm_beacon sky_errno contains 'Too many beacons'
-libEL DEBG: libel.c:sky_add_cell_gsm_bea() lac: 29913, ci: 26601, mcc: 439, mnc: 207, rssi: -112, connect true, Mon Aug 26 20:10:30 2019
+libEL DEBG: libel.c:sky_add_cell_gsm_bea() lac: 58869, ci: 25990, mcc: 323, mnc: 984, rssi: -71, connect true, 1567088605
 libEL DEBG: unit_test.c:main() sky_add_gsm_beacon sky_errno contains 'Too many beacons'
 libEL DEBG: libel.c:sky_sizeof_request_b() Request config: Forced
 Required buffer size = 160
 libEL DEBG: beacons.c:find_best_match() for get from cache
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 8 beacons, WiFi 6, connected 6
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -13, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, rssi: -130
-libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, rssi: -71
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:find_best_match() Beacon 4 type Wi-Fi matches cache 0 of 0..5
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC 2A:85:64:C6:F5:7E rssi: -85, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, rssi: -128
+libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, rssi: -56
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:find_best_match() Beacon 2 type Wi-Fi matches cache 1 of 0..5
-libEL DEBG: beacons.c:find_best_match() cache: 0: score 9 (1/11)
+libEL DEBG: beacons.c:find_best_match() cache: 0: score 0 (0/12)
 libEL DEBG: beacons.c:find_best_match() cache: 1: score 9 (1/11)
 libEL DEBG: beacons.c:find_best_match() cache match failed score 9 (vs 49)
 libEL DEBG: libel.c:sky_finalize_request() Processing request with 8 beacons into 160 byte buffer
 libEL DEBG: libel.c:sky_finalize_request() Requesting new dynamic configuration parameters
 libEL DEBG: libel.c:sky_finalize_request() Request buffer of 160 bytes prepared
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 8 beacons, WiFi 6, connected 6
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -13, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, rssi: -130
-libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, rssi: -71
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC 2A:85:64:C6:F5:7E rssi: -85, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, rssi: -128
+libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, rssi: -56
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: unit_test.c:main() get_num_beacons: 1, 6
-libEL DEBG: unit_test.c:main() get_ap_mac:       5 MAC D4:85:64:B2:F4:7E
+libEL DEBG: unit_test.c:main() get_ap_mac:       5 MAC D4:85:C0:B2:F5:7E
 libEL DEBG: unit_test.c:main() get_ap_freq:   5, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      5, -13
+libEL DEBG: unit_test.c:main() get_ap_rssi:      5, -18
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      5, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      5, 0
-libEL DEBG: unit_test.c:main() get_ap_mac:       4 MAC E4:75:64:B2:F5:7E
+libEL DEBG: unit_test.c:main() get_ap_mac:       4 MAC E4:C4:64:B2:F5:7E
 libEL DEBG: unit_test.c:main() get_ap_freq:   4, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      4, -30
+libEL DEBG: unit_test.c:main() get_ap_rssi:      4, -26
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      4, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      4, 0
-libEL DEBG: unit_test.c:main() get_ap_mac:       3 MAC 43:85:64:B2:F5:B9
+libEL DEBG: unit_test.c:main() get_ap_mac:       3 MAC D4:85:64:B2:F5:5E
 libEL DEBG: unit_test.c:main() get_ap_freq:   3, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      3, -35
+libEL DEBG: unit_test.c:main() get_ap_rssi:      3, -73
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      3, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      3, 0
-libEL DEBG: unit_test.c:main() get_ap_mac:       2 MAC D4:85:64:B2:F5:3E
+libEL DEBG: unit_test.c:main() get_ap_mac:       2 MAC F4:65:64:B2:F5:7E
 libEL DEBG: unit_test.c:main() get_ap_freq:   2, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      2, -61
+libEL DEBG: unit_test.c:main() get_ap_rssi:      2, -77
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      2, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      2, 0
-libEL DEBG: unit_test.c:main() get_ap_mac:       1 MAC D4:85:64:B2:B5:7E
+libEL DEBG: unit_test.c:main() get_ap_mac:       1 MAC 2A:85:64:C6:F5:7E
 libEL DEBG: unit_test.c:main() get_ap_freq:   1, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      1, -94
+libEL DEBG: unit_test.c:main() get_ap_rssi:      1, -85
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      1, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      1, 0
-libEL DEBG: unit_test.c:main() get_ap_mac:       0 MAC D4:5B:64:7D:F5:7E
+libEL DEBG: unit_test.c:main() get_ap_mac:       0 MAC D4:85:64:B2:75:7E
 libEL DEBG: unit_test.c:main() get_ap_freq:   0, 0
-libEL DEBG: unit_test.c:main() get_ap_rssi:      0, -101
+libEL DEBG: unit_test.c:main() get_ap_rssi:      0, -107
 libEL DEBG: unit_test.c:main() get_ap_is_connected:      0, 0
 libEL DEBG: unit_test.c:main() get_ap_age:      0, 0
 libEL DEBG: unit_test.c:main() get_num_beacons: 2, 0
@@ -389,35 +524,34 @@ libEL DEBG: unit_test.c:main() get_num_beacons: 3, 0
 libEL DEBG: unit_test.c:main() get_num_beacons: 4, 0
 libEL DEBG: unit_test.c:main() get_num_beacons: 5, 0
 libEL DEBG: unit_test.c:main() get_num_beacons: 6, 2
-libEL DEBG: unit_test.c:main() get_nbiot_mcc:     1, 305
-libEL DEBG: unit_test.c:main() get_nbiot_mnc:     1, 176
-libEL DEBG: unit_test.c:main() get_nbiot_ecellid: 1, 11212330
-libEL DEBG: unit_test.c:main() get_nbiot_tac:     1, 63033
-libEL DEBG: unit_test.c:main() get_nbiot_rssi:    1, -71
+libEL DEBG: unit_test.c:main() get_nbiot_mcc:     1, 424
+libEL DEBG: unit_test.c:main() get_nbiot_mnc:     1, 718
+libEL DEBG: unit_test.c:main() get_nbiot_ecellid: 1, 159024384
+libEL DEBG: unit_test.c:main() get_nbiot_tac:     1, 45399
+libEL DEBG: unit_test.c:main() get_nbiot_rssi:    1, -56
 libEL DEBG: unit_test.c:main() get_nbiot_is_connected:      1, 0
 libEL DEBG: unit_test.c:main() get_nbiot_age:      1, 0
-libEL DEBG: unit_test.c:main() get_nbiot_mcc:     0, 281
-libEL DEBG: unit_test.c:main() get_nbiot_mnc:     0, 260
-libEL DEBG: unit_test.c:main() get_nbiot_ecellid: 0, 253912761
-libEL DEBG: unit_test.c:main() get_nbiot_tac:     0, 52349
-libEL DEBG: unit_test.c:main() get_nbiot_rssi:    0, -130
+libEL DEBG: unit_test.c:main() get_nbiot_mcc:     0, 449
+libEL DEBG: unit_test.c:main() get_nbiot_mnc:     0, 939
+libEL DEBG: unit_test.c:main() get_nbiot_ecellid: 0, 16619875
+libEL DEBG: unit_test.c:main() get_nbiot_tac:     0, 38896
+libEL DEBG: unit_test.c:main() get_nbiot_rssi:    0, -128
 libEL DEBG: unit_test.c:main() get_nbiot_is_connected:      0, 1
 libEL DEBG: unit_test.c:main() get_nbiot_age:      0, 0
 libEL DEBG: unit_test.c:main() get_num_beacons: 7, 0
 libEL DEBG: beacons.c:find_best_match() for save to cache
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 8 beacons, WiFi 6, connected 6
-libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:5B:64:7D:F5:7E rssi: -101, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:B5:7E rssi: -94, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC D4:85:64:B2:F5:3E rssi: -61, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC 43:85:64:B2:F5:B9 rssi: -35, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:75:64:B2:F5:7E rssi: -30, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F4:7E rssi: -13, freq: 0
-libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, rssi: -130
-libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, rssi: -71
-libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1566864630 Sec
-libEL DEBG: beacons.c:find_best_match() Beacon 4 type Wi-Fi matches cache 0 of 0..5
+libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:75:7E rssi: -107, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC 2A:85:64:C6:F5:7E rssi: -85, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 2 : Age: 0 Type: WiFi, cached MAC F4:65:64:B2:F5:7E rssi: -77, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 3 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -73, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 4 : Age: 0 Type: WiFi,        MAC E4:C4:64:B2:F5:7E rssi: -26, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 5 : Age: 0 Type: WiFi,        MAC D4:85:C0:B2:F5:7E rssi: -18, freq: 0
+libEL DEBG: utilities.c:dump_workspace()  Beacon 6 : Age: 0 Type: nb IoT, mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, rssi: -128
+libEL DEBG: utilities.c:dump_workspace()  Beacon 7 : Age: 0 Type: nb IoT, mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, rssi: -56
+libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP Beacons:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Last Config:1567088605 Sec
 libEL DEBG: beacons.c:find_best_match() Beacon 2 type Wi-Fi matches cache 1 of 0..5
-libEL DEBG: beacons.c:find_best_match() cache: 0: score 9 (1/11)
+libEL DEBG: beacons.c:find_best_match() cache: 0: score 0 (0/12)
 libEL DEBG: beacons.c:find_best_match() cache: 1: score 9 (1/11)
 libEL DEBG: beacons.c:find_best_match() cache: 2: fill empty cacheline
 libEL DEBG: beacons.c:find_best_match() cache: 3: fill empty cacheline
@@ -426,31 +560,31 @@ libEL DEBG: beacons.c:find_best_match() save location in best cache, 2 of 0..4 s
 libEL DEBG: beacons.c:add_to_cache() find_best_match found cache match 2 of 0..5
 libEL DEBG: utilities.c:dump_cache() cache: 0 of 5 GPS:-101.223572,44.629398,351
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :0 : Type: WiFi, MAC D4:A3:64:B2:F5:7E rssi: -115, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 0 :1 : Type: WiFi, MAC D4:5D:64:69:F5:7E rssi: -112, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 0 :1 : Type: WiFi, MAC D4:85:64:B2:F5:7C rssi: -109, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :2 : Type: WiFi, MAC E4:75:64:B2:F5:7E rssi: -90, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :3 : Type: WiFi, MAC D4:85:8F:B2:A6:7E rssi: -38, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :4 : Type: WiFi, MAC E4:75:52:B2:F5:7E rssi: -23, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 0 :5 : Type: WiFi, MAC D4:85:64:B2:F7:7E rssi: -20, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 0 :5 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -20, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :6 : Type: NB-IoT, mcc: 237, mnc: 734, e_cellid: 253189921, tac: 959, rssi: -145
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :7 : Type: NB-IoT, mcc: 254, mnc: 139, e_cellid: 35326949, tac: 46327, rssi: -104
-libEL DEBG: utilities.c:dump_cache() cache: 1 of 5 GPS:-94.784805,51.879089,309
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :0 : Type: WiFi, MAC D4:85:64:B2:F5:76 rssi: -121, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :1 : Type: WiFi, MAC 5B:85:64:F1:F5:7E rssi: -112, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :2 : Type: WiFi, MAC E4:EF:64:B2:F5:7E rssi: -94, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :3 : Type: WiFi, MAC D4:85:64:B2:F5:3E rssi: -1, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :4 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -39, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :5 : Type: WiFi, MAC 17:85:64:B2:F5:7E rssi: -12, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :6 : Type: NB-IoT, mcc: 567, mnc: 119, e_cellid: 200564759, tac: 46074, rssi: -107
-libEL DEBG: utilities.c:dump_cache()  Beacon 1 :7 : Type: NB-IoT, mcc: 511, mnc: 420, e_cellid: 67017019, tac: 51091, rssi: -90
-libEL DEBG: utilities.c:dump_cache() cache: 2 of 5<-newest GPS:-103.961525,48.777508,122
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :0 : Type: WiFi, MAC D4:5B:64:7D:F5:7E rssi: -101, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :1 : Type: WiFi, MAC D4:85:64:B2:B5:7E rssi: -94, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :2 : Type: WiFi, MAC D4:85:64:B2:F5:3E rssi: -61, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :3 : Type: WiFi, MAC 43:85:64:B2:F5:B9 rssi: -35, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :4 : Type: WiFi, MAC E4:75:64:B2:F5:7E rssi: -30, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :5 : Type: WiFi, MAC D4:85:64:B2:F4:7E rssi: -13, freq 0
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :6 : Type: NB-IoT, mcc: 281, mnc: 260, e_cellid: 253912761, tac: 52349, rssi: -130
-libEL DEBG: utilities.c:dump_cache()  Beacon 2 :7 : Type: NB-IoT, mcc: 305, mnc: 176, e_cellid: 11212330, tac: 63033, rssi: -71
+libEL DEBG: utilities.c:dump_cache() cache: 1 of 5 GPS:-95.342064,40.714916,454
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :0 : Type: WiFi, MAC D4:85:64:B2:F4:7E rssi: -124, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :1 : Type: WiFi, MAC DE:65:64:B2:F5:7E rssi: -119, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :2 : Type: WiFi, MAC D4:85:64:B2:D5:7E rssi: -102, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :3 : Type: WiFi, MAC D4:02:64:B2:F5:1D rssi: -69, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :4 : Type: WiFi, MAC F4:5F:64:B2:F5:7E rssi: -46, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :5 : Type: WiFi, MAC F4:65:64:B2:F5:7E rssi: -23, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :6 : Type: NB-IoT, mcc: 501, mnc: 14, e_cellid: 157954272, tac: 10235, rssi: -98
+libEL DEBG: utilities.c:dump_cache()  Beacon 1 :7 : Type: NB-IoT, mcc: 231, mnc: 222, e_cellid: 265101120, tac: 28659, rssi: -98
+libEL DEBG: utilities.c:dump_cache() cache: 2 of 5<-newest GPS:-81.526321,45.574493,80
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :0 : Type: WiFi, MAC D4:85:64:B2:75:7E rssi: -107, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :1 : Type: WiFi, MAC 2A:85:64:C6:F5:7E rssi: -85, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :2 : Type: WiFi, MAC F4:65:64:B2:F5:7E rssi: -77, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :3 : Type: WiFi, MAC D4:85:64:B2:F5:5E rssi: -73, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :4 : Type: WiFi, MAC E4:C4:64:B2:F5:7E rssi: -26, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :5 : Type: WiFi, MAC D4:85:C0:B2:F5:7E rssi: -18, freq 0
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :6 : Type: NB-IoT, mcc: 449, mnc: 939, e_cellid: 16619875, tac: 38896, rssi: -128
+libEL DEBG: utilities.c:dump_cache()  Beacon 2 :7 : Type: NB-IoT, mcc: 424, mnc: 718, e_cellid: 159024384, tac: 45399, rssi: -56
 libEL DEBG: utilities.c:dump_cache() cache: 3 of 5 - empty len:0 ap_len:0 time:0
 libEL DEBG: utilities.c:dump_cache() cache: 4 of 5 - empty len:0 ap_len:0 time:0
 nv_cache_save: cache size 2016 (2016)

@@ -139,7 +139,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
@@ -211,15 +211,21 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
+ *         When similar, remove beacon with highesr mac address
+ *         unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return true if beacon removed or false otherwise
  */
-static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
+static bool filter_virtual_aps(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp;
+    int cmp, rm = -1;
+#if SKY_DEBUG
+    int keep = -1;
+    bool cached = false;
+#endif
 
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
@@ -227,30 +233,54 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     dump_workspace(ctx);
 
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
-        return SKY_ERROR;
+        return false;
     }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi")
-        return SKY_ERROR;
+        return false;
     }
 
     for (j = 0; j < ctx->ap_len; j++) {
         for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
-                remove_beacon(ctx, j);
-                return SKY_SUCCESS;
+                if (ctx->beacon[j].ap.in_cache) {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+                    cached = true;
+#endif
+                } else {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+#endif
+                }
             } else if (cmp > 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", i, j)
-                remove_beacon(ctx, i);
-                return SKY_SUCCESS;
+                if (ctx->beacon[i].ap.in_cache) {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+                    cached = true;
+#endif
+                } else {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+#endif
+                }
+            }
+            if (rm != -1) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
+                    cached ? " (cached)" : "")
+                remove_beacon(ctx, rm);
+                return true;
             }
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match")
-    return SKY_ERROR;
+    return false;
 }
 
 /*! \brief add beacon to list
@@ -292,7 +322,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
     /* beacon is AP and is subject to filtering */
-    if (filter_virtual_aps(ctx) == SKY_ERROR)
+    if (!filter_virtual_aps(ctx))
         if (filter_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -476,8 +506,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold))
         return bestc;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed score %d (vs %d)",
-        (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed")
     return -1;
 }
 
