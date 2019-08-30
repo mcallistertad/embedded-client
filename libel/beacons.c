@@ -221,8 +221,11 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 static bool filter_virtual_aps(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp, rm, keep;
-    bool cached;
+    int cmp, rm = -1;
+#if SKY_DEBUG
+    int keep = -1;
+    bool cached = false;
+#endif
 
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
@@ -239,27 +242,33 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx)
         return false;
     }
 
-    keep = rm = -1;
-    cached = false;
     for (j = 0; j < ctx->ap_len; j++) {
         for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
                 if (ctx->beacon[j].ap.in_cache) {
                     rm = i;
+#if SKY_DEBUG
                     keep = j;
                     cached = true;
+#endif
                 } else {
                     rm = j;
+#if SKY_DEBUG
                     keep = i;
+#endif
                 }
             } else if (cmp > 0) {
                 if (ctx->beacon[i].ap.in_cache) {
                     rm = j;
+#if SKY_DEBUG
                     keep = i;
                     cached = true;
+#endif
                 } else {
                     rm = i;
+#if SKY_DEBUG
                     keep = j;
+#endif
                 }
             }
             if (rm != -1) {
