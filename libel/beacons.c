@@ -313,7 +313,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         ctx->connected = i;
 
     if (b->h.type == SKY_BEACON_AP)
-        ctx->beacon[i].ap.in_cache = beacon_in_cache(ctx, b, ctx->cache->newest);
+        ctx->beacon[i].ap.in_cache =
+            beacon_in_cache(ctx, b, &ctx->cache->cacheline[ctx->cache->newest]);
     else /* only filter APs */
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
@@ -346,6 +347,9 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
 
     if (!cl || !b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return false;
+    }
+    if (cl->time == 0) {
         return false;
     }
 
@@ -506,7 +510,8 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold))
         return bestc;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed")
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed. Best score %d (vs %d)",
+        (int)round(bestratio * 100), CONFIG(ctx->cache, cache_match_threshold))
     return -1;
 }
 
@@ -544,17 +549,18 @@ static int find_oldest(Sky_ctx_t *ctx)
 static void update_newest_cacheline(Sky_ctx_t *ctx)
 {
     int i;
-    int newest = 0;
+    int newest = 0, idx = 0;
 
     for (i = 0; i < CACHE_SIZE; i++) {
         if (ctx->cache->cacheline[i].time > newest) {
             newest = ctx->cache->cacheline[i].time;
-            ctx->cache->newest = &ctx->cache->cacheline[i];
+            idx = i;
         }
     }
-    if (ctx->cache->newest)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest",
-            ctx->cache->newest - &ctx->cache->cacheline[0]);
+    if (newest) {
+        ctx->cache->newest = idx;
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", idx);
+    }
 }
 
 /*! \brief add location to cache
@@ -605,7 +611,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     ctx->cache->cacheline[i].ap_len = ctx->ap_len;
     ctx->cache->cacheline[i].loc = *loc;
     ctx->cache->cacheline[i].time = now;
-    ctx->cache->newest = &ctx->cache->cacheline[i];
+    ctx->cache->newest = i;
     for (j = 0; j < CONFIG(ctx->cache, total_beacons); j++)
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
     return SKY_SUCCESS;

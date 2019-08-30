@@ -57,7 +57,7 @@ typedef struct sky_cache {
     uint8_t sky_aes_key[16]; /* aes key */
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
-    Sky_cacheline_t *newest;
+    int newest;
     Sky_config_t config; /* dynamic config parameters */
 } Sky_cache_t;
 

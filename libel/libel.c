@@ -106,6 +106,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16], void *state_buf,
     Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
+#if SKY_DEBUG
+    char buf[SKY_LOG_LENGTH];
+#endif
     Sky_cache_t *sky_state = state_buf;
     int i = 0;
     int j = 0;
@@ -151,15 +154,18 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 cache.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
-    }
-    config_defaults(&cache);
-
-    /* initialize cache.newest */
-    cache.newest = &cache.cacheline[0];
-    for (i = 1; i < CACHE_SIZE; i++) {
-        if (cache.cacheline[i].time != (uint32_t)(*sky_time)(NULL) &&
-            cache.newest->time < cache.cacheline[i].time)
-            cache.newest = &cache.cacheline[i];
+#if SKY_DEBUG
+    } else {
+        if (logf != NULL) {
+            snprintf(buf, sizeof(buf),
+                "%s:%s() State buffer with CRC 0x%08X, size %d, age %d Sec restored",
+                sky_basename(__FILE__), __FUNCTION__, sky_crc32(sky_state, sky_state->header.size),
+                sky_state->header.size,
+                (uint32_t)(*sky_time)(NULL)-sky_state->cacheline[sky_state->newest].time);
+            (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
+        }
+#endif
+        config_defaults(&cache);
     }
 
     /* Sanity check */
@@ -291,9 +297,8 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %d", mac[0], mac[1],
-        mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
-        (int)timestamp)
+        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %d", mac[0], mac[1], mac[2],
+        mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -397,9 +402,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, %d", lac, ci, mcc, mnc, rssi,
-        is_connected ? "true" : "false", (int)timestamp)
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, %d",
+        lac, ci, mcc, mnc, rssi, is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -450,8 +454,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, %d", lac, ucid, mcc, mnc,
-        rscp, is_connected ? "true" : "false", (int)timestamp)
+        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, %d", lac, ucid, mcc, mnc, rscp,
+        is_connected ? "true" : "false", (int)timestamp)
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -670,8 +674,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         time_t cached_time = loc->time;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %d",
             (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
-            (int)cached_time)
+            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, (int)cached_time)
 #endif
         return SKY_FINALIZE_LOCATION;
     }
@@ -685,11 +688,13 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
         ctx->len, bufsize)
 
+#if SKY_DEBUG
     if (ctx->cache->config.last_config_time == 0)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Requesting new dynamic configuration parameters")
     else
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
             ctx->cache->config.last_config_time)
+#endif
 
     /* encode request */
     rc = serialize_request(
@@ -937,13 +942,25 @@ char *sky_pbeacon(Beacon_t *b)
  */
 Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
 {
+#if SKY_DEBUG
+    char buf[SKY_LOG_LENGTH];
+#endif
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
     sky_open_flag = false;
 
-    if (sky_state != NULL)
+    if (sky_state != NULL) {
         *sky_state = &cache;
+#if SKY_DEBUG
+        if (sky_logf != NULL) {
+            snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X and size %d",
+                sky_basename(__FILE__), __FUNCTION__, sky_crc32(&cache, cache.header.size),
+                cache.header.size);
+            (*sky_logf)(SKY_LOG_LEVEL_DEBUG, buf);
+        }
+#endif
+    }
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
