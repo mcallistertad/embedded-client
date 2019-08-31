@@ -33,7 +33,7 @@
 #define SW_VERSION 2
 
 /* Interval in seconds between requests for config params */
-#define CONFIG_REQUEST_INTERVAL (24 * 60 * 60) /* 24 hours */
+#define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
 
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
@@ -154,6 +154,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 cache.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
+        cache.newest = 0;
 #if SKY_DEBUG
     } else {
         if (logf != NULL) {
@@ -233,6 +234,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
 {
     int i;
     Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
+    time_t now = 0;
 
     if (!sky_open_flag) {
         sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -246,7 +248,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     /* update header in workspace */
     ctx->header.magic = SKY_MAGIC;
     ctx->header.size = bufsize;
-    ctx->header.time = (uint32_t)(*sky_time)(NULL);
+    ctx->header.time = now = (uint32_t)(*sky_time)(NULL);
     ctx->header.crc32 = sky_crc32(
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
@@ -271,6 +273,11 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
                 ctx->cache->cacheline[i].time = 0;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache %d of %d cleared due to new Dynamic Parameters", i, CACHE_SIZE)
+            }
+            if ((now - ctx->cache->cacheline[i].time) >
+                ctx->cache->config.cache_age_threshold * SECONDS_IN_HOUR) {
+                ctx->cache->cacheline[i].time = 0;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age", i, CACHE_SIZE)
             }
         }
         dump_cache(ctx);

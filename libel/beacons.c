@@ -431,7 +431,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         ratio[i] = score[i] = 0;
         if (ctx->cache->cacheline[i].time != 0 &&
             ((uint32_t)(*ctx->gettime)(NULL)-ctx->cache->cacheline[i].time) >
-                (CONFIG(ctx->cache, cache_age_threshold) * 60 * 60)) {
+                (CONFIG(ctx->cache, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
             ctx->cache->cacheline[i].time = 0;
         }
