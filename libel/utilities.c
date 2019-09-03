@@ -88,13 +88,25 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
     int i, j;
 
     if (c == NULL) {
-        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation: NUL pointer");
+#if SKY_DEBUG
+        if (logf != NULL)
+            (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation: NUL pointer");
+#endif
         return false;
     }
 
     if (c->len != CACHE_SIZE) {
+#if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: too big for CACHE_SIZE");
+        return false;
+#endif
+    }
+    if (c->newest >= CACHE_SIZE) {
+#if SKY_DEBUG
+        if (logf != NULL)
+            (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: newest too big for CACHE_SIZE");
+#endif
         return false;
     }
 
@@ -102,27 +114,36 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
         sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 - (uint8_t *)&c->header.magic)) {
         for (i = 0; i < CACHE_SIZE; i++) {
             if (c->cacheline[i].len > TOTAL_BEACONS) {
+#if SKY_DEBUG
                 if (logf != NULL)
                     (*logf)(SKY_LOG_LEVEL_DEBUG,
                         "Cache validation failed: too many beacons for TOTAL_BEACONS");
+#endif
                 return false;
             }
 
             for (j = 0; j < TOTAL_BEACONS; j++) {
                 if (c->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
+#if SKY_DEBUG
                     if (logf != NULL)
                         (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: Bad beacon info");
+#endif
                     return false;
                 }
                 if (c->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
+#if SKY_DEBUG
                     if (logf != NULL)
                         (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: Bad beacon type");
+#endif
                     return false;
                 }
             }
         }
     } else {
-        (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: crc mismatch!");
+#if SKY_DEBUG
+        if (logf != NULL)
+            (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: crc mismatch!");
+#endif
         return false;
     }
     return true;
@@ -166,7 +187,7 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
  *
  *  @return pointer to basename or whole path
  */
-static const char *basename(const char *path)
+const char *sky_basename(const char *path)
 {
     const char *p = strrchr(path, '/');
 
@@ -189,14 +210,13 @@ static const char *basename(const char *path)
 int logfmt(
     const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...)
 {
-#if SKY_DEBUG
     va_list ap;
     char buf[SKY_LOG_LENGTH];
     int ret, n;
     if (level > ctx->min_level || function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
-    n = strlen(strncpy(buf, basename(file), 20));
+    n = strlen(strncpy(buf, sky_basename(file), 20));
     buf[n++] = ':';
     n += strlen(strncpy(buf + n, function, 20));
     buf[n++] = '(';
@@ -207,9 +227,6 @@ int logfmt(
     (*ctx->logf)(level, buf);
     va_end(ap);
     return ret;
-#else
-    return 0;
-#endif
 }
 #endif
 
@@ -297,10 +314,9 @@ void dump_cache(Sky_ctx_t *ctx)
                 ctx->cache->len, c->len, c->ap_len, c->time)
         } else {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d", i,
-                ctx->cache->len, ctx->cache->newest == &ctx->cache->cacheline[i] ? "<-newest" : "",
-                (int)c->loc.lat, (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))),
-                (int)c->loc.lon, (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))),
-                c->loc.hpe)
+                ctx->cache->len, ctx->cache->newest == i ? "<-newest" : "", (int)c->loc.lat,
+                (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))), (int)c->loc.lon,
+                (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))), c->loc.hpe)
             for (j = 0; j < c->len; j++) {
                 b = &c->beacon[j];
                 switch (b->h.type) {

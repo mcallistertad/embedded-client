@@ -31,6 +31,8 @@
 /* March 1st 2019 */
 #define TIMESTAMP_2019_03_01 1551398400
 
+#define SECONDS_IN_HOUR (60 * 60)
+
 /*! \brief API return value
  */
 typedef enum {

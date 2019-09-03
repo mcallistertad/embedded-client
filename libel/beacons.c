@@ -139,7 +139,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
@@ -211,15 +211,21 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
+ *         When similar, remove beacon with highesr mac address
+ *         unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
  *
- *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ *  @return true if beacon removed or false otherwise
  */
-static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
+static bool filter_virtual_aps(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp;
+    int cmp, rm = -1;
+#if SKY_DEBUG
+    int keep = -1;
+    bool cached = false;
+#endif
 
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
@@ -227,30 +233,54 @@ static Sky_status_t filter_virtual_aps(Sky_ctx_t *ctx)
     dump_workspace(ctx);
 
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
-        return SKY_ERROR;
+        return false;
     }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi")
-        return SKY_ERROR;
+        return false;
     }
 
     for (j = 0; j < ctx->ap_len; j++) {
         for (i = j + 1; i < ctx->ap_len; i++) {
             if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", j, i)
-                remove_beacon(ctx, j);
-                return SKY_SUCCESS;
+                if (ctx->beacon[j].ap.in_cache) {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+                    cached = true;
+#endif
+                } else {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+#endif
+                }
             } else if (cmp > 0) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d", i, j)
-                remove_beacon(ctx, i);
-                return SKY_SUCCESS;
+                if (ctx->beacon[i].ap.in_cache) {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+                    cached = true;
+#endif
+                } else {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+#endif
+                }
+            }
+            if (rm != -1) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
+                    cached ? " (cached)" : "")
+                remove_beacon(ctx, rm);
+                return true;
             }
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match")
-    return SKY_ERROR;
+    return false;
 }
 
 /*! \brief add beacon to list
@@ -283,7 +313,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         ctx->connected = i;
 
     if (b->h.type == SKY_BEACON_AP)
-        ctx->beacon[i].ap.in_cache = beacon_in_cache(ctx, b, ctx->cache->newest);
+        ctx->beacon[i].ap.in_cache =
+            beacon_in_cache(ctx, b, &ctx->cache->cacheline[ctx->cache->newest]);
     else /* only filter APs */
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
@@ -292,7 +323,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
     /* beacon is AP and is subject to filtering */
-    if (filter_virtual_aps(ctx) == SKY_ERROR)
+    if (!filter_virtual_aps(ctx))
         if (filter_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -316,6 +347,10 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
 
     if (!cl || !b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return false;
+    }
+
+    if (cl->time == 0) {
         return false;
     }
 
@@ -396,7 +431,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         ratio[i] = score[i] = 0;
         if (ctx->cache->cacheline[i].time != 0 &&
             ((uint32_t)(*ctx->gettime)(NULL)-ctx->cache->cacheline[i].time) >
-                (CONFIG(ctx->cache, cache_age_threshold) * 60 * 60)) {
+                (CONFIG(ctx->cache, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
             ctx->cache->cacheline[i].time = 0;
         }
@@ -476,8 +511,8 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold))
         return bestc;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed score %d (vs %d)",
-        (int)round(ratio[bestc] * 100), CONFIG(ctx->cache, cache_match_threshold));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache match failed. Best score %d (vs %d)",
+        (int)round(bestratio * 100), CONFIG(ctx->cache, cache_match_threshold))
     return -1;
 }
 
@@ -515,17 +550,18 @@ static int find_oldest(Sky_ctx_t *ctx)
 static void update_newest_cacheline(Sky_ctx_t *ctx)
 {
     int i;
-    int newest = 0;
+    int newest = 0, idx = 0;
 
     for (i = 0; i < CACHE_SIZE; i++) {
         if (ctx->cache->cacheline[i].time > newest) {
             newest = ctx->cache->cacheline[i].time;
-            ctx->cache->newest = &ctx->cache->cacheline[i];
+            idx = i;
         }
     }
-    if (ctx->cache->newest)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest",
-            ctx->cache->newest - &ctx->cache->cacheline[0]);
+    if (newest) {
+        ctx->cache->newest = idx;
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", idx);
+    }
 }
 
 /*! \brief add location to cache
@@ -576,7 +612,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     ctx->cache->cacheline[i].ap_len = ctx->ap_len;
     ctx->cache->cacheline[i].loc = *loc;
     ctx->cache->cacheline[i].time = now;
-    ctx->cache->newest = &ctx->cache->cacheline[i];
+    ctx->cache->newest = i;
     for (j = 0; j < CONFIG(ctx->cache, total_beacons); j++)
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
     return SKY_SUCCESS;
