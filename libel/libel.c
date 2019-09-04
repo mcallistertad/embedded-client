@@ -138,23 +138,20 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         else
             return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
     } else if (!sky_state || copy_state(sky_errno, &cache, sky_state) != SKY_SUCCESS) {
+        memset(&cache, 0, sizeof(cache));
         cache.header.magic = SKY_MAGIC;
         cache.header.size = sizeof(cache);
         cache.header.time = (uint32_t)(*sky_time)(NULL);
         cache.header.crc32 = sky_crc32(
             &cache.header.magic, (uint8_t *)&cache.header.crc32 - (uint8_t *)&cache.header.magic);
         cache.len = CACHE_SIZE;
-        cache.config.last_config_time = 0;
         config_defaults(&cache);
         for (i = 0; i < CACHE_SIZE; i++) {
             for (j = 0; j < TOTAL_BEACONS; j++) {
-                cache.cacheline[i].time = 0;
-                cache.cacheline[i].len = 0;
                 cache.cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
                 cache.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
-        cache.newest = 0;
 #if SKY_DEBUG
     } else {
         if (logf != NULL) {
