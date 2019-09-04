@@ -145,7 +145,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         cache.header.crc32 = sky_crc32(
             &cache.header.magic, (uint8_t *)&cache.header.crc32 - (uint8_t *)&cache.header.magic);
         cache.len = CACHE_SIZE;
-        config_defaults(&cache);
         for (i = 0; i < CACHE_SIZE; i++) {
             for (j = 0; j < TOTAL_BEACONS; j++) {
                 cache.cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
@@ -163,8 +162,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
 #endif
-        config_defaults(&cache);
     }
+    config_defaults(&cache);
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
@@ -242,6 +241,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
         return NULL;
     }
 
+    memset(ctx, 0, bufsize);
     /* update header in workspace */
     ctx->header.magic = SKY_MAGIC;
     ctx->header.size = bufsize;
@@ -254,8 +254,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
-    ctx->len = 0; /* empty */
-    ctx->ap_len = 0; /* empty */
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -267,13 +265,11 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
         for (i = 0; i < CACHE_SIZE; i++) {
             if (ctx->cache->cacheline[i].ap_len > CONFIG(ctx->cache, max_ap_beacons) ||
                 ctx->cache->cacheline[i].len > CONFIG(ctx->cache, total_beacons)) {
-                ctx->cache->cacheline[i].time = 0;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache %d of %d cleared due to new Dynamic Parameters", i, CACHE_SIZE)
             }
             if ((now - ctx->cache->cacheline[i].time) >
                 ctx->cache->config.cache_age_threshold * SECONDS_IN_HOUR) {
-                ctx->cache->cacheline[i].time = 0;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age", i, CACHE_SIZE)
             }
         }
@@ -314,6 +310,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* Create AP beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_AP;
     memcpy(b.ap.mac, mac, MAC_SIZE);
@@ -321,8 +318,6 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.ap.age = ctx->header.time - timestamp;
-    else
-        b.ap.age = 0;
     if (frequency < 2400 || frequency > 6000)
         frequency = 0; /* 0's not sent to server */
     if (rssi > -10 || rssi < -127)
@@ -368,14 +363,13 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create LTE beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.lte.age = ctx->header.time - timestamp;
-    else
-        b.lte.age = 0;
     if (rsrp > -40 || rsrp < -140)
         rsrp = -1;
     b.lte.tac = tac;
@@ -419,14 +413,13 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create GSM beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_GSM;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.gsm.age = ctx->header.time - timestamp;
-    else
-        b.gsm.age = 0;
     if (rssi > -32 || rssi < -128)
         rssi = -1;
     b.gsm.lac = lac;
@@ -471,14 +464,13 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create UMTS beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_UMTS;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.umts.age = ctx->header.time - timestamp;
-    else
-        b.umts.age = 0;
     if (rscp > -20 || rscp < -120)
         rscp = -1;
     b.umts.lac = lac;
@@ -521,14 +513,13 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create CDMA beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_CDMA;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.cdma.age = ctx->header.time - timestamp;
-    else
-        b.cdma.age = 0;
     if (rssi > -49 || rssi < -140)
         rssi = -1;
     b.cdma.sid = sid;
@@ -573,14 +564,13 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NB IoT beacon */
+    memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_NBIOT;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.nbiot.age = ctx->header.time - timestamp;
-    else
-        b.nbiot.age = 0;
     if (nrsrp > -44 || nrsrp < -156)
         nrsrp = -1;
     b.nbiot.mcc = mcc;
@@ -635,8 +625,6 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         ctx->gps.age = ctx->header.time - timestamp;
-    else
-        ctx->gps.age = 0;
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 

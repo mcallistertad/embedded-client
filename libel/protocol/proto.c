@@ -474,6 +474,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
         return -1;
     }
 
+    memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
 
     if (header.rs_length) {
@@ -513,11 +514,6 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
         }
         if (CONFIG(ctx->cache, last_config_time) == 0)
             CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
-    } else {
-        loc->lat = 0;
-        loc->lon = 0;
-        loc->hpe = 0;
-        loc->location_source = 0;
     }
 
     return 0;
