@@ -227,6 +227,7 @@ int logfmt(
  */
 void dump_workspace(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len,
@@ -276,12 +277,24 @@ void dump_workspace(Sky_ctx_t *ctx)
             break;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec",
-        CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
-        CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
-        CONFIG(ctx->cache, cache_beacon_threshold), CONFIG(ctx->cache, cache_neg_rssi_threshold),
-        ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    if (CONFIG(ctx->cache, last_config_time) == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config: Pending",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec ago",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->cache, last_config_time)))
+    }
+#endif
 }
 
 /*! \brief dump the beacons in the cache
@@ -292,6 +305,7 @@ void dump_workspace(Sky_ctx_t *ctx)
  */
 void dump_cache(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i, j;
     Sky_cacheline_t *c;
     Beacon_t *b;
@@ -346,6 +360,7 @@ void dump_cache(Sky_ctx_t *ctx)
             }
         }
     }
+#endif
 }
 
 /*! \brief set dynamic config parameter defaults
