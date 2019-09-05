@@ -158,8 +158,6 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
  */
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
 {
-    int i;
-
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
             mac[0] == mac[5]) {
@@ -168,15 +166,6 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
         }
     }
 
-    /* reject if this mac already added */
-    for (i = 0; i < ctx->len; i++) {
-        if (mac == ctx->beacon[i].ap.mac)
-            continue;
-        if (memcmp(mac, ctx->beacon[i].ap.mac, MAC_SIZE) == 0) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon with duplicate mac address");
-            return false;
-        }
-    }
     return true;
 }
 

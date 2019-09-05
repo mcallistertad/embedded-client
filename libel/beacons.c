@@ -296,6 +296,7 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx)
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected)
 {
     int i = -1;
+    int dup = -1;
 
     /* don't add any more non-AP beacons if we've already hit the limit of non-AP beacons */
     if (b->h.type != SKY_BEACON_AP &&
@@ -304,6 +305,29 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "too many (b->h.type: %s) (ctx->len - ctx->ap_len: %d)",
             sky_pbeacon(b), ctx->len - ctx->ap_len)
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    } else if (b->h.type == SKY_BEACON_AP) {
+        if (!validate_mac(b->ap.mac, ctx))
+            return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+        /* see if this mac already added */
+        for (i = 0; i < ctx->len; i++) {
+            if (memcmp(b->ap.mac, ctx->beacon[i].ap.mac, MAC_SIZE) == 0) {
+                dup = i;
+                break;
+            }
+        }
+        /* if it is already in workspace */
+        if (dup != -1) {
+            /* keep youngest or strongest beacon info */
+            if (b->ap.age > ctx->beacon[dup].ap.age || b->ap.rssi > ctx->beacon[dup].ap.rssi) {
+                ctx->beacon[dup].ap.age = b->ap.age;
+                ctx->beacon[dup].ap.rssi = b->ap.rssi;
+                ctx->beacon[dup].ap.freq = b->ap.freq;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Copy new info from duplicate beacon")
+                return sky_return(sky_errno, SKY_ERROR_NONE);
+            }
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Rejecting duplicate beacon")
+            return sky_return(sky_errno, SKY_ERROR_NONE);
+        }
     }
 
     /* insert the beacon */
