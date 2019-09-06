@@ -279,7 +279,7 @@ void dump_workspace(Sky_ctx_t *ctx)
     }
     if (CONFIG(ctx->cache, last_config_time) == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config: Pending",
+            "Config: Total Beacons:%d Max AP:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:Pending",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
             CONFIG(ctx->cache, cache_beacon_threshold),
@@ -287,7 +287,7 @@ void dump_workspace(Sky_ctx_t *ctx)
             ctx->header.time - CONFIG(ctx->cache, last_config_time))
     } else {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec ago",
+            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:%d Sec ago",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
             CONFIG(ctx->cache, cache_beacon_threshold),
