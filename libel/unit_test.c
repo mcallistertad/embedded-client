@@ -225,7 +225,7 @@ int main(int ac, char **av)
     Beacon_t b[25];
     Sky_location_t loc;
 
-    if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key, nv_cache(),
+    if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, aes_key, nv_cache(),
             SKY_LOG_LEVEL_ALL, &logger, NULL, &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
