@@ -143,7 +143,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
-    int i, reject;
+    int i, reject, jump, up_down;
     float band_range, worst;
     float ideal_rssi[MAX_AP_BEACONS + 1];
 
@@ -158,7 +158,16 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     /* if the rssi range is small, throw away middle beacon */
 
     if (band_range < 0.5) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. Discarding one beacon...")
+        /* search from middle of range looking for beacon not in cache */
+        for (jump = 0, up_down = -1, i = ctx->ap_len / 2; i >= 0 && i < ctx->ap_len;
+             jump++, i += up_down * jump, up_down = -up_down) {
+            if (!ctx->beacon[i].ap.in_cache) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. %s beacon",
+                    !jump ? "Remove middle" : "Found non-cached")
+                return remove_beacon(ctx, i);
+            }
+        }
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. Removing cached beacon")
         return remove_beacon(ctx, ctx->ap_len / 2);
     }
 

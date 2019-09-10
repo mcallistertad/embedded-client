@@ -265,12 +265,16 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
         for (i = 0; i < CACHE_SIZE; i++) {
             if (ctx->cache->cacheline[i].ap_len > CONFIG(ctx->cache, max_ap_beacons) ||
                 ctx->cache->cacheline[i].len > CONFIG(ctx->cache, total_beacons)) {
+                ctx->cache->cacheline[i].time = 0;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cache %d of %d cleared due to new Dynamic Parameters", i, CACHE_SIZE)
             }
-            if ((now - ctx->cache->cacheline[i].time) >
-                ctx->cache->config.cache_age_threshold * SECONDS_IN_HOUR) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age", i, CACHE_SIZE)
+            if (ctx->cache->cacheline[i].time &&
+                (now - ctx->cache->cacheline[i].time) >
+                    ctx->cache->config.cache_age_threshold * SECONDS_IN_HOUR) {
+                ctx->cache->cacheline[i].time = 0;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
+                    CACHE_SIZE, now - ctx->cache->cacheline[i].time)
             }
         }
         dump_cache(ctx);
