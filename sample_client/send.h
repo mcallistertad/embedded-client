@@ -17,10 +17,7 @@
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE. * Buffer streams exchanged between client and server are comprised of the
- * following sequence of encoded (serialized) protocol buffer messages (except
- * for the first byte, which represents the length of the encoded header
- * message).
+ * IN THE SOFTWARE.
  *
  */
 #ifndef TEST_SEND_H
