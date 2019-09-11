@@ -318,7 +318,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         /* if it is already in workspace */
         if (dup != -1) {
             /* keep youngest or strongest beacon info */
-            if (b->ap.age > ctx->beacon[dup].ap.age || b->ap.rssi > ctx->beacon[dup].ap.rssi) {
+            if (b->ap.age < ctx->beacon[dup].ap.age ||
+                (b->ap.age == ctx->beacon[dup].ap.age &&
+                    NOMINAL_RSSI(b->ap.rssi) > NOMINAL_RSSI(ctx->beacon[dup].ap.rssi))) {
                 ctx->beacon[dup].ap.age = b->ap.age;
                 ctx->beacon[dup].ap.rssi = b->ap.rssi;
                 ctx->beacon[dup].ap.freq = b->ap.freq;
