@@ -158,8 +158,6 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
  */
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
 {
-    int i;
-
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
             mac[0] == mac[5]) {
@@ -168,15 +166,6 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
         }
     }
 
-    /* reject if this mac already added */
-    for (i = 0; i < ctx->len; i++) {
-        if (mac == ctx->beacon[i].ap.mac)
-            continue;
-        if (memcmp(mac, ctx->beacon[i].ap.mac, MAC_SIZE) == 0) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon with duplicate mac address");
-            return false;
-        }
-    }
     return true;
 }
 
@@ -238,6 +227,7 @@ int logfmt(
  */
 void dump_workspace(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len,
@@ -287,12 +277,24 @@ void dump_workspace(Sky_ctx_t *ctx)
             break;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec",
-        CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
-        CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
-        CONFIG(ctx->cache, cache_beacon_threshold), CONFIG(ctx->cache, cache_neg_rssi_threshold),
-        ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    if (CONFIG(ctx->cache, last_config_time) == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:Pending",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:%d Sec ago",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->cache, last_config_time)))
+    }
+#endif
 }
 
 /*! \brief dump the beacons in the cache
@@ -303,6 +305,7 @@ void dump_workspace(Sky_ctx_t *ctx)
  */
 void dump_cache(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i, j;
     Sky_cacheline_t *c;
     Beacon_t *b;
@@ -357,6 +360,7 @@ void dump_cache(Sky_ctx_t *ctx)
             }
         }
     }
+#endif
 }
 
 /*! \brief set dynamic config parameter defaults

@@ -298,17 +298,15 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, %d", mac[0], mac[1], mac[2],
-        mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false", (int)timestamp)
+        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, age %d", mac[0], mac[1],
+        mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
+        (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (!validate_mac(mac, ctx))
-        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* Create AP beacon */
     memset(&b, 0, sizeof(b));
@@ -351,8 +349,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, %d", e_cellid, mcc, mnc,
-        tac, rsrp, is_connected ? "true" : "false", (int)timestamp)
+        "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, age %d", e_cellid, mcc, mnc,
+        tac, rsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -401,8 +399,9 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, %d",
-        lac, ci, mcc, mnc, rssi, is_connected ? "true" : "false", (int)timestamp)
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+        "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc, rssi,
+        is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -452,8 +451,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, %d", lac, ucid, mcc, mnc, rscp,
-        is_connected ? "true" : "false", (int)timestamp)
+        "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, age %d", lac, ucid, mcc, mnc,
+        rscp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -501,8 +500,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, %d", sid,
-        nid, bsid, rssi, is_connected ? "true" : "false", (int)timestamp)
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, age %d",
+        sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -552,8 +551,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, %d", mcc, mnc, e_cellid,
-        tac, nrsrp, is_connected ? "true" : "false", (int)timestamp)
+        "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, age %d", mcc, mnc,
+        e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
