@@ -6,6 +6,6 @@
 	path = .submodules/tiny-AES128-C
 	url = https://github.com/SkyhookWireless/tiny-AES-c.git
 	ignore = untracked
-[submodule ".submodules/embedded-lib-protocol"]
+[submodule ".submodules/embedded-protocol"]
 	path = .submodules/embedded-protocol
-	url = git@github.com:SkyhookWireless/embedded-lib-protocol.git
+	url = git@github.com:SkyhookWireless/embedded-protocol.git
