@@ -88,3 +88,8 @@ To build and run the sample client (after building the library itself):
 
 Note that `sample_client.conf` will likely require modification (to add your
 Skyhook AES key and partner ID).
+
+License
+-------
+
+This project is licensed under the MIT license. See LICENSE.txt.
