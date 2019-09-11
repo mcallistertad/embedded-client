@@ -1,11 +1,15 @@
-Skyhook embedded-lib
-====================
+Skyhook Embedded Client Library
+===============================
 
-The Skyhook embeeded-lib is a small library written in C. It is intended to be
+The Skyhook Embedded Client is a small library written in C. It is intended to be
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
 geolocation of the device on which it runs. This repo also includes a sample client application
 which illustrates how the library can be used by your application (see below).
+
+Instructions for cloning and building the library are below. Instructions for
+integrating the library into your application are
+[here](http://resources.skyhookwireless.com/wiki/type/documentation/precision-location/embedded-client-library-api-documentation/199269838).
 
 Dependencies
 ------------
@@ -18,18 +22,30 @@ clone` command when cloning this repo.
 
 All submodules are contained within the `.submodules` directory.
 
-### Google Protocol Buffers
-The client/server network protocol used by the Skyhook library is based on [Google Protocol Buffers](https://developers.google.com/protocol-buffers/). Therefore the following components are required to build the library:
-* Python version 3.6.0 or later. Under Linux, python2 is often the default version. Make the appropriate adjustments to your path in order to prioritize python3 (and pip3) in this case. E.g.,
+### Google Protocol Buffers And Python
+The client/server network protocol used by the Skyhook library is based on
+[Google Protocol Buffers](https://developers.google.com/protocol-buffers/).
+Therefore the following components are required to build the library:
+* Python version 3.6.0 or later. Under Linux, python2 is often the default
+  version. Make the appropriate adjustments to your path in order to prioritize
+  python3 (and pip3) in this case. E.g.,
 ```
 $ ln -s /usr/bin/python3 /usr/local/bin/python
 $ ln -s /usr/bin/pip3 /usr/local/bin/pip
 ```
 (actual paths may differ depending on your system configuration)
-* Google Protocol Buffers `protoc` compiler version 3.3.0 or later. A pre-built binary version of the compiler for Linux x64 (and other platforms) can be downloaded from https://github.com/protocolbuffers/protobuf/releases. For example, download protoc-3.9.0-linux-x86_64.zip (or a more recent version) from that page, and copy bin/protoc from the archive to an appropriate place in your path (e.g., /usr/local/bin). The other files in the downloaded archive are not needed, and can be discarded.
-* Google protobuf Python module version 3.6.1 or later (normally installed via `$ pip install protobuf`)
+* Google Protocol Buffers `protoc` compiler version 3.3.0 or later. A pre-built
+  binary version of the compiler for Linux x64 (and other platforms) can be
+  downloaded from https://github.com/protocolbuffers/protobuf/releases. For
+  example, download protoc-3.9.0-linux-x86_64.zip (or a more recent version)
+  from that page, and copy `bin/protoc` from the archive to an appropriate
+  place in your path (e.g., `/usr/local/bin`). The other files in the
+  downloaded archive are not needed, and can be discarded.
+* Google protobuf Python module version 3.6.1 or later (normally installed via
+  `$ pip install protobuf`)
 
-On Linux, you should see results similar to the below if the appropriate versions are installed and active:
+On Linux, you should see results similar to the below if the appropriate
+versions are installed and active:
 ```
 $ python --version
 Python 3.6.8
@@ -39,54 +55,18 @@ $ pip list | grep proto
 protobuf        3.6.1
 ```
 
-Library Contents
-----------------
+Library Source Files
+--------------------
 
-Building the library following directions below, produces one result, bin/libel.a
-which contains the following modules, with the listed header file dependencies:
+The library includes the following C source files:
 
-    libel/libel.c -> libel.o
-        libel/beacons.h
-        libel/config.h
-        libel/crc32.h
-        libel/libel.h
-        libel/protocol/proto.h
-        libel/utilities.h
-        libel/workspace.h
-    libel/utilities.c -> utilities.o
-        libel/beacons.h
-        libel/config.h
-        libel/crc32.h
-        libel/libel.h
-        .submodules/tiny-AES128-C/aes.h
-        libel/utilities.h
-        libel/workspace.h
-    libel/beacons.c -> beacons.o
-        libel/beacons.h
-        libel/config.h
-        libel/crc32.h
-        libel/libel.h
-        .submodules/tiny-AES128-C/aes.h
-        libel/utilities.h
-        libel/workspace.h
-    libel/crc32.c -> crc32.o
-    libel/protocol/proto.c -> proto.o
-        libel/beacons.h
-        libel/config.h
-        libel/crc32.h
-        libel/libel.h
-        libel/protocol/el.pb.h
-        libel/protocol/proto.h
-        libel/utilities.h
-        libel/workspace.h
-    libel/protocol/el.pb.c -> el.pb.o*
-        libel/protocol/el.pb.h
-    .submodules/nanopb/pb_common.c -> pb_common.o
-    .submodules/nanopb/pb_encode.c -> pb_encode.o
-    .submodules/nanopb/pb_decode.c -> pb_decode.o
-    .submodules/tiny-AES128-C/aes.c -> aes.o
-
-*note el.pb.c is generated by the protocol buffer compiler (`protoc`; see above)
+* All `.h` and `.c` files in the `libel/` directory
+* All `.h` and `.c` files in the `libel/protocol` directory (note that `el.pb.h`
+  and `el.pb.c` are generated at build time by the protocol buffers compiler)
+* `.submodules/tiney-AES128-C/aes.{h,c}`
+* `.submodules/nanopb/pb_common.c`
+* `.submodules/nanopb/pb_encode.c`
+* `.submodules/nanopb/pb_decode.c`
 
 Build Directions
 ----------------
@@ -95,7 +75,10 @@ To build just the library in a Unix-like environment:
 
     $ make
 
-This creates the file `bin/libel.a`, which can then be statically linked into your executable (in a Unix-like environment). Of course it may be necessary to modify the provided Makefile (or replace it altogether) in order to build the library for your platform.
+This creates the file `bin/libel.a`, which can then be statically linked into
+your executable (in a Unix-like environment). Of course it may be necessary to
+modify the provided Makefile (or replace it altogether) in order to build the
+library for your platform.
 
 To build and run the sample client (after building the library itself):
 
@@ -105,3 +88,8 @@ To build and run the sample client (after building the library itself):
 
 Note that `sample_client.conf` will likely require modification (to add your
 Skyhook AES key and partner ID).
+
+License
+-------
+
+This project is licensed under the MIT license. See LICENSE.txt.
