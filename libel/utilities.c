@@ -404,17 +404,6 @@ uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
     return ctx->cache->sky_aes_key;
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key_id)
- *
- *  @param ctx workspace buffer
- *
- *  @return sky_aes_key_id
- */
-uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx)
-{
-    return ctx->cache->sky_aes_key_id;
-}
-
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
  *
  *  @param ctx workspace buffer

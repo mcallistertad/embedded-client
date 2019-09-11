@@ -50,7 +50,6 @@ static Sky_timefn_t sky_time;
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
-static bool validate_aes_key_id(uint32_t aes_key_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 
 /*! \brief Copy a state buffer to cache
@@ -87,7 +86,6 @@ Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky
  *  @param device_id Device unique ID (example mac address of the device)
  *  @param id_len length if the Device ID, typically 6, Max 16 bytes
  *  @param partner_id Skyhook assigned credentials
- *  @param aes_key_id Skyhook assigned credentials
  *  @param aes_key Skyhook assigned encryption key
  *  @param state_buf pointer to a state buffer (provided by sky_close) or NULL
  *  @param min_level logging function is called for msg with equal or greater level
@@ -103,8 +101,8 @@ Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky
  *  be truncated to 16 if larger, without causing an error.
  */
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16], void *state_buf,
-    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
+    uint32_t partner_id, uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
+    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
@@ -132,7 +130,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         /* parameters must be the same (no-op) or fail */
         if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
-            partner_id == sky_state->sky_partner_id && aes_key_id == sky_state->sky_aes_key_id &&
+            partner_id == sky_state->sky_partner_id &&
             memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0)
             return sky_return(sky_errno, SKY_ERROR_NONE);
         else
@@ -167,13 +165,12 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
-        !validate_aes_key_id(aes_key_id) || !validate_aes_key(aes_key))
+        !validate_aes_key(aes_key))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     cache.sky_id_len = id_len;
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
-    cache.sky_aes_key_id = aes_key_id;
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     sky_open_flag = true;
 
@@ -988,20 +985,6 @@ static bool validate_device_id(uint8_t *device_id, uint32_t id_len)
 static bool validate_partner_id(uint32_t partner_id)
 {
     if (partner_id == 0)
-        return false;
-    else
-        return true; /* TODO check upper bound? */
-}
-
-/*! \brief sanity check the aes_key_id
- *
- *  @param aes_key_id this is expected to be in the range (1 - ???)
- *
- *  @return true or false
- */
-static bool validate_aes_key_id(uint32_t aes_key_id)
-{
-    if (aes_key_id == 0)
         return false;
     else
         return true; /* TODO check upper bound? */

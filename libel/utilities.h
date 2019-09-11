@@ -44,7 +44,6 @@ int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 
 uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx);
-uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx);
 uint8_t *get_ctx_device_id(Sky_ctx_t *ctx);
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
 
