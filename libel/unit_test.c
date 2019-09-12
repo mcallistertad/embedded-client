@@ -79,7 +79,7 @@ void set_mac(uint8_t *mac)
     } else if (rand() % 3 != 0) {
         /* rand MAC */
         memcpy(mac, refs[rand() % 3], sizeof(refs[0]));
-        if (rand() % 2 == 0) {
+        if (rand() % 3 == 0) {
             mac[rand() % 3] = (rand() % 256);
             printf("Rand MAC\n");
         } else {
@@ -269,7 +269,8 @@ int main(int ac, char **av)
     }
 
     for (i = 0; i < 25; i++) {
-        if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp, b[i].ap.rssi, ch, 1)) {
+        if (sky_add_ap_beacon(
+                ctx, &sky_errno, b[i].ap.mac, timestamp - (rand() % 3), b[i].ap.rssi, ch, 1)) {
             printf("sky_add_ap_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
         } else {
             printf("Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
