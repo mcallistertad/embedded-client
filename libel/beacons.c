@@ -335,7 +335,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             /* reject new beacon if older or weaker */
             if (b->ap.age > ctx->beacon[dup].ap.age ||
                 (b->ap.age == ctx->beacon[dup].ap.age &&
-                    NOMINAL_RSSI(b->ap.rssi) < NOMINAL_RSSI(ctx->beacon[dup].ap.rssi))) {
+                    NOMINAL_RSSI(b->ap.rssi) <= NOMINAL_RSSI(ctx->beacon[dup].ap.rssi))) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate beacon")
                 return sky_return(sky_errno, SKY_ERROR_NONE);
             }
