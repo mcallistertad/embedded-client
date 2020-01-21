@@ -240,10 +240,11 @@ int logfmt(
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize, int buf_offset)
 {
+    int pb = 0;
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
     uint8_t *b = (uint8_t *)buffer;
-    int n, N, pb;
+    int n, N;
     if (level > ctx->min_level || function == NULL || buffer == NULL || bufsize <= 0)
         return -1;
     memset(buf, '\0', sizeof(buf));
@@ -252,7 +253,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 
     // Calculate number of characters required to print 16 bytes
     N = n + (16 * 3); /* 16 bytes per line, 3 bytes per byte (' XX') */
-    // if width of log line (SKY_LOG_LENGTH) too short 16 bytes, just pring those that fit
+    // if width of log line (SKY_LOG_LENGTH) too short 16 bytes, just print those that fit
     for (pb = 0; n < MIN(SKY_LOG_LENGTH - 4, N);) {
         if (pb < bufsize)
             n += sprintf(&buf[n], " %02X", b[pb++]);
@@ -260,8 +261,8 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
             break;
     }
     (*ctx->logf)(level, buf);
-    return pb;
 #endif
+    return pb;
 }
 
 /*! \brief dump all bytes of the given buffer in hex
@@ -274,8 +275,9 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize)
 {
+    int buf_offset = 0;
 #if SKY_DEBUG
-    int i, buf_offset = 0, n = bufsize;
+    int i, n = bufsize;
     uint8_t *p = buffer;
     /* try to print 16 bytes per line till all dumped */
     while ((i = dump_hex16(
@@ -283,8 +285,8 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
         n -= i;
         buf_offset += i;
     }
-    return buf_offset;
 #endif
+    return buf_offset;
 }
 
 /*! \brief dump the beacons in the workspace
