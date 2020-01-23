@@ -55,6 +55,7 @@ Sky_cache_t nv_space;
 static time_t mytime(time_t *t)
 {
 #if FAKE_NETWORK_TIME
+    /* truncate actual time to skew it much older making cache operations fail */
     if (t != NULL) {
         *t = time(NULL) & 0x0fffffff;
         return *t;
