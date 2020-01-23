@@ -173,10 +173,16 @@ int logger(Sky_log_level_t level, char *s)
  */
 static time_t mytime(time_t *t)
 {
+    /* Screw with time! */
+    // if (t != NULL) {
+    //     return time(t);
+    // } else
+    //     return time(NULL);
     if (t != NULL) {
-        return time(t);
+        *t = time(NULL) & 0x0fffffff;
+        return *t;
     } else
-        return time(NULL);
+        return time(NULL) & 0x0fffffff;
 }
 
 /*! \brief validate fundamental functionality of the Embedded Library
