@@ -215,7 +215,7 @@ int logfmt(
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
-    n = snprintf(buf, sizeof(buf), "%.20s:%.20s()", sky_basename(file), function);
+    n = snprintf(buf, sizeof(buf), "%.20s:%.20s() ", sky_basename(file), function);
 
     va_start(ap, fmt);
     ret = vsnprintf(buf + n, sizeof(buf) - n, fmt, ap);
