@@ -1,7 +1,7 @@
 validate_cache: Restoring Cache
 Rand( -401 )
-libEL DEBG: libel.c:sky_open() State buffer with CRC 0xB5717AB1, size 468, age 1 Sec restored
-libEL DEBG: Skyhook Embedded Library (Version: 1.1.1-24-gb9caadd-dirty)
+libEL DEBG: libel.c:sky_open() State buffer with CRC 0x47DD2C33, size 468, age 4 Sec restored
+libEL DEBG: Skyhook Embedded Library (Version: 1.1.2-25-g8b5ad42-dirty)
 libEL DEBG: libel.c:sky_new_request() 1 cachelines present
 libEL DEBG: utilities.c:dump_cache() cache: 0 of 1<-newest GPS:-92.914528,56.323769,176
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :0 : Type: WiFi, MAC F4:65:64:B2:F5:7E rssi: -127, freq 0
@@ -14,7 +14,7 @@ libEL DEBG: utilities.c:dump_cache()  Beacon 0 :6 : Type: NB-IoT, mcc: 336, mnc:
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :7 : Type: NB-IoT, mcc: 216, mnc: 376, e_cellid: 205526128, tac: 64902, rssi: -150
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 0 beacons, WiFi 0, connected -1
 libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:8 Max AP:6 Thresholds:49(Match) 24(Age) 3(Beacons) -90(RSSI) Update:Pending
-ctx: magic:D1967806 size:00000200 crc:11DACCDE
+ctx: magic:D1967806 size:00000200 crc:DA9B8A3B
 Rand MAC
 Non-Virt MAC
 Known MAC
@@ -418,7 +418,7 @@ libEL DEBG: beacons.c:find_best_match() Beacon 3 type Wi-Fi matches cache 0 of 0
 libEL DEBG: beacons.c:find_best_match() Beacon 4 type Wi-Fi matches cache 0 of 0..1
 libEL DEBG: beacons.c:find_best_match() cache: 0: score 50 (4/8)
 libEL DEBG: beacons.c:find_best_match() location in cache, pick cache 0 of 0..0 score 50 (vs 49)
-libEL DEBG: libel.c:sky_finalize_request() Location from cache: -92.914528,56.323769, hpe 176, 1568240620
+libEL DEBG: libel.c:sky_finalize_request() Location from cache: -92.914528,56.323769, hpe 176, 1579794971
 sky_finalize_request: GPS: -92.914528,56.323769,176
-libEL DEBG: libel.c:sky_close() State buffer with CRC 0xB5717AB1 and size 468
+libEL DEBG: libel.c:sky_close() State buffer with CRC 0x47DD2C33 and size 468
 nv_cache_save: cache size 468 (468)

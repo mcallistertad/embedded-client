@@ -40,6 +40,11 @@ Sky_cache_t nv_space;
  */
 #define SCAN_LIST_SIZE 100
 
+/* Set to true to test with fake(bad) Network Time
+ *     When true, should see "add_to_cache: Error appropriate with fake network time"
+ */
+#define FAKE_NETWORK_TIME false
+
 /*! \brief time function
  *
  *  @param t where to save the time
@@ -49,10 +54,19 @@ Sky_cache_t nv_space;
 
 static time_t mytime(time_t *t)
 {
+#if FAKE_NETWORK_TIME
+    /* truncate actual time to skew it much older making cache operations fail */
     if (t != NULL) {
-        return time(t);
+        *t = time(NULL) & 0x0fffffff;
+        return *t;
     } else
+        return time(NULL) & 0x0fffffff;
+#else
+    if (t != NULL)
+        return time(t);
+    else
         return time(NULL);
+#endif
 }
 
 /*! \brief set mac address. 30% are virtual AP
@@ -407,7 +421,12 @@ int main(int ac, char **av)
     loc.location_source = SKY_LOCATION_SOURCE_WIFI;
     loc.location_status = SKY_LOCATION_STATUS_SUCCESS;
 
+#if FAKE_NETWORK_TIME
+    if (add_to_cache(ctx, &loc) != SKY_SUCCESS)
+        printf("add_to_cache: Error appropriate with fake network time\n");
+#else
     add_to_cache(ctx, &loc);
+#endif
     dump_cache(ctx);
     /* simulate new config from server */
     ctx->cache->config.total_beacons = 8;

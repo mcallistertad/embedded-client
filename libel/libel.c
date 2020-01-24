@@ -783,13 +783,12 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
-    if (add_to_cache(ctx, loc) == SKY_ERROR) {
+    if (add_to_cache(ctx, loc) == SKY_ERROR)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
-        return sky_return(sky_errno, SKY_ERROR_ADD_CACHE);
-    } else
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d",
-            (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe)
+
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,
+        (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe)
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }

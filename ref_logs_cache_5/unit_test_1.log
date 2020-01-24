@@ -1,14 +1,10 @@
 cache restore: failed
-libEL DEBG: Skyhook Embedded Library (Version: 1.1.1-24-gb9caadd-dirty)
-libEL DEBG: libel.c:sky_new_request() 5 cachelines present
-libEL DEBG: utilities.c:dump_cache() cache: 0 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 1 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 2 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 3 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 4 of 5 - empty len:0 ap_len:0 time:0
+libEL DEBG: Skyhook Embedded Library (Version: 1.1.2-25-g8b5ad42-dirty)
+libEL DEBG: libel.c:sky_new_request() 1 cachelines present
+libEL DEBG: utilities.c:dump_cache() cache: 0 of 1 - empty len:0 ap_len:0 time:0
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 0 beacons, WiFi 0, connected -1
 libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:11 Max AP:10 Thresholds:50(Match) 24(Age) 3(Beacons) -90(RSSI) Update:Pending
-ctx: magic:D1967806 size:00000200 crc:8B5D1A00
+ctx: magic:D1967806 size:00000200 crc:D433E9A8
 Known MAC
 Rand MAC
 Known MAC
@@ -378,6 +374,17 @@ libEL DEBG: beacons.c:find_best_match() cache match failed. Best score 0 (vs 50)
 libEL DEBG: libel.c:sky_finalize_request() Processing request with 11 beacons into 174 byte buffer
 libEL DEBG: libel.c:sky_finalize_request() Requesting new dynamic configuration parameters
 libEL DEBG: libel.c:sky_finalize_request() Request buffer of 174 bytes prepared
+libEL DEBG: libel.c:sky_finalize_request() 0000000: 0B 08 01 10 12 18 90 01 20 02 28 01 0A 10 F8 A4
+libEL DEBG: libel.c:sky_finalize_request() 0000010: 1B 13 B5 CA 4E E8 98 32 38 E0 79 4D 3D 34 BC 9B
+libEL DEBG: libel.c:sky_finalize_request() 0000020: 7A 9E 7D 1F DF DD 9B 37 45 64 79 DF E1 A8 1B AD
+libEL DEBG: libel.c:sky_finalize_request() 0000030: 73 D9 2C CA 72 EB 9E 94 7C AF 33 EB 57 32 2B 40
+libEL DEBG: libel.c:sky_finalize_request() 0000040: DE 15 46 D4 48 E7 8F F0 1A 13 1C 03 EF 28 B8 C3
+libEL DEBG: libel.c:sky_finalize_request() 0000050: 4F BB F0 26 71 16 91 BF F5 FF BE 01 FB D6 45 91
+libEL DEBG: libel.c:sky_finalize_request() 0000060: 15 A8 4C 62 65 57 19 11 19 75 20 17 8E 47 2E BD
+libEL DEBG: libel.c:sky_finalize_request() 0000070: 2D DB 70 D8 D8 C9 E1 81 0C 25 E9 58 30 6A E9 00
+libEL DEBG: libel.c:sky_finalize_request() 0000080: 83 CA A1 62 5C 17 8C 98 EC 15 A3 2E 63 3F C2 D9
+libEL DEBG: libel.c:sky_finalize_request() 0000090: FF 2B B9 E0 DD BA 01 BD C5 EE E1 6E F7 ED 9A 20
+libEL DEBG: libel.c:sky_finalize_request() 00000A0: E4 FF 69 68 7B CA 20 4C 14 3B B1 55 C7 6D
 libEL DEBG: utilities.c:dump_workspace() WorkSpace: Got 11 beacons, WiFi 10, connected 10
 libEL DEBG: utilities.c:dump_workspace()  Beacon 0 : Age: 0 Type: WiFi,        MAC D4:85:87:B2:F5:7E rssi: -112, freq: 0
 libEL DEBG: utilities.c:dump_workspace()  Beacon 1 : Age: 0 Type: WiFi,        MAC D4:85:64:B2:F5:5E rssi: -111, freq: 0
@@ -470,13 +477,9 @@ libEL DEBG: utilities.c:dump_workspace()  Beacon 9 : Age: 2 Type: WiFi,        M
 libEL DEBG: utilities.c:dump_workspace()  Beacon 10: Age: 0 Type: nb IoT, mcc: 791, mnc: 803, e_cellid: 11984752, tac: 61028, rssi: -128
 libEL DEBG: utilities.c:dump_workspace() Config: Total Beacons:11 Max AP:10 Thresholds:50(Match) 24(Age) 3(Beacons) -90(RSSI) Update:Pending
 libEL DEBG: beacons.c:find_best_match() cache: 0: fill empty cacheline
-libEL DEBG: beacons.c:find_best_match() cache: 1: fill empty cacheline
-libEL DEBG: beacons.c:find_best_match() cache: 2: fill empty cacheline
-libEL DEBG: beacons.c:find_best_match() cache: 3: fill empty cacheline
-libEL DEBG: beacons.c:find_best_match() cache: 4: fill empty cacheline
-libEL DEBG: beacons.c:find_best_match() save location in best cache, 0 of 0..4 score 100 (vs 50)
-libEL DEBG: beacons.c:add_to_cache() find_best_match found cache match 0 of 0..5
-libEL DEBG: utilities.c:dump_cache() cache: 0 of 5<-newest GPS:-89.863312,36.942837,67
+libEL DEBG: beacons.c:find_best_match() save location in best cache, 0 of 0..0 score 100 (vs 50)
+libEL DEBG: beacons.c:add_to_cache() find_best_match found cache match 0 of 0..1
+libEL DEBG: utilities.c:dump_cache() cache: 0 of 1<-newest GPS:-89.863312,36.942837,67
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :0 : Type: WiFi, MAC D4:85:87:B2:F5:7E rssi: -112, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :1 : Type: WiFi, MAC D4:85:64:B2:F5:5E rssi: -111, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :2 : Type: WiFi, MAC D4:85:64:B2:F1:7E rssi: -108, freq 0
@@ -488,9 +491,5 @@ libEL DEBG: utilities.c:dump_cache()  Beacon 0 :7 : Type: WiFi, MAC D4:85:64:B2:
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :8 : Type: WiFi, MAC D4:85:DC:96:F5:7E rssi: -15, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :9 : Type: WiFi, MAC 32:65:64:B2:F5:7E rssi: -13, freq 0
 libEL DEBG: utilities.c:dump_cache()  Beacon 0 :10: Type: NB-IoT, mcc: 791, mnc: 803, e_cellid: 11984752, tac: 61028, rssi: -128
-libEL DEBG: utilities.c:dump_cache() cache: 1 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 2 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 3 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: utilities.c:dump_cache() cache: 4 of 5 - empty len:0 ap_len:0 time:0
-libEL DEBG: libel.c:sky_close() State buffer with CRC 0x33D269E2 and size 2004
-nv_cache_save: cache size 2004 (2004)
+libEL DEBG: libel.c:sky_close() State buffer with CRC 0x3BFAF1C7 and size 468
+nv_cache_save: cache size 468 (468)
