@@ -40,6 +40,11 @@ Sky_cache_t nv_space;
  */
 #define SCAN_LIST_SIZE 100
 
+/* Set to true to test with fake(bad) Network Time
+ *     When true, should see "add_to_cache: Error appropriate with fake network time"
+ */
+#define FAKE_NETWORK_TIME false
+
 /*! \brief time function
  *
  *  @param t where to save the time
@@ -49,10 +54,19 @@ Sky_cache_t nv_space;
 
 static time_t mytime(time_t *t)
 {
+#if FAKE_NETWORK_TIME
+    /* truncate actual time to skew it much older making cache operations fail */
     if (t != NULL) {
-        return time(t);
+        *t = time(NULL) & 0x0fffffff;
+        return *t;
     } else
+        return time(NULL) & 0x0fffffff;
+#else
+    if (t != NULL)
+        return time(t);
+    else
         return time(NULL);
+#endif
 }
 
 /*! \brief set mac address. 30% are virtual AP
@@ -79,7 +93,7 @@ void set_mac(uint8_t *mac)
     } else if (rand() % 3 != 0) {
         /* rand MAC */
         memcpy(mac, refs[rand() % 3], sizeof(refs[0]));
-        if (rand() % 2 == 0) {
+        if (rand() % 3 == 0) {
             mac[rand() % 3] = (rand() % 256);
             printf("Rand MAC\n");
         } else {
@@ -232,7 +246,7 @@ int main(int ac, char **av)
     Beacon_t b[25];
     Sky_location_t loc;
 
-    if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, 1, aes_key, nv_cache(),
+    if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, aes_key, nv_cache(),
             SKY_LOG_LEVEL_ALL, &logger, NULL, &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
@@ -269,7 +283,8 @@ int main(int ac, char **av)
     }
 
     for (i = 0; i < 25; i++) {
-        if (sky_add_ap_beacon(ctx, &sky_errno, b[i].ap.mac, timestamp, b[i].ap.rssi, ch, 1)) {
+        if (sky_add_ap_beacon(
+                ctx, &sky_errno, b[i].ap.mac, timestamp - (rand() % 3), b[i].ap.rssi, ch, 1)) {
             printf("sky_add_ap_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
         } else {
             printf("Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
@@ -406,7 +421,12 @@ int main(int ac, char **av)
     loc.location_source = SKY_LOCATION_SOURCE_WIFI;
     loc.location_status = SKY_LOCATION_STATUS_SUCCESS;
 
+#if FAKE_NETWORK_TIME
+    if (add_to_cache(ctx, &loc) != SKY_SUCCESS)
+        printf("add_to_cache: Error appropriate with fake network time\n");
+#else
     add_to_cache(ctx, &loc);
+#endif
     dump_cache(ctx);
     /* simulate new config from server */
     ctx->cache->config.total_beacons = 8;

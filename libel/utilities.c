@@ -33,6 +33,8 @@
 #define SKY_LIBEL 1
 #include "libel.h"
 
+#define MIN(a, b) ((a < b) ? a : b)
+
 /*! \brief set sky_errno and return Sky_status
  *
  *  @param sky_errno sky_errno is the error code
@@ -165,8 +167,6 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
  */
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
 {
-    int i;
-
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
             mac[0] == mac[5]) {
@@ -175,15 +175,6 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
         }
     }
 
-    /* reject if this mac already added */
-    for (i = 0; i < ctx->len; i++) {
-        if (mac == ctx->beacon[i].ap.mac)
-            continue;
-        if (memcmp(mac, ctx->beacon[i].ap.mac, MAC_SIZE) == 0) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon with duplicate mac address");
-            return false;
-        }
-    }
     return true;
 }
 
@@ -223,12 +214,9 @@ int logfmt(
     if (level > ctx->min_level || function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
-    n = strlen(strncpy(buf, sky_basename(file), 20));
-    buf[n++] = ':';
-    n += strlen(strncpy(buf + n, function, 20));
-    buf[n++] = '(';
-    buf[n++] = ')';
-    buf[n++] = ' ';
+    // Print log-line prefix ("<source file>:<function name>")
+    n = snprintf(buf, sizeof(buf), "%.20s:%.20s() ", sky_basename(file), function);
+
     va_start(ap, fmt);
     ret = vsnprintf(buf + n, sizeof(buf) - n, fmt, ap);
     (*ctx->logf)(level, buf);
@@ -236,6 +224,70 @@ int logfmt(
     return ret;
 }
 #endif
+
+/*! \brief dump maximum number of bytes of the given buffer in hex on one line
+ *
+ *  @param file the file name where LOG_BUFFER was invoked
+ *  @param function the function name where LOG_BUFFER was invoked
+ *  @param ctx workspace buffer
+ *  @param level the log level of this msg
+ *  @param buffer where to start dumping the next line
+ *  @param bufsize remaining size of the buffer in bytes
+ *  @param buf_offset byte index of progress through the current buffer
+ *
+ *  @returns number of bytes dumped, or negitive number on error
+ */
+int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
+    void *buffer, uint32_t bufsize, int buf_offset)
+{
+    int pb = 0;
+#if SKY_DEBUG
+    char buf[SKY_LOG_LENGTH];
+    uint8_t *b = (uint8_t *)buffer;
+    int n, N;
+    if (level > ctx->min_level || function == NULL || buffer == NULL || bufsize <= 0)
+        return -1;
+    memset(buf, '\0', sizeof(buf));
+    // Print log-line prefix ("<source file>:<function name> <buf offset>:")
+    n = snprintf(buf, sizeof(buf), "%.20s:%.20s() %07X:", sky_basename(file), function, buf_offset);
+
+    // Calculate number of characters required to print 16 bytes
+    N = n + (16 * 3); /* 16 bytes per line, 3 bytes per byte (' XX') */
+    // if width of log line (SKY_LOG_LENGTH) too short 16 bytes, just print those that fit
+    for (pb = 0; n < MIN(SKY_LOG_LENGTH - 4, N);) {
+        if (pb < bufsize)
+            n += sprintf(&buf[n], " %02X", b[pb++]);
+        else
+            break;
+    }
+    (*ctx->logf)(level, buf);
+#endif
+    return pb;
+}
+
+/*! \brief dump all bytes of the given buffer in hex
+ *
+ *  @param buf pointer to the buffer
+ *  @param bufsize size of the buffer in bytes
+ *
+ *  @returns number of bytes dumped
+ */
+int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
+    void *buffer, uint32_t bufsize)
+{
+    int buf_offset = 0;
+#if SKY_DEBUG
+    int i, n = bufsize;
+    uint8_t *p = buffer;
+    /* try to print 16 bytes per line till all dumped */
+    while ((i = dump_hex16(
+                file, function, ctx, level, (void *)(p + (bufsize - n)), n, buf_offset)) > 0) {
+        n -= i;
+        buf_offset += i;
+    }
+#endif
+    return buf_offset;
+}
 
 /*! \brief dump the beacons in the workspace
  *
@@ -245,6 +297,7 @@ int logfmt(
  */
 void dump_workspace(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len,
@@ -294,12 +347,24 @@ void dump_workspace(Sky_ctx_t *ctx)
             break;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Last Config:%d Sec",
-        CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
-        CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
-        CONFIG(ctx->cache, cache_beacon_threshold), CONFIG(ctx->cache, cache_neg_rssi_threshold),
-        ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    if (CONFIG(ctx->cache, last_config_time) == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:Pending",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            ctx->header.time - CONFIG(ctx->cache, last_config_time))
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Config: Total Beacons:%d Max AP Beacons:%d Thresholds:%d(Match) %d(Age) %d(Beacons) %d(RSSI) Update:%d Sec ago",
+            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
+            CONFIG(ctx->cache, cache_match_threshold), CONFIG(ctx->cache, cache_age_threshold),
+            CONFIG(ctx->cache, cache_beacon_threshold),
+            CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->cache, last_config_time)))
+    }
+#endif
 }
 
 /*! \brief dump the beacons in the cache
@@ -310,6 +375,7 @@ void dump_workspace(Sky_ctx_t *ctx)
  */
 void dump_cache(Sky_ctx_t *ctx)
 {
+#if SKY_DEBUG
     int i, j;
     Sky_cacheline_t *c;
     Beacon_t *b;
@@ -364,6 +430,7 @@ void dump_cache(Sky_ctx_t *ctx)
             }
         }
     }
+#endif
 }
 
 /*! \brief set dynamic config parameter defaults
@@ -409,17 +476,6 @@ uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
 {
     return ctx->cache->sky_aes_key;
-}
-
-/*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key_id)
- *
- *  @param ctx workspace buffer
- *
- *  @return sky_aes_key_id
- */
-uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx)
-{
-    return ctx->cache->sky_aes_key_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)

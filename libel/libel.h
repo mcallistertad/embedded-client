@@ -142,8 +142,8 @@ typedef void Sky_ctx_t;
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint32_t aes_key_id, uint8_t aes_key[16], void *state_buf,
-    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
+    uint32_t partner_id, uint8_t aes_key[16], void *state_buf, Sky_log_level_t min_level,
+    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
 
 int32_t sky_sizeof_state(void *sky_state);
 

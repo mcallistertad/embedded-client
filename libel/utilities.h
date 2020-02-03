@@ -27,8 +27,10 @@
 
 #if SKY_DEBUG
 #define LOGFMT(...) logfmt(__FILE__, __FUNCTION__, __VA_ARGS__);
+#define LOG_BUFFER(c, l, b, s) log_buffer(__FILE__, __FUNCTION__, c, l, b, s);
 #else
 #define LOGFMT(...)
+#define LOG_BUFFER(c, l, b, s)
 #endif
 Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
@@ -42,6 +44,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
 const char *sky_basename(const char *path);
 int logfmt(
     const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...);
+int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
+    void *buffer, uint32_t bufsize);
 #endif
 void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
@@ -51,7 +55,6 @@ int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 
 uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx);
-uint32_t get_ctx_aes_key_id(Sky_ctx_t *ctx);
 uint8_t *get_ctx_device_id(Sky_ctx_t *ctx);
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
 

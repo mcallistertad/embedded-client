@@ -150,7 +150,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  */
 static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
 {
-    int i, reject;
+    int i, reject, jump, up_down;
     float band_range, worst;
     float ideal_rssi[MAX_AP_BEACONS + 1];
 
@@ -165,7 +165,16 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     /* if the rssi range is small, throw away middle beacon */
 
     if (band_range < 0.5) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. Discarding one beacon...")
+        /* search from middle of range looking for beacon not in cache */
+        for (jump = 0, up_down = -1, i = ctx->ap_len / 2; i >= 0 && i < ctx->ap_len;
+             jump++, i += up_down * jump, up_down = -up_down) {
+            if (!ctx->beacon[i].ap.in_cache) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. %s beacon",
+                    !jump ? "Remove middle" : "Found non-cached")
+                return remove_beacon(ctx, i);
+            }
+        }
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. Removing cached beacon")
         return remove_beacon(ctx, ctx->ap_len / 2);
     }
 
@@ -303,6 +312,7 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx)
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected)
 {
     int i = -1;
+    int dup = -1;
 
     /* don't add any more non-AP beacons if we've already hit the limit of non-AP beacons */
     if (b->h.type != SKY_BEACON_AP &&
@@ -311,6 +321,28 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "too many (b->h.type: %s) (ctx->len - ctx->ap_len: %d)",
             sky_pbeacon(b), ctx->len - ctx->ap_len)
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    } else if (b->h.type == SKY_BEACON_AP) {
+        if (!validate_mac(b->ap.mac, ctx))
+            return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+        /* see if this mac already added (duplicate beacon) */
+        for (dup = 0; dup < ctx->ap_len; dup++) {
+            if (memcmp(b->ap.mac, ctx->beacon[dup].ap.mac, MAC_SIZE) == 0) {
+                break;
+            }
+        }
+        /* if it is already in workspace */
+        if (dup < ctx->ap_len) {
+            /* reject new beacon if older or weaker */
+            if (b->ap.age > ctx->beacon[dup].ap.age ||
+                (b->ap.age == ctx->beacon[dup].ap.age &&
+                    NOMINAL_RSSI(b->ap.rssi) <= NOMINAL_RSSI(ctx->beacon[dup].ap.rssi))) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate beacon")
+                return sky_return(sky_errno, SKY_ERROR_NONE);
+            }
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate beacon %s",
+                (b->ap.age == ctx->beacon[dup].ap.age) ? "(stronger signal)" : "(younger)")
+            remove_beacon(ctx, dup);
+        }
     }
 
     /* insert the beacon */

@@ -21,3 +21,9 @@ diff unit_test_?.log ref_log_cache_1
 
 Rebuild library and unit_test with CACHE_SIZE 5 (config.h) and compare with ref_log_cache_5
 
+Rebuild unit_test with #define FAKE_NETWORK_TIME true and perform:
+
+# rm nv_cache
+# bin/unit_test > unit_test_fake.log
+
+diff unit_test_fake.log ref_log_cache_5

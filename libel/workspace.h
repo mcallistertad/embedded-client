@@ -25,7 +25,7 @@
 #ifndef SKY_WORKSPACE_H
 #define SKY_WORKSPACE_H
 
-#define SKY_MAGIC 0xD1967805
+#define SKY_MAGIC 0xD1967806
 typedef struct sky_header {
     uint32_t magic; /* SKY_MAGIC */
     uint32_t size; /* total number of bytes in structure */
@@ -60,7 +60,6 @@ typedef struct sky_cache {
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAC_SIZE]; /* device ID */
     uint32_t sky_partner_id; /* partner ID */
-    uint32_t sky_aes_key_id; /* aes key ID */
     uint8_t sky_aes_key[16]; /* aes key */
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
