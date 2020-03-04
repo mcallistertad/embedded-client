@@ -123,7 +123,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     if (sky_state != NULL && !validate_cache(sky_state, logf)) {
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_DEBUG, "Invalid state buffer was ignored!");
+            (*logf)(SKY_LOG_LEVEL_WARNING, "Invalid state buffer was ignored!");
         sky_state = NULL;
     }
 
@@ -767,16 +767,16 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     uint32_t bufsize, Sky_location_t *loc)
 {
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Bad parameters")
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters")
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
     /* decode response to get lat/lon */
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Response decode failure")
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Response decode failure")
         return sky_return(sky_errno, SKY_ERROR_DECODE_ERROR);
     } else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Server error. Status: %s",
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Server error. Status: %s",
             sky_pserver_status(loc->location_status))
         return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
     }
@@ -784,7 +784,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
 
     /* Add location and current beacons to Cache */
     if (add_to_cache(ctx, loc) == SKY_ERROR)
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache")
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,
         (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,

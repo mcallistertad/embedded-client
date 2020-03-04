@@ -106,7 +106,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
     /* sanity checks */
     if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Invalid params. Beacon type %s", sky_pbeacon(b))
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid params. Beacon type %s", sky_pbeacon(b))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
@@ -169,18 +169,18 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         for (jump = 0, up_down = -1, i = ctx->ap_len / 2; i >= 0 && i < ctx->ap_len;
              jump++, i += up_down * jump, up_down = -up_down) {
             if (!ctx->beacon[i].ap.in_cache) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. %s beacon",
+                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small. %s beacon",
                     !jump ? "Remove middle" : "Found non-cached")
                 return remove_beacon(ctx, i);
             }
         }
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Warning: rssi range is small. Removing cached beacon")
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small. Removing cached beacon")
         return remove_beacon(ctx, ctx->ap_len / 2);
     }
 
     /* if beacon with min RSSI is below threshold, throw it out */
     if (NOMINAL_RSSI(ctx->beacon[0].ap.rssi) < -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Discarding beacon %d with very weak strength", 0)
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Discarding beacon %d with very weak strength", 0)
         return remove_beacon(ctx, 0);
     }
 
@@ -644,7 +644,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
                 CACHE_SIZE);
     }
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Won't add unknown location to cache")
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache")
         return SKY_ERROR;
     }
     ctx->cache->cacheline[i].len = ctx->len;
