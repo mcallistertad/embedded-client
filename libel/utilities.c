@@ -86,7 +86,7 @@ int validate_workspace(Sky_ctx_t *ctx)
     return true;
 }
 
-/*! \brief validate the cache buffer
+/*! \brief validate the cache buffer - Cant use LOGFMT here
  *
  *  @param c pointer to cache buffer
  *
@@ -119,6 +119,13 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
         return false;
     }
 
+    if (c->header.magic != SKY_MAGIC) {
+#if SKY_DEBUG
+	if (logf != NULL)
+	    (*logf)(SKY_LOG_LEVEL_DEBUG, "Cache validation failed: bad magic in header");
+#endif
+	return false;
+    }
     if (c->header.crc32 ==
         sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 - (uint8_t *)&c->header.magic)) {
         for (i = 0; i < CACHE_SIZE; i++) {
