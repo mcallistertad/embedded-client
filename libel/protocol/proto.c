@@ -531,7 +531,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_source = (Sky_loc_source_t)rs.source;
         }
         if (apply_config_overrides(ctx->cache, &rs)) {
-            if (ctx->logf)
+            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
                 (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
         if (CONFIG(ctx->cache, last_config_time) == 0)
