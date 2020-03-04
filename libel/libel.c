@@ -122,7 +122,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     id_len = (id_len > MAX_DEVICE_ID) ? 16 : id_len;
 
     if (sky_state != NULL && !validate_cache(sky_state, logf)) {
-        if (logf != NULL)
+        if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
             (*logf)(SKY_LOG_LEVEL_WARNING, "Invalid state buffer was ignored!");
         sky_state = NULL;
     }
@@ -158,7 +158,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         }
 #if SKY_DEBUG
     } else {
-        if (logf != NULL) {
+        if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
             snprintf(buf, sizeof(buf),
                 "%s:%s() State buffer with CRC 0x%08X, size %d, age %d Sec restored",
                 sky_basename(__FILE__), __FUNCTION__, sky_crc32(sky_state, sky_state->header.size),
@@ -181,7 +181,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     sky_open_flag = true;
 
-    if (logf != NULL)
+    if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
         (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
@@ -952,7 +952,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
     if (sky_state != NULL) {
         *sky_state = &cache;
 #if SKY_DEBUG
-        if (sky_logf != NULL) {
+        if (sky_logf != NULL && SKY_LOG_LEVEL_DEBUG <= sky_min_level) {
             snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X and size %d",
                 sky_basename(__FILE__), __FUNCTION__, sky_crc32(&cache, cache.header.size),
                 cache.header.size);
