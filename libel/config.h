@@ -44,7 +44,10 @@
  */
 #define CACHE_AGE_THRESHOLD 24
 
-/*! \brief The minimum beacons that use CACHE_MATCH_THRESHOLD, otherwise 100% match required
+/*! \brief If there are CACHE_BEACON_THRESHOLD or more beacons in workspace
+ *   after filtering, then the cache match score is compared to
+ *   CACHE_MATCH_THRESHOLD, otherwise 100% match is required to return the cached
+ *   location (i.e. all beacons must match when only few beacons are in workspace).
  */
 #define CACHE_BEACON_THRESHOLD 3
 
