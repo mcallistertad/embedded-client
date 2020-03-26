@@ -455,6 +455,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
  */
 int find_best_match(Sky_ctx_t *ctx, bool put)
 {
+    Sky_cacheline_t *cl;
     int i, j, start, end;
     float ratio[CACHE_SIZE];
     int score[CACHE_SIZE];
@@ -475,17 +476,18 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             ctx->cache->cacheline[i].time = 0;
         }
         if (put && (ctx->cache->cacheline[i].time == 0)) {
-            /* looking for match for put, empty cacheline = 1st choice */
+            /* looking for match for put, empty cacheline = 1st choice. Mark this special case */
             score[i] = CONFIG(ctx->cache, total_beacons) * 2;
         } else if (!put && ctx->cache->cacheline[i].time == 0) {
             /* looking for match for get, ignore empty cache */
             continue;
         } else {
-            /* Non empty cacheline - count matching beacons */
             if (ctx->ap_len) {
+                /* Non empty cacheline - count matching AP beacons */
                 start = 0;
                 end = ctx->ap_len;
             } else {
+                /* Non empty cacheline - count matching Cell beacons */
                 start = ctx->ap_len - 1;
                 end = ctx->len;
             }
@@ -501,24 +503,31 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     }
 
     for (i = 0; i < CACHE_SIZE; i++) {
+        cl = &ctx->cache->cacheline[i];
+        /* Special case - empty cacheline noted above */
         if (score[i] == CONFIG(ctx->cache, total_beacons) * 2) {
             ratio[i] = 1.0;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: fill empty cacheline", i)
-        } else if (ctx->ap_len && ctx->cache->cacheline[i].ap_len) {
-            // score = intersection(A, B) / union(A, B)
-            int unionAB =
-                (ctx->ap_len +
-                    MIN(ctx->cache->cacheline[i].ap_len, CONFIG(ctx->cache, max_ap_beacons)) -
-                    score[i]);
-            ratio[i] = (float)score[i] / unionAB;
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d)", i,
-                (int)round(ratio[i] * 100), score[i], unionAB)
-
-        } else if (ctx->len - ctx->ap_len &&
-                   ctx->cache->cacheline[i].len - ctx->cache->cacheline[i].ap_len) {
-            // if all cell beacons match
+        } else if (ctx->ap_len && cl->ap_len) { /* APs present */
+            // if cell in workspace and no match in cacheline then score = 0
+            if ((ctx->len - ctx->ap_len) &&
+                (((cl->len - cl->ap_len) && !beacon_in_cache(ctx, &ctx->beacon[ctx->ap_len], cl)) ||
+                    (cl->len - cl->ap_len == 0))) {
+                ratio[i] = 0.0;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: Cell changed score 0", i)
+            } else {
+                // score APs = intersection(A, B) / union(A, B)
+                int unionAB =
+                    (ctx->ap_len + MIN(cl->ap_len, CONFIG(ctx->cache, max_ap_beacons)) - score[i]);
+                ratio[i] = (float)score[i] / unionAB;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d)", i,
+                    (int)round(ratio[i] * 100), score[i], unionAB)
+            }
+        } else if (ctx->len - ctx->ap_len && cl->len - cl->ap_len) /* Check cell beacons */
+        {
+            // if all cell beacons match, score = 100
             ratio[i] = (score[i] == ctx->len - ctx->ap_len) ? 100.0 : 0.0;
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: all %d cell beacons match",
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: all %d cell beacons match", i,
                 ctx->len - ctx->ap_len)
         }
 
