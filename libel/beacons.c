@@ -488,7 +488,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
                 end = ctx->ap_len;
             } else {
                 /* Non empty cacheline - count matching Cell beacons */
-                start = ctx->ap_len - 1;
+                start = ctx->ap_len;
                 end = ctx->len;
             }
 
