@@ -30,6 +30,7 @@
 #include <string.h>
 #include <time.h>
 #include "aes.h"
+#include "crc32.h"
 
 #define AES_SIZE 16
 
@@ -132,13 +133,11 @@ typedef int (*Sky_randfn_t)(uint8_t *rand_buf, uint32_t bufsize);
 typedef time_t (*Sky_timefn_t)(time_t *t);
 
 #ifndef SKY_LIBEL
-#include "crc32.h"
 typedef void Sky_ctx_t;
 #define MAC_SIZE 6
 #else
 #include "config.h"
 #include "beacons.h"
-#include "crc32.h"
 #include "workspace.h"
 #include "utilities.h"
 #endif
