@@ -226,31 +226,28 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     return remove_beacon(ctx, reject);
 }
 
-/*! \brief try to reduce AP by filtering out virtual AP
+/*! \brief try to reduce AP by filtering out one virtual AP that matches beacon just added
  *         When similar, remove beacon with highesr mac address
  *         unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
+ *  @param b index of beacon just added
  *
  *  @return true if beacon removed or false otherwise
  */
-static bool filter_virtual_aps(Sky_ctx_t *ctx)
+static bool filter_virtual_aps(Sky_ctx_t *ctx, int b)
 {
-    int i, j;
+    int i;
     int cmp, rm = -1;
 #if SKY_DEBUG
     int keep = -1;
     bool cached = false;
 #endif
 
-    LOGFMT(
-        ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "just added beacon at idx %d, ap_len: %d APs of %d beacons", b,
+        (int)ctx->ap_len, (int)ctx->len)
 
     dump_workspace(ctx);
-
-    if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
-        return false;
-    }
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
@@ -258,41 +255,43 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx)
         return false;
     }
 
-    for (j = 0; j < ctx->ap_len; j++) {
-        for (i = j + 1; i < ctx->ap_len; i++) {
-            if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac)) < 0) {
-                if (ctx->beacon[j].ap.in_cache) {
-                    rm = i;
+    /* walk through all beacons in workspace (ignoring the one just added) */
+    for (i = 0; i < ctx->ap_len; i++) {
+        if (i == b)
+            continue;
+
+        if ((cmp = similar(ctx->beacon[i].ap.mac, ctx->beacon[b].ap.mac)) < 0) {
+            if (ctx->beacon[b].ap.in_cache) {
+                rm = i;
 #if SKY_DEBUG
-                    keep = j;
-                    cached = true;
+                keep = b;
+                cached = true;
 #endif
-                } else {
-                    rm = j;
+            } else {
+                rm = b;
 #if SKY_DEBUG
-                    keep = i;
+                keep = i;
 #endif
-                }
-            } else if (cmp > 0) {
-                if (ctx->beacon[i].ap.in_cache) {
-                    rm = j;
-#if SKY_DEBUG
-                    keep = i;
-                    cached = true;
-#endif
-                } else {
-                    rm = i;
-#if SKY_DEBUG
-                    keep = j;
-#endif
-                }
             }
-            if (rm != -1) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
-                    cached ? " (cached)" : "")
-                remove_beacon(ctx, rm);
-                return true;
+        } else if (cmp > 0) {
+            if (ctx->beacon[i].ap.in_cache) {
+                rm = b;
+#if SKY_DEBUG
+                keep = i;
+                cached = true;
+#endif
+            } else {
+                rm = i;
+#if SKY_DEBUG
+                keep = b;
+#endif
             }
+        }
+        if (rm != -1) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
+                cached ? " (cached)" : "")
+            remove_beacon(ctx, rm);
+            return true;
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match")
@@ -357,16 +356,18 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
     else /* only filter APs */
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
+    /* discard virtual duplicates */
+    filter_virtual_aps(ctx, i);
+
     /* done if no filtering needed */
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons))
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
     /* beacon is AP and is subject to filtering */
-    if (!filter_virtual_aps(ctx))
-        if (filter_by_rssi(ctx) == SKY_ERROR) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
-            return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-        }
+    if (filter_by_rssi(ctx) == SKY_ERROR) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    }
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
