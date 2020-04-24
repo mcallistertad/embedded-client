@@ -145,7 +145,7 @@ int load_config(char *filename, Config_t *config)
         }
 
         if (sscanf(line, "DEVICE_MAC %s", str) == 1) {
-            hex2bin(str, MAC_SIZE * 2, config->device_mac, MAC_SIZE);
+            hex2bin(str, MAX_DEVICE_ID * 2, config->device_mac, MAX_DEVICE_ID);
             continue;
         }
     }
