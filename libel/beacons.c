@@ -142,7 +142,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     return SKY_SUCCESS;
 }
 
-/*! \brief try to reduce AP by filtering out based on diversity of rssi
+/*! \brief try to remove one AP by selecting an AP which leaves best spread of rssi values
  *
  *  @param ctx Skyhook request context
  *
@@ -226,8 +226,8 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     return remove_beacon(ctx, reject);
 }
 
-/*! \brief try to reduce AP by filtering out one virtual AP that matches beacon just added
- *         When similar, remove beacon with highesr mac address
+/*! \brief remove an AP if there is a similar one to the one just added
+ *         When similar, remove beacon with highest mac address
  *         unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
@@ -235,7 +235,7 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
  *
  *  @return true if beacon removed or false otherwise
  */
-static bool filter_virtual_aps(Sky_ctx_t *ctx, int b)
+static bool remove_virtual_ap(Sky_ctx_t *ctx, int b)
 {
     int i;
     int cmp, rm = -1;
@@ -249,12 +249,12 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx, int b)
 
     dump_workspace(ctx);
 
-    /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(ctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi")
         return false;
     }
 
+    /* remove an AP beacon that is 'similar' to the one just added */
     /* walk through all beacons in workspace (ignoring the one just added) */
     for (i = 0; i < ctx->ap_len; i++) {
         if (i == b)
@@ -357,7 +357,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         return sky_return(sky_errno, SKY_ERROR_NONE);
 
     /* discard virtual duplicates */
-    filter_virtual_aps(ctx, i);
+    remove_virtual_ap(ctx, i);
 
     /* done if no filtering needed */
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons))
