@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 
     timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
-    if (sky_open(&sky_errno, config.device_mac, MAX_DEVICE_ID, config.partner_id, config.key,
+    if (sky_open(&sky_errno, config.device_mac, config.device_len, config.partner_id, config.key,
             nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
