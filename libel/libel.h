@@ -132,14 +132,14 @@ typedef int (*Sky_randfn_t)(uint8_t *rand_buf, uint32_t bufsize);
  */
 typedef time_t (*Sky_timefn_t)(time_t *t);
 
-#ifndef SKY_LIBEL
-typedef void Sky_ctx_t;
-#define MAC_SIZE 6
-#else
+#ifdef SKY_LIBEL
 #include "config.h"
 #include "beacons.h"
 #include "workspace.h"
 #include "utilities.h"
+#else
+typedef void Sky_ctx_t;
+#define MAC_SIZE 6
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
