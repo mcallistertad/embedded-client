@@ -27,7 +27,6 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-#include "../.submodules/tiny-AES128-C/aes.h"
 #define SKY_LIBEL 1
 #include "libel.h"
 
