@@ -213,15 +213,15 @@ int main(int argc, char *argv[])
     ret_code = load_config(configfile, &config);
     if (ret_code == -1)
         exit(-1);
-    // print_config(&config);
+    print_config(&config);
 
     /* Comment in order to disable cache loading */
     nv_space = nv_cache(nv_space, 1);
 
     timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
-    if (sky_open(&sky_errno, config.device_mac, MAC_SIZE, config.partner_id, config.key, nv_space,
-            SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime) == SKY_ERROR) {
+    if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
+            nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
