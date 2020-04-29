@@ -1,6 +1,8 @@
 CFLAGS = -Wall -Werror -Os -std=c99
 LIB_DIR = ../bin
-INCLUDES = -I. -I../libel
+AES_DIR = ../.submodules/tiny-AES128-C
+
+INCLUDES = -I. -I../libel -I${AES_DIR}
 CLIENT_NAME = sample_client
 
 CLIENT_SRCS = sample_client.c send.c config.c
