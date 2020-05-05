@@ -31,7 +31,7 @@ TINYAES_SRCS = ${AES_DIR}/aes.c
 LIBELG_ALL = ${LIBELG_SRCS} ${PROTO_SRCS} ${TINYAES_SRCS} 
 LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 
-all: .submodules/nanopb/README.md .submodules/tiny-AES128-C/README.md .submodules/embedded-protocol/README.md lib unit_test
+all: .submodules/nanopb/.git .submodules/tiny-AES128-C/.git .submodules/embedded-protocol/.git lib unit_test
 
 .submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
