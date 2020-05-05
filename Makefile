@@ -33,15 +33,15 @@ LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 
 all: .submodules/nanopb/README.md .submodules/tiny-AES128-C/README.md .submodules/embedded-protocol/README.md lib unit_test
 
-.submodules/nanopb/README.md:
+.submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 
-.submodules/tiny-AES128-C/README.md:
+.submodules/tiny-AES128-C/.git:
 	@echo "submodule tiny-AES128-C must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 
-.submodules/embedded-protocol/README.md:
+.submodules/embedded-protocol/.git:
 	@echo "submodule embedded-protocol must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 
