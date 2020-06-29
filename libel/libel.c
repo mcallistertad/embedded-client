@@ -343,6 +343,8 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *  @param e_cellid lte beacon identifier 28bit (0-268,435,456)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code (0-999)
+ *  @param pci mobile pci (0-503, -1 if unknown)
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -350,7 +352,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
-    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rsrp,
+    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, uint16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp,
     bool is_connected)
 {
     Beacon_t b;
@@ -383,6 +385,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.lte.mcc = mcc;
     b.lte.mnc = mnc;
     b.lte.rssi = rsrp;
+    b.lte.pci = pci;
+    b.lte.earfcn = earfcn;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -446,6 +450,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *  @param ucid umts cell identifier 28bit (0-268,435,456)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
+ *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
+ *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown, -2 if unknown but same as serving cell))
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -453,7 +459,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
-    uint32_t ucid, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rscp, bool is_connected)
+    uint32_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp, bool is_connected)
 {
     Beacon_t b;
 
@@ -485,6 +491,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.umts.mcc = mcc;
     b.umts.mnc = mnc;
     b.umts.rssi = rscp;
+    b.umts.psc = psc;
+    b.umts.uarfcn = uarfcn;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -545,6 +553,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param mnc mobile network code  (0-999)
  *  @param e_cellid nbiot beacon identifier (0-268,435,456)
  *  @param tac nbiot tracking area code identifier (1-65,535), 0 if unknown
+ *  @param ncid mobile cell ID (0-503, -1 if unknown)
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -552,7 +562,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, uint32_t e_cellid, uint32_t tac, time_t timestamp, int16_t nrsrp,
+    uint16_t mnc, uint32_t e_cellid, uint32_t tac, uint16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp,
     bool is_connected)
 {
     Beacon_t b;
@@ -585,6 +595,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.nbiot.e_cellid = e_cellid;
     b.nbiot.tac = tac;
     b.nbiot.rssi = nrsrp;
+    b.nbiot.ncid = ncid;
+    b.nbiot.earfcn = earfcn;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }

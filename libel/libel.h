@@ -158,20 +158,20 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
-    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rsrp,
+    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, uint16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp,
     bool is_connected);
 
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
     uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rssi, bool is_connected);
 
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
-    uint32_t ui, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rscp, bool is_connected);
+    uint32_t ui, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp, bool is_connected);
 
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint32_t sid,
     uint16_t nid, uint16_t bsid, time_t timestamp, int16_t rssi, bool is_connected);
 
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, uint32_t e_cellid, uint32_t tac, time_t timestamp, int16_t nrsrp,
+    uint16_t mnc, uint32_t e_cellid, uint32_t tac, uint16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp,
     bool is_connected);
 
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, float lon,

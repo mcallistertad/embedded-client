@@ -87,6 +87,8 @@ struct umts {
     uint32_t ucid;
     uint16_t mcc; // country
     uint16_t mnc;
+    int16_t psc;
+    int16_t uarfcn;
     uint32_t age;
     int16_t rssi;
 };
@@ -99,6 +101,8 @@ struct lte {
     uint16_t mcc;
     uint16_t mnc;
     uint16_t tac;
+    uint16_t pci;
+    int32_t earfcn;
     int16_t rssi;
 };
 
@@ -121,6 +125,8 @@ struct nbiot {
     uint16_t mnc;
     uint32_t e_cellid;
     uint16_t tac;
+    uint16_t ncid;
+    int32_t earfcn;
     int16_t rssi;
 };
 
