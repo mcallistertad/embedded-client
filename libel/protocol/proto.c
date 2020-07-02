@@ -158,6 +158,58 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
 
+static void encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
+{
+    if (val != unknown)
+        // Unknown values are not sent on the wire, meaning they "show up" with
+        // the default value 0 at the server.
+        pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, val + 1);
+}
+
+static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t* cell)
+{
+    pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) && pb_encode_varint(ostream, get_cell_type(cell));
+
+    encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1);
+    encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2);
+    encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3);
+    encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4);
+    encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5);
+    encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6);
+
+    pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) && pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell));
+    pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) && pb_encode_varint(ostream, -get_cell_rssi(cell));
+    pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) && pb_encode_varint(ostream, get_cell_age(cell));
+
+    return true;
+}
+
+static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+{
+    size_t i;
+    uint32_t num_cells = get_num_cells(ctx);
+
+    // Encode the Cell submessages one by one.
+    for (i = 0; i < num_cells; i++) {
+        pb_ostream_t substream = PB_OSTREAM_SIZING;
+        Beacon_t* cell = get_cell(ctx, i);
+
+        // Get the field size.
+        encode_cell_field(ctx, &substream, cell);
+        
+        // Encode field tag.
+        pb_encode_tag(ostream, PB_WT_STRING, Rq_cells_tag);
+        
+        // Encode the field size.
+        pb_encode_varint(ostream, substream.bytes_written);
+
+        // Now encode the field for real.
+        encode_cell_field(ctx, ostream, cell);
+    }
+
+    return true;
+}
+
 static bool encode_cdma_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_cdma(ctx);
@@ -310,6 +362,10 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_aps(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
         break;
+    case Rq_cells_tag:
+        if (get_num_cells(ctx))
+            return encode_cell_fields(ctx, ostream);
+        break;
     case Rq_cdma_cells_tag:
         if (get_num_cdma(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_cdma_fields);
@@ -375,8 +431,8 @@ int32_t serialize_request(
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells =
-        rq.gnss = ctx;
+    rq.aps = rq.gsm_cells = rq.nbiot_cells = rq.cdma_cells = rq.lte_cells = rq.umts_cells
+        = rq.cells = rq.gnss = ctx;
 
     rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
 

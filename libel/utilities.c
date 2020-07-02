@@ -549,6 +549,29 @@ int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
     return b;
 }
 
+/*! \brief Return the total number of scanned cells (serving, neighbor, or otherwise)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return number of cells
+ */
+int32_t get_num_cells(Sky_ctx_t *ctx)
+{
+    int i, b = 0;
+
+    if (ctx == NULL) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
+        return 0;
+    }
+
+    for (i = ctx->ap_len, b = 0; i < ctx->len; i++) {
+        if (ctx->beacon[i].h.type >= SKY_BEACON_FIRST_CELL_TYPE && ctx->beacon[i].h.type <= SKY_BEACON_LAST_CELL_TYPE)
+            b++;
+    }
+
+    return b;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (base of beacon type)
  *
  *  @param ctx workspace buffer
@@ -1446,6 +1469,253 @@ int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
         return 0;
     }
     return ctx->gps.age;
+}
+
+/*! \brief Get a cell
+ *
+ *  @param ctx workspace buffer
+ *  @param idx index into cells
+ *
+ *  @return Pointer to cell
+ */
+Beacon_t* get_cell(Sky_ctx_t *ctx, uint32_t idx)
+{
+    if (ctx == NULL) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
+        return 0;
+    }
+
+    return &ctx->beacon[get_base_beacons(ctx, SKY_BEACON_FIRST_CELL_TYPE) + idx];
+}
+
+/*! \brief Get cell type
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell type
+ */
+int16_t get_cell_type(Beacon_t* cell)
+{
+    return cell->h.type;
+}
+
+/*! \brief Get cell id1
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id1, -1 if not available
+ */
+int64_t get_cell_id1(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return -1;
+        case SKY_BEACON_GSM:
+            return cell->gsm.mcc;
+        case SKY_BEACON_LTE:
+            return cell->lte.mcc;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.mcc;
+        case SKY_BEACON_UMTS:
+            return cell->umts.mcc;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell id2
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id2, -1 if not available
+ */
+int64_t get_cell_id2(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return cell->cdma.sid;
+        case SKY_BEACON_GSM:
+            return cell->gsm.mnc;
+        case SKY_BEACON_LTE:
+            return cell->lte.mnc;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.mnc;
+        case SKY_BEACON_UMTS:
+            return cell->umts.mnc;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell id3
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id3, -1 if not available
+ */
+int64_t get_cell_id3(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return cell->cdma.nid;
+        case SKY_BEACON_GSM:
+            return cell->gsm.lac;
+        case SKY_BEACON_LTE:
+            return cell->lte.tac == 0 ? -1 : cell->lte.tac;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.tac == 0 ? -1 : cell->nbiot.tac;
+        case SKY_BEACON_UMTS:
+            return cell->umts.lac;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell id4
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id4, -1 if not available
+ */
+int64_t get_cell_id4(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return cell->cdma.bsid;
+        case SKY_BEACON_GSM:
+            return cell->gsm.ci;
+        case SKY_BEACON_LTE:
+            return cell->lte.e_cellid;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.e_cellid;
+        case SKY_BEACON_UMTS:
+            return cell->umts.ucid;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell id5
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id5, -1 if not available
+ */
+int64_t get_cell_id5(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return -1;
+        case SKY_BEACON_GSM:
+            return -1;
+        case SKY_BEACON_LTE:
+            return cell->lte.pci;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.ncid;
+        case SKY_BEACON_UMTS:
+            return cell->umts.psc;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell id6
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell id6, -1 if not available
+ */
+int64_t get_cell_id6(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return -1;
+        case SKY_BEACON_GSM:
+            return -1;
+        case SKY_BEACON_LTE:
+            return cell->lte.earfcn;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.earfcn;
+        case SKY_BEACON_UMTS:
+            return cell->umts.uarfcn;
+    }
+
+    return 0;
+}
+
+/*! \brief Get cell connected flag
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell connected flag
+ */
+bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t* cell)
+{
+    return ctx->connected >= 0 && &ctx->beacon[ctx->connected] == cell;
+}
+
+/*! \brief Return cell RSSI value
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return beacon rssi
+ */
+int64_t get_cell_rssi(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return cell->cdma.rssi;
+        case SKY_BEACON_GSM:
+            return cell->gsm.rssi;
+        case SKY_BEACON_LTE:
+            return cell->lte.rssi;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.rssi;
+        case SKY_BEACON_UMTS:
+            return cell->umts.rssi;
+        default:
+            return 0;
+    }
+}
+
+/*! \brief Return cell age value
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return beacon age
+ */
+int64_t get_cell_age(Beacon_t* cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch(type) {
+        case SKY_BEACON_CDMA:
+            return cell->cdma.age;
+        case SKY_BEACON_GSM:
+            return cell->gsm.age;
+        case SKY_BEACON_LTE:
+            return cell->lte.age;
+        case SKY_BEACON_NBIOT:
+            return cell->nbiot.age;
+        case SKY_BEACON_UMTS:
+            return cell->umts.age;
+        default:
+            return 0;
+    }
 }
 
 /*! \brief generate random byte sequence

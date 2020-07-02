@@ -352,7 +352,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
-    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, uint16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp,
+    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp,
     bool is_connected)
 {
     Beacon_t b;
@@ -389,6 +389,24 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.lte.earfcn = earfcn;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
+}
+
+/*! \brief Add an lte cell neighbor beacon to request context
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param pci mobile pci (0-503, -1 if unknown)
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
+    int16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp)
+{
+    return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 
+                SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
 }
 
 /*! \brief Adds a gsm cell beacon to the request context
@@ -497,6 +515,24 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
+/*! \brief Adds a umts cell neighbor beacon to the request context
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
+ *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
+    int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp)
+{
+    return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID1,
+                SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
+}
+
 /*! \brief Adds a cdma cell beacon to the request context
  *
  *  @param ctx Skyhook request context
@@ -562,7 +598,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, uint32_t e_cellid, uint32_t tac, uint16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp,
+    uint16_t mnc, uint32_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp,
     bool is_connected)
 {
     Beacon_t b;
@@ -599,6 +635,24 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.nbiot.earfcn = earfcn;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
+}
+
+/*! \brief Adds a nb_iot cell neighbor beacon to the request context
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param ncid mobile cell ID (0-503, -1 if unknown)
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
+    int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
+{
+    return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, 
+                SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
 
 /*! \brief Adds the position of the device from GNSS to the request context

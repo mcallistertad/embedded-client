@@ -32,16 +32,25 @@
 
 #define MAC_SIZE 6
 
+#define SKY_UNKNOWN_ID1 ((uint16_t) 0xFFFF)
+#define SKY_UNKNOWN_ID2 ((uint16_t) 0xFFFF)
+#define SKY_UNKNOWN_ID3 ((uint16_t) 0)
+#define SKY_UNKNOWN_ID4 ((uint32_t) 0xFFFFFFFF)
+#define SKY_UNKNOWN_ID5 ((int16_t) -1)
+#define SKY_UNKNOWN_ID6 ((int32_t) -1)
+
 /*! \brief Types of beacon
  */
 typedef enum {
     SKY_BEACON_AP = 1,
-    SKY_BEACON_BLE,
-    SKY_BEACON_CDMA,
-    SKY_BEACON_GSM,
-    SKY_BEACON_LTE,
-    SKY_BEACON_NBIOT,
-    SKY_BEACON_UMTS,
+    SKY_BEACON_BLE = 2,
+    SKY_BEACON_CDMA = 3,
+    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_CDMA,
+    SKY_BEACON_GSM = 4,
+    SKY_BEACON_LTE = 5,
+    SKY_BEACON_NBIOT = 6,
+    SKY_BEACON_UMTS = 7,
+    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_UMTS,
     SKY_BEACON_MAX, /* add more before this */
 } Sky_beacon_type_t;
 
@@ -88,7 +97,7 @@ struct umts {
     uint16_t mcc; // country
     uint16_t mnc;
     int16_t psc;
-    int16_t uarfcn;
+    int32_t uarfcn;
     uint32_t age;
     int16_t rssi;
 };
@@ -101,7 +110,7 @@ struct lte {
     uint16_t mcc;
     uint16_t mnc;
     uint16_t tac;
-    uint16_t pci;
+    int16_t pci;
     int32_t earfcn;
     int16_t rssi;
 };
@@ -125,7 +134,7 @@ struct nbiot {
     uint16_t mnc;
     uint32_t e_cellid;
     uint16_t tac;
-    uint16_t ncid;
+    int16_t ncid;
     int32_t earfcn;
     int16_t rssi;
 };
@@ -134,6 +143,7 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
 };
+
 typedef union beacon {
     struct header h;
     struct ap ap;
