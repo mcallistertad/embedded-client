@@ -325,21 +325,24 @@ void dump_workspace(Sky_ctx_t *ctx)
             break;
         case SKY_BEACON_LTE:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                " Beacon %-2d: Age: %d Type: LTE, e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rssi: %d",
+                " Beacon %-2d: Age: %d Type: LTE, e-cellid: %d, mcc: %d, mnc: %d, tac: %d, pci: %d, earfcn: %d, rssi: %d",
                 i, ctx->beacon[i].lte.age, ctx->beacon[i].lte.e_cellid, ctx->beacon[i].lte.mcc,
-                ctx->beacon[i].lte.mnc, ctx->beacon[i].lte.tac, ctx->beacon[i].lte.rssi)
+                ctx->beacon[i].lte.mnc, ctx->beacon[i].lte.tac, ctx->beacon[i].lte.pci,
+                ctx->beacon[i].lte.earfcn, ctx->beacon[i].lte.rssi)
             break;
         case SKY_BEACON_NBIOT:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                " Beacon %-2d: Age: %d Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, rssi: %d",
+                " Beacon %-2d: Age: %d Type: nb IoT, mcc: %d, mnc: %d, e_cellid: %d, tac: %d, ncid: %d, earfcn: %d, rssi: %d",
                 i, ctx->beacon[i].nbiot.age, ctx->beacon[i].nbiot.mcc, ctx->beacon[i].nbiot.mnc,
-                ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac, ctx->beacon[i].nbiot.rssi)
+                ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac, ctx->beacon[i].nbiot.ncid,
+                ctx->beacon[i].nbiot.earfcn, ctx->beacon[i].nbiot.rssi)
             break;
         case SKY_BEACON_UMTS:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                " Beacon %-2d: Age: %d Type: UMTS, lac: %d, ucid: %d, mcc: %d, mnc: %d, rssi: %d",
+                " Beacon %-2d: Age: %d Type: UMTS, lac: %d, ucid: %d, mcc: %d, mnc: %d, psc: %d, uarfcn: %d, rssi: %d",
                 i, ctx->beacon[i].umts.age, ctx->beacon[i].umts.lac, ctx->beacon[i].umts.ucid,
-                ctx->beacon[i].umts.mcc, ctx->beacon[i].umts.mnc, ctx->beacon[i].umts.rssi)
+                ctx->beacon[i].umts.mcc, ctx->beacon[i].umts.mnc, ctx->beacon[i].umts.psc,
+                ctx->beacon[i].umts.uarfcn, ctx->beacon[i].umts.rssi)
             break;
         default:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %-2d: Type: Unknown", i)
@@ -1485,7 +1488,7 @@ Beacon_t* get_cell(Sky_ctx_t *ctx, uint32_t idx)
         return 0;
     }
 
-    return &ctx->beacon[get_base_beacons(ctx, SKY_BEACON_FIRST_CELL_TYPE) + idx];
+    return &ctx->beacon[ctx->ap_len + idx];
 }
 
 /*! \brief Get cell type
