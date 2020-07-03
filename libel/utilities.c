@@ -1514,7 +1514,7 @@ int64_t get_cell_id1(Beacon_t* cell)
 
     switch(type) {
         case SKY_BEACON_CDMA:
-            return -1;
+            return SKY_UNKNOWN_ID1; // ID1 irrelevant for CDMA.
         case SKY_BEACON_GSM:
             return cell->gsm.mcc;
         case SKY_BEACON_LTE:
@@ -1570,9 +1570,9 @@ int64_t get_cell_id3(Beacon_t* cell)
         case SKY_BEACON_GSM:
             return cell->gsm.lac;
         case SKY_BEACON_LTE:
-            return cell->lte.tac == 0 ? -1 : cell->lte.tac;
+            return cell->lte.tac;
         case SKY_BEACON_NBIOT:
-            return cell->nbiot.tac == 0 ? -1 : cell->nbiot.tac;
+            return cell->nbiot.tac;
         case SKY_BEACON_UMTS:
             return cell->umts.lac;
     }
@@ -1618,9 +1618,9 @@ int64_t get_cell_id5(Beacon_t* cell)
 
     switch(type) {
         case SKY_BEACON_CDMA:
-            return -1;
+            return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for CDMA
         case SKY_BEACON_GSM:
-            return -1;
+            return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for GSM
         case SKY_BEACON_LTE:
             return cell->lte.pci;
         case SKY_BEACON_NBIOT:
@@ -1644,9 +1644,9 @@ int64_t get_cell_id6(Beacon_t* cell)
 
     switch(type) {
         case SKY_BEACON_CDMA:
-            return -1;
+            return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for CDMA
         case SKY_BEACON_GSM:
-            return -1;
+            return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
         case SKY_BEACON_LTE:
             return cell->lte.earfcn;
         case SKY_BEACON_NBIOT:
