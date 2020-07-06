@@ -344,7 +344,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code (0-999)
  *  @param pci mobile pci (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -396,7 +396,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
  *  @param pci mobile pci (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *
@@ -469,7 +469,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
  *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
- *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -520,7 +520,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
  *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
- *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *
@@ -590,7 +590,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param e_cellid nbiot beacon identifier (0-268,435,456)
  *  @param tac nbiot tracking area code identifier (1-65,535), 0 if unknown
  *  @param ncid mobile cell ID (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -642,7 +642,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
  *  @param ncid mobile cell ID (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown, -2 if unknown but same as serving cell))
+ *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *
