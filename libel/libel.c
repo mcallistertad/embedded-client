@@ -352,8 +352,8 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
-    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp,
-    bool is_connected)
+    uint32_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp,
+    int16_t rsrp, bool is_connected)
 {
     Beacon_t b;
 
@@ -402,11 +402,11 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-    int16_t pci, int32_t earfcn, time_t timestamp, int16_t rsrp)
+Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
+    int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
-    return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 
-                SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
+    return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
+        SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
 }
 
 /*! \brief Adds a gsm cell beacon to the request context
@@ -477,7 +477,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
-    uint32_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp, bool is_connected)
+    uint32_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp,
+    int16_t rscp, bool is_connected)
 {
     Beacon_t b;
 
@@ -526,11 +527,11 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
-    int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp)
+Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t psc,
+    int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
-    return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID1,
-                SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
+    return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
+        SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
 
 /*! \brief Adds a cdma cell beacon to the request context
@@ -598,8 +599,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, uint32_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp,
-    bool is_connected)
+    uint16_t mnc, uint32_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,
+    int16_t nrsrp, bool is_connected)
 {
     Beacon_t b;
 
@@ -651,8 +652,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
-    return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, 
-                SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
+    return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
+        SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
 
 /*! \brief Adds the position of the device from GNSS to the request context

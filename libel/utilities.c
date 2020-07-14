@@ -568,7 +568,8 @@ int32_t get_num_cells(Sky_ctx_t *ctx)
     }
 
     for (i = ctx->ap_len, b = 0; i < ctx->len; i++) {
-        if (ctx->beacon[i].h.type >= SKY_BEACON_FIRST_CELL_TYPE && ctx->beacon[i].h.type <= SKY_BEACON_LAST_CELL_TYPE)
+        if (ctx->beacon[i].h.type >= SKY_BEACON_FIRST_CELL_TYPE &&
+            ctx->beacon[i].h.type <= SKY_BEACON_LAST_CELL_TYPE)
             b++;
     }
 
@@ -1481,7 +1482,7 @@ int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return Pointer to cell
  */
-Beacon_t* get_cell(Sky_ctx_t *ctx, uint32_t idx)
+Beacon_t *get_cell(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
@@ -1497,7 +1498,7 @@ Beacon_t* get_cell(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return cell type
  */
-int16_t get_cell_type(Beacon_t* cell)
+int16_t get_cell_type(Beacon_t *cell)
 {
     return cell->h.type;
 }
@@ -1508,21 +1509,21 @@ int16_t get_cell_type(Beacon_t* cell)
  *
  *  @return cell id1, -1 if not available
  */
-int64_t get_cell_id1(Beacon_t* cell)
+int64_t get_cell_id1(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return SKY_UNKNOWN_ID1; // ID1 irrelevant for CDMA.
-        case SKY_BEACON_GSM:
-            return cell->gsm.mcc;
-        case SKY_BEACON_LTE:
-            return cell->lte.mcc;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.mcc;
-        case SKY_BEACON_UMTS:
-            return cell->umts.mcc;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return SKY_UNKNOWN_ID1; // ID1 irrelevant for CDMA.
+    case SKY_BEACON_GSM:
+        return cell->gsm.mcc;
+    case SKY_BEACON_LTE:
+        return cell->lte.mcc;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.mcc;
+    case SKY_BEACON_UMTS:
+        return cell->umts.mcc;
     }
 
     return 0;
@@ -1534,21 +1535,21 @@ int64_t get_cell_id1(Beacon_t* cell)
  *
  *  @return cell id2, -1 if not available
  */
-int64_t get_cell_id2(Beacon_t* cell)
+int64_t get_cell_id2(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return cell->cdma.sid;
-        case SKY_BEACON_GSM:
-            return cell->gsm.mnc;
-        case SKY_BEACON_LTE:
-            return cell->lte.mnc;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.mnc;
-        case SKY_BEACON_UMTS:
-            return cell->umts.mnc;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return cell->cdma.sid;
+    case SKY_BEACON_GSM:
+        return cell->gsm.mnc;
+    case SKY_BEACON_LTE:
+        return cell->lte.mnc;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.mnc;
+    case SKY_BEACON_UMTS:
+        return cell->umts.mnc;
     }
 
     return 0;
@@ -1560,21 +1561,21 @@ int64_t get_cell_id2(Beacon_t* cell)
  *
  *  @return cell id3, -1 if not available
  */
-int64_t get_cell_id3(Beacon_t* cell)
+int64_t get_cell_id3(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return cell->cdma.nid;
-        case SKY_BEACON_GSM:
-            return cell->gsm.lac;
-        case SKY_BEACON_LTE:
-            return cell->lte.tac;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.tac;
-        case SKY_BEACON_UMTS:
-            return cell->umts.lac;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return cell->cdma.nid;
+    case SKY_BEACON_GSM:
+        return cell->gsm.lac;
+    case SKY_BEACON_LTE:
+        return cell->lte.tac;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.tac;
+    case SKY_BEACON_UMTS:
+        return cell->umts.lac;
     }
 
     return 0;
@@ -1586,21 +1587,21 @@ int64_t get_cell_id3(Beacon_t* cell)
  *
  *  @return cell id4, -1 if not available
  */
-int64_t get_cell_id4(Beacon_t* cell)
+int64_t get_cell_id4(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return cell->cdma.bsid;
-        case SKY_BEACON_GSM:
-            return cell->gsm.ci;
-        case SKY_BEACON_LTE:
-            return cell->lte.e_cellid;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.e_cellid;
-        case SKY_BEACON_UMTS:
-            return cell->umts.ucid;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return cell->cdma.bsid;
+    case SKY_BEACON_GSM:
+        return cell->gsm.ci;
+    case SKY_BEACON_LTE:
+        return cell->lte.e_cellid;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.e_cellid;
+    case SKY_BEACON_UMTS:
+        return cell->umts.ucid;
     }
 
     return 0;
@@ -1612,21 +1613,21 @@ int64_t get_cell_id4(Beacon_t* cell)
  *
  *  @return cell id5, -1 if not available
  */
-int64_t get_cell_id5(Beacon_t* cell)
+int64_t get_cell_id5(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for CDMA
-        case SKY_BEACON_GSM:
-            return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for GSM
-        case SKY_BEACON_LTE:
-            return cell->lte.pci;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.ncid;
-        case SKY_BEACON_UMTS:
-            return cell->umts.psc;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for CDMA
+    case SKY_BEACON_GSM:
+        return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for GSM
+    case SKY_BEACON_LTE:
+        return cell->lte.pci;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.ncid;
+    case SKY_BEACON_UMTS:
+        return cell->umts.psc;
     }
 
     return 0;
@@ -1638,21 +1639,21 @@ int64_t get_cell_id5(Beacon_t* cell)
  *
  *  @return cell id6, -1 if not available
  */
-int64_t get_cell_id6(Beacon_t* cell)
+int64_t get_cell_id6(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for CDMA
-        case SKY_BEACON_GSM:
-            return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
-        case SKY_BEACON_LTE:
-            return cell->lte.earfcn;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.earfcn;
-        case SKY_BEACON_UMTS:
-            return cell->umts.uarfcn;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for CDMA
+    case SKY_BEACON_GSM:
+        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
+    case SKY_BEACON_LTE:
+        return cell->lte.earfcn;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.earfcn;
+    case SKY_BEACON_UMTS:
+        return cell->umts.uarfcn;
     }
 
     return 0;
@@ -1664,7 +1665,7 @@ int64_t get_cell_id6(Beacon_t* cell)
  *
  *  @return cell connected flag
  */
-bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t* cell)
+bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell)
 {
     return ctx->connected >= 0 && &ctx->beacon[ctx->connected] == cell;
 }
@@ -1675,23 +1676,23 @@ bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t* cell)
  *
  *  @return beacon rssi
  */
-int64_t get_cell_rssi(Beacon_t* cell)
+int64_t get_cell_rssi(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return cell->cdma.rssi;
-        case SKY_BEACON_GSM:
-            return cell->gsm.rssi;
-        case SKY_BEACON_LTE:
-            return cell->lte.rssi;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.rssi;
-        case SKY_BEACON_UMTS:
-            return cell->umts.rssi;
-        default:
-            return 0;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return cell->cdma.rssi;
+    case SKY_BEACON_GSM:
+        return cell->gsm.rssi;
+    case SKY_BEACON_LTE:
+        return cell->lte.rssi;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.rssi;
+    case SKY_BEACON_UMTS:
+        return cell->umts.rssi;
+    default:
+        return 0;
     }
 }
 
@@ -1701,23 +1702,23 @@ int64_t get_cell_rssi(Beacon_t* cell)
  *
  *  @return beacon age
  */
-int64_t get_cell_age(Beacon_t* cell)
+int64_t get_cell_age(Beacon_t *cell)
 {
     uint16_t type = get_cell_type(cell);
 
-    switch(type) {
-        case SKY_BEACON_CDMA:
-            return cell->cdma.age;
-        case SKY_BEACON_GSM:
-            return cell->gsm.age;
-        case SKY_BEACON_LTE:
-            return cell->lte.age;
-        case SKY_BEACON_NBIOT:
-            return cell->nbiot.age;
-        case SKY_BEACON_UMTS:
-            return cell->umts.age;
-        default:
-            return 0;
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return cell->cdma.age;
+    case SKY_BEACON_GSM:
+        return cell->gsm.age;
+    case SKY_BEACON_LTE:
+        return cell->lte.age;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.age;
+    case SKY_BEACON_UMTS:
+        return cell->umts.age;
+    default:
+        return 0;
     }
 }
 

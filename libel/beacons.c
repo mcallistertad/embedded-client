@@ -82,11 +82,11 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     if (ctx->beacon[index].h.type == SKY_BEACON_AP)
         ctx->ap_len -= 1;
-        if (ctx->connected == index)
-            ctx->connected = -1;
-        else if (index < ctx->connected)
-            // Removed beacon precedes the connected one, so update its index.
-            ctx->connected--;
+    if (ctx->connected == index)
+        ctx->connected = -1;
+    else if (index < ctx->connected)
+        // Removed beacon precedes the connected one, so update its index.
+        ctx->connected--;
 
     memmove(
         &ctx->beacon[index], &ctx->beacon[index + 1], sizeof(Beacon_t) * (ctx->len - index - 1));

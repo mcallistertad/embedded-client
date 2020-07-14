@@ -32,12 +32,12 @@
 
 #define MAC_SIZE 6
 
-#define SKY_UNKNOWN_ID1 ((uint16_t) 0xFFFF)
-#define SKY_UNKNOWN_ID2 ((uint16_t) 0xFFFF)
-#define SKY_UNKNOWN_ID3 ((uint16_t) 0)
-#define SKY_UNKNOWN_ID4 ((uint32_t) 0xFFFFFFFF)
-#define SKY_UNKNOWN_ID5 ((int16_t) -1)
-#define SKY_UNKNOWN_ID6 ((int32_t) -1)
+#define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID3 ((uint16_t)0)
+#define SKY_UNKNOWN_ID4 ((uint32_t)0xFFFFFFFF)
+#define SKY_UNKNOWN_ID5 ((int16_t)-1)
+#define SKY_UNKNOWN_ID6 ((int32_t)-1)
 
 /*! \brief Types of beacon
  */
@@ -70,7 +70,7 @@ struct ap {
 struct gsm {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint32_t ci;  // id4
+    uint32_t ci; // id4
     uint32_t age;
     uint16_t mcc; // id1
     uint16_t mnc; // id2
@@ -83,8 +83,8 @@ struct cdma {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint16_t sid;  // id2
-    uint16_t nid;  // id3
+    uint16_t sid; // id2
+    uint16_t nid; // id3
     uint16_t bsid; // id4
     int16_t rssi;
 };
@@ -92,11 +92,11 @@ struct cdma {
 struct umts {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint16_t lac;   // id3
-    uint32_t ucid;  // id4
-    uint16_t mcc;   // id1
-    uint16_t mnc;   // id2
-    int16_t psc;    // id5
+    uint16_t lac; // id3
+    uint32_t ucid; // id4
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    int16_t psc; // id5
     int32_t uarfcn; // id6
     uint32_t age;
     int16_t rssi;
@@ -107,11 +107,11 @@ struct lte {
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
     uint32_t e_cellid; // id4
-    uint16_t mcc;      // id1
-    uint16_t mnc;      // id2
-    uint16_t tac;      // id3
-    int16_t pci;       // id5
-    int32_t earfcn;    // id6
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    uint16_t tac; // id3
+    int16_t pci; // id5
+    int32_t earfcn; // id6
     int16_t rssi;
 };
 
@@ -130,12 +130,12 @@ struct nbiot {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint16_t mcc;      // id1
-    uint16_t mnc;      // id2
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
     uint32_t e_cellid; // id4
-    uint16_t tac;      // id3
-    int16_t ncid;      // id5
-    int32_t earfcn;    // id6
+    uint16_t tac; // id3
+    int16_t ncid; // id5
+    int32_t earfcn; // id6
     int16_t rssi;
 };
 
