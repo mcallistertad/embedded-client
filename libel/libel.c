@@ -656,6 +656,82 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
 
+/*! \brief Adds a 5G NR cell beacon to the request context
+ *
+ *  @param ctx          Skyhook request context
+ *  @param sky_errno    sky_errno is set to the error code
+ *  @param mcc          mobile country code (200-799)
+ *  @param mnc          mobile network code (0-999)
+ *  @param e_cellid     nbiot beacon identifier (0-268,435,456)
+ *  @param tac          tracking area code identifier (1-65,535), 0 if unknown
+ *  @param pci          mobile pci (0-1007, -1 if unknown)
+ *  @param nrarfcn      mobile nrarfcn (0-3279165, -1 if unknown)
+ *  @param timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param csi_rsrp     CSI Reference Signal Received Power, range -140 to -40dBm, -1 if unknown
+ *  @param is_connected this beacon is currently connected, false if unknown
+ *
+ * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+
+Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
+    uint16_t mnc, uint64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
+    int16_t csi_rsrp, bool is_connected)
+{
+    Beacon_t b;
+
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+        "mcc: %d, mnc: %d, nci: %d, tac: %d, pci: %d, nrarfcn: %d, rsrp: %d, connect %s, age %d",
+        mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
+        (int)(ctx->header.time - timestamp))
+
+    if (!sky_open_flag)
+        return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_workspace(ctx))
+        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+
+    /* Create 5G NR beacon */
+    memset(&b, 0, sizeof(b));
+    b.h.magic = BEACON_MAGIC;
+    b.h.type = SKY_BEACON_5GNR;
+    /* If beacon has meaningful timestamp */
+    /* scan was before sky_new_request and since Mar 1st 2019 */
+    if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+        b.nbiot.age = ctx->header.time - timestamp;
+    if (csi_rsrp > -40 || csi_rsrp < -140)
+        csi_rsrp = -1;
+    b.nr5g.mcc = mcc;
+    b.nr5g.mnc = mnc;
+    b.nr5g.nci = nci;
+    b.nr5g.tac = tac;
+    b.nr5g.rssi = csi_rsrp;
+    b.nr5g.pci = pci;
+    b.nr5g.nrarfcn = nrarfcn;
+
+    return add_beacon(ctx, sky_errno, &b, is_connected);
+}
+
+/*! \brief Adds a 5G NR cell neighbor beacon to the request context
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param pci mobile cell ID (0-1007, -1 if unknown)
+ *  @param nrarfcn mobile earfcn (0-3279165, -1 if unknown)
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
+    int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
+{
+    return sky_add_cell_5g_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
+        SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, nrsrp, false);
+}
+
 /*! \brief Adds the position of the device from GNSS to the request context
  *
  *  @param ctx Skyhook request context
