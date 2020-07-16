@@ -361,6 +361,18 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, age %d", e_cellid, mcc, mnc,
         tac, rsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
+    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
+        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if (mcc < 200 || mcc > 799 || mnc > 999 ||
+        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) || e_cellid > 268435455 ||
+        (pci != SKY_UNKNOWN_ID5 && (pci < 0 || pci > 503)) ||
+        (earfcn != SKY_UNKNOWN_ID6 && (earfcn < 0 || earfcn > 262143)))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
@@ -384,9 +396,9 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.lte.e_cellid = e_cellid;
     b.lte.mcc = mcc;
     b.lte.mnc = mnc;
-    b.lte.rssi = rsrp;
     b.lte.pci = pci;
     b.lte.earfcn = earfcn;
+    b.lte.rssi = rsrp;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -431,6 +443,15 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
         "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc, rssi,
         is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
+
+    /* If primary key has unknown value, then this must be an error because gsm has no NMR */
+    if (mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || lac == SKY_UNKNOWN_ID3 ||
+        ci == SKY_UNKNOWN_ID4)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if (mcc < 200 || mcc > 799 || mnc > 999 || lac < 1 || lac > 65535 || ci > 65535)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -486,6 +507,18 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
         "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, age %d", lac, ucid, mcc, mnc,
         rscp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
+    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || ucid == SKY_UNKNOWN_ID4) &&
+        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && ucid == SKY_UNKNOWN_ID4))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if (mcc < 200 || mcc > 799 || mnc > 999 ||
+        (lac != SKY_UNKNOWN_ID3 && (lac < 1 || lac > 65535)) || ucid > 268435455 ||
+        (psc != SKY_UNKNOWN_ID5 && (psc < 0 || psc > 511)) ||
+        (uarfcn != SKY_UNKNOWN_ID6 && (uarfcn < 412 || uarfcn > 10838)))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
@@ -509,9 +542,9 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     b.umts.ucid = ucid;
     b.umts.mcc = mcc;
     b.umts.mnc = mnc;
-    b.umts.rssi = rscp;
     b.umts.psc = psc;
     b.umts.uarfcn = uarfcn;
+    b.umts.rssi = rscp;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -554,6 +587,14 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, age %d",
         sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
+
+    /* If primary key has unknown value, then this must be an error because there is no NMR */
+    if (sid == SKY_UNKNOWN_ID2 || nid == SKY_UNKNOWN_ID3 || bsid == SKY_UNKNOWN_ID4)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if (sid > 32767 || nid > 65535 || bsid > 65535)
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -608,6 +649,18 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, age %d", mcc, mnc,
         e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
+    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
+        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if (mcc < 200 || mcc > 799 || mnc > 999 ||
+        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) || e_cellid > 268435455 ||
+        (ncid != SKY_UNKNOWN_ID5 && (ncid < 0 || ncid > 503)) ||
+        (earfcn != SKY_UNKNOWN_ID6 && (earfcn < 0 || earfcn > 262143)))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
 
@@ -631,9 +684,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.nbiot.mnc = mnc;
     b.nbiot.e_cellid = e_cellid;
     b.nbiot.tac = tac;
-    b.nbiot.rssi = nrsrp;
     b.nbiot.ncid = ncid;
     b.nbiot.earfcn = earfcn;
+    b.nbiot.rssi = nrsrp;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -680,9 +733,22 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %d, mnc: %d, nci: %d, tac: %d, pci: %d, nrarfcn: %d, rsrp: %d, connect %s, age %d",
+        "mcc: %u, mnc: %u, nci: %llu, tac: %d, pci: %d, nrarfcn: %d, rsrp: %d, connect %s, age %d",
         mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
         (int)(ctx->header.time - timestamp))
+
+    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || nci == SKY_UNKNOWN_ID4) &&
+        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && nci == SKY_UNKNOWN_ID4))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* range check parameters */
+    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) || (nci != SKY_UNKNOWN_ID4 && nci > 68719476735) ||
+        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
+        (pci != SKY_UNKNOWN_ID5 && (pci < 0 || pci > 1007)) ||
+        (nrarfcn != SKY_UNKNOWN_ID6 && (nrarfcn < 0 || nrarfcn > 3279165)))
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -707,9 +773,9 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
     b.nr5g.mnc = mnc;
     b.nr5g.nci = nci;
     b.nr5g.tac = tac;
-    b.nr5g.rssi = csi_rsrp;
     b.nr5g.pci = pci;
     b.nr5g.nrarfcn = nrarfcn;
+    b.nr5g.rssi = csi_rsrp;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
