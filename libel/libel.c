@@ -729,7 +729,7 @@ Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
     return sky_add_cell_5g_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
-        SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, nrsrp, false);
+        SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, csi_rsrp, false);
 }
 
 /*! \brief Adds the position of the device from GNSS to the request context
@@ -1066,6 +1066,9 @@ char *sky_pbeacon(Beacon_t *b)
         break;
     case SKY_BEACON_UMTS:
         str = "UMTS";
+        break;
+    case SKY_BEACON_5GNR:
+        str = "5G-NR";
         break;
     default:
         str = "Unknown";

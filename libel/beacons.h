@@ -146,10 +146,10 @@ struct nr5g {
     uint32_t age;
     uint16_t mcc; // id1
     uint16_t mnc; // id2
-    uint32_t nci; // id4
+    uint64_t nci; // id4
     uint16_t tac; // id3
     uint16_t pci; // id5
-    int32_t earfcn; // id6
+    int32_t nrarfcn; // id6
     int16_t rssi;
 };
 
