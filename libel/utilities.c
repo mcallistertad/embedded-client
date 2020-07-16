@@ -444,12 +444,12 @@ void dump_cache(Sky_ctx_t *ctx)
                 case SKY_BEACON_CDMA:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         " Beacon %-2d:%-2d: Type: CDMA, sid: %u, nid: %u, bsid: %u, rssi: %d", i, j,
-                        b->cdma.sid, b->cdma.nid, b->cdma.bsid, b->cdma.rssi)
+                        b->cdma.sid, b->cdma.nid, b->cdma.bsid, b->cdma.agerssi)
                     break;
                 case SKY_BEACON_GSM:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         " Beacon %-2d:%-2d: Type: GSM, lac: %u, ui: %u, mcc: %u, mnc: %u, rssi: %d",
-                        i, j, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc, b->gsm.rssi)
+                        i, j, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.agemnc, b->gsm.rssi)
                     break;
                 case SKY_BEACON_LTE:
                     if (b->lte.mcc == SKY_UNKNOWN_ID1 && b->lte.mnc == SKY_UNKNOWN_ID2 &&
@@ -471,9 +471,9 @@ void dump_cache(Sky_ctx_t *ctx)
                             i, j, b->nbiot.ncid, b->nbiot.earfcn, b->nbiot.rssi)
                     else
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Type: NB-IoT, mcc: %u, mnc: %u, e_cellid: %u, tac: %u, rssi: %d",
+                            " Beacon %-2d:%-2d: Type: NB-IoT, mcc: %u, mnc: %u, e_cellid: %u, tac: %u, ncid: %u, earfcn: %u, rssi: %d",
                             i, j, b->nbiot.mcc, b->nbiot.mnc, b->nbiot.e_cellid, b->nbiot.tac,
-                            b->nbiot.rssi)
+                            b->nbiot.ncid, b->nbiot.earfcn, b->nbiot.rssi)
                     break;
                 case SKY_BEACON_UMTS:
                     if (b->umts.mcc == SKY_UNKNOWN_ID1 && b->umts.mnc == SKY_UNKNOWN_ID2 &&
@@ -483,8 +483,9 @@ void dump_cache(Sky_ctx_t *ctx)
                             j, b->umts.psc, b->umts.uarfcn, b->umts.rssi)
                     else
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Type: UMTS, lac: %u, ucid: %u, mcc: %u, mnc: %u, rssi: %d",
-                            i, j, b->umts.lac, b->umts.ucid, b->umts.mcc, b->umts.mnc, b->umts.rssi)
+                            " Beacon %-2d:%-2d: Type: UMTS, lac: %u, ucid: %u, mcc: %u, mnc: %u, psc: %u, uarfcn: %u, rssi: %d",
+                            i, j, b->umts.lac, b->umts.ucid, b->umts.mcc, b->umts.mnc, b->umts.psc,
+                            b->umts.uarfcn, b->umts.rssi)
                     break;
                 case SKY_BEACON_5GNR:
                     if (b->nr5g.mcc == SKY_UNKNOWN_ID1 && b->nr5g.mnc == SKY_UNKNOWN_ID2 &&
@@ -494,8 +495,9 @@ void dump_cache(Sky_ctx_t *ctx)
                             j, b->nr5g.pci, b->nr5g.nrarfcn, b->nr5g.rssi)
                     else
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Type: 5G-NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, rssi: %d",
-                            i, j, b->nr5g.mcc, b->nr5g.mnc, b->nr5g.nci, b->nr5g.tac, b->nr5g.rssi)
+                            " Beacon %-2d:%-2d: Type: 5G-NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, pci: %u, nrarfcn: %u, rssi: %d",
+                            i, j, b->nr5g.mcc, b->nr5g.mnc, b->nr5g.nci, b->nr5g.tac, b->nr5g.pci,
+                            b->nr5g.nrarfcn, b->nr5g.rssi)
                     break;
                 }
             }
