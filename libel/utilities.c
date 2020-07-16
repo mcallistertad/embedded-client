@@ -444,12 +444,12 @@ void dump_cache(Sky_ctx_t *ctx)
                 case SKY_BEACON_CDMA:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         " Beacon %-2d:%-2d: Type: CDMA, sid: %u, nid: %u, bsid: %u, rssi: %d", i, j,
-                        b->cdma.sid, b->cdma.nid, b->cdma.bsid, b->cdma.agerssi)
+                        b->cdma.sid, b->cdma.nid, b->cdma.bsid, b->cdma.rssi)
                     break;
                 case SKY_BEACON_GSM:
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         " Beacon %-2d:%-2d: Type: GSM, lac: %u, ui: %u, mcc: %u, mnc: %u, rssi: %d",
-                        i, j, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.agemnc, b->gsm.rssi)
+                        i, j, b->gsm.lac, b->gsm.ci, b->gsm.mcc, b->gsm.mnc, b->gsm.rssi)
                     break;
                 case SKY_BEACON_LTE:
                     if (b->lte.mcc == SKY_UNKNOWN_ID1 && b->lte.mnc == SKY_UNKNOWN_ID2 &&
