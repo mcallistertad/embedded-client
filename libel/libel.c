@@ -827,6 +827,19 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
         (int)fabs(round(10 * (speed - (int)speed))), (int)bearing,
         (int)fabs(round(1 * (bearing - (int)bearing))), nsat, (int)timestamp)
 
+    /* range check parameters */
+    if (isnan(lat) || isnan(lon)) /* don't fail for empty gnss */
+        return sky_return(sky_errno, SKY_ERROR_NONE);
+
+    if ((!isnan(altitude) && (altitude < -1200 || /* Lake Baikal */
+                                 altitude > 8900)) || /* Everest */
+        hpe < 0.0 ||
+        hpe > 100000.0 || /* max range of cell tower */
+        speed < 0.0 || speed > 343.0 || /* speed of sound */
+        nsat < 4 || nsat > 100) /* 4 minimum to get fix, */
+        /* 100 is conservative max gnss sat count */
+        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
