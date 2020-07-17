@@ -367,10 +367,11 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 ||
-        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) || e_cellid > 268435455 ||
-        (pci != SKY_UNKNOWN_ID5 && (pci < 0 || pci > 503)) ||
-        (earfcn != SKY_UNKNOWN_ID6 && (earfcn < 0 || earfcn > 262143)))
+    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
+        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
+        (e_cellid != SKY_UNKNOWN_ID4 && e_cellid > 268435455) ||
+        (pci != SKY_UNKNOWN_ID5 && pci > 503) || (earfcn != SKY_UNKNOWN_ID6 && earfcn > 262143))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
@@ -513,9 +514,10 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 ||
-        (lac != SKY_UNKNOWN_ID3 && (lac < 1 || lac > 65535)) || ucid > 268435455 ||
-        (psc != SKY_UNKNOWN_ID5 && (psc < 0 || psc > 511)) ||
+    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
+        (lac != SKY_UNKNOWN_ID3 && (lac < 1 || lac > 65535)) ||
+        (ucid != SKY_UNKNOWN_ID4 && ucid > 268435455) || (psc != SKY_UNKNOWN_ID5 && psc > 511) ||
         (uarfcn != SKY_UNKNOWN_ID6 && (uarfcn < 412 || uarfcn > 10838)))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
