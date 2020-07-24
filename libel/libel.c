@@ -339,12 +339,12 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param tac lte tracking area code identifier (1-65,535),0 if unknown
- *  @param e_cellid lte beacon identifier 28bit (0-268,435,456)
+ *  @param tac lte tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ *  @param e_cellid lte beacon identifier 28bit (0-268435455)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code (0-999)
- *  @param pci mobile pci (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
+ *  @param pci mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
+ *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -361,7 +361,10 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         "e-cellid: %d, mcc: %d, mnc: %d, tac: %d, rsrp: %d, connect %s, age %d", e_cellid, mcc, mnc,
         tac, rsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+     * specification of primary IDs is considered an error.
+     */
     if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
         !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -408,8 +411,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param pci mobile pci (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
+ *  @param pci mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
+ *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *
@@ -426,8 +429,8 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_e
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param lac gsm location area code identifier (1-65,535)
- *  @param ci gsm cell identifier (0-65,535)
+ *  @param lac gsm location area code identifier (1-65535)
+ *  @param ci gsm cell identifier (0-65535)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
@@ -445,13 +448,16 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
         "lac: %d, ci: %d, mcc: %d, mnc: %d, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc, rssi,
         is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be an error because gsm has no NMR */
+    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+     * specification of primary IDs is considered an error.
+     */
     if (mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || lac == SKY_UNKNOWN_ID3 ||
         ci == SKY_UNKNOWN_ID4)
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 || lac < 1 || lac > 65535 || ci > 65535)
+    if (mcc < 200 || mcc > 799 || mnc > 999 || lac == 0)
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
@@ -486,12 +492,12 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param lac umts location area code identifier (1-65,535), 0 if unknown
- *  @param ucid umts cell identifier 28bit (0-268,435,456)
+ *  @param lac umts location area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ *  @param ucid umts cell identifier 28bit (0-268435455)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
- *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
- *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown)
+ *  @param psc primary scrambling code (0-511, SKY_UNKNOWN_ID5 if unknown)
+ *  @param uarfcn channel (412-10833, SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -508,16 +514,19 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
         "lac: %d, ucid: %d, mcc: %d, mnc: %d, rscp: %d, connect %s, age %d", lac, ucid, mcc, mnc,
         rscp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+     * specification of primary IDs is considered an error.
+     */
     if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || ucid == SKY_UNKNOWN_ID4) &&
         !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && ucid == SKY_UNKNOWN_ID4))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
     if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
-        (lac != SKY_UNKNOWN_ID3 && (lac < 1 || lac > 65535)) ||
-        (ucid != SKY_UNKNOWN_ID4 && ucid > 268435455) || (psc != SKY_UNKNOWN_ID5 && psc > 511) ||
+        (mnc != SKY_UNKNOWN_ID2 && (mnc > 999)) ||
+        (ucid != SKY_UNKNOWN_ID4 && (ucid > 268435455)) ||
+        (psc != SKY_UNKNOWN_ID5 && (psc < 0 || psc > 511)) ||
         (uarfcn != SKY_UNKNOWN_ID6 && (uarfcn < 412 || uarfcn > 10838)))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
@@ -555,8 +564,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param psc mobile primary scrambling code (0-511, -1 if unknown)
- *  @param uarfcn mobile uarfcn (412-10833, -1 if unknown)
+ *  @param psc primary scrambling code (0-511, SKY_UNKNOWN_ID5 if unknown)
+ *  @param uarfcn channel (412-10833, SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *
@@ -590,12 +599,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %d, nid: %d, bsid: %d, rssi: %d, connect %s, age %d",
         sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be an error because there is no NMR */
-    if (sid == SKY_UNKNOWN_ID2 || nid == SKY_UNKNOWN_ID3 || bsid == SKY_UNKNOWN_ID4)
-        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if (sid > 32767 || nid > 65535 || bsid > 65535)
+    /* Range check parameters */
+    if (sid > 32767) /* nid and sid cannot be out of range */
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
@@ -631,10 +636,10 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param sky_errno skyErrno is set to the error code
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
- *  @param e_cellid nbiot beacon identifier (0-268,435,456)
- *  @param tac nbiot tracking area code identifier (1-65,535), 0 if unknown
- *  @param ncid mobile cell ID (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
+ *  @param e_cellid nbiot beacon identifier (0-268435455)
+ *  @param tac nbiot tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID4 if unknown
+ *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -651,7 +656,10 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         "mcc: %d, mnc: %d, e_cellid: %d, tac: %d, nrsrp: %d, connect %s, age %d", mcc, mnc,
         e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
+    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+     * specification of primary IDs is considered an error.
+     */
     if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
         !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -697,8 +705,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param ncid mobile cell ID (0-503, -1 if unknown)
- *  @param earfcn mobile earfcn (0-45589, -1 if unknown)
+ *  @param ncid mobile cell ID (0-503, SKY_UNKNOWN_ID4 if unknown)
+ *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *
@@ -717,10 +725,10 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
  *  @param sky_errno    sky_errno is set to the error code
  *  @param mcc          mobile country code (200-799)
  *  @param mnc          mobile network code (0-999)
- *  @param e_cellid     nbiot beacon identifier (0-268,435,456)
- *  @param tac          tracking area code identifier (1-65,535), 0 if unknown
- *  @param pci          mobile pci (0-1007, -1 if unknown)
- *  @param nrarfcn      mobile nrarfcn (0-3279165, -1 if unknown)
+ *  @param nci          nr cell identity (0-68719476735)
+ *  @param tac          tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ *  @param pci          physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
+ *  @param nrarfcn      channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param csi_rsrp     CSI Reference Signal Received Power, range -140 to -40dBm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -729,7 +737,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
  */
 
 Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, uint64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
+    uint16_t mnc, int64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
     int16_t csi_rsrp, bool is_connected)
 {
     Beacon_t b;
@@ -739,14 +747,19 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
         mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
         (int)(ctx->header.time - timestamp))
 
-    /* If primary key has unknown value, then this must be NMR otherwise it is an error */
-    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || nci == SKY_UNKNOWN_ID4) &&
+    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+     * specification of primary IDs is considered an error.
+     */
+    if ((mcc == SKY_UNKNOWN_ID1 ||
+            mnc == SKY_UNKNOWN_ID2) && /* note SKY_UNKNOWN_ID4 is in range for nr nci */
         !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && nci == SKY_UNKNOWN_ID4))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
     if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) || (nci != SKY_UNKNOWN_ID4 && nci > 68719476735) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
+        (nci < 0 || nci > 68719476735) || /* note SKY_UNKNOWN_ID4 is in range for nr nci */
         (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
         (pci != SKY_UNKNOWN_ID5 && (pci < 0 || pci > 1007)) ||
         (nrarfcn != SKY_UNKNOWN_ID6 && (nrarfcn < 0 || nrarfcn > 3279165)))
@@ -786,8 +799,8 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param pci mobile cell ID (0-1007, -1 if unknown)
- *  @param nrarfcn mobile earfcn (0-3279165, -1 if unknown)
+ *  @param physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
+ *  @param nrarfcn channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *
