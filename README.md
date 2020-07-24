@@ -1,5 +1,53 @@
 # Skyhook Embedded Client Library
 
+## Table of Contents
+
+   * [Skyhook Embedded Client Library](#skyhook-embedded-client-library)
+      * [Description](#description)
+      * [Building](#building)
+         * [Dependencies](#dependencies)
+            * [Git Submodules](#git-submodules)
+            * [Google Protocol Buffers And Python](#google-protocol-buffers-and-python)
+         * [Library Source Files](#library-source-files)
+         * [Build Directions](#build-directions)
+      * [API Guide](#api-guide)
+         * [Summary](#summary)
+         * [Requirments](#requirments)
+         * [API conventions](#api-conventions)
+         * [Client Configuration](#client-configuration)
+         * [General Sequence of Operations](#general-sequence-of-operations)
+         * [API Reference](#api-reference)
+            * [sky_open() - Initialize Skyhook library and verify access to resources](#sky_open---initialize-skyhook-library-and-verify-access-to-resources)
+            * [sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.](#sky_sizeof_state---get-the-size-of-the-non-volatile-memory-required-to-save-and-restore-the-library-state)
+            * [sky_sizeof_workspace() - Determines the size of the work space required to process the request](#sky_sizeof_workspace---determines-the-size-of-the-work-space-required-to-process-the-request)
+            * [sky_new_request() - Initializes work space for a new request](#sky_new_request---initializes-work-space-for-a-new-request)
+            * [sky_add_ap_beacon() - Add a Wi-Fi beacon to request context](#sky_add_ap_beacon---add-a-wi-fi-beacon-to-request-context)
+            * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
+            * [sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_lte_neighbor_beacon---adds-an-lte-neighbor-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
+            * [sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context](#sky_add_cell_umts_beacon---adds-a-umts-cell-beacon-to-the-request-context)
+            * [sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context](#sky_add_cell_umts_neighbor_beacon---adds-a-umts-neighbor-cell-beacon-to-the-request-context)
+            * [sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context](#sky_add_cell_cdma_beacon---adds-a-cdma-cell-beacon-to-the-request-context)
+            * [sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context](#sky_add_cell_nb_iot_beacon---adds-a-nb_iot-cell-beacon-to-the-request-context)
+            * [sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context](#sky_add_cell_nb_iot_neighbor_beacon---adds-a-neighbor-nb_iot-cell-beacon-to-the-request-context)
+            * [sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context](#sky_add_gnss---adds-the-position-of-the-device-from-gnss-gps-glonass-or-others-to-the-request-context)
+            * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-user)
+            * [sky_finalize_request() - generate a Skyhook request from the request context](#sky_finalize_request---generate-a-skyhook-request-from-the-request-context)
+            * [sky_decode_response() - decodes a Skyhook server response](#sky_decode_response---decodes-a-skyhook-server-response)
+            * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
+            * [sky_pbeacon() - returns a string which describes the type of a beacon](#sky_pbeacon---returns-a-string-which-describes-the-type-of-a-beacon)
+            * [sky_pserver_status() - returns a string which describes the meaning of status codes](#sky_pserver_status---returns-a-string-which-describes-the-meaning-of-status-codes)
+            * [sky_close() - frees any resources in use by the Skyhook library](#sky_close---frees-any-resources-in-use-by-the-skyhook-library)
+         * [Appendix](#appendix)
+            * [API Return Codes](#api-return-codes)
+            * [API Error Codes](#api-error-codes)
+            * [API Location Result](#api-location-result)
+            * [API sky_finalize_request() result](#api-sky_finalize_request-result)
+            * [API Logging levels](#api-logging-levels)
+      * [License](#license)
+
+## Description
+
 The Skyhook Embedded Client is a small library written in C. It is intended to be
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
@@ -150,9 +198,9 @@ In general, the user must take the following steps in order to perform this exch
 
 Figure 1 - The User is expected to make a sequence of calls like the following
 
-### API Reference
+## API Reference
 
-#### sky_open() - Initialize Skyhook library and verify access to resources
+### sky_open() - Initialize Skyhook library and verify access to resources
 
 ```c
 Sky_status_t sky_open(Sky_errno_t *sky_errno,
@@ -184,7 +232,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  ```
 Called once to set up any resources needed by the library (e.g. cache space). Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (SKY_ERROR_BAD_STATE). If logf() is not NULL, the log messages will be generated if they were turned on during compilation (SKY_DEBUG). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to SKY_LOG_LEVEL_ERROR, only log messages with level SYK_LOG_LEVEL_CRITICAL and SKY_LOG_LEVEL_ERROR will be generated. If gettime is not NULL, this function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time) , otherwise the library calls time().
 
-#### sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.
+### sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.
 
 ```c
 int32_t sky_sizeof_state(void *sky_state)
@@ -197,7 +245,7 @@ int32_t sky_sizeof_state(void *sky_state)
  ```
 Determines the size of the non-volatile memory that will be required to save and restore the library state. This will preserve any cached scan data with associated location information. It may be called at any time to determine either the space used by a state buffer that has been copied to non-volatile memory, or the size of the buffer returned by sky_close.
 
-#### sky_sizeof_workspace() - Determines the size of the work space required to process the request
+### sky_sizeof_workspace() - Determines the size of the work space required to process the request
 
 ```c
 int32_t sky_sizeof_workspace(void)
@@ -207,7 +255,7 @@ int32_t sky_sizeof_workspace(void)
 ```
 Reports the number of bytes of work space buffer required to handle encoding the request. This should be allocated by the caller and a pointer to this allocated space passed to sky_new_request(). This space is used to accumulate the beacon information to form the server request.
 
-#### sky_new_request() - Initializes work space for a new request
+### sky_new_request() - Initializes work space for a new request
 
 ```c
 Sky_ctx_t* sky_new_request(void *workspace_buf,
@@ -225,7 +273,7 @@ Sky_ctx_t* sky_new_request(void *workspace_buf,
 ```
 Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers.
 
-#### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
+### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
 ```c
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx,
@@ -251,7 +299,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx,
  ```
 Adds the Wi-Fi access point information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set to error code. If enough Wi-Fi beacons are already in the request context, sky_add_ap_beacon() may remove the least useful beacon.
 
-#### sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context
+### sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context
 
 ```c
 
@@ -272,12 +320,12 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * tac          lte tracking area code identifier (1-65,535),0 if unknown
- * e_cellid     lte beacon identifier 28bit (0-268,435,456)
+ * tac          lte tracking area code identifier (1-65535),0 if unknown
+ * e_cellid     lte beacon identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
- * pci          pci, -1 if unknown
- * earfcn,      channel, -1 if unknown
+ * pci          mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
+ * earfcn,      channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -287,7 +335,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 ```
 Adds the cell lte or lte-CatM1  information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error. 
 
-#### sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context
+### sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
@@ -300,8 +348,8 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * pci          pci, -1 if unknown
- * earfcn,      channel, -1 if unknown
+ * pci          mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
+ * earfcn,      channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  
@@ -312,7 +360,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
 
 Adds the lte or lte-CatM1 neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-#### sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context
+### sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
@@ -329,8 +377,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * lac          gsm location area code identifier (1-65,535)
- * ci           gsm cell identifier (0-65,535)
+ * lac          gsm location area code identifier (1-65535)
+ * ci           gsm cell identifier (0-65535)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
@@ -342,7 +390,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
  ```
 Adds the cell gsm information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error. 
 
-#### sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context
+### sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
@@ -361,12 +409,12 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * lac          umts location area code identifier (1-65,535), 0 if unknown
- * ucid         umts cell identifier 28bit (0-268,435,456)
+ * lac          umts location area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ * ucid         umts cell identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
- * psc          psc, -1 if unknown
- * uarfcn       uarfcn, -1 if unknown
+ * psc          primary scrambling code (0-511), SKY_UNKNOWN_ID5 if unknown
+ * uarfcn       channel (412-10838), SKY_UNKNOWN_ID6 if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rscp         Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  * is_connected This beacon is currently connected, false if unknown
@@ -376,7 +424,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell umts information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-#### sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context
+### sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
@@ -390,8 +438,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * psc          psc, -1 if unknown
- * uarfcn       uarfcn, -1 if unknown
+ * psc          primary scrambling code (0-511), SKY_UNKNOWN_ID5 if unknown
+ * uarfcn       channel (412-10838), SKY_UNKNOWN_ID6 if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rscp         Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  
@@ -400,7 +448,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
  ```
 Adds the umts neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-#### sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context
+### sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
@@ -428,7 +476,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell cdma information to the request context. Returns NULL and sets sky_error if there is not enough room in the request context or other error.
 
-#### sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context
+### sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
@@ -449,10 +497,10 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  * sky_errno    sky_errno is set to the error code
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
- * e_cellid     nbiot beacon identifier (0-268,435,456)
- * tac          nbiot tracking area code identifier (1-65,535), 0 if unknown
- * ncid         ncid, -1 if unknown
- * earfcn       channel, -1 if unknown
+ * e_cellid     nbiot beacon identifier (0-268435455)
+ * tac          nbiot tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ * ncid         mobile cell ID  (0-503), SKY_UNKNOWN_ID4 if unknown
+ * earfcn       channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -462,7 +510,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell nb-IoT information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-#### sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context
+### sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context
 
 ```c
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
@@ -476,8 +524,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * ncid         ncid, -1 if unknown
- * earfcn       channel, -1 if unknown
+ * ncid         mobile cell ID  (0-503), SKY_UNKNOWN_ID4 if unknown
+ * earfcn       channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  
@@ -486,7 +534,64 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  ```
 Adds the nb-IoT neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-#### sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context
+### sky_add_cell_5g_nr_beacon() - Adds a 5G NR cell beacon to the request context
+
+```c
+Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx,
+    Sky_errno_t *sky_errno,
+    uint16_t mcc,
+    uint16_t mnc,
+    int64_t nci,
+    uint32_t tac,
+    int16_t pci,
+    int32_t nrarfcn,
+    time_t timestamp,
+    int16_t nrsrp
+)
+ 
+/* Parameters
+ * ctx          Skyhook request context
+ * sky_errno    sky_errno is set to the error code
+ * mcc          mobile country code (200-799)
+ * mnc          mobile network code (0-999)
+ * nci          nr cell identity (0-68719476735)
+ * tac          tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
+ * pci          physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
+ * nrarfcn      channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
+ * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
+ * is_connected this beacon is currently connected, false if unknown
+ 
+ * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+ ```
+Adds the cell NR information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
+
+### sky_add_cell_5g_nr_neighbor_beacon() - Adds a neighbor 5G NR cell beacon to the request context
+
+```c
+Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx,
+    Sky_errno_t *sky_errno,
+    int16_t pci,
+    int32_t nrarfcn,
+    time_t timestamp,
+    int16_t nrsrp
+)
+ 
+/* Parameters
+ * ctx          Skyhook request context
+ * sky_errno    sky_errno is set to the error code
+ * pci          physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
+ * nrarfcn      channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
+ * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
+ 
+ * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+ ```
+Adds the 5G NR neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
+
+### sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context
 
 
 ```c
@@ -520,7 +625,7 @@ time_t timestamp)
  ```
 Adds the GNSS information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set to error code. 
 
-#### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
+### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
 
 
 ```c
@@ -540,7 +645,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  ```
 Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user.
 
-#### sky_finalize_request() - generate a Skyhook request from the request context
+### sky_finalize_request() - generate a Skyhook request from the request context
 
 ```c
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
@@ -564,7 +669,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
  ```
 Returns SKY_FINALIZE_ERROR and sets sky_error if an error occurs. If the result is SKY_FINALIZE_REQUEST, the request buffer is filled in with the serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the result is SKY_FINALIZE_LOCATION, the location (lat, lon, hpe and source) are filled in from a previously successful server response held in the cache. 
 
-#### sky_decode_response() - decodes a Skyhook server response
+### sky_decode_response() - decodes a Skyhook server response
 
 ```c
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
@@ -586,7 +691,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
 ```
 User calls this to process the network response from the Skyhook server. Returns SKY_ERROR and sets sky_error if the response buffer could not be decoded or other error occurred, otherwise SKY_SUCCESS is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
 
-#### sky_perror() - returns a string which describes the meaning of sky_errno codes
+### sky_perror() - returns a string which describes the meaning of sky_errno codes
 
 ```c
 char* sky_perror(sky_errno_t sky_errno)
@@ -599,7 +704,7 @@ char* sky_perror(sky_errno_t sky_errno)
 ```
 Return a static string which describes the meaning of the value passed in sky_errno, or "Unknown error" if sky_errno has an unexpected value.
 
-#### sky_pbeacon() - returns a string which describes the type of a beacon
+### sky_pbeacon() - returns a string which describes the type of a beacon
 
 ```c
 char* sky_pbeacon(Beacon_t *beacon)
@@ -612,7 +717,7 @@ char* sky_pbeacon(Beacon_t *beacon)
 ```
 Return a static string which describes the type of the beacon passed in pointer beacon, or "Unknown" if beacon type has an unexpected value.
 
-#### sky_pserver_status() - returns a string which describes the meaning of status codes
+### sky_pserver_status() - returns a string which describes the meaning of status codes
 
 ```c
 char* sky_pserver_status(sky_server_status_t status)
@@ -625,7 +730,7 @@ char* sky_pserver_status(sky_server_status_t status)
 ```
 Return a static string which describes the meaning of the value passed in status, or "Unknown server status" if status has an unexpected value. status is available in the location_status field of the Sky_location_t structure when sky_decode_response() returns SKY_SUCCESS. 
 
-#### sky_close() - frees any resources in use by the Skyhook library
+### sky_close() - frees any resources in use by the Skyhook library
 
 ```c
 Sky_status_t sky_close(Sky_errno_t *sky_errno,
@@ -642,7 +747,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno,
 Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriately. If sky_state was provided (not NULL), it will be set to point to sky_sizeof_state bytes of state buffer, which should be saved to non-volatile memory, 
 
 ### Appendix
-#### API Return Codes
+### API Return Codes
 `Sky_status_t` indicates the status of a completed API request:
 
 | Return Code                                      | Description
@@ -650,7 +755,7 @@ Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriat
 | `SKY_SUCCESS`                                    | Operation was successful
 | `SKY_ERROR`                                      | Operation failed with sky_errno set
 
-#### API Error Codes
+### API Error Codes
 `Sky_errno_t` indicates the error condition:
 
 | Error Code                                      | Description
@@ -673,7 +778,7 @@ Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriat
 | `SKY_ERROR_LOCATION_UNKNOWN`                    | Server response indicates no location could be determined
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
 
-#### API Location Result
+### API Location Result
 The library returns location information as `Sky_location_t`:
 
 ```c
@@ -696,7 +801,7 @@ The location_source field can have one of the following values:
 | `SKY_LOCATION_STATUS_DECODE_ERROR`              | Server reported an error while decoding request
 | `SKY_LOCATION_STATUS_API_SERVER_ERROR`          | Server reported an error while processing request
 
-#### API sky_finalize_request() result
+### API sky_finalize_request() result
 sky_finalize_request() returns a result as`Sky_finalize_t`:
 
 | sky_finalize_request result                     | Description
@@ -705,7 +810,7 @@ sky_finalize_request() returns a result as`Sky_finalize_t`:
 | `SKY_FINALIZE_LOCATION`                         | The location is known e.g. stationary
 | `SKY_FINALIZE_REQUEST`                          | Context contains a server request
 
-#### API Logging levels
+### API Logging levels
 The level at which the library generates log messages can be configured by passing `min_level` with one of these values to `sky_open()`:
 
 | Logging Level                                   | Description
