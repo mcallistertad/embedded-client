@@ -50,8 +50,8 @@ typedef enum {
     SKY_BEACON_LTE = 5,
     SKY_BEACON_NBIOT = 6,
     SKY_BEACON_UMTS = 7,
-    SKY_BEACON_5GNR = 8,
-    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_5GNR,
+    SKY_BEACON_NR = 8,
+    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_NR,
     SKY_BEACON_MAX, /* add more before this */
 } Sky_beacon_type_t;
 
@@ -140,7 +140,7 @@ struct nbiot {
     int16_t rssi;
 };
 
-struct nr5g {
+struct nr {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
@@ -167,7 +167,7 @@ typedef union beacon {
     struct lte lte;
     struct nbiot nbiot;
     struct umts umts;
-    struct nr5g nr5g;
+    struct nr nr;
 } Beacon_t;
 
 typedef struct gps {
