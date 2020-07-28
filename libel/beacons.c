@@ -82,11 +82,11 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     if (ctx->beacon[index].h.type == SKY_BEACON_AP)
         ctx->ap_len -= 1;
-        if (ctx->connected == index)
-            ctx->connected = -1;
-        else if (index < ctx->connected)
-            // Removed beacon precedes the connected one, so update its index.
-            ctx->connected--;
+    if (ctx->connected == index)
+        ctx->connected = -1;
+    else if (index < ctx->connected)
+        // Removed beacon precedes the connected one, so update its index.
+        ctx->connected--;
 
     memmove(
         &ctx->beacon[index], &ctx->beacon[index + 1], sizeof(Beacon_t) * (ctx->len - index - 1));
@@ -429,22 +429,27 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     ret = true;
                 break;
             case SKY_BEACON_LTE:
-                if ((b->lte.e_cellid == cl->beacon[j].lte.e_cellid) &&
-                    (b->lte.mcc == cl->beacon[j].lte.mcc) && (b->lte.mnc == cl->beacon[j].lte.mnc))
+                if ((b->lte.mcc == cl->beacon[j].lte.mcc) &&
+                    (b->lte.mnc == cl->beacon[j].lte.mnc) &&
+                    (b->lte.e_cellid == cl->beacon[j].lte.e_cellid))
                     ret = true;
                 break;
             case SKY_BEACON_NBIOT:
                 if ((b->nbiot.mcc == cl->beacon[j].nbiot.mcc) &&
                     (b->nbiot.mnc == cl->beacon[j].nbiot.mnc) &&
-                    (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid) &&
-                    (b->nbiot.tac == cl->beacon[j].nbiot.tac))
+                    (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid))
                     ret = true;
                 break;
             case SKY_BEACON_UMTS:
                 if ((b->umts.ucid == cl->beacon[j].umts.ucid) &&
                     (b->umts.mcc == cl->beacon[j].umts.mcc) &&
-                    (b->umts.mnc == cl->beacon[j].umts.mnc) &&
-                    (b->umts.lac == cl->beacon[j].umts.lac))
+                    (b->umts.mnc == cl->beacon[j].umts.mnc))
+                    ret = true;
+                break;
+            case SKY_BEACON_5GNR:
+                if ((b->nr5g.mcc == cl->beacon[j].nr5g.mcc) &&
+                    (b->nr5g.mnc == cl->beacon[j].nr5g.mnc) &&
+                    (b->nr5g.nci == cl->beacon[j].nr5g.nci))
                     ret = true;
                 break;
             default:
