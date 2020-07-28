@@ -30,6 +30,7 @@
 #include <math.h>
 
 #include "libel.h"
+#include "beacons.h"
 
 #include "send.h"
 #include "config.h"
@@ -50,7 +51,7 @@ struct ap_scan aps[] = /* clang-format off */
                       { "826AB092DC99", 300, 3660, -130 },
                       { "283B823629F0", 300, 3660, -90 },
                       { "283B821C712A", 300, 3660, -77 },
-                      { "0024D2E08E5D", 300, 3660, -92 },
+ //                     { "0024D2E08E5D", 300, 3660, -92 },
                       { "283B821CC232", 300, 3660, -91 },
                       { "74DADA5E1015", 300, 3660, -88 },
                       { "B482FEA46221", 300, 3660, -89 },
@@ -243,6 +244,7 @@ int main(int argc, char *argv[])
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
 
+#if 1
     /* Add APs to the request */
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
@@ -256,6 +258,7 @@ int main(int argc, char *argv[])
         } else
             printf("Ignoring AP becon with bad MAC Address '%s' index %d\n", aps[i].mac, i + 1);
     }
+#endif
 
     /* Add UMTS cell */
     ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
@@ -264,7 +267,7 @@ int main(int argc, char *argv[])
         603, // mcc
         1, // mnc
         33, // pci
-        44, // earfcn
+        440, // earfcn
         timestamp - 315, // timestamp
         -100, // rscp
         0); // serving
@@ -276,7 +279,7 @@ int main(int argc, char *argv[])
     /* Add UMTS neighbor cell */
     ret_status = sky_add_cell_umts_neighbor_beacon(ctx, &sky_errno,
         33, // pci
-        44, // earfcn
+        440, // earfcn
         timestamp - 315, // timestamp
         -100); // rscp
 
@@ -288,7 +291,7 @@ int main(int argc, char *argv[])
     /* Add another UMTS neighbor cell */
     ret_status = sky_add_cell_umts_neighbor_beacon(ctx, &sky_errno,
         55, // pci
-        66, // earfcn
+        660, // earfcn
         timestamp - 316, // timestamp
         -101); // rscp
 
@@ -296,7 +299,7 @@ int main(int argc, char *argv[])
         printf("Cell neighbor UMTS added\n");
     else
         printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-
+#if 0
     /* Add CDMA cell */
     ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
         1552, // sid
@@ -317,7 +320,6 @@ int main(int argc, char *argv[])
     else
         printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
 
-#if 0
     /* Add LTE cell */
     ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
         12345, // tac
@@ -348,6 +350,62 @@ int main(int argc, char *argv[])
     else
         printf("Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
 #endif
+    /* Add 5G cell */
+    ret_status = sky_add_cell_nr_beacon(ctx, &sky_errno,
+        600, // mcc
+        10, // mnc
+        6871947673, // nci
+        25187, // tac
+        400, // pci
+        4000, // nrarfcn
+        timestamp - 315, // timestamp
+        -50, // rscp
+        1); // serving
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell nr added\n");
+    else
+        printf("Error adding nr cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add 5G neighbor cell */
+    ret_status = sky_add_cell_nr_neighbor_beacon(ctx, &sky_errno,
+        1006, // pci
+        653333, // earfcn
+        timestamp - 315, // timestamp
+        -49); // rscp
+
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell neighbor lte added\n");
+    else
+        printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add LTE cell */
+    ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
+        310, // tac
+        268435454, // e_cellid
+        201, // mcc
+        700, // mnc
+        502, // pci
+        45500, // nrarfcn
+        timestamp - 315, // timestamp
+        -50, // rscp
+        1); // serving
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell nr added\n");
+    else
+        printf("Error adding lte cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add LTE neighbor cell */
+    ret_status = sky_add_cell_lte_neighbor_beacon(ctx, &sky_errno,
+        502, // pci
+        44, // earfcn
+        timestamp - 315, // timestamp
+        -100); // rscp
+
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell neighbor lte added\n");
+    else
+        printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
+
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
     ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
