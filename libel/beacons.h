@@ -37,16 +37,26 @@
 #define NUM_BEACONS(p) ((p)->len)
 #define IMPLIES(a, b) (!(a) || (b))
 
+#define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID3 ((uint16_t)0)
+#define SKY_UNKNOWN_ID4 ((int64_t)-1)
+#define SKY_UNKNOWN_ID5 ((int16_t)-1)
+#define SKY_UNKNOWN_ID6 ((int32_t)-1)
+
 /*! \brief Types of beacon
  */
 typedef enum {
     SKY_BEACON_AP = 1,
-    SKY_BEACON_BLE,
-    SKY_BEACON_CDMA,
-    SKY_BEACON_GSM,
-    SKY_BEACON_LTE,
-    SKY_BEACON_NBIOT,
-    SKY_BEACON_UMTS,
+    SKY_BEACON_BLE = 2,
+    SKY_BEACON_CDMA = 3,
+    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_CDMA,
+    SKY_BEACON_GSM = 4,
+    SKY_BEACON_LTE = 5,
+    SKY_BEACON_NBIOT = 6,
+    SKY_BEACON_UMTS = 7,
+    SKY_BEACON_5GNR = 8,
+    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_5GNR,
     SKY_BEACON_MAX, /* add more before this */
 } Sky_beacon_type_t;
 
@@ -66,11 +76,11 @@ struct ap {
 struct gsm {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint32_t ci;
+    int64_t ci; // id4
     uint32_t age;
-    uint16_t mcc; // country
-    uint16_t mnc;
-    uint16_t lac;
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    uint16_t lac; // id3
     int16_t rssi; // -255 unkonwn - map it to - 128
 };
 
@@ -79,19 +89,21 @@ struct cdma {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint16_t sid;
-    uint16_t nid;
-    uint16_t bsid;
+    uint16_t sid; // id2
+    uint16_t nid; // id3
+    int64_t bsid; // id4
     int16_t rssi;
 };
 
 struct umts {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint16_t lac;
-    uint32_t ucid;
-    uint16_t mcc; // country
-    uint16_t mnc;
+    uint16_t lac; // id3
+    int64_t ucid; // id4
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    int16_t psc; // id5
+    int32_t uarfcn; // id6
     uint32_t age;
     int16_t rssi;
 };
@@ -100,10 +112,12 @@ struct lte {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint32_t e_cellid;
-    uint16_t mcc;
-    uint16_t mnc;
-    uint16_t tac;
+    int64_t e_cellid; // id4
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    uint16_t tac; // id3
+    int16_t pci; // id5
+    int32_t earfcn; // id6
     int16_t rssi;
 };
 
@@ -122,10 +136,25 @@ struct nbiot {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
-    uint16_t mcc;
-    uint16_t mnc;
-    uint32_t e_cellid;
-    uint16_t tac;
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    int64_t e_cellid; // id4
+    uint16_t tac; // id3
+    int16_t ncid; // id5
+    int32_t earfcn; // id6
+    int16_t rssi;
+};
+
+struct nr5g {
+    uint16_t magic; /* Indication that this beacon entry is valid */
+    uint16_t type; /* sky_beacon_type_t */
+    uint32_t age;
+    uint16_t mcc; // id1
+    uint16_t mnc; // id2
+    int64_t nci; // id4
+    uint16_t tac; // id3
+    uint16_t pci; // id5
+    int32_t nrarfcn; // id6
     int16_t rssi;
 };
 
@@ -133,6 +162,7 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
 };
+
 typedef union beacon {
     struct header h;
     struct ap ap;
@@ -142,6 +172,7 @@ typedef union beacon {
     struct lte lte;
     struct nbiot nbiot;
     struct umts umts;
+    struct nr5g nr5g;
 } Beacon_t;
 
 typedef struct gps {
