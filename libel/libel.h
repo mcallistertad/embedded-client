@@ -143,9 +143,6 @@ typedef void Sky_ctx_t;
 #include "beacons.h"
 #include "workspace.h"
 #include "utilities.h"
-#else
-typedef void Sky_ctx_t;
-#define MAC_SIZE 6
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
