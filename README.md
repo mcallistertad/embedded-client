@@ -30,6 +30,8 @@
             * [sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context](#sky_add_cell_cdma_beacon---adds-a-cdma-cell-beacon-to-the-request-context)
             * [sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context](#sky_add_cell_nb_iot_beacon---adds-a-nb_iot-cell-beacon-to-the-request-context)
             * [sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context](#sky_add_cell_nb_iot_neighbor_beacon---adds-a-neighbor-nb_iot-cell-beacon-to-the-request-context)
+            * [sky_add_cell_nr_beacon() - Adds a nr cell beacon to the request context](#sky_add_cell_nr_beacon---adds-a-nr-cell-beacon-to-the-request-context)
+            * [sky_add_cell_nr_neighbor_beacon() - Adds a neighbor nr cell beacon to the request context](#sky_add_cell_nr_neighbor_beacon---adds-a-neighbor-nr-cell-beacon-to-the-request-context)
             * [sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context](#sky_add_gnss---adds-the-position-of-the-device-from-gnss-gps-glonass-or-others-to-the-request-context)
             * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-user)
             * [sky_finalize_request() - generate a Skyhook request from the request context](#sky_finalize_request---generate-a-skyhook-request-from-the-request-context)
@@ -534,10 +536,10 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  ```
 Adds the nb-IoT neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-### sky_add_cell_5g_nr_beacon() - Adds a 5G NR cell beacon to the request context
+### sky_add_cell_nr_beacon() - Adds a NR cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     uint16_t mcc,
     uint16_t mnc,
@@ -567,10 +569,10 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell NR information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
-### sky_add_cell_5g_nr_neighbor_beacon() - Adds a neighbor 5G NR cell beacon to the request context
+### sky_add_cell_nr_neighbor_beacon() - Adds a neighbor NR cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     int16_t pci,
     int32_t nrarfcn,
@@ -589,7 +591,7 @@ Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx,
  * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
  ```
-Adds the 5G NR neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
+Adds the NR neighbor cell information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set if there is not enough room in the request context or other error.
 
 ### sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context
 

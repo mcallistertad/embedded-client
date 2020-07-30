@@ -722,7 +722,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
 
-/*! \brief Adds a 5G NR cell beacon to the request context
+/*! \brief Adds a NR cell beacon to the request context
  *
  *  @param ctx          Skyhook request context
  *  @param sky_errno    sky_errno is set to the error code
@@ -739,7 +739,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
  * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 
-Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
+Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
     uint16_t mnc, int64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
     int16_t csi_rsrp, bool is_connected)
 {
@@ -776,28 +776,28 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
     if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
         return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
-    /* Create 5G NR beacon */
+    /* Create NR beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
-    b.h.type = SKY_BEACON_5GNR;
+    b.h.type = SKY_BEACON_NR;
     /* If beacon has meaningful timestamp */
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.nbiot.age = ctx->header.time - timestamp;
     if (csi_rsrp > -40 || csi_rsrp < -140)
         csi_rsrp = -1;
-    b.nr5g.mcc = mcc;
-    b.nr5g.mnc = mnc;
-    b.nr5g.nci = nci;
-    b.nr5g.tac = tac;
-    b.nr5g.pci = pci;
-    b.nr5g.nrarfcn = nrarfcn;
-    b.nr5g.rssi = csi_rsrp;
+    b.nr.mcc = mcc;
+    b.nr.mnc = mnc;
+    b.nr.nci = nci;
+    b.nr.tac = tac;
+    b.nr.pci = pci;
+    b.nr.nrarfcn = nrarfcn;
+    b.nr.rssi = csi_rsrp;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
-/*! \brief Adds a 5G NR cell neighbor beacon to the request context
+/*! \brief Adds a NR cell neighbor beacon to the request context
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
@@ -808,10 +808,10 @@ Sky_status_t sky_add_cell_5g_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, u
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_5g_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
+Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
-    return sky_add_cell_5g_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
+    return sky_add_cell_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, csi_rsrp, false);
 }
 
@@ -1163,8 +1163,8 @@ char *sky_pbeacon(Beacon_t *b)
     case SKY_BEACON_UMTS:
         str = "UMTS";
         break;
-    case SKY_BEACON_5GNR:
-        str = "5G-NR";
+    case SKY_BEACON_NR:
+        str = "NR";
         break;
     default:
         str = "Unknown";

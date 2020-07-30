@@ -446,10 +446,9 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     (b->umts.mnc == cl->beacon[j].umts.mnc))
                     ret = true;
                 break;
-            case SKY_BEACON_5GNR:
-                if ((b->nr5g.mcc == cl->beacon[j].nr5g.mcc) &&
-                    (b->nr5g.mnc == cl->beacon[j].nr5g.mnc) &&
-                    (b->nr5g.nci == cl->beacon[j].nr5g.nci))
+            case SKY_BEACON_NR:
+                if ((b->nr.mcc == cl->beacon[j].nr.mcc) && (b->nr.mnc == cl->beacon[j].nr.mnc) &&
+                    (b->nr.nci == cl->beacon[j].nr.nci))
                     ret = true;
                 break;
             default:

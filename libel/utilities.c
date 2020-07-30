@@ -369,20 +369,20 @@ void dump_workspace(Sky_ctx_t *ctx)
                     ctx->beacon[i].umts.mcc, ctx->beacon[i].umts.mnc, ctx->beacon[i].umts.psc,
                     ctx->beacon[i].umts.uarfcn, ctx->beacon[i].umts.rssi)
             break;
-        case SKY_BEACON_5GNR:
-            if (ctx->beacon[i].nr5g.mcc == SKY_UNKNOWN_ID1 &&
-                ctx->beacon[i].nr5g.mnc == SKY_UNKNOWN_ID2 &&
-                ctx->beacon[i].nr5g.nci == SKY_UNKNOWN_ID4)
+        case SKY_BEACON_NR:
+            if (ctx->beacon[i].nr.mcc == SKY_UNKNOWN_ID1 &&
+                ctx->beacon[i].nr.mnc == SKY_UNKNOWN_ID2 &&
+                ctx->beacon[i].nr.nci == SKY_UNKNOWN_ID4)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: AGE: %d Type: 5G-NR-NMR, pci: %u, nrarfcn: %u, rssi: %d", i,
-                    ctx->beacon[i].nr5g.age, ctx->beacon[i].nr5g.pci, ctx->beacon[i].nr5g.nrarfcn,
-                    ctx->beacon[i].nr5g.rssi)
+                    " Beacon %-2d: AGE: %d Type: NR-NMR, pci: %u, nrarfcn: %u, rssi: %d", i,
+                    ctx->beacon[i].nr.age, ctx->beacon[i].nr.pci, ctx->beacon[i].nr.nrarfcn,
+                    ctx->beacon[i].nr.rssi)
             else
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: Age: %d Type: 5G-NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, pci: %u, earfcn: %u, rssi: %d",
-                    i, ctx->beacon[i].nr5g.age, ctx->beacon[i].nr5g.mcc, ctx->beacon[i].nr5g.mnc,
-                    ctx->beacon[i].nr5g.nci, ctx->beacon[i].nr5g.tac, ctx->beacon[i].nr5g.pci,
-                    ctx->beacon[i].nr5g.nrarfcn, ctx->beacon[i].nr5g.rssi)
+                    " Beacon %-2d: Age: %d Type: NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, pci: %u, earfcn: %u, rssi: %d",
+                    i, ctx->beacon[i].nr.age, ctx->beacon[i].nr.mcc, ctx->beacon[i].nr.mnc,
+                    ctx->beacon[i].nr.nci, ctx->beacon[i].nr.tac, ctx->beacon[i].nr.pci,
+                    ctx->beacon[i].nr.nrarfcn, ctx->beacon[i].nr.rssi)
             break;
         default:
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %-2d: Type: Unknown", i)
@@ -487,17 +487,17 @@ void dump_cache(Sky_ctx_t *ctx)
                             i, j, b->umts.lac, b->umts.ucid, b->umts.mcc, b->umts.mnc, b->umts.psc,
                             b->umts.uarfcn, b->umts.rssi)
                     break;
-                case SKY_BEACON_5GNR:
-                    if (b->nr5g.mcc == SKY_UNKNOWN_ID1 && b->nr5g.mnc == SKY_UNKNOWN_ID2 &&
-                        b->nr5g.nci == SKY_UNKNOWN_ID4)
+                case SKY_BEACON_NR:
+                    if (b->nr.mcc == SKY_UNKNOWN_ID1 && b->nr.mnc == SKY_UNKNOWN_ID2 &&
+                        b->nr.nci == SKY_UNKNOWN_ID4)
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Type: 5G-NR-NMR, pci: %u, nrarfcn: %u, rssi: %d", i,
-                            j, b->nr5g.pci, b->nr5g.nrarfcn, b->nr5g.rssi)
+                            " Beacon %-2d:%-2d: Type: NR-NMR, pci: %u, nrarfcn: %u, rssi: %d", i, j,
+                            b->nr.pci, b->nr.nrarfcn, b->nr.rssi)
                     else
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Type: 5G-NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, pci: %u, nrarfcn: %u, rssi: %d",
-                            i, j, b->nr5g.mcc, b->nr5g.mnc, b->nr5g.nci, b->nr5g.tac, b->nr5g.pci,
-                            b->nr5g.nrarfcn, b->nr5g.rssi)
+                            " Beacon %-2d:%-2d: Type: NR, mcc: %u, mnc: %u, nci: %llu, tac: %u, pci: %u, nrarfcn: %u, rssi: %d",
+                            i, j, b->nr.mcc, b->nr.mnc, b->nr.nci, b->nr.tac, b->nr.pci,
+                            b->nr.nrarfcn, b->nr.rssi)
                     break;
                 }
             }
@@ -1595,8 +1595,8 @@ int64_t get_cell_id1(Beacon_t *cell)
         return cell->nbiot.mcc;
     case SKY_BEACON_UMTS:
         return cell->umts.mcc;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.mcc;
+    case SKY_BEACON_NR:
+        return cell->nr.mcc;
     }
 
     return 0;
@@ -1623,8 +1623,8 @@ int64_t get_cell_id2(Beacon_t *cell)
         return cell->nbiot.mnc;
     case SKY_BEACON_UMTS:
         return cell->umts.mnc;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.mnc;
+    case SKY_BEACON_NR:
+        return cell->nr.mnc;
     }
 
     return 0;
@@ -1651,8 +1651,8 @@ int64_t get_cell_id3(Beacon_t *cell)
         return cell->nbiot.tac;
     case SKY_BEACON_UMTS:
         return cell->umts.lac;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.tac;
+    case SKY_BEACON_NR:
+        return cell->nr.tac;
     }
 
     return 0;
@@ -1679,8 +1679,8 @@ int64_t get_cell_id4(Beacon_t *cell)
         return cell->nbiot.e_cellid;
     case SKY_BEACON_UMTS:
         return cell->umts.ucid;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.nci;
+    case SKY_BEACON_NR:
+        return cell->nr.nci;
     }
 
     return 0;
@@ -1707,8 +1707,8 @@ int64_t get_cell_id5(Beacon_t *cell)
         return cell->nbiot.ncid;
     case SKY_BEACON_UMTS:
         return cell->umts.psc;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.pci;
+    case SKY_BEACON_NR:
+        return cell->nr.pci;
     }
 
     return 0;
@@ -1735,8 +1735,8 @@ int64_t get_cell_id6(Beacon_t *cell)
         return cell->nbiot.earfcn;
     case SKY_BEACON_UMTS:
         return cell->umts.uarfcn;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.nrarfcn;
+    case SKY_BEACON_NR:
+        return cell->nr.nrarfcn;
     }
 
     return 0;
@@ -1774,8 +1774,8 @@ int64_t get_cell_rssi(Beacon_t *cell)
         return cell->nbiot.rssi;
     case SKY_BEACON_UMTS:
         return cell->umts.rssi;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.rssi;
+    case SKY_BEACON_NR:
+        return cell->nr.rssi;
     default:
         return 0;
     }
@@ -1802,8 +1802,8 @@ int64_t get_cell_age(Beacon_t *cell)
         return cell->nbiot.age;
     case SKY_BEACON_UMTS:
         return cell->umts.age;
-    case SKY_BEACON_5GNR:
-        return cell->nr5g.age;
+    case SKY_BEACON_NR:
+        return cell->nr.age;
     default:
         return 0;
     }
