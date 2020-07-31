@@ -31,7 +31,7 @@
 
 /*! \brief The maximum number of beacons passed to the server in a request
  */
-#define TOTAL_BEACONS 11
+#define TOTAL_BEACONS 16
 /*! \brief The maximum number of AP beacons passed to the server in a request
  */
 #define MAX_AP_BEACONS 10

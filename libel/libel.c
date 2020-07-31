@@ -398,10 +398,10 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
-    b.cell.id3 = tac;
-    b.cell.id4 = e_cellid;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
+    b.cell.id3 = tac;
+    b.cell.id4 = e_cellid;
     b.cell.id5 = pci;
     b.cell.freq = earfcn;
 
@@ -481,10 +481,10 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
-    b.cell.id3 = lac;
-    b.cell.id4 = ci;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
+    b.cell.id3 = lac;
+    b.cell.id4 = ci;
 
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
@@ -552,10 +552,10 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     /* scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
-    b.cell.id3 = lac;
-    b.cell.id4 = ucid;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
+    b.cell.id3 = lac;
+    b.cell.id4 = ucid;
     b.cell.id5 = psc;
     b.cell.freq = uarfcn;
 
@@ -696,8 +696,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         b.h.age = ctx->header.time - timestamp;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
-    b.cell.id4 = e_cellid;
     b.cell.id3 = tac;
+    b.cell.id4 = e_cellid;
     b.cell.id5 = ncid;
     b.cell.freq = earfcn;
 
@@ -789,8 +789,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     b.h.rssi = csi_rsrp;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
-    b.cell.id4 = nci;
     b.cell.id3 = tac;
+    b.cell.id4 = nci;
     b.cell.id5 = pci;
     b.cell.freq = nrarfcn;
 
