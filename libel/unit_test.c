@@ -285,22 +285,23 @@ int main(int ac, char **av)
                 b[i].ap.freq, 1)) {
             printf("sky_add_ap_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
         } else {
-            printf("Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %d\n",
+            printf(
+                "Added Test Beacon % 2d: Type: %d, MAC %02X:%02X:%02X:%02X:%02X:%02X freq: %d, rssi: %d\n",
                 i, b[i].h.type, b[i].ap.mac[0], b[i].ap.mac[1], b[i].ap.mac[2], b[i].ap.mac[3],
-                b[i].ap.mac[4], b[i].ap.mac[5], b[i].h.rssi);
+                b[i].ap.mac[4], b[i].ap.mac[5], b[i].ap.freq, b[i].h.rssi);
         }
     }
 
     for (i = 0; i < 3; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_NBIOT;
-        b[i].h.rssi = -(44 + (rand() % 112));
-        b[i].cell.id1 = 200 + (rand() % 600);
-        b[i].cell.id2 = rand() % 1000;
-        b[i].cell.id4 = rand() % 268435456;
-        b[i].cell.id3 = rand() % 65535 + 1;
-        b[i].cell.id5 = SKY_UNKNOWN_ID5;
-        b[i].cell.freq = SKY_UNKNOWN_ID6;
+        b[i].h.rssi = -(44 + (rand() % 113)); /* nrsrp -156 thru -44 */
+        b[i].cell.id1 = 200 + (rand() % 600); /* mcc 200 thru 799 */
+        b[i].cell.id2 = rand() % 1000; /* mnc 0 thru 999 */
+        b[i].cell.id3 = 1 + rand() % 65535; /* tac 1 thru 65535 */
+        b[i].cell.id4 = rand() % 268435456; /* e_cellid 0 thru 268435455 */
+        b[i].cell.id5 = rand() % 504; /* ncid 0 thru 503 */
+        b[i].cell.freq = rand() % 262144; /* freq 0 thru 262143 */
     }
 
     for (i = 0; i < 3; i++) {
@@ -318,11 +319,11 @@ int main(int ac, char **av)
     for (i = 0; i < 2; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_GSM;
-        b[i].h.rssi = -(32 + (rand() % 96));
-        b[i].cell.id3 = rand() % 65535 + 1;
-        b[i].cell.id4 = rand() % 65536;
-        b[i].cell.id1 = 200 + (rand() % 600);
-        b[i].cell.id2 = rand() % 1000;
+        b[i].h.rssi = -(32 + (rand() % 96)); /* rssi -128 thru -32 */
+        b[i].cell.id1 = 200 + (rand() % 599); /* mcc */
+        b[i].cell.id2 = rand() % 999; /* mnc */
+        b[i].cell.id3 = rand() % 65535; /* lac */
+        b[i].cell.id4 = rand() % 65535; /* ci */
         b[i].cell.id5 = SKY_UNKNOWN_ID5;
         b[i].cell.freq = SKY_UNKNOWN_ID6;
     }
@@ -445,8 +446,8 @@ int main(int ac, char **av)
 #endif
     dump_cache(ctx);
     /* simulate new config from server */
-    ctx->cache->config.total_beacons = 8;
-    ctx->cache->config.max_ap_beacons = 6;
+    ctx->cache->config.total_beacons = 14;
+    ctx->cache->config.max_ap_beacons = 8;
     ctx->cache->config.cache_match_threshold = 49;
 
 #endif
