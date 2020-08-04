@@ -79,12 +79,15 @@ struct ap {
 // http://wiki.opencellid.org/wiki/API
 struct cell {
     struct header h;
-    int16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). -1 if unknown.
-    int16_t id2; // mnc (gsm, umts, lte, nr, nb-iot) or sid (cdma). -1 if unknown.
-    int32_t id3; // lac (gsm, umts) or tac (lte, nr, nb-iot) or nid (cdma). -1 if unknown.
-    int64_t id4; // cell id (gsm, umts, lte, nb-iot, nr), bsid (cdma). -1 if unknown.
-    int16_t id5; // bsic (gsm), psc (umts), pci (lte, nr) or ncid (nb-iot). -1 if unknown.
-    int32_t freq; // arfcn(gsm), uarfcn (umts), earfcn (lte, nb-iot), nrarfcn (nr). -1 if unknown.
+    uint16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). SKY_UNKNOWN_ID1 if unknown.
+    uint16_t id2; // mnc (gsm, umts, lte, nr, nb-iot) or sid (cdma). SKY_UNKNOWN_ID2 if unknown.
+    int32_t
+        id3; // lac (gsm, umts) or tac (lte, nr, nb-iot) or nid (cdma). SKY_UNKNOWN_ID3 if unknown.
+    int64_t id4; // cell id (gsm, umts, lte, nb-iot, nr), bsid (cdma). SKY_UNKNOWN_ID4 if unknown.
+    int16_t
+        id5; // bsic (gsm), psc (umts), pci (lte, nr) or ncid (nb-iot). SKY_UNKNOWN_ID5 if unknown.
+    int32_t
+        freq; // arfcn(gsm), uarfcn (umts), earfcn (lte, nb-iot), nrarfcn (nr). SKY_UNKNOWN_ID6 if unknown.
 };
 
 // blue tooth
