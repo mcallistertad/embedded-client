@@ -294,13 +294,13 @@ int main(int ac, char **av)
     for (i = 0; i < 3; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_NBIOT;
-        b[i].h.rssi = -(44 + (rand() % 112));
-        b[i].cell.id1 = 200 + (rand() % 600);
-        b[i].cell.id2 = rand() % 1000;
-        b[i].cell.id4 = rand() % 268435456;
-        b[i].cell.id3 = rand() % 65535 + 1;
-        b[i].cell.id5 = SKY_UNKNOWN_ID5;
-        b[i].cell.freq = SKY_UNKNOWN_ID6;
+        b[i].h.rssi = -(44 + (rand() % 113)); /* nrsrp -156 thru -44 */
+        b[i].cell.id1 = 200 + (rand() % 600); /* mcc 200 thru 799 */
+        b[i].cell.id2 = rand() % 1000; /* mnc 0 thru 999 */
+        b[i].cell.id3 = 1 + rand() % 65535; /* tac 1 thru 65535 */
+        b[i].cell.id4 = rand() % 268435456; /* e_cellid 0 thru 268435455 */
+        b[i].cell.id5 = rand() % 504; /* ncid 0 thru 503 */
+        b[i].cell.freq = rand() % 262144; /* freq 0 thru 262143 */
     }
 
     for (i = 0; i < 3; i++) {
@@ -318,13 +318,11 @@ int main(int ac, char **av)
     for (i = 0; i < 2; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_GSM;
-        b[i].h.rssi = -(32 + (rand() % 96));
-        b[i].cell.id3 = rand() % 65535 + 1;
-        b[i].cell.id4 = rand() % 65536;
-        b[i].cell.id1 = 200 + (rand() % 600);
-        b[i].cell.id2 = rand() % 1000;
-        b[i].cell.id5 = SKY_UNKNOWN_ID5;
-        b[i].cell.freq = SKY_UNKNOWN_ID6;
+        b[i].h.rssi = -(32 + (rand() % 96)); /* rssi -128 thru -32 */
+        b[i].cell.id1 = 200 + (rand() % 599); /* mcc */
+        b[i].cell.id2 = rand() % 999; /* mnc */
+        b[i].cell.id3 = rand() % 65535; /* lac */
+        b[i].cell.id4 = rand() % 65535; /* ci */
     }
 
     for (i = 0; i < 2; i++) {
@@ -333,8 +331,8 @@ int main(int ac, char **av)
             printf("sky_add_gsm_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
         } else {
             printf(
-                "Added Test Beacon % 2d: Type: %d, lac: %lld, ui: %d, mcc: %d, mnc: %d, rssi: %d\n",
-                i, b[i].h.type, (long long int)b[i].cell.id4, b[i].cell.id3, b[i].cell.id1,
+                "Added Test Beacon % 2d: Type: %d, lac: %d, ci: %lld, mcc: %d, mnc: %d, rssi: %d\n",
+                i, b[i].h.type, b[i].cell.id3, (long long int)b[i].cell.id4, b[i].cell.id1,
                 b[i].cell.id2, b[i].h.rssi);
         }
     }
@@ -379,46 +377,34 @@ int main(int ac, char **av)
                 uint8_t *m = get_ap_mac(ctx, i);
                 m = m;
 
-                printf(" get_ap_mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X\n", i, m[0], m[1],
-                    m[2], m[3], m[4], m[5]);
-                printf(" get_ap_freq:   %d, %lld\n", i, (long long)get_ap_freq(ctx, i));
-                printf(" get_ap_rssi:      %d, %lld\n", i, (long long)get_ap_rssi(ctx, i));
-                printf(" get_ap_is_connected:      %d, %d\n", i, get_ap_is_connected(ctx, i));
-                printf(" get_ap_age:      %d, %lld\n", i, (long long)get_ap_age(ctx, i));
+                printf("ap mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X\n", i, m[0], m[1], m[2],
+                    m[3], m[4], m[5]);
+                printf("ap freq:   %d, %lld\n", i, (long long)get_ap_freq(ctx, i));
+                printf("ap rssi:      %d, %lld\n", i, (long long)get_ap_rssi(ctx, i));
+                printf("ap is_connected:      %d, %d\n", i, get_ap_is_connected(ctx, i));
+                printf("ap age:      %d, %lld\n", i, (long long)get_ap_age(ctx, i));
             }
         if (t == SKY_BEACON_GSM)
             for (i--; i >= 0; i--) {
-                printf(" get gsm ci:       %d, %d\n", i,
-                    (int)get_cell_id4(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm mcc:       %d, %d\n", i,
-                    (int)get_cell_id1(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm mnc:       %d, %d\n", i,
-                    (int)get_cell_id2(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm lac:       %d, %d\n", i,
-                    (int)get_cell_id3(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm rssi:      %d, %lld\n", i,
-                    (long long)get_cell_rssi(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm is connected:      %d, %d\n", i,
-                    get_cell_connected_flag(ctx, &ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get gsm age:      %d, %lld\n", i,
-                    (long long)get_cell_age(&ctx->beacon[get_base_beacons(ctx, t) + i]));
+                printf("gsm lac:       %d, %lld\n", i, (long long)get_cell_id3(&ctx->beacon[i]));
+                printf("gsm ci:       %d, %lld\n", i, (long long)get_cell_id4(&ctx->beacon[i]));
+                printf("gsm mcc:       %d, %lld\n", i, (long long)get_cell_id1(&ctx->beacon[i]));
+                printf("gsm mnc:       %d, %lld\n", i, (long long)get_cell_id2(&ctx->beacon[i]));
+                printf("gsm rssi:      %d, %lld\n", i, (long long)get_cell_rssi(&ctx->beacon[i]));
+                printf("gsm is_connected:      %d, %d\n", i,
+                    get_cell_connected_flag(ctx, &ctx->beacon[i]));
+                printf("gsm age:      %d, %lld\n", i, (long long)get_cell_age(&ctx->beacon[i]));
             }
         if (t == SKY_BEACON_NBIOT)
             for (i--; i >= 0; i--) {
-                printf(" get nbiot mcc:     %d, %d\n", i,
-                    (int)get_cell_id1(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot mnc:     %d, %d\n", i,
-                    (int)get_cell_id2(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot ecellid: %d, %d\n", i,
-                    (int)get_cell_id4(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot tac:     %d, %d\n", i,
-                    (int)get_cell_id3(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot rssi:    %d, %lld\n", i,
-                    (long long)get_cell_rssi(&ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot is connected:      %d, %d\n", i,
-                    get_cell_connected_flag(ctx, &ctx->beacon[get_base_beacons(ctx, t) + i]));
-                printf(" get nbiot age:      %d, %lld\n", i,
-                    (long long)get_cell_age(&ctx->beacon[get_base_beacons(ctx, t) + i]));
+                printf("nbiot mcc:     %d, %lld\n", i, (long long)get_cell_id1(&ctx->beacon[i]));
+                printf("nbiot mnc:     %d, %lld\n", i, (long long)get_cell_id2(&ctx->beacon[i]));
+                printf("nbiot ecellid: %d, %lld\n", i, (long long)get_cell_id4(&ctx->beacon[i]));
+                printf("nbiot tac:     %d, %lld\n", i, (long long)get_cell_id3(&ctx->beacon[i]));
+                printf("nbiot rssi:    %d, %lld\n", i, (long long)get_cell_rssi(&ctx->beacon[i]));
+                printf("nbiot is connected:      %d, %d\n", i,
+                    get_connected_flag(ctx, &ctx->beacon[i]));
+                printf("nbiot age:      %d, %lld\n", i, (long long)get_cell_age(&ctx->beacon[i]));
             }
     }
 
@@ -445,8 +431,8 @@ int main(int ac, char **av)
 #endif
     dump_cache(ctx);
     /* simulate new config from server */
-    ctx->cache->config.total_beacons = 8;
-    ctx->cache->config.max_ap_beacons = 6;
+    ctx->cache->config.total_beacons = 14;
+    ctx->cache->config.max_ap_beacons = 8;
     ctx->cache->config.cache_match_threshold = 49;
 
 #endif
