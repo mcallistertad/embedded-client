@@ -1146,7 +1146,7 @@ char *sky_pbeacon(Beacon_t *b)
         str = "Wi-Fi";
         break;
     case SKY_BEACON_BLE:
-        str = "Bluetooth";
+        str = "BLE";
         break;
     case SKY_BEACON_CDMA:
         str = "CDMA";
@@ -1167,7 +1167,7 @@ char *sky_pbeacon(Beacon_t *b)
         str = "NR";
         break;
     default:
-        str = "Unknown";
+        str = "???";
         break;
     }
     return str;
