@@ -39,16 +39,18 @@ unit_test: ${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
 	$(CC) -lc -lm -o ${BIN_DIR}/unit_test \
 	${BUILD_DIR}/unit_test.o ${BIN_DIR}/libel.a
 
-${BIN_DIR}/libel.a: ${GENERATED_SRCS} ${LIBELG_OBJS}
+${BIN_DIR}/libel.a: ${LIBELG_OBJS}
 	ar rcs $@ ${LIBELG_OBJS}
 
 ${BIN_DIR} ${BUILD_DIR}:
 	mkdir -p $@
 
 # Generates the protobuf source files.
+.PHONY: ${GENERATED_SRCS}
+
 ${GENERATED_SRCS}:
 	make -C ${SKY_PROTO_DIR}
-
+	
 # Need an explicit rule for this one since the source file is generated code.
 ${BUILD_DIR}/el.pb.o: ${SKY_PROTO_DIR}/el.pb.c
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
@@ -57,5 +59,4 @@ ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  worksp
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:
-	make -C ${SKY_PROTO_DIR} clean
 	rm -rf ${BIN_DIR} ${BUILD_DIR}
