@@ -244,7 +244,6 @@ int main(int argc, char *argv[])
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
 
-#if 1
     /* Add APs to the request */
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
@@ -258,7 +257,6 @@ int main(int argc, char *argv[])
         } else
             printf("Ignoring AP becon with bad MAC Address '%s' index %d\n", aps[i].mac, i + 1);
     }
-#endif
 
     /* Add UMTS cell */
     ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
@@ -299,7 +297,7 @@ int main(int argc, char *argv[])
         printf("Cell neighbor UMTS added\n");
     else
         printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-#if 0
+
     /* Add CDMA cell */
     ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
         1552, // sid
@@ -326,6 +324,7 @@ int main(int argc, char *argv[])
         27907073, // eucid
         311, // mcc
         480, // mnc
+        SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6,
         timestamp - 315, // timestamp
         -100, // rssi
         1); // serving
@@ -341,6 +340,7 @@ int main(int argc, char *argv[])
         480, // mnc
         209979678, // eucid
         25187, // tac
+        SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6,
         timestamp - 315, // timestamp
         -143, // rssi
         0); // serving
@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
         printf("Cell added\n");
     else
         printf("Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
-#endif
+
     /* Add 5G cell */
     ret_status = sky_add_cell_nr_beacon(ctx, &sky_errno,
         600, // mcc

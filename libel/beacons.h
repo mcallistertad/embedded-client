@@ -32,13 +32,6 @@
 
 #define MAC_SIZE 6
 
-#define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
-#define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
-#define SKY_UNKNOWN_ID3 ((uint16_t)0)
-#define SKY_UNKNOWN_ID4 ((int64_t)-1)
-#define SKY_UNKNOWN_ID5 ((int16_t)-1)
-#define SKY_UNKNOWN_ID6 ((int32_t)-1)
-
 /*! \brief Types of beacon
  */
 typedef enum {
