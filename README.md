@@ -7,7 +7,6 @@
       * [Building](#building)
          * [Dependencies](#dependencies)
             * [Git Submodules](#git-submodules)
-            * [Google Protocol Buffers And Python](#google-protocol-buffers-and-python)
          * [Library Source Files](#library-source-files)
          * [Build Directions](#build-directions)
       * [API Guide](#api-guide)
@@ -72,40 +71,6 @@ properly populated, be sure to add the `--recursive` option to the `git
 clone` command when cloning this repo.
 
 All submodules are contained within the `.submodules` directory.
-
-#### Google Protocol Buffers And Python
-
-The client/server network protocol used by the Skyhook library is based on
-[Google Protocol Buffers](https://developers.google.com/protocol-buffers/).
-Therefore the following components are required to build the library:
-* Python version 3.6.0 or later. Under Linux, python2 is often the default
-  version. Make the appropriate adjustments to your path in order to prioritize
-  python3 (and pip3) in this case. E.g.,
-```
-$ ln -s /usr/bin/python3 /usr/local/bin/python
-$ ln -s /usr/bin/pip3 /usr/local/bin/pip
-```
-(actual paths may differ depending on your system configuration)
-* Google Protocol Buffers `protoc` compiler version 3.3.0 or later. A pre-built
-  binary version of the compiler for Linux x64 (and other platforms) can be
-  downloaded from https://github.com/protocolbuffers/protobuf/releases. For
-  example, download protoc-3.9.0-linux-x86_64.zip (or a more recent version)
-  from that page, and copy `bin/protoc` from the archive to an appropriate
-  place in your path (e.g., `/usr/local/bin`). The other files in the
-  downloaded archive are not needed, and can be discarded.
-* Google protobuf Python module version 3.6.1 or later (normally installed via
-  `$ pip install protobuf`)
-
-On Linux, you should see results similar to the below if the appropriate
-versions are installed and active:
-```
-$ python --version
-Python 3.6.8
-$ protoc --version
-libprotoc 3.9.0
-$ pip list | grep proto
-protobuf        3.6.1
-```
 
 ### Library Source Files
 
