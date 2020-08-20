@@ -51,7 +51,7 @@ struct ap_scan aps[] = /* clang-format off */
                       { "826AB092DC99", 300, 3660, -130 },
                       { "283B823629F0", 300, 3660, -90 },
                       { "283B821C712A", 300, 3660, -77 },
- //                     { "0024D2E08E5D", 300, 3660, -92 },
+                      { "0024D2E08E5D", 300, 3660, -92 },
                       { "283B821CC232", 300, 3660, -91 },
                       { "74DADA5E1015", 300, 3660, -88 },
                       { "B482FEA46221", 300, 3660, -89 },
@@ -244,7 +244,6 @@ int main(int argc, char *argv[])
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
 
-#if 1
     /* Add APs to the request */
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
@@ -258,7 +257,6 @@ int main(int argc, char *argv[])
         } else
             printf("Ignoring AP becon with bad MAC Address '%s' index %d\n", aps[i].mac, i + 1);
     }
-#endif
 
     /* Add UMTS cell */
     ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
@@ -299,19 +297,6 @@ int main(int argc, char *argv[])
         printf("Cell neighbor UMTS added\n");
     else
         printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-#if 0
-    /* Add CDMA cell */
-    ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
-        1552, // sid
-        45004, // nid
-        37799, // bsid
-        timestamp - 315, // timestamp
-        -159, // pilot-power
-        0); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell CDMA added\n");
-    else
-        printf("Error adding CDMA cell: '%s'\n", sky_perror(sky_errno));
 
     sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
@@ -319,52 +304,6 @@ int main(int argc, char *argv[])
         printf("GNSS added\n");
     else
         printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
-
-    /* Add LTE cell */
-    ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
-        12345, // tac
-        27907073, // eucid
-        311, // mcc
-        480, // mnc
-        timestamp - 315, // timestamp
-        -100, // rssi
-        1); // serving
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell added\n");
-    else
-        printf("Error adding LTE cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add NBIOT cell */
-    ret_status = sky_add_cell_nb_iot_beacon(ctx, &sky_errno,
-        311, // mcc
-        480, // mnc
-        209979678, // eucid
-        25187, // tac
-        timestamp - 315, // timestamp
-        -143, // rssi
-        0); // serving
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell added\n");
-    else
-        printf("Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
-#endif
-    /* Add 5G cell */
-    ret_status = sky_add_cell_nr_beacon(ctx, &sky_errno,
-        600, // mcc
-        10, // mnc
-        6871947673, // nci
-        25187, // tac
-        400, // pci
-        4000, // nrarfcn
-        timestamp - 315, // timestamp
-        -50, // rscp
-        1); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell nr added\n");
-    else
-        printf("Error adding nr cell: '%s'\n", sky_perror(sky_errno));
 
     /* Add 5G neighbor cell */
     ret_status = sky_add_cell_nr_neighbor_beacon(ctx, &sky_errno,
@@ -405,6 +344,22 @@ int main(int argc, char *argv[])
         printf("Cell neighbor lte added\n");
     else
         printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
+
+    /* Add 5G cell */
+    ret_status = sky_add_cell_nr_beacon(ctx, &sky_errno,
+        600, // mcc
+        10, // mnc
+        6871947673, // nci
+        25187, // tac
+        400, // pci
+        4000, // nrarfcn
+        timestamp - 315, // timestamp
+        -50, // rscp
+        1); // serving
+    if (ret_status == SKY_SUCCESS)
+        printf("Cell nr added\n");
+    else
+        printf("Error adding nr cell: '%s'\n", sky_perror(sky_errno));
 
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
