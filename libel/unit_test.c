@@ -198,7 +198,6 @@ void *nv_cache(void)
                     return &nv_space;
                 } else {
                     printf("validate_cache: false\n");
-                    fclose(fio);
                 }
             }
         }
