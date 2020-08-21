@@ -30,6 +30,7 @@
 #include <pb_decode.h>
 
 #include "el.pb.h"
+#define SKY_LIBEL
 #include "proto.h"
 #include "aes.h"
 
@@ -39,6 +40,7 @@ static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
 
+typedef uint8_t *(*DataGetterb)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
 typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
@@ -99,6 +101,42 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
             data = wrapper(data);
 
         if (!pb_encode_varint(ostream, data))
+            return false;
+    }
+
+    return true;
+}
+
+static bool encode_vap_data(
+    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
+{
+    size_t i;
+
+    // Get and encode the field size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    // Encode field tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
+        return false;
+
+    for (i = 0; i < num_elems; i++) {
+        uint8_t *data = getter(ctx, i);
+
+        /* *data == len, data + 1 == first byte of data */
+        if (!pb_encode_string(&substream, data + 1, *data))
+            return false;
+    }
+
+    // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "length %d", substream.bytes_written);
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+        return false;
+
+    // Now encode the field for real.
+    for (i = 0; i < num_elems; i++) {
+        uint8_t *data = getter(ctx, i);
+
+        /* *data == len, data + 1 == first byte of data */
+        if (!pb_encode_string(ostream, data + 1, *data))
             return false;
     }
 
@@ -168,19 +206,22 @@ static bool encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int
         return true;
 }
 
-static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t* cell)
+static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
 {
-    return 
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) && pb_encode_varint(ostream, get_cell_type(cell)) &&
-        encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
-        encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
-        encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
-        encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
-        encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
-        encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) && pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) && pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) && pb_encode_varint(ostream, get_cell_age(cell));
+    return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
+           pb_encode_varint(ostream, get_cell_type(cell)) &&
+           encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
+           encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
+           encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
+           encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
+           encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
+           encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) &&
+           pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) &&
+           pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) &&
+           pb_encode_varint(ostream, get_cell_age(cell));
 }
 
 static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
@@ -191,14 +232,14 @@ static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     // Encode the Cell submessages one by one.
     for (i = 0; i < num_cells; i++) {
         pb_ostream_t substream = PB_OSTREAM_SIZING;
-        Beacon_t* cell = get_cell(ctx, i);
+        Beacon_t *cell = get_cell(ctx, i);
 
         // Get the field size.
         encode_cell_field(ctx, &substream, cell);
-        
+
         // Encode field tag.
         pb_encode_tag(ostream, PB_WT_STRING, Rq_cells_tag);
-        
+
         // Encode the field size.
         pb_encode_varint(ostream, substream.bytes_written);
 
@@ -264,6 +305,10 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_aps(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
         break;
+    case Rq_vaps_tag:
+        return encode_vap_data(ctx, ostream, Rq_vaps_tag, get_num_vaps(ctx), get_vap_data);
+        break;
+
     case Rq_cells_tag:
         if (get_num_cells(ctx))
             return encode_cell_fields(ctx, ostream);
@@ -272,8 +317,16 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_gnss(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
         break;
+    case Rq_gsm_cells_tag:
+    case Rq_umts_cells_tag:
+    case Rq_lte_cells_tag:
+    case Rq_cdma_cells_tag:
+    case Rq_nbiot_cells_tag:
+        /* obsolete */
+        break;
+
     default:
-        printf("Rq_callback() ERROR: unknown tag.\n");
+        printf("Rq_callback() ERROR: unknown tag. %d\n", field->tag);
         break;
     }
 
@@ -287,6 +340,8 @@ int32_t get_maximum_response_size(void)
                ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE + AES_BLOCKLEN - 1) /
                    AES_BLOCKLEN);
 }
+
+time_t mytime(time_t *t);
 
 int32_t serialize_request(
     Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
@@ -313,7 +368,7 @@ int32_t serialize_request(
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.cells = rq.gnss = ctx;
+    rq.aps = rq.vaps = rq.cells = rq.gnss = ctx;
 
     rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
 

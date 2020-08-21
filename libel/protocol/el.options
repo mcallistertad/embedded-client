@@ -1,8 +1,16 @@
 Rq.aps           type:FT_CALLBACK, callback_datatype:"void*"
-Rq.cells         type:FT_CALLBACK, callback_datatype:"void*"
+Rq.vaps          type:FT_CALLBACK, callback_datatype:"void*"
+Rq.gsm_cells     type:FT_CALLBACK, callback_datatype:"void*"
+Rq.nbiot_cells   type:FT_CALLBACK, callback_datatype:"void*"
+Rq.umts_cells    type:FT_CALLBACK, callback_datatype:"void*"
+Rq.cdma_cells    type:FT_CALLBACK, callback_datatype:"void*"
+Rq.lte_cells     type:FT_CALLBACK, callback_datatype:"void*"
 Rq.gnss          type:FT_CALLBACK, callback_datatype:"void*"
+Rq.cells         type:FT_CALLBACK, callback_datatype:"void*"
 # ------
 # Do not change the following values.
 # ------
 Rq.device_id  max_size:16
+Rq.vaps  max_size:100
+Rs.used_aps   max_size: 8
 CryptoInfo.iv max_size:16

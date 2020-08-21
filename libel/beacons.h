@@ -1,7 +1,7 @@
 /*! \file libel/beacons.h
  *  \brief Skyhook Embedded Library
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -36,44 +36,65 @@
 #define NUM_APS(p) ((p)->ap_len)
 #define NUM_BEACONS(p) ((p)->len)
 #define IMPLIES(a, b) (!(a) || (b))
+#define NUM_VAPS(b) ((b)->ap.vg_len)
 
-#define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
-#define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
-#define SKY_UNKNOWN_ID3 ((uint16_t)0)
-#define SKY_UNKNOWN_ID4 ((int64_t)-1)
-#define SKY_UNKNOWN_ID5 ((int16_t)-1)
-#define SKY_UNKNOWN_ID6 ((int32_t)-1)
+/* VAP data is prefixed by length and AP index */
+#define VAP_LENGTH (0)
+#define VAP_PARENT (1)
+#define VAP_FIRST_DATA (2)
 
-/*! \brief Types of beacon
+/*! \brief Types of beacon in protity order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
     SKY_BEACON_BLE = 2,
-    SKY_BEACON_CDMA = 3,
-    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_CDMA,
-    SKY_BEACON_GSM = 4,
-    SKY_BEACON_LTE = 5,
+    SKY_BEACON_NR = 3,
+    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_NR,
+    SKY_BEACON_LTE = 4,
+    SKY_BEACON_UMTS = 5,
     SKY_BEACON_NBIOT = 6,
-    SKY_BEACON_UMTS = 7,
-    SKY_BEACON_NR = 8,
-    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_NR,
+    SKY_BEACON_CDMA = 7,
+    SKY_BEACON_GSM = 8,
+    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_GSM,
     SKY_BEACON_MAX, /* add more before this */
 } Sky_beacon_type_t;
+
+/*! \brief Property of beacon
+ */
+typedef struct {
+    uint8_t in_cache : 1;
+    uint8_t used : 1;
+} Sky_beacon_property_t;
 
 struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
     int16_t rssi; // -255 unkonwn - map it to - 128
+    int8_t connected; /* beacon connected */
 };
+
+/*! \brief Virtual AP member
+ */
+typedef union {
+    struct {
+        uint8_t value : 4; /* replacement value for the nibble indexed */
+        uint8_t nibble_idx : 4; /* 0-11 index into mac address by nibble */
+    } data;
+    uint8_t len; /* number of bytes in child patch data */
+    uint8_t ap; /* index of parent AP */
+} Vap_t;
 
 /*! \brief Access Point data
  */
 struct ap {
     struct header h;
     uint8_t mac[MAC_SIZE];
-    uint8_t in_cache; /* beacon is in cache */
     uint32_t freq;
+    Sky_beacon_property_t property; /* ap is in cache and used? */
+    uint8_t vg_len;
+    Vap_t vg[MAX_VAP_PER_AP + 2]; /* Virtual APs */
+    Sky_beacon_property_t used_cached[MAX_VAP_PER_AP]; /* Virtual APs Used/Cached info */
 };
 
 // http://wiki.opencellid.org/wiki/API
