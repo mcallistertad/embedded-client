@@ -65,7 +65,7 @@ ${GENERATED_SRCS}:
 ${BUILD_DIR}/el.pb.o: ${SKY_PROTO_DIR}/el.pb.c
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
-${BUILD_DIR}/%.o: %.c
+${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  workspace.h
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:

@@ -51,6 +51,7 @@ void dump_workspace(Sky_ctx_t *ctx);
 void dump_cache(Sky_ctx_t *ctx);
 void config_defaults(Sky_cache_t *c);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
+int32_t get_num_cells(Sky_ctx_t *ctx);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 
 uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
@@ -65,51 +66,6 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx);
 bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx);
 
-int32_t get_num_cdma(Sky_ctx_t *ctx);
-int64_t get_cdma_sid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_cdma_nid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_cdma_bsid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_cdma_rssi(Sky_ctx_t *ctx, uint32_t idx);
-bool get_cdma_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_cdma_age(Sky_ctx_t *ctx, uint32_t idx);
-
-int32_t get_num_gsm(Sky_ctx_t *ctx);
-int64_t get_gsm_ci(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_mcc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_mnc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_lac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_rssi(Sky_ctx_t *ctx, uint32_t idx);
-bool get_gsm_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_gsm_age(Sky_ctx_t *ctx, uint32_t idx);
-
-int32_t get_num_lte(Sky_ctx_t *ctx);
-int64_t get_lte_mcc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_lte_mnc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_lte_e_cellid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_lte_tac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_lte_rssi(Sky_ctx_t *ctx, uint32_t idx);
-bool get_lte_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_lte_age(Sky_ctx_t *ctx, uint32_t idx);
-
-int32_t get_num_nbiot(Sky_ctx_t *ctx);
-int64_t get_nbiot_mcc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_mnc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_ecellid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_tac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_lac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_rssi(Sky_ctx_t *ctx, uint32_t idx);
-bool get_nbiot_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_nbiot_age(Sky_ctx_t *ctx, uint32_t idx);
-
-int32_t get_num_umts(Sky_ctx_t *ctx);
-int64_t get_umts_lac(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_umts_ucid(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_umts_mcc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_umts_mnc(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_umts_rssi(Sky_ctx_t *ctx, uint32_t idx);
-bool get_umts_is_connected(Sky_ctx_t *ctx, uint32_t idx);
-int64_t get_umts_age(Sky_ctx_t *ctx, uint32_t idx);
-
 int32_t get_num_gnss(Sky_ctx_t *ctx);
 float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx);
 float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx);
@@ -120,6 +76,18 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx);
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx);
+
+Beacon_t *get_cell(Sky_ctx_t *ctx, uint32_t idx);
+int16_t get_cell_type(Beacon_t *cell);
+int64_t get_cell_id1(Beacon_t *cell);
+int64_t get_cell_id2(Beacon_t *cell);
+int64_t get_cell_id3(Beacon_t *cell);
+int64_t get_cell_id4(Beacon_t *cell);
+int64_t get_cell_id5(Beacon_t *cell);
+int64_t get_cell_id6(Beacon_t *cell);
+bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell);
+int64_t get_cell_rssi(Beacon_t *cell);
+int64_t get_cell_age(Beacon_t *cell);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif

@@ -82,6 +82,11 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     if (ctx->beacon[index].h.type == SKY_BEACON_AP)
         NUM_APS(ctx) -= 1;
+    if (ctx->connected == index)
+        ctx->connected = -1;
+    else if (index < ctx->connected)
+        // Removed beacon precedes the connected one, so update its index.
+        ctx->connected--;
 
     memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
         sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
@@ -123,7 +128,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         if (b->h.type == SKY_BEACON_AP) {
             for (; i < NUM_APS(ctx); i++)
                 if (ctx->beacon[i].h.type != SKY_BEACON_AP ||
-                    NOMINAL_RSSI(ctx->beacon[i].ap.rssi) > NOMINAL_RSSI(b->ap.rssi))
+                    NOMINAL_RSSI(ctx->beacon[i].h.rssi) > NOMINAL_RSSI(b->h.rssi))
                     break;
         }
         /* shift beacons to make room for the new one */
@@ -134,7 +139,12 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     /* report back the position beacon was added */
     if (index != NULL)
         *index = i;
+
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d", sky_pbeacon(b), i);
+
+    if (i <= ctx->connected)
+        // New beacon was inserted before the connected one, so update its index.
+        ctx->connected++;
 
     if (b->h.type == SKY_BEACON_AP)
         NUM_APS(ctx)++;
@@ -157,9 +167,9 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
         return SKY_ERROR;
 
     /* what share of the range of rssi values does each beacon represent */
-    band_range = (NOMINAL_RSSI(ctx->beacon[NUM_APS(ctx) - 1].ap.rssi) -
-                     NOMINAL_RSSI(ctx->beacon[0].ap.rssi)) /
-                 ((float)NUM_APS(ctx) - 1);
+    band_range =
+        (NOMINAL_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) - NOMINAL_RSSI(ctx->beacon[0].h.rssi)) /
+        ((float)NUM_APS(ctx) - 1);
 
     /* if the rssi range is small, throw away middle beacon */
 
@@ -178,27 +188,26 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
     }
 
     /* if beacon with min RSSI is below threshold, throw it out */
-    if (NOMINAL_RSSI(ctx->beacon[0].ap.rssi) < -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
+    if (NOMINAL_RSSI(ctx->beacon[0].h.rssi) < -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Discarding beacon %d with very weak strength", 0)
         return remove_beacon(ctx, 0);
     }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band range: %d.%02d",
-        (NOMINAL_RSSI(ctx->beacon[NUM_APS(ctx) - 1].ap.rssi) -
-            NOMINAL_RSSI(ctx->beacon[0].ap.rssi)),
+        (NOMINAL_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) - NOMINAL_RSSI(ctx->beacon[0].h.rssi)),
         (int)band_range, (int)fabs(round(100 * (band_range - (int)band_range))))
 
     /* for each beacon, work out it's ideal rssi value to give an even distribution */
     for (i = 0; i < NUM_APS(ctx); i++)
-        ideal_rssi[i] = NOMINAL_RSSI(ctx->beacon[0].ap.rssi) + (i * band_range);
+        ideal_rssi[i] = NOMINAL_RSSI(ctx->beacon[0].h.rssi) + (i * band_range);
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
     /* unless all the middle candidates are in the cache */
     for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
         if (!ctx->beacon[i].ap.in_cache &&
-            fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]) > worst) {
-            worst = fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]);
+            fabs(NOMINAL_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) > worst) {
+            worst = fabs(NOMINAL_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
             reject = i;
         }
     }
@@ -216,11 +225,11 @@ static Sky_status_t filter_by_rssi(Sky_ctx_t *ctx)
             (reject == i) ? "remove" : "      ", i,
             ctx->beacon[i].ap.in_cache ? "cached" : "      ", (int)ideal_rssi[i],
             (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
-            (int)fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]), ideal_rssi[i],
+            (int)fabs(NOMINAL_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]), ideal_rssi[i],
             (int)fabs(
-                round(100 * (fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i]) -
-                                (int)fabs(NOMINAL_RSSI(ctx->beacon[i].ap.rssi) - ideal_rssi[i])))),
-            ctx->beacon[i].ap.rssi)
+                round(100 * (fabs(NOMINAL_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) -
+                                (int)fabs(NOMINAL_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i])))),
+            ctx->beacon[i].h.rssi)
     }
 #endif
     return remove_beacon(ctx, reject);
@@ -330,14 +339,14 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         /* if it is already in workspace */
         if (dup < NUM_APS(ctx)) {
             /* reject new beacon if older or weaker */
-            if (b->ap.age > ctx->beacon[dup].ap.age ||
-                (b->ap.age == ctx->beacon[dup].ap.age &&
-                    NOMINAL_RSSI(b->ap.rssi) <= NOMINAL_RSSI(ctx->beacon[dup].ap.rssi))) {
+            if (b->h.age > ctx->beacon[dup].h.age ||
+                (b->h.age == ctx->beacon[dup].h.age &&
+                    NOMINAL_RSSI(b->h.rssi) <= NOMINAL_RSSI(ctx->beacon[dup].h.rssi))) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate beacon")
                 return sky_return(sky_errno, SKY_ERROR_NONE);
             }
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate beacon %s",
-                (b->ap.age == ctx->beacon[dup].ap.age) ? "(stronger signal)" : "(younger)")
+                (b->h.age == ctx->beacon[dup].h.age) ? "(stronger signal)" : "(younger)")
             remove_beacon(ctx, dup);
         }
     }
@@ -408,33 +417,25 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     ret = true;
                 break;
             case SKY_BEACON_CDMA:
-                if ((b->cdma.sid == cl->beacon[j].cdma.sid) &&
-                    (b->cdma.nid == cl->beacon[j].cdma.nid) &&
-                    (b->cdma.bsid == cl->beacon[j].cdma.bsid))
+                if ((b->cell.id2 == cl->beacon[j].cell.id2) &&
+                    (b->cell.id3 == cl->beacon[j].cell.id3) &&
+                    (b->cell.id4 == cl->beacon[j].cell.id4))
                     ret = true;
                 break;
             case SKY_BEACON_GSM:
-                if ((b->gsm.ci == cl->beacon[j].gsm.ci) && (b->gsm.mcc == cl->beacon[j].gsm.mcc) &&
-                    (b->gsm.mnc == cl->beacon[j].gsm.mnc) && (b->gsm.lac == cl->beacon[j].gsm.lac))
+                if ((b->cell.id4 == cl->beacon[j].cell.id4) &&
+                    (b->cell.id1 == cl->beacon[j].cell.id1) &&
+                    (b->cell.id2 == cl->beacon[j].cell.id2) &&
+                    (b->cell.id3 == cl->beacon[j].cell.id3))
                     ret = true;
                 break;
             case SKY_BEACON_LTE:
-                if ((b->lte.e_cellid == cl->beacon[j].lte.e_cellid) &&
-                    (b->lte.mcc == cl->beacon[j].lte.mcc) && (b->lte.mnc == cl->beacon[j].lte.mnc))
-                    ret = true;
-                break;
             case SKY_BEACON_NBIOT:
-                if ((b->nbiot.mcc == cl->beacon[j].nbiot.mcc) &&
-                    (b->nbiot.mnc == cl->beacon[j].nbiot.mnc) &&
-                    (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid) &&
-                    (b->nbiot.tac == cl->beacon[j].nbiot.tac))
-                    ret = true;
-                break;
             case SKY_BEACON_UMTS:
-                if ((b->umts.ucid == cl->beacon[j].umts.ucid) &&
-                    (b->umts.mcc == cl->beacon[j].umts.mcc) &&
-                    (b->umts.mnc == cl->beacon[j].umts.mnc) &&
-                    (b->umts.lac == cl->beacon[j].umts.lac))
+            case SKY_BEACON_NR:
+                if ((b->cell.id1 == cl->beacon[j].cell.id1) &&
+                    (b->cell.id2 == cl->beacon[j].cell.id2) &&
+                    (b->cell.id4 == cl->beacon[j].cell.id4))
                     ret = true;
                 break;
             default:
