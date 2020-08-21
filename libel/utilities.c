@@ -662,8 +662,7 @@ int32_t get_num_cells(Sky_ctx_t *ctx)
     }
 
     for (i = ctx->ap_len, b = 0; i < ctx->len; i++) {
-        if (ctx->beacon[i].h.type >= SKY_BEACON_FIRST_CELL_TYPE &&
-            ctx->beacon[i].h.type <= SKY_BEACON_LAST_CELL_TYPE)
+        if (is_cell_type(&ctx->beacon[i]))
             b++;
     }
 
@@ -824,7 +823,7 @@ int16_t get_cell_type(Beacon_t *cell)
         [SKY_BEACON_CDMA] = Cell_Type_CDMA,
         [SKY_BEACON_GSM] = Cell_Type_GSM,
         [SKY_BEACON_MAX] = Cell_Type_UNKNOWN };
-    if (cell->h.type < SKY_BEACON_FIRST_CELL_TYPE || cell->h.type > SKY_BEACON_LAST_CELL_TYPE)
+    if (!is_cell_type(cell))
         return Cell_Type_UNKNOWN;
     else
         return map[cell->h.type];

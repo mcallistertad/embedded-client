@@ -31,7 +31,7 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
-#define VERBOSE_DEBUG 1
+// #define VERBOSE_DEBUG 1
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
@@ -323,7 +323,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
     /* check for duplicate */
     for (i = 0; i < NUM_BEACONS(ctx); i++) {
-        if (beacon_match(ctx, b, &ctx->beacon[i], &diff) == true) { // duplicate?
+        if (beacon_match(ctx, b, &ctx->beacon[i], NULL) == true) { // duplicate?
             if (ctx->beacon[i].ap.vg_len || ctx->beacon[i].h.connected ||
                 b->h.age > ctx->beacon[i].h.age ||
                 (b->h.age == ctx->beacon[i].h.age &&
@@ -629,11 +629,20 @@ static Sky_status_t compress_virtual_ap(Sky_ctx_t *ctx)
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
     int n, i = -1, j = 0;
-    Beacon_t *w, *c;
+    Beacon_t *w, *c, tmp;
 
     if (b->h.type == SKY_BEACON_AP) {
         if (!validate_mac(b->ap.mac, ctx))
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    }
+
+    /* if workspace has a connected cell already, re-sort (not connected) it before adding a new connected cell */
+    if (ctx->connected != -1 && is_cell_type(&ctx->beacon[ctx->connected]) && b->cell.h.connected) {
+        tmp = ctx->beacon[ctx->connected];
+        tmp.h.connected = false;
+        remove_beacon(ctx, ctx->connected);
+        insert_beacon(ctx, sky_errno, &tmp, NULL);
+        ctx->connected = -1;
     }
 
     /* insert the beacon */
@@ -798,82 +807,114 @@ static bool beacon_match(Sky_ctx_t *ctx, Beacon_t *bA, Beacon_t *bB, int *diff)
     if (bA->h.type != bB->h.type &&
         (bA->h.type == SKY_BEACON_AP || bB->h.type == SKY_BEACON_AP ||
             bA->h.type == SKY_BEACON_BLE || bB->h.type == SKY_BEACON_BLE)) {
+        /* types increase in value as they become lower priority */
+        /* so we have to invert the sign of the comparison value */
+        better = -(bA->h.type - bB->h.type);
         if (diff)
-            *diff = -(bA->h.type -
-                      bB->h.type); /* types increase in value as they become lower priority */
-#if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different types %d (%s)", *diff,
-            *diff < 0 ? "B is better" : "A is better");
-#endif
-        return false;
-    }
-    /* Compare APs by rssi */
-    if (bA->h.type == SKY_BEACON_AP)
-        better = EFFECTIVE_RSSI(bA->h.rssi) - EFFECTIVE_RSSI(bB->h.rssi);
-    else {
+            *diff = better;
 #if VERBOSE_DEBUG
         dump_beacon(ctx, "A: ", bA, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "B: ", bB, __FILE__, __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different types %d (%s)", better,
+            better < 0 ? "B is better" : "A is better");
 #endif
-        /* cell comparison is type, connected, or youngest, or type or stongest */
-        if (bA->h.connected || bB->h.connected)
-            better = (bA->h.connected ? 1 : -1);
-        else if (bA->h.age != bB->h.age)
-            better = (bA->h.age - bB->h.age);
-        else if (bA->h.type != bB->h.type)
-            better = -(bA->h.type - bB->h.type);
-        else if (EFFECTIVE_RSSI(bA->h.rssi) != EFFECTIVE_RSSI(bB->h.rssi))
-            better = (EFFECTIVE_RSSI(bA->h.rssi) - EFFECTIVE_RSSI(bB->h.rssi));
-        else
-            better = 1;
-    }
-
-    if (bA->h.type == bB->h.type) {
-        switch (bA->h.type) {
-        case SKY_BEACON_AP:
-            if ((ret = ap_beacon_in_vg(ctx, bA, bB)) > 0)
-                ret = true;
-            break;
-        case SKY_BEACON_BLE:
-            if (((better = memcmp(bA->ble.mac, bB->ble.mac, MAC_SIZE)) == 0) &&
-                (bA->ble.major == bB->ble.major) && (bA->ble.minor == bB->ble.minor) &&
-                (memcmp(bA->ble.uuid, bB->ble.uuid, 16) == 0))
-                ret = true;
-            break;
-        case SKY_BEACON_CDMA:
-            if ((bA->cell.id2 == bB->cell.id2) && (bA->cell.id3 == bB->cell.id3) &&
-                (bA->cell.id4 == bB->cell.id4))
-                ret = true;
-            break;
-        case SKY_BEACON_GSM:
-            if ((bA->cell.id4 == bB->cell.id4) && (bA->cell.id1 == bB->cell.id1) &&
-                (bA->cell.id2 == bB->cell.id2) && (bA->cell.id3 == bB->cell.id3))
-                ret = true;
-            break;
-        case SKY_BEACON_LTE:
-        case SKY_BEACON_NBIOT:
-        case SKY_BEACON_UMTS:
-        case SKY_BEACON_NR:
-            if ((bA->cell.id1 == bB->cell.id1) && (bA->cell.id2 == bB->cell.id2) &&
-                (bA->cell.id4 == bB->cell.id4))
-                ret = true;
-            break;
-        default:
+        return false;
+    } else {
+        if (bA->h.type == bB->h.type) {
+            switch (bA->h.type) {
+            case SKY_BEACON_AP:
+                if ((ret = ap_beacon_in_vg(ctx, bA, bB)) > 0)
+                    ret = true;
+                break;
+            case SKY_BEACON_BLE:
+                if (((better = memcmp(bA->ble.mac, bB->ble.mac, MAC_SIZE)) == 0) &&
+                    (bA->ble.major == bB->ble.major) && (bA->ble.minor == bB->ble.minor) &&
+                    (memcmp(bA->ble.uuid, bB->ble.uuid, 16) == 0))
+                    ret = true;
+                break;
+            case SKY_BEACON_CDMA:
+                if ((bA->cell.id2 == bB->cell.id2) && (bA->cell.id3 == bB->cell.id3) &&
+                    (bA->cell.id4 == bB->cell.id4))
+                    ret = true;
+                break;
+            case SKY_BEACON_GSM:
+                if ((bA->cell.id4 == bB->cell.id4) && (bA->cell.id1 == bB->cell.id1) &&
+                    (bA->cell.id2 == bB->cell.id2) && (bA->cell.id3 == bB->cell.id3))
+                    ret = true;
+                break;
+            case SKY_BEACON_LTE:
+            case SKY_BEACON_NBIOT:
+            case SKY_BEACON_UMTS:
+            case SKY_BEACON_NR:
+                if ((bA->cell.id1 == bB->cell.id1) && (bA->cell.id2 == bB->cell.id2) &&
+                    (bA->cell.id4 == bB->cell.id4))
+                    ret = true;
+                break;
+            default:
+                ret = false;
+            }
+        } else {
+            /* if the cell types are different, there is no match */
             ret = false;
         }
-    } else {
-        /* if the cell types are different, there is no match */
-        ret = false;
     }
+
+    /* if the beacons can be compared and are not a match, determine which is better */
+    if (!ret) {
+        if (bA->h.type == SKY_BEACON_AP) {
+            /* Compare APs by rssi */
+            better = EFFECTIVE_RSSI(bA->h.rssi) - EFFECTIVE_RSSI(bB->h.rssi);
+#if VERBOSE_DEBUG
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WiFi rssi score %d (%s)", better,
+                better < 0 ? "B is better" : "A is better");
+#endif
+        } else {
+#if VERBOSE_DEBUG
+            dump_beacon(ctx, "A: ", bA, __FILE__, __FUNCTION__);
+            dump_beacon(ctx, "B: ", bB, __FILE__, __FUNCTION__);
+#endif
+            /* cell comparison is type, connected, or youngest, or type or stongest */
+            if (bA->h.connected || bB->h.connected) {
+                better = (bA->h.connected ? 1 : -1);
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell connected score %d (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
+            } else if (bA->h.age != bB->h.age) {
+                /* youngest is best */
+                better = -(bA->h.age - bB->h.age);
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
+            } else if (bA->h.type != bB->h.type) {
+                better = -(bA->h.type - bB->h.type);
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell type score %d (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
+            } else if (EFFECTIVE_RSSI(bA->h.rssi) != EFFECTIVE_RSSI(bB->h.rssi)) {
+                better = (EFFECTIVE_RSSI(bA->h.rssi) - EFFECTIVE_RSSI(bB->h.rssi));
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell signal strength score %d (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
+            } else {
+                better = 1;
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell similar, pick one (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
+            }
+        }
+    }
+
     if (!ret && diff)
         *diff = better;
 
 #if VERBOSE_DEBUG
     if (ret)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Matching");
-    else
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d (%s)", better,
-            better < 0 ? "B is better" : "A is better");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons match");
 #endif
     return ret;
 }

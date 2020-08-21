@@ -303,7 +303,6 @@ int main(int argc, char *argv[])
         printf("Cell neighbor UMTS added\n");
     else
         printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-<<<<<<< HEAD
 
     /* Add CDMA cell */
     ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,

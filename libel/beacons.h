@@ -43,6 +43,9 @@
 #define VAP_PARENT (1)
 #define VAP_FIRST_DATA (2)
 
+#define is_cell_type(c)                                                                            \
+    ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
+
 /*! \brief Types of beacon in protity order
  */
 typedef enum {
@@ -69,7 +72,7 @@ typedef struct {
 struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint32_t age;
+    uint32_t age; /* age of scan in seconds relative to when this request was started */
     int16_t rssi; // -255 unkonwn - map it to - 128
     int8_t connected; /* beacon connected */
 };
