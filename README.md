@@ -421,8 +421,8 @@ Adds the umts neighbor cell information to the request context. Returns SKY_ERRO
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     uint32_t sid,
-    uint16_t nid,
-    uint16_t bsid,
+    int32_t nid,
+    int32_t bsid,
     time_t timestamp,
     int16_t rssi,
     bool is_connected
