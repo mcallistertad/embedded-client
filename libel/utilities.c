@@ -979,6 +979,7 @@ int64_t get_cell_age(Beacon_t *cell)
 int32_t get_num_gnss(Sky_ctx_t *ctx)
 {
     if (ctx == NULL) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
         return 0;
     }
     return isnan(ctx->gps.lat) ? 0 : 1;
@@ -994,6 +995,7 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
 float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || isnan(ctx->gps.lat)) {
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad param")
         return NAN;
     }
     return ctx->gps.lat;
@@ -1179,7 +1181,7 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d len: %d nvg: %d", j, idx, w->ap.vg_len,
             nvg);
         if (w->ap.vg_len && nvg == idx) {
-#if 1
+#if 0
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d len: %d ap: %d", idx, j, idx,
                 w->ap.vg[VAP_LENGTH].len, w->ap.vg[VAP_PARENT].ap);
             dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
