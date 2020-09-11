@@ -270,7 +270,9 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
                 ctx->cache->cacheline[i].len > CONFIG(ctx->cache, total_beacons)) {
                 ctx->cache->cacheline[i].time = 0;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %d of %d cleared due to new Dynamic Parameters", i, CACHE_SIZE);
+                    "cache %d of %d cleared due to new Dynamic Parameters. Total beacons %d vs %d, AP %d vs %d",
+                    i, CACHE_SIZE, CONFIG(ctx->cache, total_beacons), ctx->cache->cacheline[i].len,
+                    CONFIG(ctx->cache, max_ap_beacons), ctx->cache->cacheline[i].ap_len);
             }
             if (ctx->cache->cacheline[i].time &&
                 (now - ctx->cache->cacheline[i].time) >
@@ -909,8 +911,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return SKY_FINALIZE_ERROR;
     }
 
-    DUMP_WORKSPACE(ctx);
-
     /* check cache against beacons for match */
     if ((c = get_from_cache(ctx)) >= 0) {
         if (loc != NULL)
@@ -991,6 +991,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 
     if (rq_config)
         ctx->cache->config.last_config_time = 0; /* request on next serialize */
+
+    // Trim any excess vap from workspace
+    select_vap(ctx);
+
     rc = serialize_request(ctx, NULL, 0, SW_VERSION, rq_config);
 
     if (rc > 0) {

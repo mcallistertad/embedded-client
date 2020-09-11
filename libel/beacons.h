@@ -97,7 +97,7 @@ struct ap {
     Sky_beacon_property_t property; /* ap is in cache and used? */
     uint8_t vg_len;
     Vap_t vg[MAX_VAP_PER_AP + 2]; /* Virtual APs */
-    Sky_beacon_property_t used_cached[MAX_VAP_PER_AP]; /* Virtual APs Used/Cached info */
+    Sky_beacon_property_t vg_prop[MAX_VAP_PER_AP]; /* Virtual AP properties */
 };
 
 // http://wiki.opencellid.org/wiki/API

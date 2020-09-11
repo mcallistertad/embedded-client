@@ -33,6 +33,10 @@
 #define SKY_LIBEL
 #include "proto.h"
 #include "aes.h"
+#include "limits.h"
+
+/* extract the n-th bit from used AP array of l bytes */
+#define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
 static bool apply_config_overrides(Sky_cache_t *c, Rs *rs);
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
@@ -453,6 +457,31 @@ int32_t serialize_request(
     return bytes_written + aes_padding_length;
 }
 
+int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
+{
+    int i, v, nap = 0;
+
+    if (!ctx || size > TOTAL_BEACONS * MAX_VAP_PER_AP)
+        return -1;
+    for (i = 0; i < NUM_APS(ctx); i++) {
+        ctx->beacon[nap].ap.property.used = GET_USED_AP(used, size, nap);
+        if (nap++ > size * CHAR_BIT)
+            break;
+    }
+    for (v = 0; v < CONFIG(ctx->cache, max_vap_per_ap); v++) {
+        for (i = 0; i < NUM_APS(ctx); i++) {
+            if (v < NUM_VAPS(&ctx->beacon[i])) {
+                ctx->beacon[i].ap.vg_prop[v].used = GET_USED_AP(used, size, nap);
+                if (nap++ > size * CHAR_BIT)
+                    break;
+            }
+        }
+        if (nap > size * CHAR_BIT)
+            break;
+    }
+    return 0;
+}
+
 int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
     uint8_t hdr_size = *buf;
@@ -521,6 +550,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;
             loc->location_source = (Sky_loc_source_t)rs.source;
+            // Extract Used info for each AP from the Used_aps bytes
+            apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
         }
         if (apply_config_overrides(ctx->cache, &rs)) {
             if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
@@ -574,10 +605,26 @@ static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
             CONFIG(c, max_ap_beacons) = rs->config.max_ap_beacons;
         }
     }
+    /* Obsolete
     if (rs->config.cache_match_threshold != 0 &&
         rs->config.cache_match_threshold != CONFIG(c, cache_match_threshold)) {
         if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold <= 100) {
             CONFIG(c, cache_match_threshold) = rs->config.cache_match_threshold;
+        }
+    }
+    */
+    if (rs->config.cache_match_all_threshold != 0 &&
+        rs->config.cache_match_all_threshold != CONFIG(c, cache_match_all_threshold)) {
+        if (rs->config.cache_match_all_threshold > 0 &&
+            rs->config.cache_match_all_threshold <= 100) {
+            CONFIG(c, cache_match_all_threshold) = rs->config.cache_match_all_threshold;
+        }
+    }
+    if (rs->config.cache_match_used_threshold != 0 &&
+        rs->config.cache_match_used_threshold != CONFIG(c, cache_match_used_threshold)) {
+        if (rs->config.cache_match_used_threshold > 0 &&
+            rs->config.cache_match_used_threshold <= 100) {
+            CONFIG(c, cache_match_used_threshold) = rs->config.cache_match_used_threshold;
         }
     }
     if (rs->config.cache_age_threshold != 0 &&
@@ -600,7 +647,8 @@ static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
         }
     }
     override = (rs->config.total_beacons != 0 || rs->config.max_ap_beacons != 0 ||
-                rs->config.cache_match_threshold != 0 || rs->config.cache_age_threshold != 0 ||
+                rs->config.cache_match_all_threshold != 0 ||
+                rs->config.cache_match_used_threshold != 0 || rs->config.cache_age_threshold != 0 ||
                 rs->config.cache_beacon_threshold != 0 || rs->config.cache_neg_rssi_threshold != 0);
 
     /* Add new config parameters here */

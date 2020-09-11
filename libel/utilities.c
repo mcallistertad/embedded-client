@@ -188,7 +188,7 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
             mac[0] == mac[5]) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Invalid mac address");
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid mac address");
             return false;
         }
     }
@@ -339,9 +339,10 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             mac[n / 2] = ((mac[n / 2] & 0x0F) | (value << 4));
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s Age: %d %s MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz VAP(%d 0x%01X)",
-            prefix, b->h.age, " ^^^^ ", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], b->h.rssi,
-            b->ap.freq, n, value);
+            "%s Age: %d %s %3s %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz", prefix, b->h.age,
+            (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Unused") : "      ",
+            j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+            b->h.rssi, b->ap.freq);
     }
 #endif
 }
@@ -359,8 +360,6 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
 void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const char *func)
 {
 #if SKY_DEBUG
-    int cached = 0;
-
     if (!b || b->h.type != SKY_BEACON_AP) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%s can't dump non-AP beacon");
         return;
@@ -370,10 +369,9 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s Age: %d %s MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz vap: %d", prefix,
+        "%s Age: %d %s MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz VAP: %d", prefix,
         b->h.age,
-        (cached || b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Unused") :
-                                              "      ",
+        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Unused") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->h.rssi, b->ap.freq, b->ap.vg_len);
     dump_vap(ctx, prefix, b, file, func);
@@ -460,14 +458,15 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 #if SKY_DEBUG
     int i;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len,
-        ctx->ap_len, ctx->connected);
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
+        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len, ctx->ap_len,
+        ctx->connected);
     for (i = 0; i < ctx->len; i++)
         dump_beacon(ctx, "workspace", &ctx->beacon[i], file, func);
 
     if (CONFIG(ctx->cache, last_config_time) == 0) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Beacons:%d AP:%d VAP:%d(%d) Thresholds:%d & %d(Match) %d(Age) %d(Beacon) %d(RSSI) Update:Pending",
+            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(All) %d(Used) %d(Age) %d(Beacon) %d(RSSI) Update:Pending",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
             CONFIG(ctx->cache, cache_match_used_threshold),
@@ -477,7 +476,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
             ctx->header.time - CONFIG(ctx->cache, last_config_time));
     } else {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Beacons:%d AP:%d VAP:%d(%d) Thresholds:%d & %d(Match) %d(Age) %d(Beacon) %d(RSSI) Update:%d Sec",
+            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(All) %d(Used) %d(Age) %d(Beacon) %d(RSSI) Update:%d Sec",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
             CONFIG(ctx->cache, cache_match_used_threshold),
@@ -1147,9 +1146,9 @@ int32_t get_num_vaps(Sky_ctx_t *ctx)
     }
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
-        nv += (w->ap.vg_len ? 1 : 0);
+        nv += (w->ap.vg[VAP_LENGTH].len ? 1 : 0);
 #if SKY_DEBUG
-        total_vap += w->ap.vg_len;
+        total_vap += w->ap.vg[VAP_LENGTH].len;
 #endif
     }
 
@@ -1177,18 +1176,15 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
     /* return the Virtual AP data */
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d len: %d nvg: %d", j, idx, w->ap.vg_len,
-            nvg);
-        if (w->ap.vg_len && nvg == idx) {
-#if 0
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d len: %d ap: %d", idx, j, idx,
-                w->ap.vg[VAP_LENGTH].len, w->ap.vg[VAP_PARENT].ap);
-            dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
-                w->ap.vg[VAP_LENGTH].len, 0);
-#endif
+        // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d len: %d nvg: %d", j, idx, w->ap.vg_len, nvg);
+        if (w->ap.vg[VAP_LENGTH].len && nvg == idx) {
+            // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d len: %d ap: %d", idx, j, idx,
+            //     w->ap.vg[VAP_LENGTH].len, w->ap.vg[VAP_PARENT].ap);
+            // dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
+            //     w->ap.vg[VAP_LENGTH].len, 0);
             return (uint8_t *)w->ap.vg;
         } else {
-            nvg += (w->ap.vg_len ? 1 : 0);
+            nvg += (w->ap.vg[VAP_LENGTH].len ? 1 : 0);
         }
     }
     return 0;
@@ -1225,6 +1221,8 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
             if (w->ap.vg_len > cap_vap[j]) {
                 cap_vap[j]++;
                 nvap++;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "counting VAP: %d AP: %d len: %d -> %d", nvap, j,
+                    w->ap.vg_len, cap_vap[j]);
                 if (nvap == CONFIG(ctx->cache, max_vap_per_rq))
                     break;
                 if (w->ap.vg_len > cap_vap[j])
@@ -1237,8 +1235,9 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
-            w->ap.vg[VAP_LENGTH].len, cap_vap[j] + VAP_PARENT);
+            w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;
+        w->ap.vg_len = cap_vap[j];
         dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
             w->ap.vg[VAP_LENGTH].len, 0);
     }
