@@ -426,14 +426,13 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     case SKY_BEACON_NR:
         /* if primary key is UNKNOWN, must be NMR */
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            strcat(prefixstr, "-NMR");
-            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%s Age: %d %s: %u, %s: %u, rssi: %d",
+            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s Age: %d %s: %u, %s: %u, rssi: %d",
                 prefixstr, b->h.age, cell_params[b->h.type][4], b->cell.id5,
                 cell_params[b->h.type][5], b->cell.freq, b->h.rssi);
         } else {
             strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%s Age: %d %s: %u, %s: %u, %s: %u, %s: %llu, %s: %u, %s: %u, rssi: %d", prefixstr,
+                "%9s Age: %d %s: %u, %s: %u, %s: %u, %s: %llu, %s: %u, %s: %u, rssi: %d", prefixstr,
                 b->h.age, cell_params[b->h.type][0], b->cell.id1, cell_params[b->h.type][1],
                 b->cell.id2, cell_params[b->h.type][2], b->cell.id3, cell_params[b->h.type][3],
                 b->cell.id4, cell_params[b->h.type][4], b->cell.id5, cell_params[b->h.type][5],
@@ -1213,16 +1212,14 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         return 0;
     }
     for (; !no_more && nvap < CONFIG(ctx->cache, max_vap_per_rq);) {
-        /* Walk through APs counting vap, when the idx is the current Virtual Group */
-        /* return the Virtual AP data */
+        /* Walk through APs counting vap, when max_vap_per_rq is reached */
+        /* then walk through again, truncating the compressed bytes */
         no_more = true;
         for (j = 0; j < NUM_APS(ctx); j++) {
             w = &ctx->beacon[j];
             if (w->ap.vg_len > cap_vap[j]) {
                 cap_vap[j]++;
                 nvap++;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "counting VAP: %d AP: %d len: %d -> %d", nvap, j,
-                    w->ap.vg_len, cap_vap[j]);
                 if (nvap == CONFIG(ctx->cache, max_vap_per_rq))
                     break;
                 if (w->ap.vg_len > cap_vap[j])
@@ -1237,7 +1234,6 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;
-        w->ap.vg_len = cap_vap[j];
         dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
             w->ap.vg[VAP_LENGTH].len, 0);
     }

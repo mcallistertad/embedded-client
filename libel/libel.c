@@ -354,7 +354,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
+Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
     int64_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp,
     int16_t rsrp, bool is_connected)
 {
@@ -387,8 +387,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
@@ -471,8 +471,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
@@ -543,8 +543,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
@@ -616,8 +616,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
@@ -686,8 +686,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
@@ -780,8 +780,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
+    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
+    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
@@ -907,7 +907,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     /* There must be at least one beacon */
     if (ctx->len == 0) {
         *sky_errno = SKY_ERROR_NO_BEACONS;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cannot process request with no beacons");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
         return SKY_FINALIZE_ERROR;
     }
 
@@ -918,7 +918,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, %d",
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, time %d",
             (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, (int)cached_time);
 #endif
@@ -927,7 +927,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
     if (request_buf == NULL) {
         *sky_errno = SKY_ERROR_BAD_PARAMETERS;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Buffer pointer is bad");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Buffer pointer is bad");
         return SKY_FINALIZE_ERROR;
     }
 
@@ -957,7 +957,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     } else {
         *sky_errno = SKY_ERROR_ENCODE_ERROR;
 
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Failed to encode request");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to encode request");
         return SKY_FINALIZE_ERROR;
     }
 }
@@ -999,9 +999,12 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 
     if (rc > 0) {
         *size = (uint32_t)rc;
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sizeof request %d", rc);
         return sky_return(sky_errno, SKY_ERROR_NONE);
-    } else
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to size request");
         return sky_return(sky_errno, SKY_ERROR_ENCODE_ERROR);
+    }
 }
 
 /*! \brief decodes a Skyhook server response
@@ -1152,36 +1155,40 @@ char *sky_pserver_status(Sky_loc_status_t status)
  */
 char *sky_pbeacon(Beacon_t *b)
 {
-    register char *str = NULL;
+    static char str[11];
+    str[0] = '\0';
+
     switch (b->h.type) {
     case SKY_BEACON_AP:
-        str = "Wi-Fi";
+        strcat(str, "Wi-Fi");
         break;
     case SKY_BEACON_BLE:
-        str = "BLE";
+        strcat(str, "BLE");
         break;
     case SKY_BEACON_CDMA:
-        str = "CDMA";
+        strcat(str, "CDMA");
         break;
     case SKY_BEACON_GSM:
-        str = "GSM";
+        strcat(str, "GSM");
         break;
     case SKY_BEACON_LTE:
-        str = "LTE";
+        strcat(str, "LTE");
         break;
     case SKY_BEACON_NBIOT:
-        str = "NB-IoT";
+        strcat(str, "NB-IoT");
         break;
     case SKY_BEACON_UMTS:
-        str = "UMTS";
+        strcat(str, "UMTS");
         break;
     case SKY_BEACON_NR:
-        str = "NR";
+        strcat(str, "NR");
         break;
     default:
-        str = "???";
+        strcat(str, "???");
         break;
     }
+    if (is_cell_type(b) && b->cell.id2 == SKY_UNKNOWN_ID2)
+        strcat(str, "-NMR");
     return str;
 }
 

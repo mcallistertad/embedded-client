@@ -131,7 +131,6 @@ static bool encode_vap_data(
             return false;
     }
 
-    // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "length %d", substream.bytes_written);
     if (!pb_encode_varint(ostream, substream.bytes_written))
         return false;
 
@@ -403,6 +402,8 @@ int32_t serialize_request(
 
     total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
+    DUMP_WORKSPACE(ctx);
+
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
     //
@@ -410,8 +411,10 @@ int32_t serialize_request(
         return total_length;
 
     // Return an error indication if the supplied buffer is too small.
-    if (total_length > buf_len)
+    if (total_length > buf_len) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "supplied buffer is too small");
         return -1;
+    }
 
     *buf = (uint8_t)hdr_size;
 
@@ -421,16 +424,20 @@ int32_t serialize_request(
 
     if (pb_encode(&ostream, RqHeader_fields, &rq_hdr))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding request header");
         return -1;
+    }
 
     // Serialize the crypto_info message.
     ostream = pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
 
     if (pb_encode(&ostream, CryptoInfo_fields, &rq_crypto_info))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding crypto info");
         return -1;
+    }
 
     // Serialize the request body.
     //
@@ -441,8 +448,10 @@ int32_t serialize_request(
     // Initialize request body.
     if (pb_encode(&ostream, Rq_fields, &rq))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding request fields");
         return -1;
+    }
 
     // Encrypt the (serialized) request body.
     //
@@ -463,6 +472,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
 
     if (!ctx || size > TOTAL_BEACONS * MAX_VAP_PER_AP)
         return -1;
+
     for (i = 0; i < NUM_APS(ctx); i++) {
         ctx->beacon[nap].ap.property.used = GET_USED_AP(used, size, nap);
         if (nap++ > size * CHAR_BIT)
@@ -479,6 +489,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
         if (nap > size * CHAR_BIT)
             break;
     }
+
     return 0;
 }
 

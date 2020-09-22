@@ -40,7 +40,7 @@
 
 static bool beacon_in_cache(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
-static bool beacon_match(Sky_ctx_t *ctx, Beacon_t *bA, Beacon_t *bB, int *diff);
+static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *bA, Beacon_t *bB, int *diff);
 static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
 
@@ -205,8 +205,10 @@ static bool add_child_to_VirtualGroup(Sky_ctx_t *ctx, int vg, int ap, int n)
             pvg[vg_p + VAP_FIRST_DATA].data.value == patch.data.value)
             dup = 1;
     }
-    if (!dup && vg_p == CONFIG(ctx->cache, max_vap_per_ap)) /* No room for one more */
+    if (!dup && vg_p == CONFIG(ctx->cache, max_vap_per_ap)) { /* No room for one more */
+        remove_beacon(ctx, vg); /* remove parent before re-inserting */
         return false;
+    }
 
         /* update parent rssi with proportion of child rssi */
 #if SKY_DEBUG
@@ -251,7 +253,7 @@ static bool add_child_to_VirtualGroup(Sky_ctx_t *ctx, int vg, int ap, int n)
         if (vg_p == NUM_VAPS(parent)) {
             if (vg_p == CONFIG(ctx->cache, max_vap_per_ap)) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "No room to keep all Virtual APs");
-                return false;
+                break;
             }
             pvg[vg_p + VAP_FIRST_DATA].data = child->ap.vg[vg_c + VAP_FIRST_DATA].data;
             pvg[VAP_LENGTH].len = vg_p + VAP_FIRST_DATA;
@@ -325,7 +327,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
     /* check for duplicate */
     for (i = 0; i < NUM_BEACONS(ctx); i++) {
-        if (beacon_match(ctx, b, &ctx->beacon[i], NULL) == true) { // duplicate?
+        if (beacon_compare(ctx, b, &ctx->beacon[i], NULL) == true) { // duplicate?
             if (ctx->beacon[i].ap.vg_len || ctx->beacon[i].h.connected ||
                 b->h.age > ctx->beacon[i].h.age ||
                 (b->h.age == ctx->beacon[i].h.age &&
@@ -340,7 +342,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     }
     /* find correct position to insert based on type */
     for (i = 0; i < NUM_BEACONS(ctx); i++) {
-        if (beacon_match(ctx, b, &ctx->beacon[i], &diff) == false)
+        if (beacon_compare(ctx, b, &ctx->beacon[i], &diff) == false)
             if (diff > 0) // stop if the new beacon is better
                 break;
     }
@@ -387,6 +389,9 @@ static Sky_status_t select_cell(Sky_ctx_t *ctx)
 {
     int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
 
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
+        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons));
+    DUMP_WORKSPACE(ctx);
     /* no work to do if workspace not full of max cell */
     if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
         CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
@@ -678,7 +683,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (compress_virtual_ap(ctx) == SKY_ERROR) {
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "failed to compress AP");
+#endif
         if (select_ap_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter AP");
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -772,6 +779,87 @@ static int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beaco
     return num_aps;
 }
 
+/*! \brief compare beacons fpr equality
+ *
+ *  if beacons are equivalent, return 1 otherwise 0
+ *  if an error occurs during comparison. return -1 
+ */
+static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+{
+    if (!ctx || !a || !b) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return -1;
+    }
+
+    /* Cells and APs can be compared but others are ordered by type */
+    if (a->h.type != b->h.type && (a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
+                                      a->h.type == SKY_BEACON_BLE || b->h.type == SKY_BEACON_BLE))
+        return -1;
+    else if (a->h.type != b->h.type)
+        return 0;
+
+    /* test two cells or two APs for equivalence */
+    switch (a->h.type) {
+    case SKY_BEACON_AP:
+        if (ap_beacon_in_vg(ctx, a, b, prop) > 0) // copy properies from b if equivalent
+            return 1;
+        break;
+    case SKY_BEACON_BLE:
+        if ((memcmp(a->ble.mac, b->ble.mac, MAC_SIZE) == 0) && (a->ble.major == b->ble.major) &&
+            (a->ble.minor == b->ble.minor) && (memcmp(a->ble.uuid, b->ble.uuid, 16) == 0)) {
+            return 1;
+        }
+        break;
+    case SKY_BEACON_CDMA:
+        if ((a->cell.id2 == b->cell.id2) && (a->cell.id3 == b->cell.id3) &&
+            (a->cell.id4 == b->cell.id4)) {
+            if (a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
+                a->cell.id4 == SKY_UNKNOWN_ID4) {
+                /* NMR */
+                if (a->cell.id5 == b->cell.id5 && a->cell.freq == b->cell.freq)
+                    return 1;
+            } else {
+                return 1;
+            }
+        }
+        break;
+    case SKY_BEACON_GSM:
+        if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
+            a->cell.id3 == b->cell.id3 && (a->cell.id4 == b->cell.id4)) {
+            if (!((a->cell.id1 == SKY_UNKNOWN_ID1 || a->cell.id2 == SKY_UNKNOWN_ID2 ||
+                    a->cell.id3 == SKY_UNKNOWN_ID3 || a->cell.id4 == SKY_UNKNOWN_ID4)))
+                return 1;
+        }
+        break;
+    case SKY_BEACON_LTE:
+    case SKY_BEACON_NBIOT:
+    case SKY_BEACON_UMTS:
+    case SKY_BEACON_NR:
+#if VERBOSE_DEBUG
+        dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
+        dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
+#endif
+        if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
+            (a->cell.id4 == b->cell.id4)) {
+            if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
+                (a->cell.id4 == SKY_UNKNOWN_ID4)) {
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
+#endif
+                /* NMR */
+                if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
+                    return 1;
+            } else
+                return 1;
+        }
+        break;
+    default:
+        return -1;
+    }
+    return 0;
+}
+
 /*! \brief compare a beacon to one in workspace
  *
  *  if beacon is duplicate, return true
@@ -792,10 +880,10 @@ static int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beaco
  *           +ve if beacon A is better
  *           -ve if beacon B is better
  */
-static bool beacon_match(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
+static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
 {
     int ret = false;
-    int better = 0; // beacon B is better (-ve), or A is better (+ve)
+    int better = 1; // beacon B is better (-ve), or A is better (+ve)
 
     if (!ctx || !new || !wb) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -804,12 +892,11 @@ static bool beacon_match(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
         return false;
     }
 
-    /* if beacons are not both APs or cells */
-    if (new->h.type != wb->h.type &&
-        (new->h.type == SKY_BEACON_AP || wb->h.type == SKY_BEACON_AP ||
-            new->h.type == SKY_BEACON_BLE || wb->h.type == SKY_BEACON_BLE)) {
+    /* if beacons can't be compared, simply order by type */
+    if ((ret = beacon_is_same(ctx, new, wb, NULL)) == -1) {
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
+        /* if the types are different, there is no match */
         better = -(new->h.type - wb->h.type);
         if (diff)
             *diff = better;
@@ -820,47 +907,10 @@ static bool beacon_match(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
             better < 0 ? "B is better" : "A is better");
 #endif
         return false;
-    } else {
-        if (new->h.type == wb->h.type) {
-            switch (new->h.type) {
-            case SKY_BEACON_AP:
-                if (ap_beacon_in_vg(ctx, new, wb, NULL) > 0)
-                    ret = true;
-                break;
-            case SKY_BEACON_BLE:
-                if (((better = memcmp(new->ble.mac, wb->ble.mac, MAC_SIZE)) == 0) &&
-                    (new->ble.major == wb->ble.major) && (new->ble.minor == wb->ble.minor) &&
-                    (memcmp(new->ble.uuid, wb->ble.uuid, 16) == 0))
-                    ret = true;
-                break;
-            case SKY_BEACON_CDMA:
-                if ((new->cell.id2 == wb->cell.id2) && (new->cell.id3 == wb->cell.id3) &&
-                    (new->cell.id4 == wb->cell.id4))
-                    ret = true;
-                break;
-            case SKY_BEACON_GSM:
-                if ((new->cell.id4 == wb->cell.id4) && (new->cell.id1 == wb->cell.id1) &&
-                    (new->cell.id2 == wb->cell.id2) && (new->cell.id3 == wb->cell.id3))
-                    ret = true;
-                break;
-            case SKY_BEACON_LTE:
-            case SKY_BEACON_NBIOT:
-            case SKY_BEACON_UMTS:
-            case SKY_BEACON_NR:
-                if ((new->cell.id1 == wb->cell.id1) && (new->cell.id2 == wb->cell.id2) &&
-                    (new->cell.id4 == wb->cell.id4))
-                    ret = true;
-                break;
-            default:
-                ret = false;
-            }
-        } else {
-            /* if the cell types are different, there is no match */
-            ret = false;
-        }
-    }
+    } else if (ret == 1) // if beacons are equivalent, return true
+        ret = true;
 
-    /* if the beacons can be compared and are not a match, determine which is better */
+    /* if the beacons can be compared and are not equivalent, determine which is better */
     if (ret == false) {
         if (new->h.type == SKY_BEACON_AP) {
             /* Compare APs by rssi */
@@ -938,7 +988,6 @@ static bool beacon_in_cache(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
-    bool ret = false;
 
     if (!cl || !b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -949,49 +998,10 @@ static bool beacon_in_cache(
         return false;
     }
 
-    for (j = 0; ret == false && j < NUM_BEACONS(cl); j++)
-        if (b->h.type == cl->beacon[j].h.type) {
-            switch (b->h.type) {
-            case SKY_BEACON_AP:
-                if (ap_beacon_in_vg(ctx, b, &cl->beacon[j], prop))
-                    ret = true;
-                break;
-            case SKY_BEACON_BLE:
-                if ((memcmp(b->ble.mac, cl->beacon[j].ble.mac, MAC_SIZE) == 0) &&
-                    (b->ble.major == cl->beacon[j].ble.major) &&
-                    (b->ble.minor == cl->beacon[j].ble.minor) &&
-                    (memcmp(b->ble.uuid, cl->beacon[j].ble.uuid, 16) == 0))
-                    ret = true;
-                break;
-            case SKY_BEACON_CDMA:
-                if ((b->cell.id2 == cl->beacon[j].cell.id2) &&
-                    (b->cell.id3 == cl->beacon[j].cell.id3) &&
-                    (b->cell.id4 == cl->beacon[j].cell.id4))
-                    ret = true;
-                break;
-            case SKY_BEACON_GSM:
-                if ((b->cell.id4 == cl->beacon[j].cell.id4) &&
-                    (b->cell.id1 == cl->beacon[j].cell.id1) &&
-                    (b->cell.id2 == cl->beacon[j].cell.id2) &&
-                    (b->cell.id3 == cl->beacon[j].cell.id3))
-                    ret = true;
-                break;
-            case SKY_BEACON_LTE:
-            case SKY_BEACON_NBIOT:
-            case SKY_BEACON_UMTS:
-            case SKY_BEACON_NR:
-                if ((b->cell.id1 == cl->beacon[j].cell.id1) &&
-                    (b->cell.id2 == cl->beacon[j].cell.id2) &&
-                    (b->cell.id4 == cl->beacon[j].cell.id4))
-                    ret = true;
-                break;
-            default:
-                ret = false;
-            }
-            if (ret == true)
-                break; // for loop without incrementing j
-        }
-    return ret;
+    for (j = 0; j < NUM_BEACONS(cl); j++)
+        if (beacon_is_same(ctx, b, &cl->beacon[j], prop) == 1)
+            return true;
+    return false;
 }
 
 /*! \brief count number of cached APs in workspace relative to a cacheline
@@ -1115,25 +1125,23 @@ static int count_used_aps_in_cacheline(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     return num_aps_used;
 }
 
-/*! \brief test cells in workspace for match to cacheline
+/*! \brief test cell in workspace has changed from that in cache
  *
- *  True if either all cells in workspace are present in cache or
- *  if serving cell matches cache or
- *  if there are no cell in workspace
+ *  false if either workspace or cache has no cells
+ *  false if serving cell matches cache
+ *  true otherwise
  *
  *  @param ctx Skyhook request context
  *  @param cl the cacheline to count in
  *
  *  @return true or false
  */
-static int test_cells_in_cacheline(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+static int test_cell_change(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
-    int num_cells = 0;
-    int serving_cell = 0;
     int j;
     if (!ctx || !cl) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
 #endif
         return true;
     }
@@ -1142,21 +1150,20 @@ static int test_cells_in_cacheline(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
 #endif
-        return true;
+        return false;
     }
 
     /* for each cell in workspace, compare with cacheline */
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-        if (beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
-            num_cells++;
-            serving_cell = serving_cell || (ctx->connected == j);
+        if (ctx->beacon[j].h.connected && beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
+#ifdef VERBOSE_DEBUG
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "serving cells match");
+#endif
+            return false;
         }
     }
-#ifdef VERBOSE_DEBUG
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d of %d cells in cache, serving cell: %s", num_cells,
-        NUM_BEACONS(ctx) - NUM_APS(ctx), serving_cell ? "true" : "false");
-#endif
-    return num_cells ? true : false;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->cache->cacheline);
+    return true;
 }
 
 /*! \brief find cache entry with a match to workspace
@@ -1218,8 +1225,9 @@ int find_best_match(Sky_ctx_t *ctx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->cache->cacheline[i];
         threshold = ratio = score = 0;
-        if (cl->time == 0) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
+        if (cl->time == 0 || test_cell_change(ctx, cl) == true) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
         } else {
             /* count number of matching APs in workspace and cache */
@@ -1235,60 +1243,55 @@ int find_best_match(Sky_ctx_t *ctx)
                 if (num_aps_used < CONFIG(ctx->cache, cache_beacon_threshold)) {
                     /* if there are only a few significant APs, Score based on ALL APs */
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
-
-                    if (test_cells_in_cacheline(ctx, cl) == false) {
-                        threshold = CONFIG(ctx->cache, cache_match_all_threshold);
-                        ratio = 0.0;
-                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            "Cache: %d: score %d vs %d - cell mismatch", i, (int)round(ratio * 100),
-                            threshold);
-                    } else {
-                        score = num_aps_cached;
-                        int unionAB = count_aps_in_workspace(ctx) +
-                                      count_aps_in_cacheline(ctx, cl) - num_aps_cached;
-                        threshold = CONFIG(ctx->cache, cache_match_all_threshold);
-                        ratio = (float)score / unionAB;
-                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
-                            (int)round(ratio * 100), score, unionAB, threshold);
-                    }
+                    score = num_aps_cached;
+                    int unionAB = count_aps_in_workspace(ctx) + count_aps_in_cacheline(ctx, cl) -
+                                  num_aps_cached;
+                    threshold = CONFIG(ctx->cache, cache_match_all_threshold);
+                    ratio = (float)score / unionAB;
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
+                        (int)round(ratio * 100), score, unionAB, threshold);
                 } else {
                     /* there are are enough significant APs, Score based on just Used APs */
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on just Used APs", i);
 
-                    /* if 100% cell match or a matching cell is the serving cell */
-                    if (test_cells_in_cacheline(ctx, cl) == false) {
-                        threshold = CONFIG(ctx->cache, cache_match_all_threshold);
-                        ratio = 0.0;
-                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            "Cache: %d: score %d vs %d - cell mismatch", i, (int)round(ratio * 100),
-                            threshold);
-                    } else {
-                        int unionAB = count_used_aps_in_cacheline(ctx, cl);
-                        if (unionAB < 0) {
-                            err = true;
-                            break;
-                        }
-                        ratio = (float)num_aps_used / unionAB;
-                        threshold = CONFIG(ctx->cache, cache_match_used_threshold);
-                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
-                            (int)round(ratio * 100), num_aps_used, unionAB, threshold);
+                    int unionAB = count_used_aps_in_cacheline(ctx, cl);
+                    if (unionAB < 0) {
+                        err = true;
+                        break;
                     }
+                    ratio = (float)num_aps_used / unionAB;
+                    threshold = CONFIG(ctx->cache, cache_match_used_threshold);
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
+                        (int)round(ratio * 100), num_aps_used, unionAB, threshold);
                 }
             } else {
                 /* Compare cell beacons because there are no APs */
+                /* count number of matching cells */
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on cell beacons", i);
+                threshold = CONFIG(ctx->cache, cache_match_used_threshold);
                 score = 0.0;
                 for (int j = NUM_APS(ctx) - 1; j < NUM_BEACONS(ctx); j++) {
                     if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i], NULL)) {
+#if VERBOSE_DEBUG
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            "Beacon %d type %s matches cache %d of 0..%d", j,
-                            sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE);
+                            "Cell Beacon %d type %s matches cache %d of 0..%d Score %d", j,
+                            sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);
+#endif
                         score = score + 1.0;
                     }
                 }
-                if (NUM_BEACONS(ctx) - NUM_APS(ctx))
-                    ratio = score / (NUM_BEACONS(ctx) - NUM_APS(ctx));
-                else
-                    ratio = 0.0;
+                /* cell score = number of matching cells / union( cells in workspace + cache) */
+                ratio = (float)score / ((NUM_BEACONS(ctx) - NUM_APS(ctx)) +
+                                           (NUM_BEACONS(&ctx->cache->cacheline[i]) -
+                                               NUM_APS(&ctx->cache->cacheline[i])) -
+                                           score);
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
+                    (int)round(ratio * 100), score,
+                    (NUM_BEACONS(ctx) - NUM_APS(ctx)) +
+                        (NUM_BEACONS(&ctx->cache->cacheline[i]) -
+                            NUM_APS(&ctx->cache->cacheline[i])) -
+                        score,
+                    threshold);
             }
         }
 
@@ -1407,7 +1410,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     /* Find best match in cache */
     /*    yes - add entry here */
     /* else find oldest cache entry */
-    /*    yes - add entryu here */
+    /*    yes - add entry here */
     if (i < 0) {
         i = find_oldest(ctx);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d", i, CACHE_SIZE - 1);
@@ -1431,7 +1434,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->time = now;
     ctx->cache->newest = i;
 
-    for (j = 0; j < CONFIG(ctx->cache, total_beacons); j++) {
+    for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
         if (cl->beacon[j].h.type == SKY_BEACON_AP) {
             cl->beacon[j].ap.property.in_cache = true;
