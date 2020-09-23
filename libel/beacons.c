@@ -665,7 +665,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     ctx->cache->cacheline[i].loc = *loc;
     ctx->cache->cacheline[i].time = now;
     ctx->cache->newest = i;
-    for (j = 0; j < CONFIG(ctx->cache, total_beacons); j++)
+    for (j = 0; j < ctx->len; j++)
         ctx->cache->cacheline[i].beacon[j] = ctx->beacon[j];
     return SKY_SUCCESS;
 }
