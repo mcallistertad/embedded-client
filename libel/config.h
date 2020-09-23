@@ -31,10 +31,10 @@
 
 /*! \brief The maximum number of beacons passed to the server in a request
  */
-#define TOTAL_BEACONS 11
+#define TOTAL_BEACONS 20
 /*! \brief The maximum number of AP beacons passed to the server in a request
  */
-#define MAX_AP_BEACONS 10
+#define MAX_AP_BEACONS 15
 
 /*! \brief The percentage of beacons that must match in a cached scan/location
  */
