@@ -360,6 +360,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
     if (is_connected)
         ctx->connected = i;
 
+    dump_workspace(ctx);
+
     if (b->h.type == SKY_BEACON_AP)
         ctx->beacon[i].ap.in_cache =
             beacon_in_cache(ctx, b, &ctx->cache->cacheline[ctx->cache->newest]);
@@ -377,6 +379,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
         }
 
+    dump_workspace(ctx);
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -402,7 +405,6 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
         return false;
     }
 
-    /* score each cache line wrt beacon match ratio */
     for (j = 0; ret == false && j < cl->len; j++)
         if (b->h.type == cl->beacon[j].h.type) {
             switch (b->h.type) {
@@ -420,8 +422,11 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
             case SKY_BEACON_CDMA:
                 if ((b->cdma.sid == cl->beacon[j].cdma.sid) &&
                     (b->cdma.nid == cl->beacon[j].cdma.nid) &&
-                    (b->cdma.bsid == cl->beacon[j].cdma.bsid))
-                    ret = true;
+                    (b->cdma.bsid == cl->beacon[j].cdma.bsid)) {
+                    if (!(b->cdma.sid == SKY_UNKNOWN_ID2) || (b->cdma.nid == SKY_UNKNOWN_ID3) ||
+                        (b->cdma.bsid == SKY_UNKNOWN_ID4))
+                        ret = true;
+                }
                 break;
             case SKY_BEACON_GSM:
                 if ((b->gsm.ci == cl->beacon[j].gsm.ci) && (b->gsm.mcc == cl->beacon[j].gsm.mcc) &&
@@ -429,33 +434,95 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     ret = true;
                 break;
             case SKY_BEACON_LTE:
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare");
                 if ((b->lte.mcc == cl->beacon[j].lte.mcc) &&
                     (b->lte.mnc == cl->beacon[j].lte.mnc) &&
-                    (b->lte.e_cellid == cl->beacon[j].lte.e_cellid))
-                    ret = true;
+                    (b->lte.e_cellid == cl->beacon[j].lte.e_cellid)) {
+                    if (b->lte.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare NMR");
+                        if ((b->lte.pci == cl->beacon[j].lte.pci) &&
+                            (b->lte.earfcn == cl->beacon[j].lte.earfcn))
+                            ret = true;
+                    } else
+                        ret = true;
+                }
                 break;
             case SKY_BEACON_NBIOT:
                 if ((b->nbiot.mcc == cl->beacon[j].nbiot.mcc) &&
                     (b->nbiot.mnc == cl->beacon[j].nbiot.mnc) &&
-                    (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid))
-                    ret = true;
+                    (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid)) {
+                    if (b->nbiot.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                        if ((b->nbiot.ncid == cl->beacon[j].nbiot.ncid) &&
+                            (b->nbiot.earfcn == cl->beacon[j].nbiot.earfcn))
+                            ret = true;
+                    } else
+                        ret = true;
+                }
                 break;
             case SKY_BEACON_UMTS:
                 if ((b->umts.ucid == cl->beacon[j].umts.ucid) &&
                     (b->umts.mcc == cl->beacon[j].umts.mcc) &&
-                    (b->umts.mnc == cl->beacon[j].umts.mnc))
-                    ret = true;
+                    (b->umts.mnc == cl->beacon[j].umts.mnc)) {
+                    if (b->umts.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                        if ((b->umts.psc == cl->beacon[j].umts.psc) &&
+                            (b->umts.uarfcn == cl->beacon[j].umts.uarfcn))
+                            ret = true;
+                    } else
+                        ret = true;
+                }
                 break;
             case SKY_BEACON_NR:
                 if ((b->nr.mcc == cl->beacon[j].nr.mcc) && (b->nr.mnc == cl->beacon[j].nr.mnc) &&
-                    (b->nr.nci == cl->beacon[j].nr.nci))
-                    ret = true;
+                    (b->nr.nci == cl->beacon[j].nr.nci)) {
+                    if (b->nr.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                        if ((b->nr.pci == cl->beacon[j].nr.pci) &&
+                            (b->nr.nrarfcn == cl->beacon[j].nr.nrarfcn))
+                            ret = true;
+                    } else
+                        ret = true;
+                }
                 break;
             default:
                 ret = false;
             }
         }
     return ret;
+}
+
+/*! \brief test cell in workspace has changed from that in cache
+ *
+ *  false if either workspace or cache has no cells
+ *  false if serving cell matches cache
+ *  true otherwise
+ *
+ *  @param ctx Skyhook request context
+ *  @param cl the cacheline to count in
+ *
+ *  @return true or false
+ */
+static int test_cell_change(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+{
+    int j;
+    if (!ctx || !cl) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return true;
+    }
+
+    if ((ctx->len - ctx->ap_len) == 0 || (cl->len - cl->ap_len) == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
+        return false;
+    }
+
+    /* for each cell in workspace, compare with cacheline */
+    for (j = ctx->ap_len; j < ctx->len; j++) {
+        if (ctx->connected == j && beacon_in_cache(ctx, &ctx->beacon[j], cl)) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "serving cells match");
+            return false;
+        }
+    }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->cache->cacheline);
+
+    return true;
 }
 
 /*! \brief find cache entry with best match
@@ -492,6 +559,9 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
             score[i] = CONFIG(ctx->cache, total_beacons) * 2;
         } else if (!put && ctx->cache->cacheline[i].time == 0) {
             /* looking for match for get, ignore empty cache */
+            continue;
+        } else if (!put && test_cell_change(ctx, &ctx->cache->cacheline[i]) == true) {
+            /* looking for match for get, ignore cache if serving cell does not match */
             continue;
         } else {
             /* Non empty cacheline - count matching beacons */
