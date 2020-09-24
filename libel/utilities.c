@@ -333,7 +333,7 @@ void dump_workspace(Sky_ctx_t *ctx)
                     ctx->beacon[i].lte.rssi)
             else
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: Age: %d Type: LTE, e-cellid: %u, mcc: %u, mnc: %u, tac: %u, pci: %u, earfcn: %u, rssi: %d",
+                    " Beacon %-2d: Age: %d Type: LTE, e-cellid: %llu, mcc: %u, mnc: %u, tac: %u, pci: %u, earfcn: %u, rssi: %d",
                     i, ctx->beacon[i].lte.age, ctx->beacon[i].lte.e_cellid, ctx->beacon[i].lte.mcc,
                     ctx->beacon[i].lte.mnc, ctx->beacon[i].lte.tac, ctx->beacon[i].lte.pci,
                     ctx->beacon[i].lte.earfcn, ctx->beacon[i].lte.rssi)
@@ -348,7 +348,7 @@ void dump_workspace(Sky_ctx_t *ctx)
                     ctx->beacon[i].nbiot.earfcn, ctx->beacon[i].nbiot.rssi)
             else
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: Age: %d Type: NB-IoT, mcc: %u, mnc: %u, e_cellid: %u, tac: %u, ncid: %u, earfcn: %u, rssi: %d",
+                    " Beacon %-2d: Age: %d Type: NB-IoT, mcc: %u, mnc: %u, e_cellid: %llu, tac: %u, ncid: %u, earfcn: %u, rssi: %d",
                     i, ctx->beacon[i].nbiot.age, ctx->beacon[i].nbiot.mcc, ctx->beacon[i].nbiot.mnc,
                     ctx->beacon[i].nbiot.e_cellid, ctx->beacon[i].nbiot.tac,
                     ctx->beacon[i].nbiot.ncid, ctx->beacon[i].nbiot.earfcn,
@@ -364,7 +364,7 @@ void dump_workspace(Sky_ctx_t *ctx)
                     ctx->beacon[i].umts.rssi)
             else
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: Age: %d Type: UMTS, lac: %u, ucid: %u, mcc: %u, mnc: %u, psc: %u, uarfcn: %u, rssi: %d",
+                    " Beacon %-2d: Age: %d Type: UMTS, lac: %u, ucid: %llu, mcc: %u, mnc: %u, psc: %u, uarfcn: %u, rssi: %d",
                     i, ctx->beacon[i].umts.age, ctx->beacon[i].umts.lac, ctx->beacon[i].umts.ucid,
                     ctx->beacon[i].umts.mcc, ctx->beacon[i].umts.mnc, ctx->beacon[i].umts.psc,
                     ctx->beacon[i].umts.uarfcn, ctx->beacon[i].umts.rssi)
