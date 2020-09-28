@@ -826,6 +826,14 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
                 return 1;
         }
         break;
+    case SKY_BEACON_GSM:
+        if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
+            a->cell.id3 == b->cell.id3 && (a->cell.id4 == b->cell.id4)) {
+            if (!((a->cell.id1 == SKY_UNKNOWN_ID1 || a->cell.id2 == SKY_UNKNOWN_ID2 ||
+                    a->cell.id3 == SKY_UNKNOWN_ID3 || a->cell.id4 == SKY_UNKNOWN_ID4)))
+                return 1;
+        }
+        break;
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
