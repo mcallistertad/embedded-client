@@ -813,14 +813,9 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     case SKY_BEACON_CDMA:
         if ((a->cell.id2 == b->cell.id2) && (a->cell.id3 == b->cell.id3) &&
             (a->cell.id4 == b->cell.id4)) {
-            if (a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
-                a->cell.id4 == SKY_UNKNOWN_ID4) {
-                /* NMR */
-                if (a->cell.id5 == b->cell.id5 && a->cell.freq == b->cell.freq)
-                    return 1;
-            } else {
+            if (!(a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
+                    a->cell.id4 == SKY_UNKNOWN_ID4))
                 return 1;
-            }
         }
         break;
     case SKY_BEACON_GSM:
@@ -838,14 +833,13 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
 #if VERBOSE_DEBUG
         dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
 #endif
         if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
             (a->cell.id4 == b->cell.id4)) {
             if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
 #if VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "NMR");
 #endif
                 /* NMR */
                 if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
