@@ -434,10 +434,12 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                     ret = true;
                 break;
             case SKY_BEACON_LTE:
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare");
                 if ((b->lte.mcc == cl->beacon[j].lte.mcc) &&
                     (b->lte.mnc == cl->beacon[j].lte.mnc) &&
                     (b->lte.e_cellid == cl->beacon[j].lte.e_cellid)) {
                     if (b->lte.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare NMR");
                         if ((b->lte.pci == cl->beacon[j].lte.pci) &&
                             (b->lte.earfcn == cl->beacon[j].lte.earfcn))
                             ret = true;
@@ -541,7 +543,6 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
     int bestc = -1;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s", put ? "for save to cache" : "for get from cache")
-    dump_cache(ctx);
     dump_workspace(ctx);
 
     /* score each cache line wrt beacon match ratio */
