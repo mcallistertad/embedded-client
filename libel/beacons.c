@@ -500,7 +500,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
  *
  *  @return true or false
  */
-static int test_cell_change(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+static bool cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
     int j;
     if (!ctx || !cl) {
@@ -560,7 +560,7 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
         } else if (!put && ctx->cache->cacheline[i].time == 0) {
             /* looking for match for get, ignore empty cache */
             continue;
-        } else if (!put && test_cell_change(ctx, &ctx->cache->cacheline[i]) == true) {
+        } else if (!put && cell_changed(ctx, &ctx->cache->cacheline[i])) {
             /* looking for match for get, ignore cache if serving cell does not match */
             continue;
         } else {
