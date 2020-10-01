@@ -423,22 +423,25 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                 if ((b->cdma.sid == cl->beacon[j].cdma.sid) &&
                     (b->cdma.nid == cl->beacon[j].cdma.nid) &&
                     (b->cdma.bsid == cl->beacon[j].cdma.bsid)) {
-                    if (!(b->cdma.sid == SKY_UNKNOWN_ID2) || (b->cdma.nid == SKY_UNKNOWN_ID3) ||
-                        (b->cdma.bsid == SKY_UNKNOWN_ID4))
+                    if (!(b->cdma.sid == SKY_UNKNOWN_ID2 || b->cdma.nid == SKY_UNKNOWN_ID3 ||
+                            b->cdma.bsid == SKY_UNKNOWN_ID4))
                         ret = true;
                 }
                 break;
             case SKY_BEACON_GSM:
                 if ((b->gsm.ci == cl->beacon[j].gsm.ci) && (b->gsm.mcc == cl->beacon[j].gsm.mcc) &&
                     (b->gsm.mnc == cl->beacon[j].gsm.mnc) && (b->gsm.lac == cl->beacon[j].gsm.lac))
-                    ret = true;
+                    if (!(b->gsm.ci == SKY_UNKNOWN_ID4 || b->gsm.mcc == SKY_UNKNOWN_ID1 ||
+                            b->gsm.mnc == SKY_UNKNOWN_ID2 || b->gsm.lac == SKY_UNKNOWN_ID3)) {
+                        ret = true;
+                    }
                 break;
             case SKY_BEACON_LTE:
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare");
                 if ((b->lte.mcc == cl->beacon[j].lte.mcc) &&
                     (b->lte.mnc == cl->beacon[j].lte.mnc) &&
                     (b->lte.e_cellid == cl->beacon[j].lte.e_cellid)) {
-                    if (b->lte.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                    if (b->lte.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "compare NMR");
                         if ((b->lte.pci == cl->beacon[j].lte.pci) &&
                             (b->lte.earfcn == cl->beacon[j].lte.earfcn))
@@ -451,7 +454,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                 if ((b->nbiot.mcc == cl->beacon[j].nbiot.mcc) &&
                     (b->nbiot.mnc == cl->beacon[j].nbiot.mnc) &&
                     (b->nbiot.e_cellid == cl->beacon[j].nbiot.e_cellid)) {
-                    if (b->nbiot.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                    if (b->nbiot.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                         if ((b->nbiot.ncid == cl->beacon[j].nbiot.ncid) &&
                             (b->nbiot.earfcn == cl->beacon[j].nbiot.earfcn))
                             ret = true;
@@ -463,7 +466,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
                 if ((b->umts.ucid == cl->beacon[j].umts.ucid) &&
                     (b->umts.mcc == cl->beacon[j].umts.mcc) &&
                     (b->umts.mnc == cl->beacon[j].umts.mnc)) {
-                    if (b->umts.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                    if (b->umts.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                         if ((b->umts.psc == cl->beacon[j].umts.psc) &&
                             (b->umts.uarfcn == cl->beacon[j].umts.uarfcn))
                             ret = true;
@@ -474,7 +477,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
             case SKY_BEACON_NR:
                 if ((b->nr.mcc == cl->beacon[j].nr.mcc) && (b->nr.mnc == cl->beacon[j].nr.mnc) &&
                     (b->nr.nci == cl->beacon[j].nr.nci)) {
-                    if (b->nr.mcc == SKY_UNKNOWN_ID2) { /* NMR */
+                    if (b->nr.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                         if ((b->nr.pci == cl->beacon[j].nr.pci) &&
                             (b->nr.nrarfcn == cl->beacon[j].nr.nrarfcn))
                             ret = true;
