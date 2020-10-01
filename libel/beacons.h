@@ -68,7 +68,7 @@ struct gsm {
     uint32_t age;
     uint16_t mcc; // id1
     uint16_t mnc; // id2
-    uint16_t lac; // id3
+    int32_t lac; // id3
     int16_t rssi; // -255 unkonwn - map it to - 128
 };
 
@@ -78,7 +78,7 @@ struct cdma {
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age;
     uint16_t sid; // id2
-    uint16_t nid; // id3
+    int32_t nid; // id3
     int64_t bsid; // id4
     int16_t rssi;
 };
@@ -86,7 +86,7 @@ struct cdma {
 struct umts {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
-    uint16_t lac; // id3
+    int32_t lac; // id3
     int64_t ucid; // id4
     uint16_t mcc; // id1
     uint16_t mnc; // id2
@@ -103,7 +103,7 @@ struct lte {
     int64_t e_cellid; // id4
     uint16_t mcc; // id1
     uint16_t mnc; // id2
-    uint16_t tac; // id3
+    int32_t tac; // id3
     int16_t pci; // id5
     int32_t earfcn; // id6
     int16_t rssi;
@@ -127,7 +127,7 @@ struct nbiot {
     uint16_t mcc; // id1
     uint16_t mnc; // id2
     int64_t e_cellid; // id4
-    uint16_t tac; // id3
+    int32_t tac; // id3
     int16_t ncid; // id5
     int32_t earfcn; // id6
     int16_t rssi;
@@ -140,7 +140,7 @@ struct nr {
     uint16_t mcc; // id1
     uint16_t mnc; // id2
     int64_t nci; // id4
-    uint16_t tac; // id3
+    int32_t tac; // id3
     uint16_t pci; // id5
     int32_t nrarfcn; // id6
     int16_t rssi;

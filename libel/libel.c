@@ -351,14 +351,14 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
+Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
     int64_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp,
     int16_t rsrp, bool is_connected)
 {
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "e-cellid: %lld, mcc: %u, mnc: %u, tac: %u, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
+        "e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
         e_cellid, mcc, mnc, tac, pci, earfcn, rsrp, is_connected ? "true" : "false",
         (int)(ctx->header.time - timestamp))
 
@@ -405,6 +405,10 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
     b.lte.earfcn = earfcn;
     b.lte.rssi = rsrp;
 
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+        "e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
+        e_cellid, mcc, mnc, tac, pci, earfcn, rsrp, is_connected ? "true" : "false",
+        (int)(ctx->header.time - timestamp))
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
@@ -440,13 +444,13 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_e
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
+Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ci, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rssi, bool is_connected)
 {
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %u, ci: %lld, mcc: %u, mnc: %u, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc,
+        "lac: %d, ci: %lld, mcc: %u, mnc: %u, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc,
         rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
@@ -505,14 +509,14 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
+Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp,
     int16_t rscp, bool is_connected)
 {
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %u, ucid: %lld, mcc: %u, mnc: %u, psc: %d, uarfcn: %d, rscp: %d, connect %s, age %d",
+        "lac: %d, ucid: %lld, mcc: %u, mnc: %u, psc: %d, uarfcn: %d, rscp: %d, connect %s, age %d",
         lac, ucid, mcc, mnc, psc, uarfcn, rscp, is_connected ? "true" : "false",
         (int)(ctx->header.time - timestamp))
 
@@ -594,15 +598,15 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint32_t sid,
-    uint16_t nid, int64_t bsid, time_t timestamp, int16_t rssi, bool is_connected)
+    int32_t nid, int64_t bsid, time_t timestamp, int16_t rssi, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %u, nid: %u, bsid: %lld, rssi: %d, connect %s, age %d",
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %u, nid: %d, bsid: %lld, rssi: %d, connect %s, age %d",
         sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     /* Range check parameters */
-    if (sid > 32767 || bsid < 0 || bsid > 65535) /* nid cannot be out of range */
+    if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!sky_open_flag)
@@ -649,13 +653,13 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, int64_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,
+    uint16_t mnc, int64_t e_cellid, int32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,
     int16_t nrsrp, bool is_connected)
 {
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %u, mnc: %u, e_cellid: %lld, tac: %u, nrsrp: %d, connect %s, age %d", mcc, mnc,
+        "mcc: %u, mnc: %u, e_cellid: %lld, tac: %d, nrsrp: %d, connect %s, age %d", mcc, mnc,
         e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
@@ -740,7 +744,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
  */
 
 Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, int64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
+    uint16_t mnc, int64_t nci, int32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
     int16_t csi_rsrp, bool is_connected)
 {
     Beacon_t b;
