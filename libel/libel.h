@@ -28,6 +28,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
 #include <time.h>
 #include "aes.h"
 #include "crc32.h"
@@ -51,7 +52,8 @@
 /*! \brief API return value
  */
 typedef enum {
-    SKY_SUCCESS = 0,
+    SKY_SUCCESS = 1,
+    SKY_FAILURE = 0,
     SKY_ERROR = -1,
 } Sky_status_t;
 
@@ -151,6 +153,7 @@ typedef void Sky_ctx_t;
 #include "beacons.h"
 #include "workspace.h"
 #include "utilities.h"
+#include "plugin.h"
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,

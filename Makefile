@@ -14,15 +14,16 @@ GIT_VERSION := $(shell git describe --dirty --always --tags)
 BUILD_DIR = build
 BIN_DIR = bin
 API_DIR = libel
+PLUGIN_DIR = plugins
 SKY_PROTO_DIR = $(API_DIR)/protocol
 NANO_PB_DIR = .submodules/nanopb
 AES_DIR = .submodules/tiny-AES128-C
 
-INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR}
+INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLUGIN_DIR}
 
-VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}
+VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}
 
-LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c
+LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c plugin.c premium_ap_plugin.c
 PROTO_SRCS = ${SKY_PROTO_DIR}/proto.c ${SKY_PROTO_DIR}/el.pb.c p${NANO_PB_DIR}/pb_common.c ${NANO_PB_DIR}/pb_encode.c ${NANO_PB_DIR}/pb_decode.c
 TINYAES_SRCS = ${AES_DIR}/aes.c
 

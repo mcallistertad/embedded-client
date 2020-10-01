@@ -86,5 +86,7 @@ typedef struct sky_ctx {
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t save_to; /* cacheline with best match for saving */
     Sky_cache_t *cache;
+    Sky_status_t (**plugin)(struct sky_ctx *ctx, ...);
 } Sky_ctx_t;
+
 #endif
