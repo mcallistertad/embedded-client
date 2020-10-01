@@ -1097,16 +1097,22 @@ char *sky_perror(Sky_errno_t sky_errno)
         str = "At least one beacon must be added";
         break;
     case SKY_ERROR_ADD_CACHE:
-        str = "failed to add entry in cache";
+        str = "Failed to add entry in cache";
         break;
     case SKY_ERROR_GET_CACHE:
-        str = "failed to get entry from cache";
+        str = "Failed to get entry from cache";
         break;
     case SKY_ERROR_LOCATION_UNKNOWN:
-        str = "server failed to determine location";
+        str = "Server failed to determine location";
         break;
     case SKY_ERROR_SERVER_ERROR:
-        str = "server responded with an error";
+        str = "Server responded with an error";
+        break;
+    case SKY_ERROR_NO_PLUGIN:
+        str = "At least one plugin must be registered";
+        break;
+    case SKY_ERROR_INTERNAL:
+        str = "An unexpected error occured";
         break;
     default:
         str = "Unknown error code";
