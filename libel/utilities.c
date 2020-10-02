@@ -74,11 +74,11 @@ int validate_workspace(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
         return false;
     }
-    if (ctx->len > TOTAL_BEACONS) {
+    if (ctx->len > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
         return false;
     }
-    if (ctx->connected > TOTAL_BEACONS) {
+    if (ctx->connected > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad connected value");
         return false;
     }

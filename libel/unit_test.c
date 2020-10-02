@@ -35,6 +35,9 @@
 
 Sky_cache_t nv_space;
 
+extern Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_MAX];
+extern Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_cell_plugin)[SKY_OP_MAX];
+
 /* Example assumes a scan with 100 AP beacons
  */
 #define SCAN_LIST_SIZE 100
@@ -246,7 +249,6 @@ Sky_status_t nv_cache_save(void *p)
 #define SCAN_CELL (TOTAL_BEACONS)
 int main(int ac, char **av)
 {
-    char buf[30];
     int i;
     // Sky_errno_t sky_errno = SKY_ERROR_MAX;
     Sky_errno_t sky_errno;
@@ -289,13 +291,10 @@ int main(int ac, char **av)
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
-    sky_plugin_init(ctx, &sky_errno, &SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_NEXT]);
-    memset(buf, 0, sizeof(buf));
-    sky_plugin_call(ctx, &sky_errno, SKY_OP_NAME, buf, sizeof(buf));
-    printf("Registered pligin: %s\n", buf);
 
-    printf("ctx: magic:%08X size:%08X crc:%08X\n", ctx->header.magic, ctx->header.size,
-        ctx->header.crc32);
+    /* Register the plugins to be used */
+    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(premium_ap_plugin));
+    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(premium_cell_plugin));
 
     for (i = 0; i < scan_ap; i++) {
         b[i].h.magic = BEACON_MAGIC;

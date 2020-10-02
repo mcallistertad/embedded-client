@@ -571,12 +571,9 @@ static Sky_status_t beacon_equal(Sky_ctx_t *ctx, ...)
         return SKY_ERROR;
     }
 
-    /* Cells and APs can be compared but others are ordered by type */
-    if (a->h.type != b->h.type && (a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
-                                      a->h.type == SKY_BEACON_BLE || b->h.type == SKY_BEACON_BLE))
-        return -1;
-    else if (a->h.type != b->h.type)
-        return SKY_FAILURE;
+    /* Two APs can be compared but others are ordered by type */
+    if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
+        return SKY_ERROR;
 
     /* test two cells or two APs for equivalence */
     switch (a->h.type) {
@@ -588,53 +585,8 @@ static Sky_status_t beacon_equal(Sky_ctx_t *ctx, ...)
         if (ap_beacon_in_vg(ctx, a, b, prop) > 0) // copy properies from b if equivalent
             return SKY_SUCCESS;
         break;
-    case SKY_BEACON_BLE:
-        if ((memcmp(a->ble.mac, b->ble.mac, MAC_SIZE) == 0) && (a->ble.major == b->ble.major) &&
-            (a->ble.minor == b->ble.minor) && (memcmp(a->ble.uuid, b->ble.uuid, 16) == 0)) {
-            return SKY_SUCCESS;
-        }
-        break;
-    case SKY_BEACON_CDMA:
-        if ((a->cell.id2 == b->cell.id2) && (a->cell.id3 == b->cell.id3) &&
-            (a->cell.id4 == b->cell.id4)) {
-            if (!(a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
-                    a->cell.id4 == SKY_UNKNOWN_ID4))
-                return SKY_SUCCESS;
-        }
-        break;
-    case SKY_BEACON_GSM:
-        if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
-            a->cell.id3 == b->cell.id3 && (a->cell.id4 == b->cell.id4)) {
-            if (!((a->cell.id1 == SKY_UNKNOWN_ID1 || a->cell.id2 == SKY_UNKNOWN_ID2 ||
-                    a->cell.id3 == SKY_UNKNOWN_ID3 || a->cell.id4 == SKY_UNKNOWN_ID4)))
-                return SKY_SUCCESS;
-        }
-        break;
-    case SKY_BEACON_LTE:
-    case SKY_BEACON_NBIOT:
-    case SKY_BEACON_UMTS:
-    case SKY_BEACON_NR:
-#if VERBOSE_DEBUG
-        dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
-#endif
-        if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
-            (a->cell.id4 == b->cell.id4)) {
-            if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
-                (a->cell.id4 == SKY_UNKNOWN_ID4)) {
-#if VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
-#endif
-                /* NMR */
-                if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
-                    return SKY_SUCCESS;
-            } else
-                return SKY_SUCCESS;
-        }
-        break;
     default:
-        return SKY_ERROR;
+        break;
     }
     return SKY_FAILURE;
 }
@@ -1100,39 +1052,32 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, ...)
 /*! \brief return name of plugin
  *
  *  @param ctx Skyhook request context
- *  @param buf the buffer where the plugin name is to be stored
- *  @param len the buffer length
+ *  @param s the location where the plugin name is to be stored
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
 static Sky_status_t plugin_name(Sky_ctx_t *ctx, ...)
 {
     va_list argp;
-    char *buf;
-    int len;
-    char *p = __FILE__;
-    int i;
+    char **s;
+    char *r, *p = __FILE__;
 
     va_start(argp, ctx);
-    buf = va_arg(argp, char *);
-    len = va_arg(argp, int);
+    s = va_arg(argp, char **);
 
-    for (i = 0; i < len; i++)
-        if (p[i] != '.' && p[i] != '\0')
-            buf[i] = p[i];
-        else
-            break;
+    if (s == NULL)
+        return SKY_ERROR;
+
+    r = strrchr(p, '/');
+    if (r == NULL)
+        *s = p;
+    else
+        *s = r;
     return SKY_SUCCESS;
 }
 
 static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx, ...)
 {
-    va_list argp;
-    Sky_errno_t *sky_errno;
-
-    va_start(argp, ctx);
-    sky_errno = va_arg(argp, Sky_errno_t *);
-
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (compress_virtual_ap(ctx) == SKY_ERROR) {
@@ -1141,7 +1086,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx, ...)
 #endif
         if (select_ap_by_rssi(ctx) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter AP");
-            return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+            return SKY_ERROR;
         }
     }
     return SKY_SUCCESS;
@@ -1157,14 +1102,3 @@ Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_MAX] = {
     [SKY_OP_SCORE_CACHELINE] = beacon_score, /* Score the match between workspace and a cache line */
     [SKY_OP_ADD_TO_CACHE] = beacon_to_cache /* copy workspace beacons to a cacheline */
 };
-
-int debug_plugin(Sky_ctx_t *ctx)
-{
-    printf("%s : Table:0x%08x ctx:0x%08x\n", __FILE__, (int)SKY_PLUGIN_TABLE(premium_ap_plugin),
-        (int)ctx->plugin);
-    printf("%s : plugin_name:0x%08x\n", __FILE__, &plugin_name);
-    printf(
-        "Name : %d : 0x%08x\n", SKY_OP_NAME, (int)SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_NAME]);
-    printf("Name : %d : 0x%08x\n", SKY_OP_NAME, (int)ctx->plugin[SKY_OP_NAME]);
-    return 0;
-}

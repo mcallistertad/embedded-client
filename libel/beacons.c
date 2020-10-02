@@ -42,11 +42,6 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
 static bool beacon_in_cache(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
 
-static Sky_status_t select_cell(Sky_ctx_t *ctx)
-{
-    return SKY_ERROR;
-}
-
 /*! \brief shuffle list to remove the beacon at index
  *
  *  @param ctx Skyhook request context
@@ -207,7 +202,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
             w->ap.property.used = false;
         }
     } else {
-        if (select_cell(ctx) == SKY_ERROR) {
+        if (sky_plugin_call(ctx, sky_errno, SKY_OP_REMOVE_WORST, NULL) == SKY_ERROR) {
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter cell");
             return sky_return(sky_errno, SKY_ERROR_INTERNAL);
         }
@@ -298,7 +293,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     }
 
     /* if beacons can't be compared, simply order by type */
-    if ((ret = sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, new, wb, NULL)) == -1) {
+    if ((ret = sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, new, wb, NULL)) == SKY_ERROR) {
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
         /* if the types are different, there is no match */
@@ -312,7 +307,8 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
             better < 0 ? "B is better" : "A is better");
 #endif
         return false;
-    } else if (ret == 1) // if beacons are equivalent, return true
+    }
+    if (ret == SKY_SUCCESS) // if beacons are equivalent, return true
         ret = true;
 
     /* if the beacons can be compared and are not equivalent, determine which is better */

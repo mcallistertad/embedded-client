@@ -28,8 +28,10 @@
 
 #define SKY_PLUGIN_TABLE(t) sky_plugin_op_##t
 
+/* Each plugin has table of operation functions */
+/* Each registered plugin is added to the end of a linked list of tables */
 typedef enum sky_operations {
-    SKY_OP_NEXT = 0,
+    SKY_OP_NEXT = 0, /* must be 0 - link to next table */
     SKY_OP_NAME,
     SKY_OP_EQUAL,
     SKY_OP_REMOVE_WORST,
@@ -42,8 +44,6 @@ typedef Sky_status_t (*Sky_plugin_op_t)(Sky_ctx_t *ctx, ...);
 
 Sky_status_t sky_plugin_init(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_plugin_op_t *table);
 Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operation_t n, ...);
-
-extern Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_MAX];
 
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
