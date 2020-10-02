@@ -287,7 +287,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * tac          lte tracking area code identifier (1-65535),0 if unknown
+ * tac          lte tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
  * e_cellid     lte beacon identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
