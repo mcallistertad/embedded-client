@@ -65,7 +65,7 @@ generate:
 	make -C ${SKY_PROTO_DIR}
 
 ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  workspace.h
-	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
+	$(CC) -c $(CFLAGS) ${INCLUDES} -DPLUGIN=$(notdir $(@:%.o=%_table)) -o $@ $<
 
 clean:
 	rm -rf ${BIN_DIR} ${BUILD_DIR}

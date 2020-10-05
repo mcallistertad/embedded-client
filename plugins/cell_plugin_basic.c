@@ -340,13 +340,14 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx, ...)
     return remove_beacon(ctx, i); /* last cell is least desirable */
 }
 
-Sky_plugin_op_t SKY_PLUGIN_TABLE(cell_plugin_basic)[SKY_OP_MAX] = {
+Sky_plugin_op_t PLUGIN[SKY_OP_MAX] = {
     [SKY_OP_NEXT] = NULL, /* Pointer to next plugin table */
     [SKY_OP_NAME] = plugin_name,
     /* Entry points */
     [SKY_OP_EQUAL] = beacon_equal, /* Conpare two beacons for duplicate and which is better */
     [SKY_OP_REMOVE_WORST] =
         beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
-    [SKY_OP_SCORE_CACHELINE] = beacon_score, /* Score the match between workspace and a cache line */
+    [SKY_OP_SCORE_CACHELINE] =
+        beacon_score, /* Score the match between workspace and a cache line */
     [SKY_OP_ADD_TO_CACHE] = NULL /* copy workspace beacons to a cacheline */
 };

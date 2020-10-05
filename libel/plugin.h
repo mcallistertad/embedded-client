@@ -26,8 +26,6 @@
 
 #include <stdarg.h>
 
-#define SKY_PLUGIN_TABLE(t) sky_plugin_op_##t
-
 /* Each plugin has table of operation functions */
 /* Each registered plugin is added to the end of a linked list of tables */
 typedef enum sky_operations {
