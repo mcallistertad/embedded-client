@@ -320,13 +320,6 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         if (get_num_gnss(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
         break;
-    case Rq_gsm_cells_tag:
-    case Rq_umts_cells_tag:
-    case Rq_lte_cells_tag:
-    case Rq_cdma_cells_tag:
-    case Rq_nbiot_cells_tag:
-        /* obsolete */
-        break;
 
     default:
         printf("Rq_callback() ERROR: unknown tag. %d\n", field->tag);
@@ -343,8 +336,6 @@ int32_t get_maximum_response_size(void)
                ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE + AES_BLOCKLEN - 1) /
                    AES_BLOCKLEN);
 }
-
-time_t mytime(time_t *t);
 
 int32_t serialize_request(
     Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
@@ -616,14 +607,6 @@ static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
             CONFIG(c, max_ap_beacons) = rs->config.max_ap_beacons;
         }
     }
-    /* Obsolete
-    if (rs->config.cache_match_threshold != 0 &&
-        rs->config.cache_match_threshold != CONFIG(c, cache_match_threshold)) {
-        if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold <= 100) {
-            CONFIG(c, cache_match_threshold) = rs->config.cache_match_threshold;
-        }
-    }
-    */
     if (rs->config.cache_match_all_threshold != 0 &&
         rs->config.cache_match_all_threshold != CONFIG(c, cache_match_all_threshold)) {
         if (rs->config.cache_match_all_threshold > 0 &&

@@ -1155,41 +1155,41 @@ char *sky_pserver_status(Sky_loc_status_t status)
  */
 char *sky_pbeacon(Beacon_t *b)
 {
-    static char str[11];
-    str[0] = '\0';
-
-    switch (b->h.type) {
-    case SKY_BEACON_AP:
-        strcat(str, "Wi-Fi");
-        break;
-    case SKY_BEACON_BLE:
-        strcat(str, "BLE");
-        break;
-    case SKY_BEACON_CDMA:
-        strcat(str, "CDMA");
-        break;
-    case SKY_BEACON_GSM:
-        strcat(str, "GSM");
-        break;
-    case SKY_BEACON_LTE:
-        strcat(str, "LTE");
-        break;
-    case SKY_BEACON_NBIOT:
-        strcat(str, "NB-IoT");
-        break;
-    case SKY_BEACON_UMTS:
-        strcat(str, "UMTS");
-        break;
-    case SKY_BEACON_NR:
-        strcat(str, "NR");
-        break;
-    default:
-        strcat(str, "???");
-        break;
+    if (is_cell_type(b) && b->cell.id2 == SKY_UNKNOWN_ID2) {
+        switch (b->h.type) {
+        case SKY_BEACON_LTE:
+            return "LTE-NMR";
+        case SKY_BEACON_NBIOT:
+            return "NB-IoT-NMR";
+        case SKY_BEACON_UMTS:
+            return "UMTS-NMR";
+        case SKY_BEACON_NR:
+            return "NR-NMR";
+        default:
+            return "\?\?\?-NMR";
+        }
+    } else {
+        switch (b->h.type) {
+        case SKY_BEACON_AP:
+            return "Wi-Fi-NMR";
+        case SKY_BEACON_BLE:
+            return "BLE-NMR";
+        case SKY_BEACON_CDMA:
+            return "CDMA-NMR";
+        case SKY_BEACON_GSM:
+            return "GSM-NMR";
+        case SKY_BEACON_LTE:
+            return "LTE-NMR";
+        case SKY_BEACON_NBIOT:
+            return "NB-IoT-NMR";
+        case SKY_BEACON_UMTS:
+            return "UMTS-NMR";
+        case SKY_BEACON_NR:
+            return "NR-NMR";
+        default:
+            return "\?\?\?";
+        }
     }
-    if (is_cell_type(b) && b->cell.id2 == SKY_UNKNOWN_ID2)
-        strcat(str, "-NMR");
-    return str;
 }
 
 /*! \brief clean up library resourses

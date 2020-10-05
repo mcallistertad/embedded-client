@@ -1129,7 +1129,7 @@ int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @param ctx workspace buffer
  *
- *  @return number of bytes of compressed Virtual AP groups
+ *  @return number of Virtual AP groups
  */
 int32_t get_num_vaps(Sky_ctx_t *ctx)
 {
