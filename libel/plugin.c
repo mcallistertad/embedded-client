@@ -130,7 +130,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         char **pname = va_arg(argp, char **);
 
         while (p) {
-            log_plugin(ctx, p, n, "plugin calling operation...");
+            log_plugin(ctx, p, n, "plugin name...");
             ret = (*p[n])(ctx, pname);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
@@ -149,7 +149,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         int *diff = va_arg(argp, int *);
 
         while (p) {
-            log_plugin(ctx, p, n, "plugin calling operation...");
+            log_plugin(ctx, p, n, "plugin equal...");
             ret = (*p[n])(ctx, a, b, diff);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
@@ -162,11 +162,26 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         }
         return ret;
     }
+    case SKY_OP_SCORE_CACHELINE: {
+        int *idx = va_arg(argp, int *);
+
+        while (p) {
+            log_plugin(ctx, p, n, "plugin score...");
+            ret = (*p[n])(ctx, idx);
+            if (ret == SKY_SUCCESS) {
+                log_plugin(ctx, p, n, "Success");
+                break;
+            } else if (ret == SKY_FAILURE) {
+                log_plugin(ctx, p, n, "Failure");
+                break;
+            }
+            p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
+        }
+    }
     case SKY_OP_REMOVE_WORST:
-    case SKY_OP_SCORE_CACHELINE:
     case SKY_OP_ADD_TO_CACHE: {
         while (p) {
-            log_plugin(ctx, p, n, "plugin calling operation...");
+            log_plugin(ctx, p, n, "plugin remove_worst/add to cache...");
             ret = (*p[n])(ctx);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");

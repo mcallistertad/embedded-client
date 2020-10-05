@@ -485,6 +485,47 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     return SKY_SUCCESS;
 }
 
+/*! \brief test cell in workspace has changed from that in cache
+ *
+ *  false if either workspace or cache has no cells
+ *  false if serving cell matches cache
+ *  true otherwise
+ *
+ *  @param ctx Skyhook request context
+ *  @param cl the cacheline to count in
+ *
+ *  @return true or false
+ */
+int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+{
+    int j;
+    if (!ctx || !cl) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+#endif
+        return true;
+    }
+
+    if ((NUM_BEACONS(ctx) - NUM_APS(ctx)) == 0 || (NUM_BEACONS(cl) - NUM_APS(cl)) == 0) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
+#endif
+        return false;
+    }
+
+    /* for each cell in workspace, compare with cacheline */
+    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
+        if (ctx->beacon[j].h.connected && beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
+#ifdef VERBOSE_DEBUG
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "serving cells match");
+#endif
+            return false;
+        }
+    }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->cache->cacheline);
+    return true;
+}
+
 /*! \brief get location from cache
  *
  *  @param ctx Skyhook request context
@@ -494,6 +535,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 int get_from_cache(Sky_ctx_t *ctx)
 {
     uint32_t now = (*ctx->gettime)(NULL);
+    int idx;
 
     if (CACHE_SIZE < 1) {
         return SKY_ERROR;
@@ -504,5 +546,5 @@ int get_from_cache(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         return SKY_ERROR;
     }
-    return sky_plugin_call(ctx, NULL, SKY_OP_SCORE_CACHELINE);
+    return sky_plugin_call(ctx, NULL, SKY_OP_SCORE_CACHELINE, &idx) == SKY_SUCCESS ? idx : -1;
 }

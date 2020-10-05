@@ -35,8 +35,10 @@
 
 Sky_cache_t nv_space;
 
-extern Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_ap_plugin)[SKY_OP_MAX];
-extern Sky_plugin_op_t SKY_PLUGIN_TABLE(premium_cell_plugin)[SKY_OP_MAX];
+// extern Sky_plugin_op_t SKY_PLUGIN_TABLE(ap_plugin_vap_used)[SKY_OP_MAX];
+// extern Sky_plugin_op_t SKY_PLUGIN_TABLE(cell_plugin_best)[SKY_OP_MAX];
+extern Sky_plugin_op_t SKY_PLUGIN_TABLE(ap_plugin_basic)[SKY_OP_MAX];
+extern Sky_plugin_op_t SKY_PLUGIN_TABLE(cell_plugin_basic)[SKY_OP_MAX];
 
 /* Example assumes a scan with 100 AP beacons
  */
@@ -293,8 +295,10 @@ int main(int ac, char **av)
     }
 
     /* Register the plugins to be used */
-    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(premium_ap_plugin));
-    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(premium_cell_plugin));
+    // sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(ap_plugin_vap_used));
+    // sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(cell_plugin_best));
+    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(ap_plugin_basic));
+    sky_plugin_init(ctx, &sky_errno, SKY_PLUGIN_TABLE(cell_plugin_basic));
 
     for (i = 0; i < scan_ap; i++) {
         b[i].h.magic = BEACON_MAGIC;
