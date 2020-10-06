@@ -1,7 +1,7 @@
 /*! \file sample_client/config.c
  *  \brief Skyhook Embedded Library
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to

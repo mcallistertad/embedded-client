@@ -23,7 +23,7 @@
 #ifndef ELG_PB_H
 #define ELG_PB_H
 
-#define SKY_LIBEL
+// #define SKY_LIBEL
 
 #include "libel.h"
 #include "el.pb.h"

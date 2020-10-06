@@ -1,7 +1,7 @@
 /*! \file libel/utilities.h
  *  \brief Skyhook Embedded Library workspace structures
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -26,20 +26,31 @@
 #define SKY_UTILITIES_H
 
 #if SKY_DEBUG
-#define LOGFMT(...) logfmt(__FILE__, __FUNCTION__, __VA_ARGS__);
+#define DUMP_WORKSPACE(...) dump_workspace(__VA_ARGS__, __FILE__, __FUNCTION__)
+#define DUMP_CACHE(...) dump_cache(__VA_ARGS__, __FILE__, __FUNCTION__)
+#define LOGFMT(...) logfmt(__FILE__, __FUNCTION__, __VA_ARGS__)
 #define LOG_BUFFER(c, l, b, s) log_buffer(__FILE__, __FUNCTION__, c, l, b, s);
 #else
-#define LOGFMT(...)
+#define DUMP_WORKSPACE(...)                                                                        \
+    do {                                                                                           \
+    } while (0)
+#define DUMP_CACHE(...)                                                                            \
+    do {                                                                                           \
+    } while (0)
+#define LOGFMT(...)                                                                                \
+    do {                                                                                           \
+    } while (0)
 #define LOG_BUFFER(c, l, b, s)
 #endif
+
 Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);
 Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
 int get_from_cache(Sky_ctx_t *ctx);
-int find_best_match(Sky_ctx_t *ctx, bool put);
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected);
+int find_best_match(Sky_ctx_t *ctx);
+Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
 #if SKY_DEBUG
 const char *sky_basename(const char *path);
 int logfmt(
@@ -47,8 +58,11 @@ int logfmt(
 int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize);
 #endif
-void dump_workspace(Sky_ctx_t *ctx);
-void dump_cache(Sky_ctx_t *ctx);
+void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
+void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const char *func);
+void dump_ap(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
+void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func);
+void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func);
 void config_defaults(Sky_cache_t *c);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int32_t get_num_cells(Sky_ctx_t *ctx);
@@ -88,6 +102,10 @@ int64_t get_cell_id6(Beacon_t *cell);
 bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell);
 int64_t get_cell_rssi(Beacon_t *cell);
 int64_t get_cell_age(Beacon_t *cell);
+
+int32_t get_num_vaps(Sky_ctx_t *ctx);
+uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx);
+uint8_t *select_vap(Sky_ctx_t *ctx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif

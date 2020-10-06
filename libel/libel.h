@@ -1,7 +1,7 @@
 /*! \file libel/libel.h
  *  \brief Top level header file for Skyhook Embedded Library
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -40,6 +40,13 @@
 #define TIMESTAMP_2019_03_01 1551398400
 
 #define SECONDS_IN_HOUR (60 * 60)
+
+#define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
+#define SKY_UNKNOWN_ID3 ((int32_t)-1)
+#define SKY_UNKNOWN_ID4 ((int64_t)-1)
+#define SKY_UNKNOWN_ID5 ((int16_t)-1)
+#define SKY_UNKNOWN_ID6 ((int32_t)-1)
 
 /*! \brief API return value
  */
@@ -107,6 +114,7 @@ typedef enum {
     SKY_ERROR_GET_CACHE,
     SKY_ERROR_LOCATION_UNKNOWN,
     SKY_ERROR_SERVER_ERROR,
+    SKY_ERROR_INTERNAL,
     SKY_ERROR_MAX
 } Sky_errno_t;
 
@@ -158,7 +166,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t mac[MAC_SIZE],
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);
 
-Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t tac,
+Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
     int64_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp,
     int16_t rsrp, bool is_connected);
 
@@ -176,7 +184,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_
     int16_t uarfcn, time_t timestamp, int16_t rscp);
 
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint32_t sid,
-    uint16_t nid, int64_t bsid, time_t timestamp, int16_t rssi, bool is_connected);
+    int32_t nid, int64_t bsid, time_t timestamp, int16_t rssi, bool is_connected);
 
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
     uint16_t mnc, int64_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,

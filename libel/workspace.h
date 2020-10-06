@@ -37,6 +37,7 @@ typedef struct sky_cacheline {
     int16_t len; /* number of beacons */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
     uint32_t time;
+    int16_t connected; /* which beacon is conneted (-1 == none) */
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
@@ -52,6 +53,10 @@ typedef struct sky_config_pad {
     uint32_t cache_age_threshold;
     uint32_t cache_beacon_threshold;
     uint32_t cache_neg_rssi_threshold;
+    uint32_t cache_match_all_threshold;
+    uint32_t cache_match_used_threshold;
+    uint32_t max_vap_per_ap;
+    uint32_t max_vap_per_rq;
     /* add more configuration params here */
 } Sky_config_t;
 
@@ -75,11 +80,11 @@ typedef struct sky_ctx {
     Sky_timefn_t gettime;
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
-    bool in_cache[TOTAL_BEACONS]; /* beacon in cache */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
     int16_t connected; /* which beacon is conneted (-1 == none) */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
+    int16_t save_to; /* cacheline with best match for saving */
     Sky_cache_t *cache;
 } Sky_ctx_t;
 #endif
