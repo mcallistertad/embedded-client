@@ -273,8 +273,8 @@ Adds the Wi-Fi access point information to the request context. Returns SKY_ERRO
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
-    uint16_t tac,
-    uint32_t e_cellid,
+    int32_t tac,
+    int64_t e_cellid,
     uint16_t mcc,
     uint16_t mnc,
     int16_t pci,
@@ -287,7 +287,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 /* Parameters
  * ctx          Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * tac          lte tracking area code identifier (1-65535),0 if unknown
+ * tac          lte tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
  * e_cellid     lte beacon identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
@@ -332,8 +332,8 @@ Adds the lte or lte-CatM1 neighbor cell information to the request context. Retu
 ```c
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
     Sky_errno_t *sky_errno,
-    uint16_t lac,
-    uint32_t ci,
+    int32_t lac,
+    int64_t ci,
     uint16_t mcc,
     uint16_t mnc,
     time_t timestamp,
@@ -362,8 +362,8 @@ Adds the cell gsm information to the request context. Returns SKY_ERROR for fail
 ```c
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
-    uint16_t lac,
-    uint32_t ucid,
+    int32_t lac,
+    int64_t ucid,
     uint16_t mcc,
     uint16_t mnc,
     int16_t psc,
@@ -421,8 +421,8 @@ Adds the umts neighbor cell information to the request context. Returns SKY_ERRO
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     uint32_t sid,
-    int32_t nid,
-    int32_t bsid,
+    uint32_t nid,
+    uint64_t bsid,
     time_t timestamp,
     int16_t rssi,
     bool is_connected
@@ -450,8 +450,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     uint16_t mcc,
     uint16_t mnc,
-    uint32_t e_cellid,
-    uint32_t tac,
+    int64_t e_cellid,
+    int32_t tac,
     int16_t ncid,
     int32_t earfcn,
     time_t timestamp,
@@ -509,7 +509,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
     uint16_t mcc,
     uint16_t mnc,
     int64_t nci,
-    uint32_t tac,
+    int32_t tac,
     int16_t pci,
     int32_t nrarfcn,
     time_t timestamp,
@@ -795,3 +795,8 @@ License
 -------
 
 This project is licensed under the MIT license. See LICENSE.txt.
++Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
++Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
++Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
+ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint32_t sid,
+
