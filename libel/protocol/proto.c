@@ -46,7 +46,6 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
 
 typedef uint8_t *(*DataGetterb)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
-typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
