@@ -242,7 +242,7 @@ int main(int ac, char **av)
     void *pstate;
     uint32_t response_size;
     Sky_beacon_type_t t;
-    Beacon_t b[25];
+    Beacon_t b[35];
     Sky_location_t loc;
 
     if (sky_open(&sky_errno, mac /* device_id */, MAC_SIZE, 1, aes_key, nv_cache(),
@@ -273,7 +273,7 @@ int main(int ac, char **av)
     printf("ctx: magic:%08X size:%08X crc:%08X\n", ctx->header.magic, ctx->header.size,
         ctx->header.crc32);
 
-    for (i = 0; i < 25; i++) {
+    for (i = 0; i < sizeof(b) / sizeof(Beacon_t); i++) {
         b[i].ap.magic = BEACON_MAGIC;
         b[i].ap.type = SKY_BEACON_AP;
         set_mac(b[i].ap.mac);
@@ -281,7 +281,7 @@ int main(int ac, char **av)
         b[i].ap.rssi = -rand() % 128;
     }
 
-    for (i = 0; i < 25; i++) {
+    for (i = 0; i < sizeof(b) / sizeof(Beacon_t); i++) {
         if (sky_add_ap_beacon(
                 ctx, &sky_errno, b[i].ap.mac, timestamp - (rand() % 3), b[i].ap.rssi, ch, 1)) {
             printf("sky_add_ap_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
@@ -292,14 +292,43 @@ int main(int ac, char **av)
         }
     }
 
+    for (i = 0; i < 5; i++) {
+        b[i].nbiot.magic = BEACON_MAGIC;
+        b[i].nbiot.type = SKY_BEACON_NBIOT;
+        b[i].nbiot.ncid = rand() % 504;
+        b[i].nbiot.earfcn = rand() % 45590;
+        b[i].nbiot.rssi = -(44 + (rand() % 113));
+    }
+
+    for (i = 0; i < 5; i++) {
+        if (sky_add_cell_nb_iot_neighbor_beacon(ctx, &sky_errno, b[i].nbiot.ncid, b[i].nbiot.earfcn,
+                timestamp - 10, b[i].nbiot.rssi)) {
+            printf(
+                "sky_add_nbiot_neighbor_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
+        } else {
+            printf("Added NMR Test Beacon % 2d: Type: %d, ncid: %d, earfcn: %d, rssi: %d\n", i,
+                b[i].nbiot.type, b[i].nbiot.ncid, b[i].nbiot.earfcn, b[i].nbiot.rssi);
+        }
+    }
+    for (i = 0; i < 5; i++) {
+        if (sky_add_cell_nb_iot_neighbor_beacon(ctx, &sky_errno, b[i].nbiot.ncid, b[i].nbiot.earfcn,
+                timestamp - 5, b[i].nbiot.rssi)) {
+            printf(
+                "sky_add_nbiot_neighbor_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
+        } else {
+            printf("Added NMR Test Beacon % 2d: Type: %d, ncid: %d, earfcn: %d, rssi: %d\n", i,
+                b[i].nbiot.type, b[i].nbiot.ncid, b[i].nbiot.earfcn, b[i].nbiot.rssi);
+        }
+    }
+
     for (i = 0; i < 3; i++) {
         b[i].nbiot.magic = BEACON_MAGIC;
         b[i].nbiot.type = SKY_BEACON_NBIOT;
-        b[i].nbiot.mcc = 200 + (rand() % 599);
-        b[i].nbiot.mnc = rand() % 999;
+        b[i].nbiot.mcc = 200 + (rand() % 600);
+        b[i].nbiot.mnc = rand() % 1000;
         b[i].nbiot.e_cellid = rand() % 268435456;
-        b[i].nbiot.tac = rand();
-        b[i].nbiot.rssi = -(44 + (rand() % 112));
+        b[i].nbiot.tac = rand() % 65536;
+        b[i].nbiot.rssi = -(44 + (rand() % 113));
     }
 
     for (i = 0; i < 3; i++) {
