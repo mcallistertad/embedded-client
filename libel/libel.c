@@ -384,9 +384,6 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
@@ -471,9 +468,6 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
@@ -541,9 +535,6 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
@@ -615,9 +606,6 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
 
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
-
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
@@ -671,7 +659,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 ||
+    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
         (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
         (e_cellid != SKY_UNKNOWN_ID4 && (e_cellid < 0 || e_cellid > 268435455)) ||
         (ncid != SKY_UNKNOWN_ID5 && (ncid < 0 || ncid > 503)) ||
@@ -683,9 +672,6 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
@@ -776,9 +762,6 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-        return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));

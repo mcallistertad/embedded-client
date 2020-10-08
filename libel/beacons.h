@@ -32,19 +32,22 @@
 
 #define MAC_SIZE 6
 
-/*! \brief Types of beacon
+#define is_cell_type(c)                                                                            \
+    ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
+
+/*! \brief Types of beacon in protity order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
     SKY_BEACON_BLE = 2,
-    SKY_BEACON_CDMA = 3,
-    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_CDMA,
-    SKY_BEACON_GSM = 4,
-    SKY_BEACON_LTE = 5,
+    SKY_BEACON_NR = 3,
+    SKY_BEACON_FIRST_CELL_TYPE = SKY_BEACON_NR,
+    SKY_BEACON_LTE = 4,
+    SKY_BEACON_UMTS = 5,
     SKY_BEACON_NBIOT = 6,
-    SKY_BEACON_UMTS = 7,
-    SKY_BEACON_NR = 8,
-    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_NR,
+    SKY_BEACON_CDMA = 7,
+    SKY_BEACON_GSM = 8,
+    SKY_BEACON_LAST_CELL_TYPE = SKY_BEACON_GSM,
     SKY_BEACON_MAX, /* add more before this */
 } Sky_beacon_type_t;
 

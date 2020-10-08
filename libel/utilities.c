@@ -62,11 +62,11 @@ int validate_workspace(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
         return false;
     }
-    if (ctx->len > TOTAL_BEACONS) {
+    if (ctx->len > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
         return false;
     }
-    if (ctx->connected > TOTAL_BEACONS) {
+    if (ctx->connected > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad connected value");
         return false;
     }
@@ -1806,6 +1806,34 @@ int64_t get_cell_age(Beacon_t *cell)
         return cell->nr.age;
     default:
         return 0;
+    }
+}
+
+/*! \brief Return true if cell is nmr
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return true or false
+ */
+bool is_cell_nmr(Beacon_t *cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    switch (type) {
+    case SKY_BEACON_CDMA:
+        return false;
+    case SKY_BEACON_GSM:
+        return false;
+    case SKY_BEACON_LTE:
+        return cell->lte.mnc == SKY_UNKNOWN_ID2;
+    case SKY_BEACON_NBIOT:
+        return cell->nbiot.mnc == SKY_UNKNOWN_ID2;
+    case SKY_BEACON_UMTS:
+        return cell->umts.mnc == SKY_UNKNOWN_ID2;
+    case SKY_BEACON_NR:
+        return cell->nr.mnc == SKY_UNKNOWN_ID2;
+    default:
+        return false;
     }
 }
 
