@@ -402,10 +402,6 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     b.lte.earfcn = earfcn;
     b.lte.rssi = rsrp;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
-        e_cellid, mcc, mnc, tac, pci, earfcn, rsrp, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp))
     return add_beacon(ctx, sky_errno, &b, is_connected);
 }
 
