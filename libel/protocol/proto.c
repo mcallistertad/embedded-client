@@ -44,6 +44,27 @@ typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
+/*! \brief Map cell type
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell type
+ */
+static int16_t map_cell_type(Beacon_t *cell)
+{
+    uint16_t map[] = { [SKY_BEACON_NR] = Cell_Type_NR,
+        [SKY_BEACON_LTE] = Cell_Type_LTE,
+        [SKY_BEACON_UMTS] = Cell_Type_UMTS,
+        [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
+        [SKY_BEACON_CDMA] = Cell_Type_CDMA,
+        [SKY_BEACON_GSM] = Cell_Type_GSM,
+        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN };
+    if (!is_cell_type(cell))
+        return Cell_Type_UNKNOWN;
+    else
+        return map[cell->h.type];
+}
+
 static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 {
     size_t i;
@@ -168,19 +189,22 @@ static bool encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int
         return true;
 }
 
-static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t* cell)
+static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
 {
-    return 
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) && pb_encode_varint(ostream, get_cell_type(cell)) &&
-        encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
-        encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
-        encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
-        encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
-        encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
-        encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) && pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) && pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
-        pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) && pb_encode_varint(ostream, get_cell_age(cell));
+    return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
+           pb_encode_varint(ostream, map_cell_type(cell)) &&
+           encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
+           encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
+           encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
+           encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
+           encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
+           encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) &&
+           pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) &&
+           pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
+           pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) &&
+           pb_encode_varint(ostream, get_cell_age(cell));
 }
 
 static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
@@ -191,14 +215,14 @@ static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     // Encode the Cell submessages one by one.
     for (i = 0; i < num_cells; i++) {
         pb_ostream_t substream = PB_OSTREAM_SIZING;
-        Beacon_t* cell = get_cell(ctx, i);
+        Beacon_t *cell = get_cell(ctx, i);
 
         // Get the field size.
         encode_cell_field(ctx, &substream, cell);
-        
+
         // Encode field tag.
         pb_encode_tag(ostream, PB_WT_STRING, Rq_cells_tag);
-        
+
         // Encode the field size.
         pb_encode_varint(ostream, substream.bytes_written);
 
