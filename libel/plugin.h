@@ -40,7 +40,8 @@ typedef enum sky_operations {
 
 typedef Sky_status_t (*Sky_plugin_op_t)(Sky_ctx_t *ctx, ...);
 
-Sky_status_t sky_plugin_init(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_plugin_op_t *table);
+Sky_status_t sky_register_plugins(Sky_plugin_op_t **root);
+Sky_status_t sky_plugin_init(Sky_plugin_op_t **root, Sky_plugin_op_t *table);
 Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operation_t n, ...);
 
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);

@@ -295,12 +295,12 @@ int main(int ac, char **av)
     extern Sky_plugin_op_t cell_plugin_best)_tableSKY_OP_MAX];
     sky_plugin_init(ctx, &sky_errno, ap_plugin_vap_used_table);
     sky_plugin_init(ctx, &sky_errno, cell_plugin_best_table);
-#endif
     /* Register the plugins to be used */
     extern Sky_plugin_op_t ap_plugin_basic_table[SKY_OP_MAX];
     extern Sky_plugin_op_t cell_plugin_basic_table[SKY_OP_MAX];
     sky_plugin_init(ctx, &sky_errno, ap_plugin_basic_table);
     sky_plugin_init(ctx, &sky_errno, cell_plugin_basic_table);
+#endif
 
     for (i = 0; i < scan_ap; i++) {
         b[i].h.magic = BEACON_MAGIC;

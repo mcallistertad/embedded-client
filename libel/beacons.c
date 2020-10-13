@@ -332,6 +332,13 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell connected score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
+            } else if (is_cell_nmr(new) != is_cell_nmr(wb)) {
+                /* fully qualified is best */
+                better = (is_cell_nmr(new) ? 1 : -1);
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell nmr score %d (%s)", better,
+                    better < 0 ? "B is better" : "A is better");
+#endif
             } else if (new->h.age != wb->h.age) {
                 /* youngest is best */
                 better = -(new->h.age - wb->h.age);

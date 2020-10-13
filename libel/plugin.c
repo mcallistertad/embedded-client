@@ -73,14 +73,12 @@ void log_plugin(Sky_ctx_t *ctx, Sky_plugin_op_t *p, sky_operation_t n, char *str
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_init(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_plugin_op_t *table)
+Sky_status_t sky_plugin_init(Sky_plugin_op_t **root, Sky_plugin_op_t *table)
 {
-    Sky_plugin_op_t **p = &ctx->plugin;
+    Sky_plugin_op_t **p = root;
 
-    if (!validate_workspace(ctx))
-        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-    if (!table)
-        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    if (!root)
+        return SKY_ERROR;
 
     /* TODO add table to end of chain */
     while (p) {
@@ -120,28 +118,17 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
     }
 
     /* The following determines how the operation is called:
-         *   SKY_OP_COMPARE          - All plugins called until -1, can't compare, 0 better one indicated, 1 same
-         *   SKY_OP_REMOVE_WORST     - All plugins called until success if one removed
+         *   SKY_OP_NAME             - get pointer to name of plugin
+         *   SKY_OP_EQUAL            - All plugins called until -1, can't compare, 0 better one indicated, 1 same
          *   SKY_OP_SCORE_CACHELINE  - All plugins called until success if cacheline index returned
+         *   SKY_OP_REMOVE_WORST     - All plugins called until success if one removed
          *   SKY_OP_ADD_TO_CACHE     - All plugins called until success if cache updated
          */
     switch (n) {
     case SKY_OP_NAME: {
         char **pname = va_arg(argp, char **);
 
-        while (p) {
-            log_plugin(ctx, p, n, "plugin name...");
-            ret = (*p[n])(ctx, pname);
-            if (ret == SKY_SUCCESS) {
-                log_plugin(ctx, p, n, "Success");
-                break;
-            } else if (ret == SKY_FAILURE) {
-                log_plugin(ctx, p, n, "Failure");
-                break;
-            }
-            p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
-        }
-        return ret;
+        return (*p[n])(ctx, pname);
     }
     case SKY_OP_EQUAL: {
         Beacon_t *a = va_arg(argp, Beacon_t *);

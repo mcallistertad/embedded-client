@@ -46,6 +46,9 @@
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 
+/* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
+#define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
+
 /*! \brief Types of beacon in protity order
  */
 typedef enum {

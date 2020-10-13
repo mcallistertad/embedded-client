@@ -53,6 +53,9 @@ static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
 static Sky_timefn_t sky_time;
 
+/*! \brief base of plugin chain */
+static Sky_plugin_op_t *sky_plugins;
+
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
@@ -131,6 +134,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     sky_logf = logf;
     sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     sky_time = (gettime == NULL) ? &time : gettime;
+
+    if (sky_register_plugins(&sky_plugins) != SKY_SUCCESS)
+        return sky_return(sky_errno, SKY_ERROR_NO_PLUGIN);
 
     /* if open already */
     if (sky_open_flag && sky_state) {
@@ -257,6 +263,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
+    ctx->plugin = sky_plugins;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -1177,21 +1184,21 @@ char *sky_pbeacon(Beacon_t *b)
     } else {
         switch (b->h.type) {
         case SKY_BEACON_AP:
-            return "Wi-Fi-NMR";
+            return "Wi-Fi";
         case SKY_BEACON_BLE:
-            return "BLE-NMR";
+            return "BLE";
         case SKY_BEACON_CDMA:
-            return "CDMA-NMR";
+            return "CDMA";
         case SKY_BEACON_GSM:
-            return "GSM-NMR";
+            return "GSM";
         case SKY_BEACON_LTE:
-            return "LTE-NMR";
+            return "LTE";
         case SKY_BEACON_NBIOT:
-            return "NB-IoT-NMR";
+            return "NB-IoT";
         case SKY_BEACON_UMTS:
-            return "UMTS-NMR";
+            return "UMTS";
         case SKY_BEACON_NR:
-            return "NR-NMR";
+            return "NR";
         default:
             return "\?\?\?";
         }
