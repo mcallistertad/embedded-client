@@ -105,7 +105,8 @@ static Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index)
+static Sky_status_t insert_beacon(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, bool is_connected, int *index)
 {
     int i;
 
@@ -115,9 +116,10 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
-    /* find correct position to insert based on type */
+    /* find correct position to insert based on type, AP and BLE first */
     for (i = 0; i < ctx->len; i++)
-        if (ctx->beacon[i].h.type >= b->h.type)
+        if (ctx->beacon[i].h.type >= b->h.type ||
+            (is_cell_type(&ctx->beacon[i]) && is_cell_type(b)))
             break;
 
     /* add beacon at the end */
@@ -132,13 +134,28 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
                     NOMINAL_RSSI(ctx->beacon[i].ap.rssi) > NOMINAL_RSSI(b->ap.rssi))
                     break;
         } else if (is_cell_type(b)) {
-            /* if Cell, add in NMR, age, strength order */
-            for (; i < ctx->len; i++)
-                if (ctx->beacon[i].h.type < b->h.type ||
-                    (is_cell_nmr(&ctx->beacon[i]) && !is_cell_nmr(b)) ||
-                    get_cell_age(&ctx->beacon[i]) < get_cell_age(b) ||
-                    NOMINAL_RSSI(get_cell_type(&ctx->beacon[i])) < NOMINAL_RSSI(get_cell_rssi(b)))
+            /* if Cell, add in priority order
+             *  1. NMR lower than fully qualified
+             *  2. youngest
+             *  3. type
+             *  4. strength
+             */
+            for (; i < ctx->len; i++) {
+                if (!is_cell_nmr(b) && is_cell_nmr(&ctx->beacon[i]))
                     break;
+                if (is_cell_nmr(b) != is_cell_nmr(&ctx->beacon[i]))
+                    continue;
+                if (get_cell_age(&ctx->beacon[i]) > get_cell_age(b))
+                    break;
+                if (get_cell_age(&ctx->beacon[i]) == get_cell_age(b))
+                    continue;
+                if (ctx->beacon[i].h.type >= b->h.type)
+                    break;
+                if (ctx->beacon[i].h.type != b->h.type)
+                    continue;
+                if (NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[i])) > NOMINAL_RSSI(get_cell_rssi(b)))
+                    break;
+            }
         }
         /* shift beacons to make room for the new one */
         memmove(&ctx->beacon[i + 1], &ctx->beacon[i], sizeof(Beacon_t) * (ctx->len - i));
@@ -151,7 +168,10 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d", sky_pbeacon(b), i);
 
-    if (i <= ctx->connected)
+    if (is_connected)
+        // New beacon is the connected one, so update index.
+        ctx->connected = i;
+    else if (i <= ctx->connected)
         // New beacon was inserted before the connected one, so update its index.
         ctx->connected++;
 
@@ -495,12 +515,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
     }
 
     /* insert the beacon */
-    if (insert_beacon(ctx, sky_errno, b, &idx) == SKY_ERROR)
+    if (insert_beacon(ctx, sky_errno, b, is_connected, &idx) == SKY_ERROR)
         return SKY_ERROR;
-    if (is_connected)
-        ctx->connected = idx;
-
-    dump_workspace(ctx);
 
     if (b->h.type == SKY_BEACON_AP) {
         ctx->beacon[idx].ap.in_cache =
@@ -522,8 +538,13 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             (CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)))
             return sky_return(sky_errno, SKY_ERROR_NONE);
 
-        /* cells added in priority order, remove lowest priority beacon */
-        remove_beacon(ctx, ctx->len - 1);
+        /* cells added in priority order (except connected)
+         * if lowest last cell is connected, remove next lowest priority beacon */
+        if (ctx->connected == ctx->len - 1)
+            remove_beacon(ctx, ctx->len - 2);
+        else
+            /* otherwise, remove last beacon */
+            remove_beacon(ctx, ctx->len - 1);
     }
 
     dump_workspace(ctx);
