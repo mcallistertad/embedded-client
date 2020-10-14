@@ -149,12 +149,13 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         }
         return ret;
     }
+    case SKY_OP_ADD_TO_CACHE:
     case SKY_OP_SCORE_CACHELINE: {
-        int *idx = va_arg(argp, int *);
+        int *arg = va_arg(argp, int *);
 
         while (p) {
             log_plugin(ctx, p, n, "plugin score...");
-            ret = (*p[n])(ctx, idx);
+            ret = (*p[n])(ctx, arg);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
                 break;
@@ -164,9 +165,9 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
             }
             p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
         }
+        return ret;
     }
-    case SKY_OP_REMOVE_WORST:
-    case SKY_OP_ADD_TO_CACHE: {
+    case SKY_OP_REMOVE_WORST: {
         while (p) {
             log_plugin(ctx, p, n, "plugin remove_worst/add to cache...");
             ret = (*p[n])(ctx);
