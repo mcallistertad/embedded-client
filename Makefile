@@ -1,7 +1,7 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS = -Wall -ggdb --std=c99 -DVERSION=\"$(GIT_VERSION)\"
 else
 CC = armcc
 CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\"
@@ -65,7 +65,7 @@ generate:
 	make -C ${SKY_PROTO_DIR}
 
 ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  workspace.h
-	$(CC) -c $(CFLAGS) ${INCLUDES} -DPLUGIN=$(notdir $(@:%.o=%_table)) -o $@ $<
+	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:
 	rm -rf ${BIN_DIR} ${BUILD_DIR}

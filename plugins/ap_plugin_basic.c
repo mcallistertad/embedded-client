@@ -572,7 +572,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     return SKY_SUCCESS;
 }
 
-Sky_plugin_table_t PLUGIN = {
+Sky_plugin_table_t ap_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
     .name = plugin_name,
     /* Entry points */

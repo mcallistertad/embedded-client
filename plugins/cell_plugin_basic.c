@@ -323,7 +323,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     return remove_beacon(ctx, i); /* last cell is least desirable */
 }
 
-Sky_plugin_table_t PLUGIN = {
+Sky_plugin_table_t cell_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
     .name = plugin_name,
     /* Entry points */
