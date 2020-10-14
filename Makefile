@@ -1,10 +1,13 @@
+# To build for debugging use command like this
+#  make -DDEBUG=-ggdb
+#
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -ggdb --std=c99 -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG)
 else
 CC = armcc
-CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG)
 endif
 
 GIT_VERSION := $(shell git describe --dirty --always --tags)
