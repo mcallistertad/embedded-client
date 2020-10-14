@@ -56,11 +56,11 @@ static char *str_plugin_op(sky_operation_t n)
     }
 }
 
-void log_plugin(Sky_ctx_t *ctx, Sky_plugin_op_t *p, sky_operation_t n, char *str)
+void log_plugin(Sky_ctx_t *ctx, Sky_plugin_table_t *p, sky_operation_t n, char *str)
 {
 #if VERBOSE_DEBUG
     char *s;
-    (*p[SKY_OP_NAME])(ctx, &s);
+    (*p->name)(ctx, &s);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Plugin:%s Op:%s - %s", s, str_plugin_op(n), str);
 #endif
 }
@@ -73,20 +73,20 @@ void log_plugin(Sky_ctx_t *ctx, Sky_plugin_op_t *p, sky_operation_t n, char *str
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_init(Sky_plugin_op_t **root, Sky_plugin_op_t *table)
+Sky_status_t sky_plugin_init(Sky_plugin_table_t **root, Sky_plugin_table_t *table)
 {
-    Sky_plugin_op_t **p = root;
+    Sky_plugin_table_t **p = root;
 
     if (!root)
         return SKY_ERROR;
 
     /* TODO add table to end of chain */
     while (p) {
-        if (p[SKY_OP_NEXT] == NULL) {
+        if (*p == NULL) {
             *p = table;
             break;
         }
-        p = (Sky_plugin_op_t **)*p;
+        p = (Sky_plugin_table_t **)*p;
     }
 
     return SKY_SUCCESS;
@@ -103,7 +103,7 @@ Sky_status_t sky_plugin_init(Sky_plugin_op_t **root, Sky_plugin_op_t *table)
 Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operation_t n, ...)
 {
     va_list argp;
-    Sky_plugin_op_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = ctx->plugin;
     Sky_status_t ret = SKY_ERROR;
 
     va_start(argp, n);
@@ -112,7 +112,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         log_plugin(ctx, p, n, "invalid workspace");
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
-    if (!p || !p[SKY_OP_NAME]) {
+    if (!p || !p->name) {
         log_plugin(ctx, p, n, "invalid plugin");
         return sky_return(sky_errno, SKY_ERROR_NO_PLUGIN);
     }
@@ -128,16 +128,16 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
     case SKY_OP_NAME: {
         char **pname = va_arg(argp, char **);
 
-        return (*p[n])(ctx, pname);
+        return (*p->name)(ctx, pname);
     }
     case SKY_OP_EQUAL: {
         Beacon_t *a = va_arg(argp, Beacon_t *);
         Beacon_t *b = va_arg(argp, Beacon_t *);
-        int *diff = va_arg(argp, int *);
+        Sky_beacon_property_t *prop = va_arg(argp, Sky_beacon_property_t *);
 
         while (p) {
             log_plugin(ctx, p, n, "plugin equal...");
-            ret = (*p[n])(ctx, a, b, diff);
+            ret = (*p->equal)(ctx, a, b, prop);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
                 break;
@@ -145,17 +145,33 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
                 log_plugin(ctx, p, n, "Failure");
                 break;
             }
-            p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
+            p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
         }
         return ret;
     }
-    case SKY_OP_ADD_TO_CACHE:
+    case SKY_OP_ADD_TO_CACHE: {
+        Sky_location_t *loc = va_arg(argp, int *);
+
+        while (p) {
+            log_plugin(ctx, p, n, "plugin add_cache...");
+            ret = (*p->add_to_cache)(ctx, loc);
+            if (ret == SKY_SUCCESS) {
+                log_plugin(ctx, p, n, "Success");
+                break;
+            } else if (ret == SKY_FAILURE) {
+                log_plugin(ctx, p, n, "Failure");
+                break;
+            }
+            p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
+        }
+        return ret;
+    }
     case SKY_OP_SCORE_CACHELINE: {
         int *arg = va_arg(argp, int *);
 
         while (p) {
             log_plugin(ctx, p, n, "plugin score...");
-            ret = (*p[n])(ctx, arg);
+            ret = (*p->score_cacheline)(ctx, arg);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
                 break;
@@ -163,14 +179,14 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
                 log_plugin(ctx, p, n, "Failure");
                 break;
             }
-            p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
+            p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
         }
         return ret;
     }
     case SKY_OP_REMOVE_WORST: {
         while (p) {
             log_plugin(ctx, p, n, "plugin remove_worst/add to cache...");
-            ret = (*p[n])(ctx);
+            ret = (*p->remove_worst)(ctx);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
                 break;
@@ -178,7 +194,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
                 log_plugin(ctx, p, n, "Failure");
                 break;
             }
-            p = (Sky_plugin_op_t *)p[SKY_OP_NEXT]; /* move on to next plugin */
+            p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
         }
         return ret;
     }

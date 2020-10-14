@@ -41,16 +41,9 @@
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t beacon_equal(Sky_ctx_t *ctx, ...)
+static Sky_status_t beacon_equal(
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    va_list argp;
-    Beacon_t *a;
-    Beacon_t *b;
-
-    va_start(argp, ctx);
-    a = va_arg(argp, Beacon_t *);
-    b = va_arg(argp, Beacon_t *);
-
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -160,10 +153,8 @@ static bool beacon_in_cache(
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t beacon_score(Sky_ctx_t *ctx, ...)
+static Sky_status_t beacon_score(Sky_ctx_t *ctx, int *idx)
 {
-    va_list argp;
-    int *idx; /* where to store result i.e. which cacheline has highest score */
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
@@ -175,9 +166,6 @@ static Sky_status_t beacon_score(Sky_ctx_t *ctx, ...)
     int bestc = -1, bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
-
-    va_start(argp, ctx);
-    idx = va_arg(argp, int *);
 
     DUMP_WORKSPACE(ctx);
     DUMP_CACHE(ctx);
@@ -288,14 +276,9 @@ static Sky_status_t beacon_score(Sky_ctx_t *ctx, ...)
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-static Sky_status_t plugin_name(Sky_ctx_t *ctx, ...)
+static Sky_status_t plugin_name(Sky_ctx_t *ctx, char **s)
 {
-    va_list argp;
-    char **s;
     char *r, *p = __FILE__;
-
-    va_start(argp, ctx);
-    s = va_arg(argp, char **);
 
     if (s == NULL)
         return SKY_ERROR;
@@ -314,7 +297,7 @@ static Sky_status_t plugin_name(Sky_ctx_t *ctx, ...)
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx, ...)
+static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
 {
     int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
 
@@ -340,14 +323,12 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx, ...)
     return remove_beacon(ctx, i); /* last cell is least desirable */
 }
 
-Sky_plugin_op_t PLUGIN[SKY_OP_MAX] = {
-    [SKY_OP_NEXT] = NULL, /* Pointer to next plugin table */
-    [SKY_OP_NAME] = plugin_name,
+Sky_plugin_table_t PLUGIN = {
+    .next = NULL, /* Pointer to next plugin table */
+    .name = plugin_name,
     /* Entry points */
-    [SKY_OP_EQUAL] = beacon_equal, /* Conpare two beacons for duplicate and which is better */
-    [SKY_OP_REMOVE_WORST] =
-        beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
-    [SKY_OP_SCORE_CACHELINE] =
-        beacon_score, /* Score the match between workspace and a cache line */
-    [SKY_OP_ADD_TO_CACHE] = NULL /* copy workspace beacons to a cacheline */
+    .equal = beacon_equal, /* Conpare two beacons for duplicate and which is better */
+    .remove_worst = beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
+    .score_cacheline = beacon_score, /* Score the match between workspace and a cache line */
+    .add_to_cache = NULL /* copy workspace beacons to a cacheline */
 };

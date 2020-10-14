@@ -31,10 +31,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-Sky_plugin_op_t ap_plugin_basic_table[SKY_OP_MAX];
-Sky_plugin_op_t cell_plugin_basic_table[SKY_OP_MAX];
+extern Sky_plugin_table_t ap_plugin_basic_table[SKY_OP_MAX];
+extern Sky_plugin_table_t cell_plugin_basic_table[SKY_OP_MAX];
 
-Sky_status_t sky_register_plugins(Sky_plugin_op_t **table)
+Sky_status_t sky_register_plugins(Sky_plugin_table_t **table)
 {
     if (!table)
         return SKY_ERROR;

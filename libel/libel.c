@@ -54,7 +54,7 @@ static Sky_log_level_t sky_min_level;
 static Sky_timefn_t sky_time;
 
 /*! \brief base of plugin chain */
-static Sky_plugin_op_t *sky_plugins;
+static Sky_plugin_table_t *sky_plugins;
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);

@@ -26,6 +26,7 @@
 #define SKY_WORKSPACE_H
 
 #define SKY_MAGIC 0xD1967806
+
 typedef struct sky_header {
     uint32_t magic; /* SKY_MAGIC */
     uint32_t size; /* total number of bytes in structure */
@@ -86,7 +87,7 @@ typedef struct sky_ctx {
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t save_to; /* cacheline with best match for saving */
     Sky_cache_t *cache;
-    Sky_status_t (**plugin)(struct sky_ctx *ctx, ...);
+    void *plugin;
 } Sky_ctx_t;
 
 #endif

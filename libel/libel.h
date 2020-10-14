@@ -153,8 +153,8 @@ typedef void Sky_ctx_t;
 #include "config.h"
 #include "beacons.h"
 #include "workspace.h"
-#include "utilities.h"
 #include "plugin.h"
+#include "utilities.h"
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
