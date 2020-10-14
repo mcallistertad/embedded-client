@@ -297,7 +297,11 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
         /* if the types are different, there is no match */
-        better = -(new->h.type - wb->h.type);
+        if (is_cell_nmr(new) != is_cell_nmr(wb)) {
+            /* fully qualified is best */
+            better = (!is_cell_nmr(new) ? 1 : -1);
+        } else
+            better = -(new->h.type - wb->h.type);
         if (diff)
             *diff = better;
 #if VERBOSE_DEBUG
