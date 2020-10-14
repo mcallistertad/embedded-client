@@ -814,17 +814,10 @@ Beacon_t *get_cell(Sky_ctx_t *ctx, uint32_t idx)
  */
 int16_t get_cell_type(Beacon_t *cell)
 {
-    uint16_t map[] = { [SKY_BEACON_NR] = Cell_Type_NR,
-        [SKY_BEACON_LTE] = Cell_Type_LTE,
-        [SKY_BEACON_UMTS] = Cell_Type_UMTS,
-        [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
-        [SKY_BEACON_CDMA] = Cell_Type_CDMA,
-        [SKY_BEACON_GSM] = Cell_Type_GSM,
-        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN };
     if (!is_cell_type(cell))
-        return Cell_Type_UNKNOWN;
+        return SKY_BEACON_MAX;
     else
-        return map[cell->h.type];
+        return cell->h.type;
 }
 
 /*! \brief Get cell id1
