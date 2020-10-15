@@ -30,7 +30,7 @@ typedef Sky_status_t (*Sky_plugin_name_t)(Sky_ctx_t *ctx, char **pname);
 typedef Sky_status_t (*Sky_plugin_equal_t)(
     Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop);
 typedef Sky_status_t (*Sky_plugin_add_to_cache_t)(Sky_ctx_t *ctx, Sky_location_t *loc);
-typedef Sky_status_t (*Sky_plugin_score_cacheline_t)(Sky_ctx_t *ctx, int *idx);
+typedef Sky_status_t (*Sky_plugin_match_cache_t)(Sky_ctx_t *ctx, int *idx);
 typedef Sky_status_t (*Sky_plugin_remove_worst_t)(Sky_ctx_t *ctx);
 
 /* Each plugin has table of operation functions */
@@ -40,7 +40,7 @@ typedef enum sky_operations {
     SKY_OP_NAME,
     SKY_OP_EQUAL,
     SKY_OP_REMOVE_WORST,
-    SKY_OP_SCORE_CACHELINE,
+    SKY_OP_CACHE_MATCH,
     SKY_OP_ADD_TO_CACHE,
     SKY_OP_MAX, /* Add more operations before this */
 } sky_operation_t;
@@ -50,7 +50,7 @@ typedef struct plugin_table {
     Sky_plugin_name_t name;
     Sky_plugin_equal_t equal;
     Sky_plugin_add_to_cache_t add_to_cache;
-    Sky_plugin_score_cacheline_t score_cacheline;
+    Sky_plugin_match_cache_t match_cache;
     Sky_plugin_remove_worst_t remove_worst;
 } Sky_plugin_table_t;
 

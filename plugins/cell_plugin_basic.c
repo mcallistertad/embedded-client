@@ -153,7 +153,7 @@ static bool beacon_in_cache(
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t beacon_score(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 {
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
@@ -329,6 +329,6 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     /* Entry points */
     .equal = beacon_equal, /* Conpare two beacons for duplicate and which is better */
     .remove_worst = beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
-    .score_cacheline = beacon_score, /* Score the match between workspace and a cache line */
+    .match_cache = beacon_match, /* Score the match between workspace and a cache line */
     .add_to_cache = NULL /* copy workspace beacons to a cacheline */
 };

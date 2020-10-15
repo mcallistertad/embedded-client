@@ -32,8 +32,9 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
-#define VERBOSE_DEBUG 1
+// #define VERBOSE_DEBUG 1
 
+#if VERBOSE_DEBUG
 static char *str_plugin_op(sky_operation_t n)
 {
     switch (n) {
@@ -41,7 +42,7 @@ static char *str_plugin_op(sky_operation_t n)
         return "Name";
     case SKY_OP_REMOVE_WORST:
         return "Remove worst";
-    case SKY_OP_SCORE_CACHELINE:
+    case SKY_OP_CACHE_MATCH:
         return "Score Cache Line";
     case SKY_OP_ADD_TO_CACHE:
         return "Add to Cache";
@@ -55,6 +56,7 @@ static char *str_plugin_op(sky_operation_t n)
         return "?";
     }
 }
+#endif
 
 void log_plugin(Sky_ctx_t *ctx, Sky_plugin_table_t *p, sky_operation_t n, char *str)
 {
@@ -120,7 +122,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
     /* The following determines how the operation is called:
          *   SKY_OP_NAME             - get pointer to name of plugin
          *   SKY_OP_EQUAL            - All plugins called until -1, can't compare, 0 better one indicated, 1 same
-         *   SKY_OP_SCORE_CACHELINE  - All plugins called until success if cacheline index returned
+         *   SKY_OP_CACHE_MATCH      - All plugins called until success if cacheline index returned
          *   SKY_OP_REMOVE_WORST     - All plugins called until success if one removed
          *   SKY_OP_ADD_TO_CACHE     - All plugins called until success if cache updated
          */
@@ -153,7 +155,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         Sky_location_t *loc = va_arg(argp, int *);
 
         while (p) {
-            log_plugin(ctx, p, n, "plugin add_cache...");
+            log_plugin(ctx, p, n, "plugin add to cache...");
             ret = (*p->add_to_cache)(ctx, loc);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
@@ -166,12 +168,12 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
         }
         return ret;
     }
-    case SKY_OP_SCORE_CACHELINE: {
+    case SKY_OP_CACHE_MATCH: {
         int *arg = va_arg(argp, int *);
 
         while (p) {
-            log_plugin(ctx, p, n, "plugin score...");
-            ret = (*p->score_cacheline)(ctx, arg);
+            log_plugin(ctx, p, n, "plugin cache match...");
+            ret = (*p->match_cache)(ctx, arg);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
                 break;
@@ -185,7 +187,7 @@ Sky_status_t sky_plugin_call(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, sky_operati
     }
     case SKY_OP_REMOVE_WORST: {
         while (p) {
-            log_plugin(ctx, p, n, "plugin remove_worst/add to cache...");
+            log_plugin(ctx, p, n, "plugin remove worst...");
             ret = (*p->remove_worst)(ctx);
             if (ret == SKY_SUCCESS) {
                 log_plugin(ctx, p, n, "Success");
