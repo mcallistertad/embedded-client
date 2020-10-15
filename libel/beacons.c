@@ -143,18 +143,19 @@ static Sky_status_t insert_beacon(
             for (; i < ctx->len; i++) {
                 if (!is_cell_nmr(b) && is_cell_nmr(&ctx->beacon[i]))
                     break;
-                if (is_cell_nmr(b) != is_cell_nmr(&ctx->beacon[i]))
-                    continue;
-                if (get_cell_age(&ctx->beacon[i]) > get_cell_age(b))
-                    break;
-                if (get_cell_age(&ctx->beacon[i]) == get_cell_age(b))
-                    continue;
-                if (ctx->beacon[i].h.type >= b->h.type)
-                    break;
-                if (ctx->beacon[i].h.type != b->h.type)
-                    continue;
-                if (NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[i])) > NOMINAL_RSSI(get_cell_rssi(b)))
-                    break;
+                else if (is_cell_nmr(b) == is_cell_nmr(&ctx->beacon[i])) {
+                    if (get_cell_age(&ctx->beacon[i]) > get_cell_age(b))
+                        break;
+                    else if (get_cell_age(&ctx->beacon[i]) == get_cell_age(b)) {
+                        if (ctx->beacon[i].h.type > b->h.type)
+                            break;
+                        else if (ctx->beacon[i].h.type == b->h.type) {
+                            if (NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[i])) <
+                                NOMINAL_RSSI(get_cell_rssi(b)))
+                                break;
+                        }
+                    }
+                }
             }
         }
         /* shift beacons to make room for the new one */
