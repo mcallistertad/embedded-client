@@ -419,6 +419,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "pci: %d, earfcn: %d, rsrp: %d, age %d", pci, earfcn, rsrp,
+        (int)(ctx->header.time - timestamp))
     return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
 }
@@ -567,6 +569,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t psc,
     int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "psc: %d, uarfcn: %d, rscp: %d, age %d", psc, uarfcn, rscp,
+        (int)(ctx->header.time - timestamp))
     return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -643,8 +647,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %u, mnc: %u, e_cellid: %lld, tac: %d, nrsrp: %d, connect %s, age %d", mcc, mnc,
-        e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
+        "mcc: %u, mnc: %u, e_cellid: %lld, tac: %d, ncid: %d, earfcn: %d, nrsrp: %d, connect %s, age %d",
+        mcc, mnc, e_cellid, tac, ncid, earfcn, nrsrp, is_connected ? "true" : "false",
+        (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -704,6 +709,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ncid: %d, earfcn:%d, nrsrp: %d, age %d", ncid, earfcn, nrsrp,
+        (int)(ctx->header.time - timestamp))
+
     return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
@@ -732,7 +740,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %u, mnc: %u, nci: %lld, tac: %d, pci: %d, nrarfcn: %d, rsrp: %d, connect %s, age %d",
+        "mcc: %u, mnc: %u, nci: %lld, tac: %d, pci: %d, nrarfcn: %d, csi_rsrp: %d, connect %s, age %d",
         mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
         (int)(ctx->header.time - timestamp))
 
@@ -794,6 +802,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
 Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "pci: %d, nrarfcn: %d, rsrp: %d, age %d", pci, nrarfcn,
+        csi_rsrp, (int)(ctx->header.time - timestamp))
     return sky_add_cell_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, csi_rsrp, false);
 }
