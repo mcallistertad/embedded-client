@@ -187,7 +187,7 @@ static Sky_status_t insert_beacon(
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static Sky_status_t filter_aps_by_rssi(Sky_ctx_t *ctx)
+static Sky_status_t remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
 {
     int i, reject, jump, up_down;
     float band_range, worst;
@@ -271,7 +271,7 @@ static Sky_status_t filter_aps_by_rssi(Sky_ctx_t *ctx)
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static bool filter_aps_by_age(Sky_ctx_t *ctx)
+static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
 {
     int i;
     int oldest_idx = -1;
@@ -293,7 +293,6 @@ static bool filter_aps_by_age(Sky_ctx_t *ctx)
 
     /* if the oldest and youngest beacons have the same age,
      * there is nothing to do. Otherwise remove the oldest */
-    /* NOTE: the oldest and weakest is removed */
     if (youngest_age != oldest_age && oldest_idx != -1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d oldest", oldest_idx);
         remove_beacon(ctx, oldest_idx);
@@ -310,7 +309,7 @@ static bool filter_aps_by_age(Sky_ctx_t *ctx)
  *
  *  @return true if beacon removed or false otherwise
  */
-static bool filter_virtual_aps(Sky_ctx_t *ctx)
+static bool remove_worst_virtual_ap(Sky_ctx_t *ctx)
 {
     int i, j;
     int cmp, rm = -1;
@@ -377,35 +376,32 @@ static bool filter_virtual_aps(Sky_ctx_t *ctx)
 
 /*! \brief compare beacons fpr equality
  *
- *  if beacons are equivalent, return 1 otherwise 0
- *  if an error occurs during comparison. return -1
+ *  if beacons are equivalent, return true otherwise false
  */
-static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
+static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
-    int ret = -1;
-
     if (!a || !b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return -1;
+        return false;
     }
 
     if (a->h.type == b->h.type) {
         switch (a->h.type) {
         case SKY_BEACON_AP:
             if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0)
-                ret = 1;
+                return true;
             break;
         case SKY_BEACON_BLE:
             if ((memcmp(a->ble.mac, b->ble.mac, MAC_SIZE) == 0) && (a->ble.major == b->ble.major) &&
                 (a->ble.minor == b->ble.minor) && (memcmp(a->ble.uuid, b->ble.uuid, 16) == 0))
-                ret = 1;
+                return true;
             break;
         case SKY_BEACON_CDMA:
             if ((a->cdma.sid == b->cdma.sid) && (a->cdma.nid == b->cdma.nid) &&
                 (a->cdma.bsid == b->cdma.bsid)) {
                 if (!(a->cdma.sid == SKY_UNKNOWN_ID2 || a->cdma.nid == SKY_UNKNOWN_ID3 ||
                         a->cdma.bsid == SKY_UNKNOWN_ID4))
-                    ret = 1;
+                    return true;
             }
             break;
         case SKY_BEACON_GSM:
@@ -413,7 +409,7 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
                 (a->gsm.mnc == b->gsm.mnc) && (a->gsm.lac == b->gsm.lac))
                 if (!(a->gsm.ci == SKY_UNKNOWN_ID4 || a->gsm.mcc == SKY_UNKNOWN_ID1 ||
                         a->gsm.mnc == SKY_UNKNOWN_ID2 || a->gsm.lac == SKY_UNKNOWN_ID3)) {
-                    ret = 1;
+                    return true;
                 }
             break;
         case SKY_BEACON_LTE:
@@ -421,9 +417,9 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
                 (a->lte.e_cellid == b->lte.e_cellid)) {
                 if (a->lte.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                     if ((a->lte.pci == b->lte.pci) && (a->lte.earfcn == b->lte.earfcn))
-                        ret = 1;
+                        return true;
                 } else
-                    ret = 1;
+                    return true;
             }
             break;
         case SKY_BEACON_NBIOT:
@@ -431,9 +427,9 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
                 (a->nbiot.e_cellid == b->nbiot.e_cellid)) {
                 if (a->nbiot.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                     if ((a->nbiot.ncid == b->nbiot.ncid) && (a->nbiot.earfcn == b->nbiot.earfcn))
-                        ret = true;
+                        return true;
                 } else
-                    ret = 1;
+                    return true;
             }
             break;
         case SKY_BEACON_UMTS:
@@ -441,25 +437,25 @@ static int beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
                 (a->umts.mnc == b->umts.mnc)) {
                 if (a->umts.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                     if ((a->umts.psc == b->umts.psc) && (a->umts.uarfcn == b->umts.uarfcn))
-                        ret = true;
+                        return true;
                 } else
-                    ret = 1;
+                    return true;
             }
             break;
         case SKY_BEACON_NR:
             if ((a->nr.mcc == b->nr.mcc) && (a->nr.mnc == b->nr.mnc) && (a->nr.nci == b->nr.nci)) {
                 if (a->nr.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
                     if ((a->nr.pci == b->nr.pci) && (a->nr.nrarfcn == b->nr.nrarfcn))
-                        ret = true;
+                        return true;
                 } else
-                    ret = 1;
+                    return true;
             }
             break;
         default:
-            ret = 0;
+            break;
         }
     }
-    return ret;
+    return false;
 }
 
 /*! \brief add beacon to list
@@ -547,8 +543,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             return sky_return(sky_errno, SKY_ERROR_NONE);
 
         /* beacon is AP and is subject to filtering */
-        if (!filter_virtual_aps(ctx) && !filter_aps_by_age(ctx))
-            if (filter_aps_by_rssi(ctx) == SKY_ERROR) {
+        if (!remove_worst_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx))
+            if (remove_worst_ap_by_rssi(ctx) == SKY_ERROR) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter")
                 return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
             }
