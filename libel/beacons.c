@@ -280,7 +280,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons))
         return false;
 
-    /* for each beacon, work out it's the oldest or newest found */
+    /* Find the youngest and oldest APs */
     for (i = 0; i < ctx->ap_len; i++) {
         if (ctx->beacon[i].ap.age < youngest_age) {
             youngest_age = ctx->beacon[i].ap.age;
@@ -378,7 +378,7 @@ static bool remove_worst_virtual_ap(Sky_ctx_t *ctx)
  *
  *  if beacons are equivalent, return true otherwise false
  */
-static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
+static bool beacons_equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
     if (!a || !b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -415,7 +415,7 @@ static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
         case SKY_BEACON_LTE:
             if ((a->lte.mcc == b->lte.mcc) && (a->lte.mnc == b->lte.mnc) &&
                 (a->lte.e_cellid == b->lte.e_cellid)) {
-                if (a->lte.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
+                if (is_cell_nmr(a)) {
                     if ((a->lte.pci == b->lte.pci) && (a->lte.earfcn == b->lte.earfcn))
                         return true;
                 } else
@@ -425,7 +425,7 @@ static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
         case SKY_BEACON_NBIOT:
             if ((a->nbiot.mcc == b->nbiot.mcc) && (a->nbiot.mnc == b->nbiot.mnc) &&
                 (a->nbiot.e_cellid == b->nbiot.e_cellid)) {
-                if (a->nbiot.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
+                if (is_cell_nmr(a)) {
                     if ((a->nbiot.ncid == b->nbiot.ncid) && (a->nbiot.earfcn == b->nbiot.earfcn))
                         return true;
                 } else
@@ -435,7 +435,7 @@ static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
         case SKY_BEACON_UMTS:
             if ((a->umts.ucid == b->umts.ucid) && (a->umts.mcc == b->umts.mcc) &&
                 (a->umts.mnc == b->umts.mnc)) {
-                if (a->umts.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
+                if (is_cell_nmr(a)) {
                     if ((a->umts.psc == b->umts.psc) && (a->umts.uarfcn == b->umts.uarfcn))
                         return true;
                 } else
@@ -444,7 +444,7 @@ static bool beacon_is_same(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
             break;
         case SKY_BEACON_NR:
             if ((a->nr.mcc == b->nr.mcc) && (a->nr.mnc == b->nr.mnc) && (a->nr.nci == b->nr.nci)) {
-                if (a->nr.mcc == SKY_UNKNOWN_ID2) { /* this is an NMR if ID2 is unknown */
+                if (is_cell_nmr(a)) {
                     if ((a->nr.pci == b->nr.pci) && (a->nr.nrarfcn == b->nr.nrarfcn))
                         return true;
                 } else
@@ -503,7 +503,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         remove_beacon(ctx, j);
     } else if (is_cell_type(b)) {
         for (j = ctx->ap_len; j < ctx->len; j++) {
-            if (beacon_is_same(ctx, b, &ctx->beacon[j]) == 1) {
+            if (beacons_equal(ctx, b, &ctx->beacon[j])) {
                 /* reject new beacon if already have serving cell, or it is older or weaker */
                 if (!is_connected && (j == ctx->connected)) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate cell (not serving)")
@@ -593,7 +593,7 @@ static bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl)
     }
 
     for (j = 0; j < cl->len; j++)
-        if (beacon_is_same(ctx, b, &cl->beacon[j]) == 1) {
+        if (beacons_equal(ctx, b, &cl->beacon[j])) {
             return true;
         }
     return false;

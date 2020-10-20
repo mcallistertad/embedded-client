@@ -35,7 +35,7 @@
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 
-/*! \brief Types of beacon in protity order
+/*! \brief Types of beacon in priority order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
