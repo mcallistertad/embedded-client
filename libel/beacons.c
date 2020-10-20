@@ -150,8 +150,8 @@ static Sky_status_t insert_beacon(
                         if (b->h.type < ctx->beacon[i].h.type)
                             break;
                         else if (b->h.type == ctx->beacon[i].h.type) {
-                            if (NOMINAL_RSSI(get_cell_rssi(b) >
-                                             NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[i]))))
+                            if (NOMINAL_RSSI(get_cell_rssi(b)) >
+                                NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[i])))
                                 break;
                         }
                     }
