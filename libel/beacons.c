@@ -396,19 +396,13 @@ static bool beacons_equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
             break;
         case SKY_BEACON_CDMA:
             if ((a->cdma.sid == b->cdma.sid) && (a->cdma.nid == b->cdma.nid) &&
-                (a->cdma.bsid == b->cdma.bsid)) {
-                if (!(a->cdma.sid == SKY_UNKNOWN_ID2 || a->cdma.nid == SKY_UNKNOWN_ID3 ||
-                        a->cdma.bsid == SKY_UNKNOWN_ID4))
-                    return true;
-            }
+                (a->cdma.bsid == b->cdma.bsid))
+                return true;
             break;
         case SKY_BEACON_GSM:
             if ((a->gsm.ci == b->gsm.ci) && (a->gsm.mcc == b->gsm.mcc) &&
                 (a->gsm.mnc == b->gsm.mnc) && (a->gsm.lac == b->gsm.lac))
-                if (!(a->gsm.ci == SKY_UNKNOWN_ID4 || a->gsm.mcc == SKY_UNKNOWN_ID1 ||
-                        a->gsm.mnc == SKY_UNKNOWN_ID2 || a->gsm.lac == SKY_UNKNOWN_ID3)) {
-                    return true;
-                }
+                return true;
             break;
         case SKY_BEACON_LTE:
             if ((a->lte.mcc == b->lte.mcc) && (a->lte.mnc == b->lte.mnc) &&
