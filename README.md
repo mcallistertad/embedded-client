@@ -394,7 +394,7 @@ Adds the cell umts information to the request context. Returns SKY_ERROR for fai
 ### sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     int16_t psc,
     int16_t uarfcn,
@@ -421,8 +421,8 @@ Adds the umts neighbor cell information to the request context. Returns SKY_ERRO
 Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     uint32_t sid,
-    uint32_t nid,
-    uint64_t bsid,
+    int32_t nid,
+    int64_t bsid,
     time_t timestamp,
     int16_t rssi,
     bool is_connected
@@ -480,7 +480,7 @@ Adds the cell nb-IoT information to the request context. Returns SKY_ERROR for f
 ### sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     int16_t ncid,
     int32_t earfcn,
