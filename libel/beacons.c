@@ -321,8 +321,6 @@ static bool remove_worst_virtual_ap(Sky_ctx_t *ctx)
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len)
 
-    dump_workspace(ctx);
-
     if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
         return false;
     }
@@ -480,54 +478,54 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             if (memcmp(b->ap.mac, ctx->beacon[j].ap.mac, MAC_SIZE) == 0) {
                 /* reject new beacon if already have serving AP, or it is older or weaker */
                 if (!is_connected && (j == ctx->connected)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate AP (not serving)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not serving)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else if (is_connected && !(j == ctx->connected)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Keep new duplicate AP (serving)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (serving)")
                     break; /* fall through to remove exiting duplicate */
                 } else if (b->ap.age > ctx->beacon[j].ap.age) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate AP (older)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (older)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else if (b->ap.age < ctx->beacon[j].ap.age) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Keep new duplicate AP (younger)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (younger)")
                     break; /* fall through to remove exiting duplicate */
                 } else if (NOMINAL_RSSI(b->ap.rssi) <= NOMINAL_RSSI(ctx->beacon[j].ap.rssi)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate AP (weaker)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (weaker)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate AP (stronger signal)")
                     break; /* fall through to remove exiting duplicate */
                 }
+                remove_beacon(ctx, j);
             }
         }
-        remove_beacon(ctx, j);
     } else if (is_cell_type(b)) {
         for (j = ctx->ap_len; j < ctx->len; j++) {
             if (beacons_equal(ctx, b, &ctx->beacon[j])) {
                 /* reject new beacon if already have serving cell, or it is older or weaker */
                 if (!is_connected && (j == ctx->connected)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate cell (not serving)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (not serving)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else if (is_connected && !(j == ctx->connected)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Keep new duplicate cell (serving)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (serving)")
                     break; /* fall through to remove exiting duplicate */
                 } else if (get_cell_age(b) > get_cell_age(&ctx->beacon[j])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate cell (older)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (older)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else if (get_cell_age(b) < get_cell_age(&ctx->beacon[j])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Keep new duplicate cell (younger)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (younger)")
                     break; /* fall through to remove exiting duplicate */
                 } else if (NOMINAL_RSSI(get_cell_rssi(b)) <=
                            NOMINAL_RSSI(get_cell_rssi(&ctx->beacon[j]))) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Reject duplicate cell (weaker)")
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (weaker)")
                     return sky_return(sky_errno, SKY_ERROR_NONE);
                 } else {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate cell (stronger signal)")
                     break; /* fall through to remove exiting duplicate */
                 }
+                remove_beacon(ctx, j);
             }
         }
-        remove_beacon(ctx, j);
     }
 
     /* insert the beacon */
@@ -542,6 +540,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
         if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons))
             return sky_return(sky_errno, SKY_ERROR_NONE);
 
+        dump_workspace(ctx);
         /* beacon is AP and is subject to filtering */
         if (!remove_worst_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx))
             if (remove_worst_ap_by_rssi(ctx) == SKY_ERROR) {
@@ -554,6 +553,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
             (CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)))
             return sky_return(sky_errno, SKY_ERROR_NONE);
 
+        dump_workspace(ctx);
         /* cells added in priority order (except connected)
          * if lowest last cell is connected, remove next lowest priority beacon */
         if (ctx->connected == ctx->len - 1) {
