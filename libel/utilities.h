@@ -132,6 +132,7 @@ int64_t get_cell_id6(Beacon_t *cell);
 bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell);
 int64_t get_cell_rssi(Beacon_t *cell);
 int64_t get_cell_age(Beacon_t *cell);
+bool is_cell_nmr(Beacon_t *cell);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif
