@@ -492,6 +492,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
                 }
             }
         }
+        /* if a better duplicate was found, remove existing worse beacon */
+        if (j < ctx->ap_len)
+            remove_beacon(ctx, j);
     } else {
         for (j = ctx->ap_len; j < ctx->len; j++) {
             if (beacons_equal(ctx, b, &ctx->beacon[j])) {
@@ -518,10 +521,10 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
                 }
             }
         }
+        /* if a better duplicate was found, remove existing worse beacon */
+        if (j < ctx->len)
+            remove_beacon(ctx, j);
     }
-    /* if a better duplicate was found, remove existing worse beacon */
-    if (j < ctx->ap_len)
-        remove_beacon(ctx, j);
 
     /* insert the beacon */
     if (insert_beacon(ctx, sky_errno, b, is_connected, &idx) == SKY_ERROR)
