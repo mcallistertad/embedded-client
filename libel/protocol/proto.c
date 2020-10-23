@@ -79,13 +79,15 @@ static int64_t flip_sign(int64_t value)
  */
 static int16_t map_cell_type(Beacon_t *cell)
 {
-    uint16_t map[] = { [SKY_BEACON_NR] = Cell_Type_NR,
+    uint16_t map[] = { /* force tidy code formatting */
+        [SKY_BEACON_NR] = Cell_Type_NR,
         [SKY_BEACON_LTE] = Cell_Type_LTE,
         [SKY_BEACON_UMTS] = Cell_Type_UMTS,
         [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
         [SKY_BEACON_CDMA] = Cell_Type_CDMA,
         [SKY_BEACON_GSM] = Cell_Type_GSM,
-        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN };
+        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN
+    };
     if (!is_cell_type(cell))
         return Cell_Type_UNKNOWN;
     else
