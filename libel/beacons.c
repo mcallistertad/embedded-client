@@ -464,7 +464,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
 {
     int j, idx = -1;
 
-    if (b->h.type == SKY_BEACON_AP) {
+    if (!is_cell_type(b)) {
         if (!validate_mac(b->ap.mac, ctx))
             return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
         /* see if this mac already added (duplicate beacon) */
@@ -490,10 +490,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate AP (stronger signal)")
                     break; /* fall through to remove exiting duplicate */
                 }
-                remove_beacon(ctx, j);
             }
         }
-    } else if (is_cell_type(b)) {
+    } else {
         for (j = ctx->ap_len; j < ctx->len; j++) {
             if (beacons_equal(ctx, b, &ctx->beacon[j])) {
                 /* reject new beacon if already have serving cell, or it is older or weaker */
@@ -517,10 +516,12 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, boo
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate cell (stronger signal)")
                     break; /* fall through to remove exiting duplicate */
                 }
-                remove_beacon(ctx, j);
             }
         }
     }
+    /* if a better duplicate was found, remove existing worse beacon */
+    if (j < ctx->ap_len)
+        remove_beacon(ctx, j);
 
     /* insert the beacon */
     if (insert_beacon(ctx, sky_errno, b, is_connected, &idx) == SKY_ERROR)
