@@ -63,8 +63,16 @@ int validate_workspace(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
         return false;
     }
+    if (ctx->len < 0 || ctx->ap_len < 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon count");
+        return false;
+    }
     if (ctx->len > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
+        return false;
+    }
+    if (ctx->ap_len > MAX_AP_BEACONS) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many AP beacons");
         return false;
     }
     if (ctx->connected > TOTAL_BEACONS + 1) {
