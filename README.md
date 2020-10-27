@@ -55,9 +55,7 @@ the Skyhook Precision Location service in order to obtain an estimate of the
 geolocation of the device on which it runs. This repo also includes a sample client application
 which illustrates how the library can be used by your application (see below).
 
-Instructions for cloning and building the library are below. Instructions for
-integrating the library into your application are
-[here](http://resources.skyhookwireless.com/wiki/type/documentation/precision-location/embedded-client-library-api-documentation/199269838).
+Instructions for cloning and building the library are below.
 
 ## Building
 
@@ -466,7 +464,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  * mnc          mobile network code (0-999)
  * e_cellid     nbiot beacon identifier (0-268435455)
  * tac          nbiot tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
- * ncid         mobile cell ID  (0-503), SKY_UNKNOWN_ID4 if unknown
+ * ncid         mobile cell ID  (0-503), SKY_UNKNOWN_ID5 if unknown
  * earfcn       channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
@@ -605,7 +603,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  * Parameters
  * ctx              Skyhook request context
  * sky_errno        sky_errno is set to the error code
- * size             Request size in bytes
+ * size             Request size in bytes stored here
  
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
@@ -795,8 +793,3 @@ License
 -------
 
 This project is licensed under the MIT license. See LICENSE.txt.
-+Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
-+Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
-+Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
- Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint32_t sid,
-
