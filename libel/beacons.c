@@ -66,7 +66,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
         sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "idx:%d", index);
     NUM_BEACONS(ctx) -= 1;
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
     return SKY_SUCCESS;
@@ -259,7 +259,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_SUCCESS;
     }
 
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
     dump_beacon(ctx, "new AP: ", w, __FILE__, __FUNCTION__);
 #endif
     /* done if no filtering needed */
@@ -349,7 +349,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
         better = -(new->h.type - wb->h.type);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
         dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different types %d (%s)", better,
@@ -363,7 +363,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
             if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
                 /* Compare APs by rssi */
                 better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WiFi rssi score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
@@ -371,48 +371,48 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
             /* cell comparison is type, connected, or youngest, or type or stongest */
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell connected score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (is_cell_nmr(new) != is_cell_nmr(wb)) {
                 /* fully qualified is best */
                 better = (!is_cell_nmr(new) ? 1 : -1);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell nmr score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (new->h.age != wb->h.age) {
                 /* youngest is best */
                 better = -(new->h.age - wb->h.age);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (new->h.type != wb->h.type) {
                 /* by type order */
                 better = -(new->h.type - wb->h.type);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell type score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
                 /* highest signal strength is best */
                 better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell signal strength score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else {
                 better = 1;
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell similar, pick one (%s)",
                     better < 0 ? "B is better" : "A is better");
 #endif
@@ -423,7 +423,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     if (!ret && diff)
         *diff = better;
 
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
     if (ret)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons match");
 #endif

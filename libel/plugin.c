@@ -34,7 +34,7 @@
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
 // #define VERBOSE_DEBUG 1
 
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
 static char *str_plugin_op(sky_operation_t n)
 {
     switch (n) {
@@ -60,7 +60,7 @@ static char *str_plugin_op(sky_operation_t n)
 
 void log_plugin(Sky_ctx_t *ctx, Sky_plugin_table_t *p, sky_operation_t n, char *str)
 {
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
     char *s;
     (*p->name)(ctx, &s);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Plugin:%s Op:%s - %s", s, str_plugin_op(n), str);

@@ -76,7 +76,7 @@ static Sky_status_t beacon_equal(
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
         dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
@@ -85,7 +85,7 @@ static Sky_status_t beacon_equal(
             (a->cell.id4 == b->cell.id4)) {
             if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
 #endif
                 /* NMR */
@@ -208,7 +208,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
             score = 0.0;
             for (int j = NUM_APS(ctx) - 1; j < NUM_BEACONS(ctx); j++) {
                 if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i], NULL)) {
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of 0..%d Score %d", j,
                         sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);

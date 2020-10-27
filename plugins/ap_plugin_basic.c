@@ -215,7 +215,7 @@ static Sky_status_t beacon_equal(
     /* test two APs for equivalence */
     switch (a->h.type) {
     case SKY_BEACON_AP:
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
         dump_beacon(ctx, "AP a:", a, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "AP b:", b, __FILE__, __FUNCTION__);
 #endif
@@ -345,7 +345,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
         if (ratio > bestratio) {
             if (bestratio > 0.0)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Found better match in cache %d of 0..%d score %d (vs %d)", i, CACHE_SIZE - 1,
+                    "Found better match in cache %d of %d score %d (vs %d)", i, CACHE_SIZE,
                     (int)round(ratio * 100), threshold);
             bestc = i;
             bestratio = ratio;
@@ -363,16 +363,15 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
     ctx->save_to = bestput;
 
     if (bestratio * 100 > bestthresh) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "location in cache, pick cache %d of 0..%d score %d (vs %d)", bestc, CACHE_SIZE - 1,
-            (int)round(bestratio * 100), bestthresh);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
+            bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
         *idx = bestc;
         return SKY_SUCCESS;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)", bestc,
         (int)round(bestratio * 100), bestthresh);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of 0..%d score %d",
-        bestput, CACHE_SIZE - 1, (int)round(bestputratio * 100));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
+        CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
 }
 
@@ -503,19 +502,19 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     /* if best 'save-to' location was not set by beacon_score, use oldest */
     if (i < 0) {
         i = find_oldest(ctx);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of 0..%d", i, CACHE_SIZE - 1);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of %d", i, CACHE_SIZE);
     }
     cl = &ctx->cache->cacheline[i];
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
         cl->time = 0; /* clear cacheline */
         update_newest_cacheline(ctx);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of 0..%d", i, CACHE_SIZE - 1);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of %d", i, CACHE_SIZE);
         return SKY_ERROR;
     } else if (cl->time == 0)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to empty cache %d of 0..%d", i, CACHE_SIZE - 1);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to empty cache %d of %d", i, CACHE_SIZE);
     else
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to cache %d of 0..%d", i, CACHE_SIZE - 1);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to cache %d of %d", i, CACHE_SIZE);
 
     cl->len = NUM_BEACONS(ctx);
     cl->ap_len = NUM_APS(ctx);
@@ -560,17 +559,28 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
 {
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
-    if (remove_virtual_ap(ctx) == SKY_ERROR) {
-#if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "failed to compress AP");
-#endif
-        if (select_ap_by_rssi(ctx) == SKY_ERROR) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter AP");
-            return SKY_ERROR;
-        }
+    if (!remove_virtual_ap(ctx) && !select_ap_by_rssi(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to remove excess AP");
+        return SKY_ERROR;
     }
     return SKY_SUCCESS;
 }
+
+/* * * * * * Plugin access table * * * * *
+ *
+ * Each plugin is registered via the access table
+ * The tables for each plugin are formed into a linked list
+ *
+ * For a given operation, each registered plugin is
+ * called for that operation until a plugin returns success.
+ *
+ * The supported operations are:
+ *   name        - get name of plugin
+ *   equal       - test two beacons for equivalence
+ *   remove_worst - find least desirable beacon and remove it
+ *   match_cache  - determine if cache has a good match
+ *   add_to_cache - Save workspace in cache
+ */
 
 Sky_plugin_table_t ap_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
