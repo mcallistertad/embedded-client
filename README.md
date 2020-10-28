@@ -11,7 +11,7 @@
          * [Build Directions](#build-directions)
       * [API Guide](#api-guide)
          * [Summary](#summary)
-         * [Requirments](#requirments)
+         * [Requirements](#requirments)
          * [API conventions](#api-conventions)
          * [Client Configuration](#client-configuration)
          * [General Sequence of Operations](#general-sequence-of-operations)
@@ -112,7 +112,7 @@ Requests consist of a set of beacons (Wi-Fi Access Points and Cell towers) which
 
 The library will save the information provided in a request along with the location determined by the Skyhook server in a cache and whenever subsequent requests are a reasonable match to the cache, the library will use the known location to satisfy the request, eliminating the need to communicate with the server for this request.
 
-### Requirments
+### Requirements
 
  1. Low memory use, both code and data size.
  1. Low bandwidth i.e. Small messages infrequently.
@@ -159,9 +159,9 @@ In general, the user must take the following steps in order to perform this exch
  1. Close the TCP connection
 
 ### General Sequence of Operations
-![missing image](images/elg_embedded_image.png)
+![missing image](https://github.com/SkyhookWireless/embedded-client/blob/master/images/elg_embedded_image.png?raw=true)
 
-Figure 1 - The User is expected to make a sequence of calls like the following
+Figure 1 - The User is expected to make a sequence of calls as shown
 
 ## API Reference
 
