@@ -340,7 +340,7 @@ void dump_workspace(Sky_ctx_t *ctx)
                     ctx->beacon[i].lte.rssi)
             } else {
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    " Beacon %-2d: Age: %d Type: LTE, e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rssi: %d",
+                    " Beacon %-2d: Age: %d Type: LTE, eucid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rssi: %d",
                     i, ctx->beacon[i].lte.age, ctx->beacon[i].lte.e_cellid, ctx->beacon[i].lte.mcc,
                     ctx->beacon[i].lte.mnc, ctx->beacon[i].lte.tac, ctx->beacon[i].lte.pci,
                     ctx->beacon[i].lte.earfcn, ctx->beacon[i].lte.rssi)
@@ -463,7 +463,7 @@ void dump_cache(Sky_ctx_t *ctx)
                             i, j, b->lte.age, b->lte.pci, b->lte.earfcn, b->lte.rssi)
                     } else {
                         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                            " Beacon %-2d:%-2d: Age: %d Type: LTE, e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rssi: %d",
+                            " Beacon %-2d:%-2d: Age: %d Type: LTE, eucid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rssi: %d",
                             i, j, b->lte.age, b->lte.e_cellid, b->lte.mcc, b->lte.mnc, b->lte.tac,
                             b->lte.pci, b->lte.earfcn, b->lte.rssi)
                     }
