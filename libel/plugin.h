@@ -49,9 +49,9 @@ typedef struct plugin_table {
     struct plugin_table *next;
     Sky_plugin_name_t name;
     Sky_plugin_equal_t equal;
-    Sky_plugin_add_to_cache_t add_to_cache;
-    Sky_plugin_match_cache_t match_cache;
     Sky_plugin_remove_worst_t remove_worst;
+    Sky_plugin_match_cache_t match_cache;
+    Sky_plugin_add_to_cache_t add_to_cache;
 } Sky_plugin_table_t;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **root);

@@ -36,6 +36,29 @@
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
+/*! \brief return name of plugin
+ *
+ *  @param ctx Skyhook request context
+ *  @param buf the buffer where the plugin name is to be stored
+ *  @param len the buffer length
+ *
+ *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ */
+static Sky_status_t plugin_name(Sky_ctx_t *ctx, char **s)
+{
+    char *r, *p = __FILE__;
+
+    if (s == NULL)
+        return SKY_ERROR;
+
+    r = strrchr(p, '/');
+    if (r == NULL)
+        *s = p;
+    else
+        *s = r + 1;
+    return SKY_SUCCESS;
+}
+
 /*! \brief compare cell beacons fpr equality
  *
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
@@ -136,6 +159,38 @@ static bool beacon_in_cache(
     return false;
 }
 
+/*! \brief remove least desirable cell if workspace is full
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
+ */
+static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
+{
+    int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
+
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
+        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons));
+    DUMP_WORKSPACE(ctx);
+    /* no work to do if workspace not full of max cell */
+    if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
+        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
+        return SKY_SUCCESS;
+    }
+
+    /* sanity check, last beacon must be a cell */
+    if (ctx->beacon[i].h.type != SKY_BEACON_LTE && ctx->beacon[i].h.type != SKY_BEACON_UMTS &&
+        ctx->beacon[i].h.type != SKY_BEACON_CDMA && ctx->beacon[i].h.type != SKY_BEACON_GSM &&
+        ctx->beacon[i].h.type != SKY_BEACON_NBIOT) {
+        {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Not a cell?");
+            return SKY_ERROR;
+        }
+    }
+    return remove_beacon(ctx, i); /* last cell is least desirable */
+}
+
 /*! \brief find cache entry with a match to workspace
  *
  *   Expire any old cachelines
@@ -210,7 +265,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
                 if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i], NULL)) {
 #ifdef VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                        "Cell Beacon %d type %s matches cache %d of 0..%d Score %d", j,
+                        "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
                         sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);
 #endif
                     score = score + 1.0;
@@ -237,7 +292,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
         if (ratio > bestratio) {
             if (bestratio > 0.0)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Found better match in cache %d of 0..%d score %d (vs %d)", i, CACHE_SIZE - 1,
+                    "Found better match in cache %d of %d score %d (vs %d)", i, CACHE_SIZE,
                     (int)round(ratio * 100), threshold);
             bestc = i;
             bestratio = ratio;
@@ -255,73 +310,33 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
     ctx->save_to = bestput;
 
     if (bestratio * 100 > bestthresh) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "location in cache, pick cache %d of 0..%d score %d (vs %d)", bestc, CACHE_SIZE - 1,
-            (int)round(bestratio * 100), bestthresh);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
+            bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
         *idx = bestc;
         return SKY_SUCCESS;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)", bestc,
         (int)round(bestratio * 100), bestthresh);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of 0..%d score %d",
-        bestput, CACHE_SIZE - 1, (int)round(bestputratio * 100));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
+        CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
 }
 
-/*! \brief return name of plugin
+/* * * * * * Plugin access table * * * * *
  *
- *  @param ctx Skyhook request context
- *  @param buf the buffer where the plugin name is to be stored
- *  @param len the buffer length
+ * Each plugin is registered via the access table
+ * The tables for each plugin are formed into a linked list
  *
- *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
+ * For a given operation, each registered plugin is
+ * called for that operation until a plugin returns success.
+ *
+ * The supported operations are:
+ *   name        - get name of plugin
+ *   equal       - test two beacons for equivalence
+ *   remove_worst - find least desirable beacon and remove it
+ *   match_cache  - determine if cache has a good match
+ *   add_to_cache - Save workspace in cache
  */
-static Sky_status_t plugin_name(Sky_ctx_t *ctx, char **s)
-{
-    char *r, *p = __FILE__;
-
-    if (s == NULL)
-        return SKY_ERROR;
-
-    r = strrchr(p, '/');
-    if (r == NULL)
-        *s = p;
-    else
-        *s = r + 1;
-    return SKY_SUCCESS;
-}
-
-/*! \brief remove least desirable cell if workspace is full
- *
- *  @param ctx Skyhook request context
- *
- *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
- */
-static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
-{
-    int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
-
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
-        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons));
-    DUMP_WORKSPACE(ctx);
-    /* no work to do if workspace not full of max cell */
-    if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
-        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
-        return SKY_SUCCESS;
-    }
-
-    /* sanity check, last beacon must be a cell */
-    if (ctx->beacon[i].h.type != SKY_BEACON_LTE && ctx->beacon[i].h.type != SKY_BEACON_UMTS &&
-        ctx->beacon[i].h.type != SKY_BEACON_CDMA && ctx->beacon[i].h.type != SKY_BEACON_GSM &&
-        ctx->beacon[i].h.type != SKY_BEACON_NBIOT) {
-        {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Not a cell?");
-            return SKY_ERROR;
-        }
-    }
-    return remove_beacon(ctx, i); /* last cell is least desirable */
-}
 
 Sky_plugin_table_t cell_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
@@ -329,6 +344,6 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     /* Entry points */
     .equal = beacon_equal, /* Conpare two beacons for duplicate and which is better */
     .remove_worst = beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
-    .match_cache = beacon_match, /* Score the match between workspace and a cache line */
+    .match_cache = beacon_match, /* Find best match between workspace and cache lines */
     .add_to_cache = NULL /* copy workspace beacons to a cacheline */
 };
