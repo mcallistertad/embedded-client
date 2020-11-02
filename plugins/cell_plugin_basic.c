@@ -124,41 +124,6 @@ static Sky_status_t beacon_equal(
     return SKY_FAILURE;
 }
 
-/*! \brief check if a beacon is in a cacheline
- *
- *   Scan all beacons in the cacheline. If the type matches the given beacon, compare
- *   the appropriate attributes. If the given beacon is found in the cacheline
- *   true is returned otherwise false. If index is not NULL, the index of the matching
- *   beacon in the cacheline is saved or -1 if beacon was not found.
- *
- *  @param ctx Skyhook request context
- *  @param b pointer to new beacon
- *  @param cl pointer to cacheline
- *  @param index pointer to where the index of matching beacon is saved
- *
- *  @return true if beacon successfully found or false
- */
-static bool beacon_in_cache(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
-{
-    int j;
-    (void)prop;
-
-    if (!cl || !b || !ctx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return false;
-    }
-
-    if (cl->time == 0) {
-        return false;
-    }
-
-    for (j = 0; j < NUM_BEACONS(cl); j++)
-        if (beacon_equal(ctx, b, &cl->beacon[j], prop) == SKY_SUCCESS)
-            return true;
-    return false;
-}
-
 /*! \brief remove least desirable cell if workspace is full
  *
  *  @param ctx Skyhook request context

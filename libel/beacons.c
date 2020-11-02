@@ -39,8 +39,6 @@
 #define GET_FROM_CACHE false
 
 static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff);
-static bool beacon_in_cache(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
 
 /*! \brief shuffle list to remove the beacon at index
  *
@@ -291,8 +289,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  *
  *  @return true if beacon successfully found or false
  */
-static bool beacon_in_cache(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
+bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
 
