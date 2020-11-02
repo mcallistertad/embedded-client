@@ -43,6 +43,9 @@
 #define VAP_PARENT (1)
 #define VAP_FIRST_DATA (2)
 
+#define NIBBLE_MASK(n) (0xF0 >> (4 * ((n)&1)))
+#define LOCAL_ADMIN_MASK(byte) (0x02 & (byte))
+
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 

@@ -604,3 +604,88 @@ int get_from_cache(Sky_ctx_t *ctx)
     }
     return sky_plugin_call(ctx, NULL, SKY_OP_CACHE_MATCH, &idx) == SKY_SUCCESS ? idx : -1;
 }
+
+/*! \brief check if an AP beacon is in a virtual group
+ *
+ *  Both the b (in workspace) and vg in cache may be virtual groups
+ *  if the two macs are similar and difference is same nibble as child, then
+ *  if any of the children have matching macs, then match
+ *
+ *  @param ctx Skyhook request context
+ *  @param b pointer to new beacon
+ *  @param vg pointer to beacon in cacheline
+ *
+ *  @return 0 if no matches otherwise return number of matching APs
+ */
+int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop)
+{
+    int w, c, num_aps = 0;
+    uint8_t mac_va[MAC_SIZE] = { 0 };
+    uint8_t mac_vb[MAC_SIZE] = { 0 };
+    Sky_beacon_property_t p;
+
+    if (!ctx || !va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return false;
+    }
+#if VERBOSE_DEBUG
+    dump_beacon(ctx, "A: ", va, __FILE__, __FUNCTION__);
+    dump_beacon(ctx, "B: ", vb, __FILE__, __FUNCTION__);
+#endif
+
+    /* Compare every member of any virtual group with every other */
+    /* index -1 is used to reference the parent mac */
+    for (w = -1; w < NUM_VAPS(va); w++) {
+        for (c = -1; c < NUM_VAPS(vb); c++) {
+            int value, idx;
+
+            if (w == -1)
+                memcpy(mac_va, va->ap.mac, MAC_SIZE);
+            else {
+                idx = va->ap.vg[VAP_FIRST_DATA + w].data.nibble_idx;
+                value = va->ap.vg[VAP_FIRST_DATA + w].data.value << (4 * ((~idx) & 1));
+                mac_va[va->ap.vg[VAP_FIRST_DATA + w].data.nibble_idx / 2] =
+                    (mac_va[va->ap.vg[VAP_FIRST_DATA + w].data.nibble_idx / 2] &
+                        ~NIBBLE_MASK(idx)) |
+                    value;
+            }
+            if (c == -1)
+                memcpy(mac_vb, vb->ap.mac, MAC_SIZE);
+            else {
+                idx = vb->ap.vg[VAP_FIRST_DATA + c].data.nibble_idx;
+                value = vb->ap.vg[VAP_FIRST_DATA + c].data.value << (4 * ((~idx) & 1));
+                mac_vb[vb->ap.vg[VAP_FIRST_DATA + c].data.nibble_idx / 2] =
+                    (mac_vb[vb->ap.vg[VAP_FIRST_DATA + c].data.nibble_idx / 2] &
+                        ~NIBBLE_MASK(idx)) |
+                    value;
+            }
+            if (memcmp(mac_va, mac_vb, MAC_SIZE) == 0) {
+                num_aps++;
+                p = (c == -1) ? vb->ap.property : vb->ap.vg_prop[c];
+                if (prop)
+                    *prop = p;
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
+                    "%02X:%02X:%02X:%02X:%02X:%02X %s, match %d %s",
+                    mac_va[0], mac_va[1], mac_va[2], mac_va[3], mac_va[4], mac_va[5],
+                    w == -1 ? "AP " : "VAP", /* Parent or child */
+                    mac_vb[0], mac_vb[1], mac_vb[2], mac_vb[3], mac_vb[4], mac_vb[5],
+                    c == -1 ? "AP " : "VAP", /* Parent or child */
+                    num_aps, p.used ? "Used" : "Unused");
+#endif
+            } else {
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
+                    "%02X:%02X:%02X:%02X:%02X:%02X %s",
+                    mac_va[0], mac_va[1], mac_va[2], mac_va[3], mac_va[4], mac_va[5],
+                    w == -1 ? "AP " : "VAP", /* Parent or child */
+                    mac_vb[0], mac_vb[1], mac_vb[2], mac_vb[3], mac_vb[4], mac_vb[5],
+                    c == -1 ? "AP " : "VAP"); /* Parent or child */
+#endif
+            }
+        }
+    }
+    return num_aps;
+}

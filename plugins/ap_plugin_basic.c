@@ -75,8 +75,6 @@ static Sky_status_t plugin_name(Sky_ctx_t *ctx, char **s)
  *  if macs are similar, and index is not NULL, index is set to nibble index of difference
  *  if macs are identical, 1 is returned
  */
-#define NIBBLE_MASK(n) (0xF0 >> (4 * ((n)&1)))
-#define LOCAL_ADMIN_MASK(byte) (0x02 & (byte))
 static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
 {
     /* Return 1 (true) if OUIs are identical and no more than 1 hex digits

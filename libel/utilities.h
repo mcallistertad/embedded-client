@@ -51,6 +51,7 @@ Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
 int get_from_cache(Sky_ctx_t *ctx);
 int find_best_match(Sky_ctx_t *ctx);
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
 #if SKY_DEBUG
 const char *sky_basename(const char *path);
