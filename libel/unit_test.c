@@ -289,19 +289,6 @@ int main(int ac, char **av)
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
 
-#if PREMIUM
-    /* Register the plugins to be used */
-    extern Sky_plugin_op_t ap_plugin_vap_used_table[SKY_OP_MAX];
-    extern Sky_plugin_op_t cell_plugin_best)_tableSKY_OP_MAX];
-    sky_plugin_init(ctx, &sky_errno, ap_plugin_vap_used_table);
-    sky_plugin_init(ctx, &sky_errno, cell_plugin_best_table);
-    /* Register the plugins to be used */
-    extern Sky_plugin_op_t ap_plugin_basic_table[SKY_OP_MAX];
-    extern Sky_plugin_op_t cell_plugin_basic_table[SKY_OP_MAX];
-    sky_plugin_init(ctx, &sky_errno, ap_plugin_basic_table);
-    sky_plugin_init(ctx, &sky_errno, cell_plugin_basic_table);
-#endif
-
     for (i = 0; i < scan_ap; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_AP;
@@ -420,7 +407,6 @@ int main(int ac, char **av)
         if (t == SKY_BEACON_AP) {
             for (i--; i >= 0; i--) {
                 uint8_t *m = get_ap_mac(ctx, i);
-                m = m;
 
                 printf("ap mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X\n", i, m[0], m[1], m[2],
                     m[3], m[4], m[5]);
