@@ -31,15 +31,28 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-extern Sky_plugin_table_t ap_plugin_basic_table[SKY_OP_MAX];
-extern Sky_plugin_table_t cell_plugin_basic_table[SKY_OP_MAX];
+/* Register the basic plugins
+ *
+ * Add the entry point tables for each plugin
+ *  ap_plugin_basic_table - WiFi beacons
+ *  cell_plugin_basic_table - Cellular beacons
+ *
+ * Each table is added to the end of the list of plugin tables
+ * The operations entry points are always called in each plugin in the order they were added
+ * Each plugin handles operations for a particular beacon type
+ * Each table has entry points to handle the following operations
+ *  EQUAL        - Test if two beacons are equal
+ *  REMOVE_WORST - Find the least desirable beacon and remove it from the workspace
+ *  MATCH_CACHE  - Find the best cache line that matches the beacons in the workspace
+ *  ADD_TO_CACHE - Copy workspace beacons to appropriate cache line
+ */
+extern Sky_plugin_table_t ap_plugin_basic_table;
+extern Sky_plugin_table_t cell_plugin_basic_table;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **table)
 {
-    if (!table)
-        return SKY_ERROR;
-    return sky_plugin_init(table, ap_plugin_basic_table) == SKY_SUCCESS &&
-                   sky_plugin_init(table, cell_plugin_basic_table) == SKY_SUCCESS ?
-               SKY_SUCCESS :
-               SKY_ERROR;
+    if (table && sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS &&
+        sky_plugin_add(table, &cell_plugin_basic_table) == SKY_SUCCESS)
+        return SKY_SUCCESS;
+    return SKY_ERROR;
 }

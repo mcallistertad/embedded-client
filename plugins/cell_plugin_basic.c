@@ -32,32 +32,9 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
-#define VERBOSE_DEBUG 1
+// #define VERBOSE_DEBUG
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
-
-/*! \brief return name of plugin
- *
- *  @param ctx Skyhook request context
- *  @param buf the buffer where the plugin name is to be stored
- *  @param len the buffer length
- *
- *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
- */
-static Sky_status_t plugin_name(Sky_ctx_t *ctx, char **s)
-{
-    char *r, *p = __FILE__;
-
-    if (s == NULL)
-        return SKY_ERROR;
-
-    r = strrchr(p, '/');
-    if (r == NULL)
-        *s = p;
-    else
-        *s = r + 1;
-    return SKY_SUCCESS;
-}
 
 /*! \brief compare cell beacons fpr equality
  *
@@ -136,13 +113,15 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
         CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons));
-    DUMP_WORKSPACE(ctx);
+
     /* no work to do if workspace not full of max cell */
     if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
         CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
         return SKY_SUCCESS;
     }
+
+    DUMP_WORKSPACE(ctx);
 
     /* sanity check, last beacon must be a cell */
     if (ctx->beacon[i].h.type != SKY_BEACON_LTE && ctx->beacon[i].h.type != SKY_BEACON_UMTS &&
@@ -305,10 +284,10 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
 Sky_plugin_table_t cell_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
-    .name = plugin_name,
+    .name = __FILE__,
     /* Entry points */
-    .equal = beacon_equal, /* Conpare two beacons for duplicate and which is better */
-    .remove_worst = beacon_remove_worst, /* Conpare two beacons for duplicate and which is better */
+    .equal = beacon_equal, /*Compare two beacons for equality */
+    .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
     .match_cache = beacon_match, /* Find best match between workspace and cache lines */
-    .add_to_cache = NULL /* copy workspace beacons to a cacheline */
+    .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
 };
