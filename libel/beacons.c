@@ -580,7 +580,8 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
         if (ctx->beacon[j].h.connected && beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
 #ifdef VERBOSE_DEBUG
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "serving cells match");
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - serving cells match",
+                cl - ctx->cache->cacheline);
 #endif
             return false;
         }
