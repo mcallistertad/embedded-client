@@ -82,7 +82,7 @@ int validate_workspace(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
         return false;
     }
-    if (ctx->ap_len > MAX_AP_BEACONS) {
+    if (ctx->ap_len > MAX_AP_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many AP beacons");
         return false;
     }
