@@ -569,6 +569,13 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
+    if (ctx->connected == -1) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no serving cell in workspace");
+#endif
+        return false;
+    }
+
     /* for each cell in workspace, compare with cacheline */
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
         if (ctx->beacon[j].h.connected && beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
