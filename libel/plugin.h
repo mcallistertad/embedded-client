@@ -28,15 +28,13 @@
 
 typedef Sky_status_t (*Sky_plugin_equal_t)(
     Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop);
-typedef Sky_status_t (*Sky_plugin_add_to_cache_t)(Sky_ctx_t *ctx, Sky_location_t *loc);
-typedef Sky_status_t (*Sky_plugin_match_cache_t)(Sky_ctx_t *ctx, int *idx);
 typedef Sky_status_t (*Sky_plugin_remove_worst_t)(Sky_ctx_t *ctx);
+typedef Sky_status_t (*Sky_plugin_match_cache_t)(Sky_ctx_t *ctx, int *idx);
+typedef Sky_status_t (*Sky_plugin_add_to_cache_t)(Sky_ctx_t *ctx, Sky_location_t *loc);
 
 /* Each plugin has table of operation functions */
 /* Each registered plugin is added to the end of a linked list of tables */
 typedef enum sky_operations {
-    SKY_OP_NEXT = 0, /* must be 0 - link to next table */
-    SKY_OP_NAME,
     SKY_OP_EQUAL,
     SKY_OP_REMOVE_WORST,
     SKY_OP_CACHE_MATCH,

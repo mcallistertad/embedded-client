@@ -118,7 +118,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
         CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
-        return SKY_SUCCESS;
+        return SKY_ERROR;
     }
 
     DUMP_WORKSPACE(ctx);
