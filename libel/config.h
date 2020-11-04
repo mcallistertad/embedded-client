@@ -63,7 +63,7 @@
 
 /*! \brief The number of entries in the scan/response cache
  */
-#define CACHE_SIZE 3
+#define CACHE_SIZE 1
 
 /*! \brief The maximum space the dynamic configuration parameters may take up in bytes
  */
