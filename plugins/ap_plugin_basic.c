@@ -51,6 +51,10 @@ static Sky_status_t beacon_equal(
         return SKY_ERROR;
     }
 
+#ifdef VERBOSE_DEBUG
+    dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
+    dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
+#endif
     /* Two APs can be compared but others are ordered by type */
     if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
         return SKY_ERROR;
@@ -58,12 +62,11 @@ static Sky_status_t beacon_equal(
     /* test two APs for equivalence */
     switch (a->h.type) {
     case SKY_BEACON_AP:
-#ifdef VERBOSE_DEBUG
-        dump_beacon(ctx, "AP a:", a, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "AP b:", b, __FILE__, __FUNCTION__);
-#endif
-        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0)
+        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
+            if (prop != NULL && b->ap.property.in_cache)
+                prop->in_cache = true;
             return SKY_SUCCESS;
+        }
         break;
     default:
         break;
