@@ -156,7 +156,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     /* find correct position to insert based on type */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         if (beacon_compare(ctx, b, &ctx->beacon[j], &diff) == false)
-            if (diff > 0) // stop if the new beacon is better
+            if (diff >= 0) // stop if the new beacon is better
                 break;
     }
 
@@ -248,27 +248,19 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
         }
-    } else {
-        DUMP_WORKSPACE(ctx);
-        if (sky_plugin_call(ctx, sky_errno, SKY_OP_REMOVE_WORST, NULL) == SKY_ERROR) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter cell");
-            return sky_return(sky_errno, SKY_ERROR_INTERNAL);
-        }
-        return SKY_SUCCESS;
     }
 
-#ifdef VERBOSE_DEBUG
-    dump_beacon(ctx, "new AP: ", w, __FILE__, __FUNCTION__);
-#endif
+    dump_beacon(ctx, "new beacon: ", w, __FILE__, __FUNCTION__);
+
     /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons))
+    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons) &&
+        (NUM_BEACONS(ctx) - NUM_APS(ctx)) <=
+            (CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)))
         return SKY_SUCCESS;
 
-    /* beacon is AP and is subject to filtering */
-    /* discard virtual duplicates of remove one based on rssi distribution */
     DUMP_WORKSPACE(ctx);
     if (sky_plugin_call(ctx, sky_errno, SKY_OP_REMOVE_WORST, NULL) == SKY_ERROR) {
-        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+        return sky_return(sky_errno, SKY_ERROR_INTERNAL);
     }
     DUMP_WORKSPACE(ctx);
 

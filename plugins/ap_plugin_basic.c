@@ -200,7 +200,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     /* unless all the middle candidates are in the cache or virtual group */
     for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
         if (!ctx->beacon[i].ap.property.in_cache &&
-            fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) > worst) {
+            fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
             worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
             reject = i;
         }
@@ -287,8 +287,9 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-    for (j = 0; j < ctx->ap_len; j++) {
-        for (i = j + 1; i < ctx->ap_len; i++) {
+    /* start search with weakest beacons first */
+    for (j = NUM_APS(ctx) - 1; j >= 0; j--) {
+        for (i = j - 1; i >= 0; i--) {
             if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
                 if (ctx->beacon[j].ap.property.in_cache) {
                     rm = i;
@@ -477,12 +478,12 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
             if ((num_aps_cached = count_cached_aps_in_workspace(ctx, cl)) < 0) {
                 err = true;
                 break;
-            } else if (num_aps_cached) {
+            } else if (NUM_APS(ctx) && NUM_APS(cl)) {
                 /* Score based on ALL APs */
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
-                threshold = CONFIG(ctx->cache, cache_match_all_threshold);
+                threshold = CONFIG(ctx->cache, cache_match_used_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);
