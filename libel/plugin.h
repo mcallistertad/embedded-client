@@ -35,6 +35,7 @@ typedef Sky_status_t (*Sky_plugin_add_to_cache_t)(Sky_ctx_t *ctx, Sky_location_t
 /* Each plugin has a table which provides entry points for the following operations */
 typedef struct plugin_table {
     struct plugin_table *next; /* Pointer to next table or NULL */
+    uint32_t magic; /* Mark table so it can be validated */
     char *name;
     /* Entry points */
     Sky_plugin_equal_t equal; /*Compare two beacons for equality */

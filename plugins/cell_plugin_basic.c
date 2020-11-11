@@ -284,6 +284,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
 Sky_plugin_table_t cell_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
+    .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
     .equal = beacon_equal, /*Compare two beacons for equality */

@@ -607,6 +607,7 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
 Sky_plugin_table_t ap_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
+    .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
     .equal = beacon_equal, /*Compare two beacons for equality */

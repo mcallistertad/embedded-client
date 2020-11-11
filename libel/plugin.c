@@ -34,24 +34,6 @@
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
 // #define VERBOSE_DEBUG
 
-#ifdef VERBOSE_DEBUG
-static char *str_plugin_op(sky_operation_t op)
-{
-    switch (op) {
-    case SKY_OP_REMOVE_WORST:
-        return "op:remove_worst";
-    case SKY_OP_CACHE_MATCH:
-        return "op:cache_match";
-    case SKY_OP_ADD_TO_CACHE:
-        return "op:add_to_cache";
-    case SKY_OP_EQUAL:
-        return "op:equal";
-    default:
-        return "?";
-    }
-}
-#endif
-
 /*! \brief add a plugin table to the list of plugins
  *
  *  @param ctx Skyhook request context
@@ -62,18 +44,36 @@ static char *str_plugin_op(sky_operation_t op)
  */
 Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table)
 {
-    Sky_plugin_table_t **p = root;
+    Sky_plugin_table_t *p;
 
-    if (!root)
+    /* check args are sane */
+    if (table->magic != SKY_MAGIC || root == NULL)
         return SKY_ERROR;
 
-    /* TODO add table to end of chain */
+    if (*root == NULL) { /* if list was empty, add first entry */
+        *root = table;
+        table->next = NULL;
+        p = table;
+    } else
+        p = *root; /* otherwise pick up pointer to first table */
+
+    /* find end of list of plugins */
     while (p) {
-        if (*p == NULL) {
-            *p = table;
+        if (p->magic != SKY_MAGIC)
+            /* table seems corrupt */
+            return SKY_ERROR;
+        if (p == table)
+            /* if plugin already registered, do nothing */
+            return SKY_SUCCESS;
+        if (p->next == NULL) {
+            /* add new table to end of linked list */
+            p->next = table;
+            /* mark new end of linked list */
+            table->next = NULL;
             break;
         }
-        p = (Sky_plugin_table_t **)*p;
+        /* keep looking for end of linked list */
+        p = p->next;
     }
 
     return SKY_SUCCESS;
@@ -99,10 +99,11 @@ Sky_status_t sky_plugin_equal(
     }
 
     while (p) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "calling %s", p->name);
         ret = (*p->equal)(ctx, a, b, prop);
+#ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+#endif
         if (ret != SKY_ERROR)
             break;
         p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
@@ -128,10 +129,11 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
     }
 
     while (p) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "calling %s", p->name);
         ret = (*p->remove_worst)(ctx);
+#ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+#endif
         if (ret != SKY_ERROR)
             break;
         p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
@@ -158,10 +160,11 @@ Sky_status_t sky_plugin_cache_match(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int 
     }
 
     while (p) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "calling %s", p->name);
         ret = (*p->cache_match)(ctx, idx);
+#ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+#endif
         if (ret != SKY_ERROR)
             break;
         p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
@@ -188,10 +191,11 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
     }
 
     while (p) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "calling %s", p->name);
         ret = (*p->add_to_cache)(ctx, loc);
+#ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+#endif
         if (ret != SKY_ERROR)
             break;
         p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
