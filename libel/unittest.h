@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define SKY_LIBEL
 #include "libel.h"
@@ -48,7 +51,22 @@
 
 #define GROUP(S) _test_set_group(_ctx, (S)) 
 
-#define ASSERT(X) _test_assert(_ctx, __FILE__, __LINE__, (X))
+//#define ASSERT(X) _test_assert(_ctx, __FILE__, __LINE__, (X))
+#define ASSERT(X) { int _line = __LINE__;\
+    pid_t _p = fork();\
+    if (_p == -1) {\
+        perror("fork failed");\
+        exit(-1);\
+    } else if (_p == 0) {\
+        exit((X) == false);\
+    }\
+    int _status, _res;\
+    if (waitpid(_p, &_status, 0) == -1 || !WIFEXITED(_status))\
+        _res = 0;\
+    else\
+        _res = !WEXITSTATUS(_status);\
+    _test_assert(_ctx, __FILE__, _line, _res);\
+}
 
 #define EXTERN_TEST(N) extern Test_rs (*N)(Test_opts *)
 
