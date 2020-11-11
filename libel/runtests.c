@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
     RUN_TEST(beacon_test);
     RUN_TEST(ap_plugin_vap_used);
     RUN_TEST(test_utilities);
+    RUN_TEST(plugin_test);
 
     if (opts.verbose || rs.failed)
         fprintf(stdout, "%d tests run, %d failed\n", rs.ran, rs.failed);
