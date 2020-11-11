@@ -393,7 +393,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (!remove_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx) && !remove_worst_ap_by_rssi(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to remove excess AP");
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to remove worst AP, try next plugin?");
         return SKY_ERROR;
     }
     return SKY_SUCCESS;
@@ -611,6 +611,6 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     /* Entry points */
     .equal = beacon_equal, /*Compare two beacons for equality */
     .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
-    .match_cache = beacon_match, /* Find best match between workspace and cache lines */
+    .cache_match = beacon_match, /* Find best match between workspace and cache lines */
     .add_to_cache = beacon_to_cache /* Copy workspace beacons to a cacheline */
 };

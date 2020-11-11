@@ -1042,7 +1042,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
-    if (sky_plugin_call(ctx, NULL, SKY_OP_ADD_TO_CACHE, loc) != SKY_SUCCESS)
+    if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,

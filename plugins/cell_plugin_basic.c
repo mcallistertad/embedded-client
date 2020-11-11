@@ -278,7 +278,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
  *   name        - get name of plugin
  *   equal       - test two beacons for equivalence
  *   remove_worst - find least desirable beacon and remove it
- *   match_cache  - determine if cache has a good match
+ *   cache_match  - determine if cache has a good match
  *   add_to_cache - Save workspace in cache
  */
 
@@ -288,6 +288,6 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     /* Entry points */
     .equal = beacon_equal, /*Compare two beacons for equality */
     .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
-    .match_cache = beacon_match, /* Find best match between workspace and cache lines */
+    .cache_match = beacon_match, /* Find best match between workspace and cache lines */
     .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
 };
