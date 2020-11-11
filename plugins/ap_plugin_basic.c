@@ -51,6 +51,10 @@ static Sky_status_t beacon_equal(
         return SKY_ERROR;
     }
 
+#ifdef VERBOSE_DEBUG
+    dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
+    dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
+#endif
     /* Two APs can be compared but others are ordered by type */
     if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
         return SKY_ERROR;
@@ -58,12 +62,11 @@ static Sky_status_t beacon_equal(
     /* test two APs for equivalence */
     switch (a->h.type) {
     case SKY_BEACON_AP:
-#ifdef VERBOSE_DEBUG
-        dump_beacon(ctx, "AP a:", a, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "AP b:", b, __FILE__, __FUNCTION__);
-#endif
-        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0)
+        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
+            if (prop != NULL && b->ap.property.in_cache)
+                prop->in_cache = true;
             return SKY_SUCCESS;
+        }
         break;
     default:
         break;
@@ -197,7 +200,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     /* unless all the middle candidates are in the cache or virtual group */
     for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
         if (!ctx->beacon[i].ap.property.in_cache &&
-            fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) > worst) {
+            fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
             worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
             reject = i;
         }
@@ -284,8 +287,9 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-    for (j = 0; j < ctx->ap_len; j++) {
-        for (i = j + 1; i < ctx->ap_len; i++) {
+    /* start search with weakest beacons first */
+    for (j = NUM_APS(ctx) - 1; j >= 0; j--) {
+        for (i = j - 1; i >= 0; i--) {
             if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
                 if (ctx->beacon[j].ap.property.in_cache) {
                     rm = i;
@@ -389,7 +393,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (!remove_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx) && !remove_worst_ap_by_rssi(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to remove excess AP");
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to remove worst AP, try next plugin?");
         return SKY_ERROR;
     }
     return SKY_SUCCESS;
@@ -474,12 +478,12 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
             if ((num_aps_cached = count_cached_aps_in_workspace(ctx, cl)) < 0) {
                 err = true;
                 break;
-            } else if (num_aps_cached) {
+            } else if (NUM_APS(ctx) && NUM_APS(cl)) {
                 /* Score based on ALL APs */
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
-                threshold = CONFIG(ctx->cache, cache_match_all_threshold);
+                threshold = CONFIG(ctx->cache, cache_match_used_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);
@@ -603,10 +607,11 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
 Sky_plugin_table_t ap_plugin_basic_table = {
     .next = NULL, /* Pointer to next plugin table */
+    .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
     .equal = beacon_equal, /*Compare two beacons for equality */
     .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
-    .match_cache = beacon_match, /* Find best match between workspace and cache lines */
+    .cache_match = beacon_match, /* Find best match between workspace and cache lines */
     .add_to_cache = beacon_to_cache /* Copy workspace beacons to a cacheline */
 };

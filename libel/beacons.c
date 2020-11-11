@@ -92,7 +92,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     /* check for duplicate */
     if (!is_cell_type(b)) { /* If new beacon is AP or BLE */
         for (j = 0; j < NUM_APS(ctx); j++) {
-            if (sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
+            if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
                 /* reject new beacon if already have serving AP, or it is older or weaker */
                 if (ctx->beacon[j].h.connected) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not serving)");
@@ -124,7 +124,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
             remove_beacon(ctx, j);
     } else { /* If new beacon is one of the cell types */
         for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-            if (sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
+            if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
                 /* reject new beacon if already have serving cell, or it is older or weaker */
                 if (ctx->beacon[j].h.connected) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (not serving)");
@@ -156,7 +156,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     /* find correct position to insert based on type */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         if (beacon_compare(ctx, b, &ctx->beacon[j], &diff) == false)
-            if (diff > 0) // stop if the new beacon is better
+            if (diff >= 0) // stop if the new beacon is better
                 break;
     }
 
@@ -248,29 +248,25 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
         }
-    } else {
-        DUMP_WORKSPACE(ctx);
-        if (sky_plugin_call(ctx, sky_errno, SKY_OP_REMOVE_WORST, NULL) == SKY_ERROR) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to filter cell");
-            return sky_return(sky_errno, SKY_ERROR_INTERNAL);
-        }
-        return SKY_SUCCESS;
     }
+
+    /* done if no filtering needed */
+    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons) &&
+        NUM_BEACONS(ctx) <= CONFIG(ctx->cache, total_beacons))
+        return SKY_SUCCESS;
 
 #ifdef VERBOSE_DEBUG
-    dump_beacon(ctx, "new AP: ", w, __FILE__, __FUNCTION__);
+    DUMP_WORKSPACE(ctx);
 #endif
-    /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons))
-        return SKY_SUCCESS;
-
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
-    DUMP_WORKSPACE(ctx);
-    if (sky_plugin_call(ctx, sky_errno, SKY_OP_REMOVE_WORST, NULL) == SKY_ERROR) {
-        return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+    if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
+        return sky_return(sky_errno, SKY_ERROR_INTERNAL);
     }
+#ifdef VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
+#endif
 
     return SKY_SUCCESS;
 }
@@ -303,7 +299,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beaco
     }
 
     for (j = 0; j < NUM_BEACONS(cl); j++)
-        if (sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, b, &cl->beacon[j], prop) == 1)
+        if (sky_plugin_equal(ctx, NULL, b, &cl->beacon[j], prop) == 1)
             return true;
     return false;
 }
@@ -342,7 +338,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     }
 
     /* if beacons can't be compared for equality, order like this */
-    if ((equality = sky_plugin_call(ctx, NULL, SKY_OP_EQUAL, new, wb, NULL)) == SKY_ERROR) {
+    if ((equality = sky_plugin_equal(ctx, NULL, new, wb, NULL)) == SKY_ERROR) {
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
         better = -(new->h.type - wb->h.type);
@@ -610,7 +606,7 @@ int get_from_cache(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         return SKY_ERROR;
     }
-    return sky_plugin_call(ctx, NULL, SKY_OP_CACHE_MATCH, &idx) == SKY_SUCCESS ? idx : -1;
+    return sky_plugin_cache_match(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1;
 }
 
 /*! \brief check if an AP beacon is in a virtual group

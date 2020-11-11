@@ -348,7 +348,7 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
             "%s Age: %d %s %3s %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz", prefix, b->h.age,
-            (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Unused") : "      ",
+            (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
             b->h.rssi, b->ap.freq);
     }
@@ -379,7 +379,7 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "%s Age: %d %s MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz VAP: %d", prefix,
         b->h.age,
-        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Unused") : "      ",
+        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->h.rssi, b->ap.freq, b->ap.vg_len);
     dump_vap(ctx, prefix, b, file, func);
