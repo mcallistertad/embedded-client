@@ -69,6 +69,7 @@ void log_plugin(Sky_ctx_t *ctx, Sky_plugin_table_t *p, sky_operation_t op, char 
  */
 Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table)
 {
+    fprintf(stderr, "IN PLUGIN ADD\n");
     Sky_plugin_table_t **p = root;
 
     if (!root)
@@ -76,6 +77,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 
     /* TODO add table to end of chain */
     while (p) {
+        fprintf(stderr, "IN WHILE\n");
         if (*p == NULL) {
             *p = table;
             break;
