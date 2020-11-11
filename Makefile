@@ -17,7 +17,9 @@ GIT_VERSION := $(shell git describe --dirty --always --tags)
 BUILD_DIR = build
 BIN_DIR = bin
 API_DIR = libel
-PLUGIN_DIR = plugins
+ifeq ($(PLUGIN_DIR), )
+	PLUGIN_DIR = plugins
+endif
 SKY_PROTO_DIR = $(API_DIR)/protocol
 NANO_PB_DIR = .submodules/nanopb
 AES_DIR = .submodules/tiny-AES128-C
@@ -27,7 +29,8 @@ INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLU
 VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}
 
 LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c plugin.c
-LIBELG_PLUG = ap_plugin_basic.c cell_plugin_basic.c register.c
+LIBELG_PLUG=$(shell find ${PLUGIN_DIR} -name 'register.c' -prune -o -name '*.c' -print)
+#LIBELG_PLUG = ap_plugin_basic.c cell_plugin_basic.c register.c
 # LIBELG_PLUG = ap_plugin_vap_used.c cell_plugin_best.c
 PROTO_SRCS = ${SKY_PROTO_DIR}/proto.c ${SKY_PROTO_DIR}/el.pb.c p${NANO_PB_DIR}/pb_common.c ${NANO_PB_DIR}/pb_encode.c ${NANO_PB_DIR}/pb_decode.c
 TINYAES_SRCS = ${AES_DIR}/aes.c
@@ -70,5 +73,17 @@ generate:
 ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  workspace.h
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
+SRCFILES := $(shell find libel -path $(SKY_PROTO_DIR) -prune -o -name '*test*.c' -prune -o -type f -name '*.c' -print) \
+	$(shell find ${PLUGIN_DIR} -name '*.c' -print)
+DSTFILES := $(addprefix unittests/,$(SRCFILES:.c=.o))
+unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a
+	@echo $(SRCFILES)
+	@echo $(DSTFILES)
+	$(CC) $(CFLAGS) ${INCLUDES} -o ${BIN_DIR}/tests ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a libel/runtests.c -lm -lc
+
+unittests/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h workspace.h
+	mkdir -p $(dir $@)
+	$(CC) -include unittest.h $(CFLAGS) ${INCLUDES} -c -o $@ $<
+
 clean:
-	rm -rf ${BIN_DIR} ${BUILD_DIR}
+	rm -rf ${BIN_DIR} ${BUILD_DIR} unittests

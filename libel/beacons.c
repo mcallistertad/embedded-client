@@ -697,3 +697,30 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
     }
     return num_aps;
 }
+
+#ifdef UNITTESTS
+
+BEGIN_TESTS(beacon_test)
+    MOCK_SKY_CTX(ctx);
+
+    GROUP("beacon_compare");
+    TEST("should return true when 2 identical beacons are passed");
+    {
+        BEACON(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
+        BEACON(b, "ABCDEFAACCDD", 1234, -108, 4433, true);
+        ASSERT( true == beacon_compare(ctx, &a, &b, NULL) );
+    }
+
+    TEST("should return false when 2 different beacons are passed");
+    {
+        BEACON(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
+        BEACON(b, "ABCDEFAACCFD", 1234, -108, 4433, true);
+        ASSERT( false == beacon_compare(ctx, &a, &b, NULL) );
+    }
+
+    CLOSE_SKY_CTX(ctx);
+
+END_TESTS();
+
+    
+#endif
