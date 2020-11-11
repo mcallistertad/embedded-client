@@ -252,7 +252,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons) &&
-        NUM_BEACONS(ctx) <= CONFIG(ctx->cache, total_beacons))
+        (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
+            (CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons))))
         return SKY_SUCCESS;
 
 #ifdef VERBOSE_DEBUG
@@ -261,7 +262,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
+        if (NUM_BEACONS(ctx) > CONFIG(ctx->cache, total_beacons))
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
         return sky_return(sky_errno, SKY_ERROR_INTERNAL);
     }
 #ifdef VERBOSE_DEBUG
