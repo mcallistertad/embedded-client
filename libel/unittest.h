@@ -90,8 +90,11 @@
     }\
     free(C);
 
-#define BEACON(N, MAC, TIME, RSSI, FREQ, CON) Beacon_t N;\
-    _test_beacon(&(N), (MAC), (TIME), (RSSI), (FREQ), (CON));
+#define AP(N, MAC, TIME, RSSI, FREQ, CON) Beacon_t N;\
+    _test_ap(&(N), (MAC), (TIME), (RSSI), (FREQ), (CON));
+
+#define CELL(N, TIME, RSSI, CON) Beacon_t N;\
+    _test_cell(&(N), (TIME), (RSSI), (CON));
 
 typedef struct {
     int verbose;
@@ -120,8 +123,8 @@ void _test_assert(Test_ctx *ctx, const char *file, int line, int res);
 void _test_print_rs(Test_opts *opts, Test_rs rs);
 int _test_log(Sky_log_level_t level, char *s);
 Sky_ctx_t *_test_sky_ctx();
-int _test_beacon(Beacon_t *b, const char *mac,
-    time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
+int _test_ap(Beacon_t *b, const char *mac,
+time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
 
 /*static void _test_init(Test_ctx *ctx, Test_opts *opts, const char *str) {
     ctx->opts = opts;

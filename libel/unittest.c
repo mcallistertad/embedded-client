@@ -47,15 +47,35 @@ int _test_log(Sky_log_level_t level, char *s) {
     return 0;
 }
 
-int _test_beacon(Beacon_t *b, const char *mac,
-    time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected) {
-
+int _test_beacon(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rssi, bool is_connected) {
     memset(b, 0, sizeof(*b));
     b->h.magic = BEACON_MAGIC;
-    b->h.type = SKY_BEACON_AP;
+    b->h.type = type;
     b->h.connected = is_connected;
     b->h.rssi = rssi;
+    b->h.age = timestamp;
 
+    return 1;
+}
+
+int _test_cell(Beacon_t *b, const char *mac,
+    time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected) {
+
+    if (!_test_beacon(b, SKY_BEACON_AP, timestamp, rssi, is_connected))
+        return 0;
+
+    // add cell stuff...
+
+    return 1;
+}
+
+int _test_ap(Beacon_t *b, const char *mac,
+    time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected) {
+
+    if (!_test_beacon(b, SKY_BEACON_AP, timestamp, rssi, is_connected))
+        return 0;
+
+    // copy MAC
     const char *p;
     unsigned int c;
     int i;
@@ -64,7 +84,6 @@ int _test_beacon(Beacon_t *b, const char *mac,
         b->ap.mac[i] = c;
     }
 
-    b->h.age = timestamp;
     b->ap.freq = frequency;
     b->ap.property.in_cache = false;
     b->ap.property.used = false;
