@@ -113,7 +113,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], void *state_buf, Sky_log_level_t min_level,
     Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
-    fprintf(stderr, "IN SKY_OPEN!\n");
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
 #endif
@@ -121,9 +120,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     int i = 0;
     int j = 0;
 
-    fprintf(stderr, "BEFORE MEMSET\n");
     memset(&cache, 0, sizeof(cache));
-    fprintf(stderr, "AFTER MEMSET\n");
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? MAX_DEVICE_ID : id_len;
 
@@ -138,10 +135,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     sky_time = (gettime == NULL) ? &time : gettime;
 
-    fprintf(stderr, "BEFORE PLUGINS\n");
     if (sky_register_plugins(&sky_plugins) != SKY_SUCCESS)
         return sky_return(sky_errno, SKY_ERROR_NO_PLUGIN);
-    fprintf(stderr, "AFTER PLUGINS\n");
 
     /* if open already */
     if (sky_open_flag && sky_state) {
