@@ -210,7 +210,7 @@ BEGIN_TESTS(plugin_test)
 
     GROUP("sky_plugin_add");
 
-    TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC)");
+    TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL");
     {
         Sky_plugin_table_t *root = NULL;
         Sky_plugin_table_t table;
@@ -239,6 +239,13 @@ BEGIN_TESTS(plugin_test)
 
         ASSERT( SKY_SUCCESS == sky_plugin_add(&root, &table) &&
                 SKY_SUCCESS == sky_plugin_add(&root, &table) );
+    }
+
+    GROUP("sky_plugin_equal");
+
+    TEST("should return SKY_SUCCESS when 2 identical beacons are passed");
+    {
+        Sky_errno_t sky_errno;
     }
 
     CLOSE_SKY_CTX(ctx);
