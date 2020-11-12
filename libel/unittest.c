@@ -58,16 +58,16 @@ int _test_beacon(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t 
     return 1;
 }
 
-int _test_cell(Beacon_t *b, const char *mac,
+/*int _test_cell(Beacon_t *b,
     time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected) {
 
-    if (!_test_beacon(b, SKY_BEACON_AP, timestamp, rssi, is_connected))
+    if (!_test_beacon(b, SKY_BEACON_LTE, timestamp, rssi, is_connected))
         return 0;
 
     // add cell stuff...
 
     return 1;
-}
+}*/
 
 int _test_ap(Beacon_t *b, const char *mac,
     time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected) {

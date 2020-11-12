@@ -90,6 +90,9 @@
     }\
     free(C);
 
+#define BEACON(N, TYPE, TIME, RSSI, CON) Beacon_t N;\
+    _test_beacon(&(N), (TYPE), (TIME), (RSSI), (CON));
+
 #define AP(N, MAC, TIME, RSSI, FREQ, CON) Beacon_t N;\
     _test_ap(&(N), (MAC), (TIME), (RSSI), (FREQ), (CON));
 
@@ -123,7 +126,9 @@ void _test_assert(Test_ctx *ctx, const char *file, int line, int res);
 void _test_print_rs(Test_opts *opts, Test_rs rs);
 int _test_log(Sky_log_level_t level, char *s);
 Sky_ctx_t *_test_sky_ctx();
+int _test_beacon(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t, bool is_connected);
 int _test_ap(Beacon_t *b, const char *mac,
+//int _test_cell(Beacon_t *b, time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
 time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
 
 /*static void _test_init(Test_ctx *ctx, Test_opts *opts, const char *str) {
