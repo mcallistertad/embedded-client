@@ -40,7 +40,7 @@ LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 
 .PHONY: all
 
-all: .submodules/nanopb/.git .submodules/tiny-AES128-C/.git .submodules/embedded-protocol/.git lib unit_test
+all: .submodules/nanopb/.git .submodules/tiny-AES128-C/.git .submodules/embedded-protocol/.git lib runtests
 
 .submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
@@ -81,9 +81,12 @@ unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}
 	@echo $(DSTFILES)
 	$(CC) $(CFLAGS) ${INCLUDES} -o ${BIN_DIR}/tests ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a libel/runtests.c -lm -lc
 
+runtests: unittest
+	${BIN_DIR}/tests 2>/dev/null
+
 unittests/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h workspace.h
 	mkdir -p $(dir $@)
-	$(CC) -include unittest.h $(CFLAGS) ${INCLUDES} -c -o $@ $<
+	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) ${INCLUDES} -c -o $@ $<
 
 clean:
 	rm -rf ${BIN_DIR} ${BUILD_DIR} unittests
