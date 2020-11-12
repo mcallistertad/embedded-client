@@ -208,10 +208,10 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp);
 
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
-
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size);
+
+Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc);

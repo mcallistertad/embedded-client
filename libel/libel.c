@@ -69,7 +69,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  */
-Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky_state)
+static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky_state)
 {
     bool update = false;
 

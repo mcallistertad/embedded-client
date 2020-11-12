@@ -52,9 +52,4 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
 Sky_status_t sky_plugin_cache_match(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx);
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc);
 
-Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
-Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
-int find_oldest(Sky_ctx_t *ctx);
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
-
 #endif
