@@ -473,7 +473,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 
     if (CONFIG(ctx->cache, last_config_time) == 0) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(All) %d(Used) %d(Age) %d(Beacon) %d(RSSI) Update:Pending",
+            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI) Update:Pending",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
             CONFIG(ctx->cache, cache_match_used_threshold),
@@ -483,7 +483,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
             ctx->header.time - CONFIG(ctx->cache, last_config_time));
     } else {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(All) %d(Used) %d(Age) %d(Beacon) %d(RSSI) Update:%d Sec",
+            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI) Update:%d Sec",
             CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
             CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
             CONFIG(ctx->cache, cache_match_used_threshold),
