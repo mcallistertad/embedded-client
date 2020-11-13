@@ -93,7 +93,9 @@ typedef struct sky_ctx {
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
+bool beacon_in_cacheline(
+    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
 int find_oldest(Sky_ctx_t *ctx);
 Sky_status_t add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc);
 int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);

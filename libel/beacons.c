@@ -31,7 +31,7 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
-#define VERBOSE_DEBUG 1
+// #define VERBOSE_DEBUG
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
@@ -244,7 +244,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* Update the AP just added to workspace */
     w = &ctx->beacon[i];
     if (b->h.type == SKY_BEACON_AP) {
-        if (!beacon_in_cache(ctx, b, &ctx->cache->cacheline[ctx->cache->newest], &w->ap.property)) {
+        if (!beacon_in_cache(ctx, b, &w->ap.property)) {
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
         }
@@ -271,6 +271,50 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     return SKY_SUCCESS;
 }
 
+/*! \brief check if a beacon is in cache
+ *
+ *   Scan all cachelines in the cache. 
+ *   If the given beacon is found in the cache true is returned otherwise
+ *   false. If prop is not NULL, the prooerties of the best matching
+ *   beacon in the cache is saved. i.e. if there is a Used match in cache
+ *
+ *  @param ctx Skyhook request context
+ *  @param b pointer to new beacon
+ *  @param cl pointer to cacheline
+ *  @param prop pointer to where the properties of matching beacon is saved
+ *
+ *  @return true if beacon successfully found or false
+ */
+bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
+{
+    int i;
+    Sky_beacon_property_t result, best_prop = { false, false };
+
+    if (!b || !ctx) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return false;
+    }
+
+    for (i = 0; i < CACHE_SIZE; i++) {
+        if (beacon_in_cacheline(ctx, b, &ctx->cache->cacheline[i], &result)) {
+            if (!prop)
+                return true; /* don't need to keep looking for used if prop is NULL */
+            best_prop.in_cache = true;
+
+            if (result.used) {
+                best_prop.used = true;
+                break; /* beacon is in cached and used, can stop search */
+            }
+        }
+    }
+    if (best_prop.in_cache) {
+        *prop = best_prop;
+        return true;
+    }
+
+    return false;
+}
+
 /*! \brief check if a beacon is in a cacheline
  *
  *   Scan all beacons in the cacheline. If the type matches the given beacon, compare
@@ -285,7 +329,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  *
  *  @return true if beacon successfully found or false
  */
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
+bool beacon_in_cacheline(
+    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
 
@@ -481,7 +526,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 
     /* for each cell in workspace, compare with cacheline */
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-        if (ctx->beacon[j].h.connected && beacon_in_cache(ctx, &ctx->beacon[j], cl, NULL)) {
+        if (ctx->beacon[j].h.connected && beacon_in_cacheline(ctx, &ctx->beacon[j], cl, NULL)) {
 #ifdef VERBOSE_DEBUG
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - serving cells match",
                 cl - ctx->cache->cacheline);
