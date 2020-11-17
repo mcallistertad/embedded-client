@@ -266,9 +266,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
         return sky_return(sky_errno, SKY_ERROR_INTERNAL);
     }
-#ifdef VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
-#endif
 
     return SKY_SUCCESS;
 }

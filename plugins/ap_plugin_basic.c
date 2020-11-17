@@ -163,7 +163,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
 
     /* if beacon with min RSSI is below threshold, */
     /* throw out weak one, not in cache, not Virtual Group or Unused  */
-    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "rssi: %d(%d) vs %d",
+    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Weakest beacon rssi: %d(%d) vs %d threshold",
         EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi), ctx->beacon[NUM_APS(ctx) - 1].h.rssi,
         -CONFIG(ctx->cache, cache_neg_rssi_threshold));
     if (EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) <
@@ -218,13 +218,15 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
 #if SKY_DEBUG
     for (i = 0; i < NUM_APS(ctx); i++) {
         b = &ctx->beacon[i];
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s: %-2d, %s ideal %d.%02d fit %2d.%02d (%d)",
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "%s: %-2d, %s ideal %d.%02d fit %2d.%02d MAC %02X:%02X:%02X:%02X:%02X:%02X (%d)",
             (reject == i) ? "remove" : "      ", i, b->ap.property.in_cache ? "Cached" : "      ",
             (int)ideal_rssi[i], (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
             (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]), ideal_rssi[i],
             (int)fabs(round(100 * (fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]) -
                                       (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i])))),
-            b->h.rssi, NUM_VAPS(b));
+            b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
+            b->h.rssi);
     }
 #endif
     return remove_beacon(ctx, reject) == SKY_SUCCESS;
