@@ -169,11 +169,9 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 
     /* add beacon at the end */
     if (j == NUM_BEACONS(ctx)) {
-        fprintf(stderr, "IN ADD ON END\n");
         ctx->beacon[j] = *b;
         NUM_BEACONS(ctx)++;
     } else {
-        fprintf(stderr, "IN MOVE TO MAKE ROOM\n");
         /* shift beacons to make room for the new one */
         memmove(&ctx->beacon[j + 1], &ctx->beacon[j], sizeof(Beacon_t) * (NUM_BEACONS(ctx) - j));
         ctx->beacon[j] = *b;
