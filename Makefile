@@ -15,6 +15,8 @@ GIT_VERSION := $(shell git describe --dirty --always --tags)
 # Disposable build products are deposited in build dir
 # Durable build products are deposited in bin dir
 BUILD_DIR = build
+TEST_BUILD_DIR = build_unittests
+TEST_DIR = unittests
 BIN_DIR = bin
 API_DIR = libel
 ifeq ($(PLUGIN_DIR), )
@@ -75,7 +77,7 @@ ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  worksp
 
 SRCFILES := $(shell find libel -path $(SKY_PROTO_DIR) -prune -o -name '*test*.c' -prune -o -type f -name '*.c' -print) \
 	$(shell find ${PLUGIN_DIR} -name '*.c' -print)
-DSTFILES := $(addprefix unittests/,$(SRCFILES:.c=.o))
+DSTFILES := $(addprefix ${TEST_BUILD_DIR}/,$(SRCFILES:.c=.o))
 unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a
 	@echo $(SRCFILES)
 	@echo $(DSTFILES)
@@ -84,9 +86,9 @@ unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}
 runtests: unittest
 	${BIN_DIR}/tests 2>/dev/null
 
-unittests/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h workspace.h
+${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h workspace.h
 	mkdir -p $(dir $@)
-	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) ${INCLUDES} -c -o $@ $<
+	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
 
 clean:
-	rm -rf ${BIN_DIR} ${BUILD_DIR} unittests
+	rm -rf ${BIN_DIR} ${BUILD_DIR} ${TEST_BUILD_DIR}
