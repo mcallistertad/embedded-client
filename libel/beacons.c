@@ -169,9 +169,11 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 
     /* add beacon at the end */
     if (j == NUM_BEACONS(ctx)) {
+        fprintf(stderr, "IN ADD ON END\n");
         ctx->beacon[j] = *b;
         NUM_BEACONS(ctx)++;
     } else {
+        fprintf(stderr, "IN MOVE TO MAKE ROOM\n");
         /* shift beacons to make room for the new one */
         memmove(&ctx->beacon[j + 1], &ctx->beacon[j], sizeof(Beacon_t) * (NUM_BEACONS(ctx) - j));
         ctx->beacon[j] = *b;
@@ -696,75 +698,6 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 
 #ifdef UNITTESTS
 
-BEGIN_TESTS(beacon_test)
-    MOCK_SKY_CTX(ctx);
+#include "beacons.ut.c"
 
-    GROUP("beacon_compare");
-    TEST("should return true when 2 identical beacons are passed");
-    {
-        AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
-        AP(b, "ABCDEFAACCDD", 1234, -108, 4433, true);
-        ASSERT( true == beacon_compare(ctx, &a, &b, NULL) );
-    }
-
-    TEST("should return false when 2 different beacons are passed");
-    {
-        AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
-        AP(b, "ABCDEFAACCFD", 1234, -108, 4433, true);
-        ASSERT( false == beacon_compare(ctx, &a, &b, NULL) );
-    }
-
-    TEST("should return false and calc diff when 2 different beacon types are passed");
-    {
-        BEACON(a, SKY_BEACON_AP, 1234, -108, true);
-        BEACON(b, SKY_BEACON_LTE, 1234, -108, true);
-        int diff;
-        ASSERT( false == beacon_compare(ctx, &a, &b, &diff) &&
-                diff == -(SKY_BEACON_AP - SKY_BEACON_LTE) );
-    }
-
-    TEST("should return false and calc RSSI diff with comparable beacons");
-    {
-        AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
-        AP(b, "ABCDEFAACCDE", 1234, -78, 4433, true);
-        int diff;
-        ASSERT( false == beacon_compare(ctx, &a, &b, &diff) &&
-                diff == a.h.rssi - b.h.rssi );
-    }
-
-    TEST("should return false and calc vg diff with comparable beacons");
-    {
-        AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
-        AP(b, "ABCDEFAACCDE", 1234, -108, 4433, true);
-        a.ap.vg_len = 1;
-        b.ap.vg_len = 2;
-
-        int diff;
-        ASSERT( false == beacon_compare(ctx, &a, &b, &diff) &&
-                diff == a.ap.vg_len - b.ap.vg_len );
-    }
-
-    TEST("should return true and with 2 identical cell beacons");
-    {
-        BEACON(a, SKY_BEACON_LTE, 1234, -108, false);
-        BEACON(b, SKY_BEACON_LTE, 1234, -108, true);
-
-        ASSERT( true == beacon_compare(ctx, &a, &b, NULL) );
-    }
-
-    TEST("should return false and calc diff with 2 comparable cell beacons with different connected states");
-    {
-        BEACON(a, SKY_BEACON_LTE, 1234, -108, false);
-        BEACON(b, SKY_BEACON_GSM, 1234, -108, true);
-
-        int diff;
-        ASSERT( false == beacon_compare(ctx, &a, &b, &diff) &&
-                diff == -1 );
-    }
-
-    CLOSE_SKY_CTX(ctx);
-
-END_TESTS();
-
-    
 #endif

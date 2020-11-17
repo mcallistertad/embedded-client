@@ -1262,16 +1262,16 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 
 #ifdef UNITTESTS
 
-TEST_FUNC(test_get_cell_type) {
-    Beacon_t b;
-    b.h.type = SKY_BEACON_AP;
-    ASSERT( SKY_BEACON_MAX == get_cell_type(&b) );
-}
-
 BEGIN_TESTS(test_utilities)
 
     GROUP("get_cell_type");
-    TEST_CALL("should return SKY_BEACON_MAX", test_get_cell_type);
+    TEST("should return SKY_BEACON_MAX", {
+        Beacon_t b;
+        b.h.type = SKY_BEACON_AP;
+        ASSERT( 1 == 2 );
+        printf("AGHHHH\n");
+        ASSERT( SKY_BEACON_MAX == get_cell_type(&b) );
+    });
 
 END_TESTS();
 

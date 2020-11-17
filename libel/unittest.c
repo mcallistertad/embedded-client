@@ -109,7 +109,7 @@ Sky_ctx_t *_test_sky_ctx() {
     }
 
     ctx = malloc(bufsize);
-    memset(ctx, 0, bufsize);
+    //memset(ctx, 0, bufsize);
 
     Sky_errno_t sky_errno = -1;
     if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
@@ -119,4 +119,15 @@ Sky_ctx_t *_test_sky_ctx() {
     }
 
     return ctx;
+}
+
+bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b) {
+    return a->h.magic == b->h.magic &&
+           a->h.type  == b->h.type;
+}
+
+bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b) {
+    return _test_beacon_eq(a, b) &&
+           0 == strncmp((const char *)a->ap.mac, (const char *)b->ap.mac, MAC_SIZE) &&
+           a->ap.freq == b->ap.freq;
 }

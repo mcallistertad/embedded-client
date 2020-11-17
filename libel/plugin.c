@@ -210,26 +210,23 @@ BEGIN_TESTS(plugin_test)
 
     GROUP("sky_plugin_add");
 
-    TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL");
-    {
+    TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL", {
         Sky_plugin_table_t *root = NULL;
         Sky_plugin_table_t table;
         table.magic = 0;
         ASSERT( SKY_ERROR == sky_plugin_add(&root, &table) &&
                 SKY_ERROR == sky_plugin_add(&root, (Sky_plugin_table_t *)ctx) );
-    }
+    });
 
-    TEST("should return SKY_ERROR if table or root pointer is NULL");
-    {
+    TEST("should return SKY_ERROR if table or root pointer is NULL", {
         Sky_plugin_table_t *root = NULL;
         Sky_plugin_table_t table;
         ASSERT( SKY_ERROR == sky_plugin_add(NULL, NULL)  &&
                 SKY_ERROR == sky_plugin_add(&root, NULL)  &&
                 SKY_ERROR == sky_plugin_add(NULL, &table) );
-    }
+    });
 
-    TEST("should return SKY_SUCCESS if table is added twice to same list");
-    {
+    TEST("should return SKY_SUCCESS if table is added twice to same list", {
         Sky_plugin_table_t *root = NULL;
         Sky_plugin_table_t table = {
             .next = NULL,
@@ -239,14 +236,13 @@ BEGIN_TESTS(plugin_test)
 
         ASSERT( SKY_SUCCESS == sky_plugin_add(&root, &table) &&
                 SKY_SUCCESS == sky_plugin_add(&root, &table) );
-    }
+    });
 
     GROUP("sky_plugin_equal");
 
-    TEST("should return SKY_SUCCESS when 2 identical beacons are passed");
-    {
+    /*TEST("should return SKY_SUCCESS when 2 identical beacons are passed", {
         Sky_errno_t sky_errno;
-    }
+    });*/
 
     CLOSE_SKY_CTX(ctx);
 
