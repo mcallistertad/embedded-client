@@ -195,10 +195,10 @@ AP(b, "ABCDEF010203", 1605633264, -108, 2, true);
 CELL(name, time_t timestamp, int16_t rssi, bool connected)
 CELL(c, 1605633264, -108, true);
 
-BEACON_EQ(A, B) _test_beacon_eq((A), (B))
-AP_EQ(A, B) _test_ap_eq((A), (B))
+BEACON_EQ(Beacon_t *A, Beacon_t *B)
+AP_EQ(Beacon_t *A, Beacon_t *B)
 
-ASSERT( ! BEACON_EQ(a, b) )
+ASSERT( ! BEACON_EQ(&a, &b) )
 ```
 
 These macros assist in breaking up large test groups into smaller sections:
