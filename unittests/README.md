@@ -15,11 +15,8 @@ should be added to the end of the file whose source is being tested:
 #include "source.ut.c"
 
 /* in case of inline */
-
 BEGIN_TESTS(inline_tests)
-
     /* test code... */
-
 END_TESTS();
 
 #endif
