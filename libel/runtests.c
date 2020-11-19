@@ -5,6 +5,25 @@
 
 #include "unittest.h"
 
+Test_opts opts;
+
+/**************************
+ *     ADD TESTS HERE     *
+ **************************/
+static Test_rs runtests(void)
+{
+    Test_rs rs;
+
+    /* START TEST LIST */
+    RUN_TEST(beacon_test);
+    /*RUN_TEST(ap_plugin_vap_used);*/
+    RUN_TEST(test_utilities);
+    RUN_TEST(plugin_test);
+    /*RUN_TEST(new_tests);*/
+    /* END TEST LIST */
+    return rs;
+}
+
 static const char *optargs = "vh";
 
 static struct option longopts[] = { { "help", no_argument, NULL, 'h' },
@@ -23,7 +42,8 @@ static int usage(char **argv)
 
 int main(int argc, char **argv)
 {
-    Test_opts opts;
+    Test_rs rs;
+
     for (;;) {
         int c = getopt_long(argc, argv, optargs, longopts, NULL);
         if (c == -1) {
@@ -42,11 +62,7 @@ int main(int argc, char **argv)
         }
     }
 
-    Test_rs rs = { 0, 0 };
-    RUN_TEST(beacon_test);
-    // RUN_TEST(ap_plugin_vap_used);
-    RUN_TEST(test_utilities);
-    RUN_TEST(plugin_test);
+    rs = runtests();
 
     if (opts.verbose || rs.failed)
         fprintf(stdout, "%d tests run, %d failed\n", rs.ran, rs.failed);

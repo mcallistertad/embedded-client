@@ -1267,7 +1267,7 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 BEGIN_TESTS(test_utilities)
 
 GROUP("get_cell_type");
-TEST("should return SKY_BEACON_MAX", {
+TEST("should return SKY_BEACON_MAX", ctx, {
     Beacon_t b;
     b.h.type = SKY_BEACON_AP;
     ASSERT(1 == 2);
