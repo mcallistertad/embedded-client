@@ -1,6 +1,8 @@
 doxygen/
 bin/
 build/
+build_unittests/libel/
+build_unittests/plugins/
 packages/
 sample_client/*.o
 sample_client/sample_client
