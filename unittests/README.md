@@ -36,21 +36,21 @@ RUN_TEST(name)
 
 At the top of `libel/runtests.c`:
 ```C
-/**************************       
- *     ADD TESTS HERE     *       
- **************************/      
-static Test_rs runtests() {       
-    Test_rs rs = { 0, 0 };        
-                                  
-    /* START TEST LIST */         
-    RUN_TEST(beacon_test);        
-    RUN_TEST(ap_plugin_vap_used); 
-    RUN_TEST(test_utilities);     
-    RUN_TEST(plugin_test);        
-    /* END TEST LIST */           
-                                  
-    return rs;                    
-}                                 
+/**************************
+ *     ADD TESTS HERE     *
+ **************************/
+static Test_rs runtests() {
+    Test_rs rs = { 0, 0 };
+
+    /* START TEST LIST */
+    RUN_TEST(beacon_test);
+    RUN_TEST(ap_plugin_vap_used);
+    RUN_TEST(test_utilities);
+    RUN_TEST(plugin_test);
+    /* END TEST LIST */
+
+    return rs;
+}
 ```
 
 Add the named test to this list so it will be executed when the test binary is
@@ -75,9 +75,7 @@ TEST_DEF("test description", {
 
     /* test code */
     EXE({
-
         ASSERT( validate_workspace(ctx) );
-
     });
 
     /* post-test cleanup */
@@ -112,16 +110,12 @@ BEGIN_TESTS(new_tests)
     
     GROUP("validate_workspace");
     TEST_DEF("create and validate workspace", {
-        /* pre-test initalization */
         MOCK_SKY_CTX(ctx);
 
-        /* test code */
         EXE({
             ASSERT( validate_workspace(ctx) );
         });
 
-        /* post-test cleanup */
-        /* (will be executed regardless of test pass/fail!) */
         CLOSE_SKY_CTX(ctx);
     });
 
