@@ -1,21 +1,18 @@
-//static void test_compare(Sky_ctx_t
 TEST_FUNC(test_compare) {
-    MOCK_SKY_CTX(ctx);
-
-    TEST("should return true when 2 identical beacons are passed", {
+    TEST("should return true when 2 identical beacons are passed", ctx, {
         AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
         AP(b, "ABCDEFAACCDD", 1234, -108, 4433, true);
         ASSERT( true == beacon_compare(ctx, &a, &b, NULL) );
         ASSERT( false );
     });
 
-    TEST("should return false when 2 different beacons are passed", {
+    TEST("should return false when 2 different beacons are passed", ctx, {
         AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
         AP(b, "ABCDEFAACCFD", 1234, -108, 4433, true);
         ASSERT( false == beacon_compare(ctx, &a, &b, NULL) );
     });
 
-    TEST("should return false and calc diff when 2 different beacon types are passed", {
+    TEST("should return false and calc diff when 2 different beacon types are passed", ctx, {
         BEACON(a, SKY_BEACON_AP, 1234, -108, true);
         BEACON(b, SKY_BEACON_LTE, 1234, -108, true);
         int diff;
@@ -24,7 +21,7 @@ TEST_FUNC(test_compare) {
         ASSERT( diff == -(SKY_BEACON_AP - SKY_BEACON_LTE) );
     });
 
-    TEST("should return false and calc RSSI diff with comparable beacons", {
+    TEST("should return false and calc RSSI diff with comparable beacons", ctx, {
         AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
         AP(b, "ABCDEFAACCDE", 1234, -78, 4433, true);
         int diff;
@@ -32,7 +29,7 @@ TEST_FUNC(test_compare) {
         ASSERT( diff == a.h.rssi - b.h.rssi );
     });
 
-    TEST("should return false and calc vg diff with comparable beacons", {
+    TEST("should return false and calc vg diff with comparable beacons", ctx, {
         AP(a, "ABCDEFAACCDD", 1234, -108, 4433, true);
         AP(b, "ABCDEFAACCDE", 1234, -108, 4433, true);
         a.ap.vg_len = 1;
@@ -43,14 +40,14 @@ TEST_FUNC(test_compare) {
         ASSERT( diff == a.ap.vg_len - b.ap.vg_len );
     });
 
-    TEST("should return true and with 2 identical cell beacons", {
+    TEST("should return true and with 2 identical cell beacons", ctx, {
         BEACON(a, SKY_BEACON_LTE, 1234, -108, false);
         BEACON(b, SKY_BEACON_LTE, 1234, -108, true);
 
         ASSERT( true == beacon_compare(ctx, &a, &b, NULL) );
     });
 
-    TEST("should return false and calc diff with 2 comparable cell beacons with different connected states", {
+    TEST("should return false and calc diff with 2 comparable cell beacons with different connected states", ctx, {
         BEACON(a, SKY_BEACON_LTE, 1234, -108, false);
         BEACON(b, SKY_BEACON_GSM, 1234, -108, true);
 
@@ -58,14 +55,12 @@ TEST_FUNC(test_compare) {
         ASSERT( false == beacon_compare(ctx, &a, &b, &diff) );
         ASSERT( diff == -1 );
     });
-
-    CLOSE_SKY_CTX(ctx);
 }
 
 TEST_FUNC(test_insert) {
 
     // sanity checks
-    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS", {
+    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS", ctx, {
         BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
         Sky_errno_t sky_errno;
 
@@ -87,7 +82,7 @@ TEST_FUNC(test_insert) {
         CLOSE_SKY_CTX(ctx);
     });
 
-    TEST_WITH_CTX("should insert 2 beacons in ctx->beacon[] and set index", ctx, {
+    TEST("should insert 2 beacons in ctx->beacon[] and set index", ctx, {
         Sky_errno_t sky_errno;
 
         int insert_idx;

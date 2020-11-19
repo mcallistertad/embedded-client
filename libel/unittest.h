@@ -41,8 +41,6 @@
         Test_ctx *_ctx = &__ctx;\
         _test_init(_ctx, opts, #N);
 
-// TODO: This uses "compound literal" operator, a C99 feature.
-//       Probably should just do things the old fashioned way...
 #define END_TESTS() return (Test_rs) { __ctx.ran, __ctx.failed }; }
 
 /* Define function to be used with TEST_CALL
@@ -51,11 +49,12 @@
  *        }
  */
 #define TEST_FUNC(N) static void N(Test_ctx *_ctx)
-
 #define TEST_CALL(S, F) _test_set_desc(_ctx, (S)); F(_ctx);
 
 #define GROUP(S) _test_set_group(_ctx, (S)) 
 
+// GROUP_CALL is similar to TEST_CALL, and also calls functions defined
+// with TEST_FUNC
 #define GROUP_CALL(S, F) GROUP(S); F(_ctx);
 
 // If building on POSIX system, use fork to better isolate tests
@@ -88,11 +87,6 @@
 
 #endif
 
-/* Usage:
- *   TEST("description", {
- *     // test code
- *   });
- */
 #define EXE(...) { \
     int _res = 0;\
     __SETUP_TEST();\
@@ -108,11 +102,16 @@
     __VA_ARGS__ \
 }
 
-#define TEST(S, ...) { \
+/* Usage:
+ *   TEST("description", {
+ *     // test code
+ *   });
+ */
+/*#define TEST(S, ...) { \
     TEST_DEF((S), { EXE(__VA_ARGS__); });\
-}
+}*/
 
-#define TEST_WITH_CTX(S, N, ...) \
+#define TEST(S, N, ...) \
     TEST_DEF((S), {\
         MOCK_SKY_CTX(N);\
         EXE(__VA_ARGS__);\
