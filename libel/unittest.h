@@ -1,7 +1,10 @@
 #ifndef UNITTEST_H
 #define UNITTEST_H
 
+/* detect if host is a UNIX-like OS */
+#if !defined(NO_FORK) && __unix__
 #define POSIX
+#endif
 
 #ifdef POSIX
 #define _POSIX_C_SOURCE 200809L // for strsignal()

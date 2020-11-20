@@ -10,6 +10,10 @@ CC = armcc
 CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG)
 endif
 
+ifdef NO_FORK
+CFLAGS += -DNO_FORK
+endif
+
 GIT_VERSION := $(shell git describe --dirty --always --tags)
 
 # Disposable build products are deposited in build dir
