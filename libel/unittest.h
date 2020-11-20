@@ -22,21 +22,24 @@
 
 #define UNITTESTS
 
+/* Constants for sky_open */
 #define TEST_DEVICE_ID "123456123456112233445566"
 #define TEST_PARTNER_ID 2
 #define TEST_KEY "000102030405060708090a0b0c0d0e0f"
 
-// ANSI Colors
+/* ANSI Colors */
 #define ESC "\033"
 #define BRIGHT ESC "[1;37m"
 #define GREEN ESC "[0;32m"
 #define RED ESC "[0;31m"
 #define RESET ESC "[0m"
 
-// equivalent to basename(__FILE__)
+/* equivalent to basename(__FILE__) */
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-/* Test entry point. Should be paired with END_TESTS() in use */
+/*! \brief Test entry point. Should be paired with END_TESTS() in use
+ *  @param: identifier
+ */
 #define BEGIN_TESTS(N) static Test_rs _ ## N ## _test_main(Test_opts *opts);\
     Test_rs (*N)(Test_opts *opts) = _ ## N ## _test_main;\
     static Test_rs _ ## N ## _test_main(Test_opts *opts) {\
@@ -44,24 +47,31 @@
         Test_ctx *_ctx = &__ctx;\
         _test_init(_ctx, opts, #N);
 
+/*! \brief Test exit point
+ */
 #define END_TESTS() return (Test_rs) { __ctx.ran, __ctx.failed }; }
 
-/* Define function to be used with TEST_CALL
- * Usage: TEST_FUNC(test_function_name) {
+/*! \brief Define function to be used with GROUP_CALL
+ *  Usage: TEST_FUNC(test_function_name) {
  *            // test code
- *        }
+ *         }
+ *  @param identifier
  */
 #define TEST_FUNC(N) static void N(Test_ctx *_ctx)
-#define TEST_CALL(S, F) _test_set_desc(_ctx, (S)); F(_ctx);
 
+/*! \brief Sets group description for subsequent tests
+ *  @param const char* string
+ */
 #define GROUP(S) _test_set_group(_ctx, (S)) 
 
-// GROUP_CALL is similar to TEST_CALL, and also calls functions defined
-// with TEST_FUNC
+/*! \brief call function defined by TEST_FUNC
+ *  @param const char* Group description
+ *  @param void (*)(Test_ctx) Test function
+ */
 #define GROUP_CALL(S, F) GROUP(S); F(_ctx);
 
-// If building on POSIX system, use fork to better isolate tests
-// otherwise just print
+/* If building on POSIX system, use fork to better isolate tests
+   otherwise just print */
 #ifdef POSIX
 
 #define __SETUP_TEST() int _line = __LINE__;\
@@ -90,6 +100,9 @@
 
 #endif
 
+/* \brief Executes test code with ASSERT calls within TEST_DEF
+ * @param block Test code
+ */
 #define EXE(...) { \
     int _res = 0;\
     __SETUP_TEST();\
@@ -100,20 +113,28 @@
     __TEARDOWN_TEST();\
 }
 
+/* \brief Define test
+ * @param string Test description
+ * @param block Test initalization execution and cleanup
+ * Usage: 
+ *  TEST_DEF("description", {
+ *      // initalization
+ *      EXE({
+ *          // test code
+ *      })
+ *      // cleanup
+ *  });
+ */
 #define TEST_DEF(S, ...) { \
     _test_set_desc(_ctx, (S));\
     __VA_ARGS__ \
 }
 
-/* Usage:
- *   TEST("description", {
- *     // test code
- *   });
+/* \brief Convienence wrapper around TEST_DEF/EXE with automatic Sky_ctx_t var
+ * @param const char* Test description
+ * @param identifier Context variable
+ * @param block Test code
  */
-/*#define TEST(S, ...) { \
-    TEST_DEF((S), { EXE(__VA_ARGS__); });\
-}*/
-
 #define TEST(S, N, ...) \
     TEST_DEF((S), {\
         MOCK_SKY_CTX(N);\
@@ -121,11 +142,21 @@
         CLOSE_SKY_CTX(N);\
     });
 
+/* \brief Evaluate expression and tally results
+ * @param expression
+ * Note: Will jump out of EXE block if expression evaluates to false
+ */
 #define ASSERT(X) fprintf(stderr, "Running ASSERT() in %s:%d\n", __FILENAME__, __LINE__);\
     if (!(X)) break;
 
+/* \brief Get external reference to named test
+ * @param identifier Test name
+ */
 #define EXTERN_TEST(N) extern Test_rs (*N)(Test_opts *)
 
+/* \brief Execute named test and tally results
+ * @param identifer Test name
+ */
 #define RUN_TEST(N) {\
     EXTERN_TEST(N);\
     Test_rs _rs = N(&opts);\
@@ -133,10 +164,7 @@
     rs.failed += _rs.failed;\
     }
 
-#define PRINT_RESULT(X) _test_print_rs((X))
-
-// Mock utility macros
-
+/* Mock utility macros */
 #define MOCK_SKY_LOG_CTX(N) Sky_ctx_t ctx = { .logf = _test_log }
 
 #define MOCK_SKY_CTX(N) Sky_ctx_t *N = _test_sky_ctx()
@@ -148,6 +176,7 @@
     }\
     free(C);
 
+/* Beacon macros */
 #define BEACON(N, TYPE, TIME, RSSI, CON) Beacon_t N;\
     _test_beacon(&(N), (TYPE), (TIME), (RSSI), (CON));
 
