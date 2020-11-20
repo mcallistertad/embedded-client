@@ -207,8 +207,6 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 
 BEGIN_TESTS(plugin_test)
 {
-    MOCK_SKY_CTX(ctx);
-
     GROUP("sky_plugin_equal");
 
     TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passed", ctx, {
@@ -258,8 +256,6 @@ BEGIN_TESTS(plugin_test)
         ASSERT(SKY_SUCCESS == sky_plugin_add(&root, &table) &&
                SKY_SUCCESS == sky_plugin_add(&root, &table));
     });
-
-    CLOSE_SKY_CTX(ctx);
 
     END_TESTS();
 }
