@@ -19,7 +19,7 @@ GIT_VERSION := $(shell git describe --dirty --always --tags)
 # Disposable build products are deposited in build dir
 # Durable build products are deposited in bin dir
 BUILD_DIR = build
-TEST_BUILD_DIR = build_unittests
+TEST_BUILD_DIR = ${BUILD_DIR}/unittests
 TEST_DIR = unittests
 BIN_DIR = bin
 API_DIR = libel
@@ -83,8 +83,6 @@ SRCFILES := $(shell find libel -path $(SKY_PROTO_DIR) -prune -o -name '*test*.c'
 	$(shell find ${PLUGIN_DIR} -name '*.c' -print)
 DSTFILES := $(addprefix ${TEST_BUILD_DIR}/,$(SRCFILES:.c=.o))
 unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a
-	@echo $(SRCFILES)
-	@echo $(DSTFILES)
 	$(CC) $(CFLAGS) ${INCLUDES} -o ${BIN_DIR}/tests ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a libel/runtests.c -lm -lc
 
 runtests: unittest
