@@ -47,7 +47,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
     Sky_plugin_table_t *p;
 
     /* check args are sane */
-    if (table->magic != SKY_MAGIC || root == NULL)
+    if (table == NULL || table->magic != SKY_MAGIC || root == NULL)
         return SKY_ERROR;
 
     if (*root == NULL) { /* if list was empty, add first entry */
