@@ -31,7 +31,7 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG 1
+#define VERBOSE_DEBUG 1
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))

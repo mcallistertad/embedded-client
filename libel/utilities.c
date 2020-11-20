@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#define SKY_LIBEL 1
+#define SKY_LIBEL
 #include "libel.h"
 #include "proto.h"
 
@@ -71,7 +71,9 @@ int validate_workspace(Sky_ctx_t *ctx)
     int i;
 
     if (ctx == NULL) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
+        // Can't use LOGFMT if ctx is bad
+        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
+        fprintf(stderr, "FATAL: NULL ctx\n");
         return false;
     }
     if (ctx->len < 0 || ctx->ap_len < 0) {
@@ -237,7 +239,7 @@ int logfmt(
     va_list ap;
     char buf[SKY_LOG_LENGTH];
     int ret, n;
-    if (level > ctx->min_level || function == NULL)
+    if (ctx == NULL || level > ctx->min_level || function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
@@ -1264,14 +1266,14 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 
 BEGIN_TESTS(test_utilities)
 
-    GROUP("get_cell_type");
-    TEST("should return SKY_BEACON_MAX", {
-        Beacon_t b;
-        b.h.type = SKY_BEACON_AP;
-        ASSERT( 1 == 2 );
-        printf("AGHHHH\n");
-        ASSERT( SKY_BEACON_MAX == get_cell_type(&b) );
-    });
+GROUP("get_cell_type");
+TEST("should return SKY_BEACON_MAX", ctx, {
+    Beacon_t b;
+    b.h.type = SKY_BEACON_AP;
+    ASSERT(1 == 2);
+    printf("AGHHHH\n");
+    ASSERT(SKY_BEACON_MAX == get_cell_type(&b));
+});
 
 END_TESTS();
 
