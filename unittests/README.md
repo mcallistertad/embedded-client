@@ -192,8 +192,18 @@ BEACON(a, SKY_BEACON_LTE, 1605633264, -108, true);
 AP(name, const char *mac, time_t timestamp, int16_t rssi, int32_t frequency, bool connected)
 AP(b, "ABCDEF010203", 1605633264, -108, 2, true);
 
-CELL(name, time_t timestamp, int16_t rssi, bool connected)
-CELL(c, 1605633264, -108, true);
+NR(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+LTE(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+UMTS(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+NBIOT(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+CDMA(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+GSM(name, time_t timestamp, int16_t rssi, bool connected, uint16_t ID1, uint16_t ID2, int32_t ID3, int64_t ID4, int16_t ID5, int32_t ID6)
+NR_NMR(name, time_t timestamp, int16_t rssi, bool connected, int16_t ID5, int32_t ID6)
+LTE_NMR(name, time_t timestamp, int16_t rssi, bool connected, int16_t ID5, int32_t ID6)
+UMTS_NMR(name, time_t timestamp, int16_t rssi, bool connected, int16_t ID5, int32_t ID6)
+NBIOT_NMR(name, time_t timestamp, int16_t rssi, bool connected, int16_t ID5, int32_t ID6)
+
+LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
 
 BEACON_EQ(Beacon_t *A, Beacon_t *B)
 AP_EQ(Beacon_t *A, Beacon_t *B)
