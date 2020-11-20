@@ -12,7 +12,7 @@ Test_opts opts;
  **************************/
 static Test_rs runtests(void)
 {
-    Test_rs rs;
+    Test_rs rs = { 0, 0 };
 
     /* START TEST LIST */
     RUN_TEST(beacon_test);
@@ -42,8 +42,6 @@ static int usage(char **argv)
 
 int main(int argc, char **argv)
 {
-    Test_rs rs;
-
     for (;;) {
         int c = getopt_long(argc, argv, optargs, longopts, NULL);
         if (c == -1) {
@@ -62,7 +60,7 @@ int main(int argc, char **argv)
         }
     }
 
-    rs = runtests();
+    Test_rs rs = runtests();
 
     if (opts.verbose || rs.failed)
         fprintf(stdout, "%d tests run, %d failed\n", rs.ran, rs.failed);
