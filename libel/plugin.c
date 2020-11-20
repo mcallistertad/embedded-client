@@ -90,7 +90,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 Sky_status_t sky_plugin_equal(
     Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_workspace(ctx)) {
@@ -98,6 +98,7 @@ Sky_status_t sky_plugin_equal(
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
+    p = ctx->plugin;
     while (p) {
         ret = (*p->equal)(ctx, a, b, prop);
 #ifdef VERBOSE_DEBUG
@@ -206,58 +207,55 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 #ifdef UNITTESTS
 
 BEGIN_TESTS(plugin_test)
-{
-    GROUP("sky_plugin_equal");
+GROUP("sky_plugin_equal");
 
-    TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passed", ctx, {
-        AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-        AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-        Sky_errno_t sky_errno;
+TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passed", ctx, {
+    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+    AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+    Sky_errno_t sky_errno;
 
-        ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL));
-    });
+    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL));
+});
 
-    TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
-        AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-        AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-        Sky_errno_t sky_errno;
-        Sky_beacon_property_t prop = { false, false };
-        b.ap.property.in_cache = true;
+TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
+    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+    AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+    Sky_errno_t sky_errno;
+    Sky_beacon_property_t prop = { false, false };
+    b.ap.property.in_cache = true;
 
-        ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop)) && prop.in_cache);
-    });
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop)) && prop.in_cache);
+});
 
-    GROUP("sky_plugin_add");
+GROUP("sky_plugin_add");
 
-    TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL", ctx, {
-        Sky_plugin_table_t *root = NULL;
-        Sky_plugin_table_t table;
-        table.magic = 0;
-        ASSERT(SKY_ERROR == sky_plugin_add(&root, &table) &&
-               SKY_ERROR == sky_plugin_add(&root, (Sky_plugin_table_t *)ctx));
-    });
+TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL", ctx, {
+    Sky_plugin_table_t *root = NULL;
+    Sky_plugin_table_t table;
+    table.magic = 0;
+    ASSERT(SKY_ERROR == sky_plugin_add(&root, &table) &&
+           SKY_ERROR == sky_plugin_add(&root, (Sky_plugin_table_t *)ctx));
+});
 
-    TEST("should return SKY_ERROR if table or root pointer is NULL", ctx, {
-        Sky_plugin_table_t *root = NULL;
-        Sky_plugin_table_t table;
-        ASSERT(SKY_ERROR == sky_plugin_add(NULL, NULL) &&
-               SKY_ERROR == sky_plugin_add(&root, NULL) &&
-               SKY_ERROR == sky_plugin_add(NULL, &table));
-    });
+TEST("should return SKY_ERROR if table or root pointer is NULL", ctx, {
+    Sky_plugin_table_t *root = NULL;
+    Sky_plugin_table_t table;
+    ASSERT(SKY_ERROR == sky_plugin_add(NULL, NULL) && SKY_ERROR == sky_plugin_add(&root, NULL) &&
+           SKY_ERROR == sky_plugin_add(NULL, &table));
+});
 
-    TEST("should return SKY_SUCCESS if table is added twice to same list", ctx, {
-        Sky_plugin_table_t *root = NULL;
-        Sky_plugin_table_t table = {
-            .next = NULL,
-            .magic = SKY_MAGIC,
-            .name = __FILE__,
-        };
+TEST("should return SKY_SUCCESS if table is added twice to same list", ctx, {
+    Sky_plugin_table_t *root = NULL;
+    Sky_plugin_table_t table = {
+        .next = NULL,
+        .magic = SKY_MAGIC,
+        .name = __FILE__,
+    };
 
-        ASSERT(SKY_SUCCESS == sky_plugin_add(&root, &table) &&
-               SKY_SUCCESS == sky_plugin_add(&root, &table));
-    });
+    ASSERT(SKY_SUCCESS == sky_plugin_add(&root, &table) &&
+           SKY_SUCCESS == sky_plugin_add(&root, &table));
+});
 
-    END_TESTS();
-}
+END_TESTS();
 
 #endif

@@ -824,7 +824,7 @@ Beacon_t *get_cell(Sky_ctx_t *ctx, uint32_t idx)
  */
 int16_t get_cell_type(Beacon_t *cell)
 {
-    if (!is_cell_type(cell))
+    if (!cell || !is_cell_type(cell))
         return SKY_BEACON_MAX;
     else
         return cell->h.type;
@@ -862,6 +862,8 @@ int64_t get_cell_id1(Beacon_t *cell)
  */
 int64_t get_cell_id2(Beacon_t *cell)
 {
+    if (!cell)
+        return -1;
     return cell->cell.id2;
 }
 
@@ -873,6 +875,8 @@ int64_t get_cell_id2(Beacon_t *cell)
  */
 int64_t get_cell_id3(Beacon_t *cell)
 {
+    if (!cell)
+        return -1;
     return cell->cell.id3;
 }
 
@@ -884,6 +888,8 @@ int64_t get_cell_id3(Beacon_t *cell)
  */
 int64_t get_cell_id4(Beacon_t *cell)
 {
+    if (!cell)
+        return -1;
     return cell->cell.id4;
 }
 
@@ -945,6 +951,8 @@ int64_t get_cell_id6(Beacon_t *cell)
  */
 bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell)
 {
+    if (!ctx || !cell)
+        return -1;
     return ctx->connected >= 0 && &ctx->beacon[ctx->connected] == cell;
 }
 
@@ -956,6 +964,8 @@ bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell)
  */
 int64_t get_cell_rssi(Beacon_t *cell)
 {
+    if (!cell)
+        return -1;
     return cell->h.rssi;
 }
 
@@ -967,6 +977,8 @@ int64_t get_cell_rssi(Beacon_t *cell)
  */
 int64_t get_cell_age(Beacon_t *cell)
 {
+    if (!cell)
+        return -1;
     return cell->h.age;
 }
 
@@ -1267,11 +1279,15 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 BEGIN_TESTS(test_utilities)
 
 GROUP("get_cell_type");
-TEST("should return SKY_BEACON_MAX", ctx, {
+
+TEST("should return SKY_BEACON_MAX for non-cell", ctx, {
     Beacon_t b;
     b.h.type = SKY_BEACON_AP;
     ASSERT(SKY_BEACON_MAX == get_cell_type(&b));
 });
+
+TEST("should return SKY_BEACON_MAX with bad args", ctx,
+    { ASSERT(SKY_BEACON_MAX == get_cell_type(NULL)); });
 
 END_TESTS();
 

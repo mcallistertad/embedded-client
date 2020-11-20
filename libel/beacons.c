@@ -341,7 +341,11 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     if ((equality = sky_plugin_equal(ctx, NULL, new, wb, NULL)) == SKY_ERROR) {
         /* types increase in value as they become lower priority */
         /* so we have to invert the sign of the comparison value */
-        better = -(new->h.type - wb->h.type);
+        if (is_cell_nmr(new) != is_cell_nmr(wb))
+            /* fully qualified is best */
+            better = (!is_cell_nmr(new) ? 1 : -1);
+        else
+            better = -(new->h.type - wb->h.type);
 #ifdef VERBOSE_DEBUG
         dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
@@ -387,13 +391,6 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 better = -(new->h.age - wb->h.age);
 #ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else if (new->h.type != wb->h.type) {
-                /* by type order */
-                better = -(new->h.type - wb->h.type);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell type score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
