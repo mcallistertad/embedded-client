@@ -12,7 +12,7 @@ Test_opts opts;
  **************************/
 static Test_rs runtests(void)
 {
-    Test_rs rs;
+    Test_rs rs = { 0, 0 };
 
     /* START TEST LIST */
     RUN_TEST(beacon_test);
