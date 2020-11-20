@@ -56,7 +56,7 @@ TEST_FUNC(test_compare)
             int diff;
 
             ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-            ASSERT(diff == SKY_BEACON_GSM - SKY_BEACON_LTE);
+            ASSERT(diff == -1);
         });
 }
 
