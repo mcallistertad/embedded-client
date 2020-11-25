@@ -687,8 +687,6 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 
             for (j = start; j < end; j++) {
                 if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %d type %s matches cache %d of %d", j,
-                        sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE)
                     score[i] = score[i] + 1.0;
                 }
             }
