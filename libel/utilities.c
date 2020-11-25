@@ -35,17 +35,6 @@
 
 #define MIN(a, b) ((a < b) ? a : b)
 
-#if SKY_DEBUG
-static char *cell_params[][6] = { [SKY_BEACON_AP] = { "n/a", "n/a", "n/a", "n/a", "n/a", "n/a" },
-    [SKY_BEACON_BLE] = { "n/a", "n/a", "n/a", "n/a", "n/a", "n/a" },
-    [SKY_BEACON_NBIOT] = { "mcc", "mnc", "tac", "cellid", "ncid", "earfcn" },
-    [SKY_BEACON_LTE] = { "mcc", "mnc", "tac", "eucid", "pci", "earfcn" },
-    [SKY_BEACON_NR] = { "mcc", "mnc", "tac", "nci", "pci", "nrarfcn" },
-    [SKY_BEACON_UMTS] = { "mcc", "mnc", "lac", "uci", "psc", "uarfcn" },
-    [SKY_BEACON_CDMA] = { "n/a", "sid", "nid", "bsid", "pnc", "freq" },
-    [SKY_BEACON_GSM] = { "mcc", "mnc", "lac", "ci", "bsic", "arfcn" } };
-#endif
-
 /*! \brief set sky_errno and return Sky_status
  *
  *  @param sky_errno sky_errno is the error code
@@ -241,7 +230,7 @@ int logfmt(
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
-    n = snprintf(buf, sizeof(buf), "%.20s:%.20s() ", sky_basename(file), function);
+    n = snprintf(buf, sizeof(buf), "%.18s:%.20s() ", sky_basename(file), function);
 
     va_start(ap, fmt);
     ret = vsnprintf(buf + n, sizeof(buf) - n, fmt, ap);
@@ -347,10 +336,10 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             mac[n / 2] = ((mac[n / 2] & 0x0F) | (value << 4));
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s Age: %d %s %3s %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz", prefix, b->h.age,
+            "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X, %-4d MHz, rssi: %-4d, Age %d", prefix,
             (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-            b->h.rssi, b->ap.freq);
+            b->h.rssi, b->ap.freq, b->h.age);
     }
 #endif
 }
@@ -377,11 +366,10 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s Age: %d %s MAC %02X:%02X:%02X:%02X:%02X:%02X rssi: %-4d %-4d MHz VAP: %d", prefix,
-        b->h.age,
+        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4d MHz, rssi %-4d Age %d", prefix,
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-        b->h.rssi, b->ap.freq, b->ap.vg_len);
+        b->ap.freq, b->h.rssi, b->h.age);
     dump_vap(ctx, prefix, b, file, func);
 #endif
 }
@@ -405,7 +393,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     if (b >= ctx->beacon && b < ctx->beacon + TOTAL_BEACONS + 1) {
         idx_b = b - ctx->beacon;
         idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d:%s %6s", str, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
     } else if (ctx->cache && b >= ctx->cache->cacheline[0].beacon &&
                b < ctx->cache->cacheline[CACHE_SIZE - 1].beacon +
@@ -413,11 +401,11 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_b = b - ctx->cache->cacheline[0].beacon;
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
-        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d:%s %6s", str, idx_c, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
     } else {
         idx_b = idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     ? :%s %6s", str, b->h.connected ? "*" : " ",
+        snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %6s", str, b->h.connected ? "*" : " ",
             sky_pbeacon(b));
     }
 
@@ -434,17 +422,14 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     case SKY_BEACON_NR:
         /* if primary key is UNKNOWN, must be NMR */
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s Age: %d %s: %u, %s: %u, rssi: %d",
-                prefixstr, b->h.age, cell_params[b->h.type][4], b->cell.id5,
-                cell_params[b->h.type][5], b->cell.freq, b->h.rssi);
+            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s %u, %u MHz, rssi %d, age %d",
+                prefixstr, b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
         } else {
             strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s Age: %d %s: %u, %s: %u, %s: %u, %s: %llu, %s: %u, %s: %u, rssi: %d", prefixstr,
-                b->h.age, cell_params[b->h.type][0], b->cell.id1, cell_params[b->h.type][1],
-                b->cell.id2, cell_params[b->h.type][2], b->cell.id3, cell_params[b->h.type][3],
-                b->cell.id4, cell_params[b->h.type][4], b->cell.id5, cell_params[b->h.type][5],
-                b->cell.freq, b->h.rssi);
+                "%9s %u, %u, %u, %llu, %u, %u MHz, rssi %d, age %d", prefixstr, b->cell.id1,
+                b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
+                b->h.age);
         }
         break;
     default:
@@ -469,29 +454,25 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
         "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len, ctx->ap_len,
         ctx->connected);
     for (i = 0; i < ctx->len; i++)
-        dump_beacon(ctx, "workspace", &ctx->beacon[i], file, func);
+        dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
     if (CONFIG(ctx->cache, last_config_time) == 0) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI) Update:Pending",
-            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
-            CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
-            CONFIG(ctx->cache, cache_match_used_threshold),
-            CONFIG(ctx->cache, cache_match_all_threshold), CONFIG(ctx->cache, cache_age_threshold),
-            CONFIG(ctx->cache, cache_beacon_threshold),
-            -CONFIG(ctx->cache, cache_neg_rssi_threshold),
-            ctx->header.time - CONFIG(ctx->cache, last_config_time));
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->cache, total_beacons),
+            CONFIG(ctx->cache, max_ap_beacons), CONFIG(ctx->cache, max_vap_per_ap),
+            CONFIG(ctx->cache, max_vap_per_rq));
     } else {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Thresholds:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI) Update:%d Sec",
-            CONFIG(ctx->cache, total_beacons), CONFIG(ctx->cache, max_ap_beacons),
-            CONFIG(ctx->cache, max_vap_per_ap), CONFIG(ctx->cache, max_vap_per_rq),
-            CONFIG(ctx->cache, cache_match_used_threshold),
-            CONFIG(ctx->cache, cache_match_all_threshold), CONFIG(ctx->cache, cache_age_threshold),
-            CONFIG(ctx->cache, cache_beacon_threshold),
-            -CONFIG(ctx->cache, cache_neg_rssi_threshold),
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->cache, total_beacons),
+            CONFIG(ctx->cache, max_ap_beacons), CONFIG(ctx->cache, max_vap_per_ap),
+            CONFIG(ctx->cache, max_vap_per_rq),
             (int)((*ctx->gettime)(NULL)-CONFIG(ctx->cache, last_config_time)));
     }
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
+        "Config: Threshold:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI)",
+        CONFIG(ctx->cache, cache_match_used_threshold),
+        CONFIG(ctx->cache, cache_match_all_threshold), CONFIG(ctx->cache, cache_age_threshold),
+        CONFIG(ctx->cache, cache_beacon_threshold), -CONFIG(ctx->cache, cache_neg_rssi_threshold));
 #endif
 }
 
