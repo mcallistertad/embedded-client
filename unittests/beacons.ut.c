@@ -1,3 +1,54 @@
+TEST_FUNC(test_validate_workspace)
+{
+    /* check the following:
+        ctx == NULL
+        ctx->len < 0 || ctx->ap_len < 0
+        ctx->len > TOTAL_BEACONS + 1
+        ctx->ap_len > MAX_AP_BEACONS + 1
+        ctx->connected > TOTAL_BEACONS + 1
+        ctx->header.crc32 == sky_crc32(...)
+        ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX
+        */
+    TEST("should return false with NULL ctx", ctx, { ASSERT(false == validate_workspace(NULL)); });
+
+    TEST("should return true with default ctx", ctx, { ASSERT(true == validate_workspace(ctx)); });
+
+    TEST("should return false with too small length in ctx", ctx, {
+        ctx->len = -34;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with too big length in ctx", ctx, {
+        ctx->len = 1234;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with too small AP length in ctx", ctx, {
+        ctx->ap_len = -3;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with bad comnected info in ctx", ctx, {
+        ctx->connected = 1234;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with bad crc in ctx", ctx, {
+        ctx->header.crc32 = 1234;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with corrupt beacon in ctx (magic)", ctx, {
+        ctx->beacon[0].h.magic = 1234;
+        ASSERT(false == validate_workspace(ctx));
+    });
+
+    TEST("should return false with corrupt beacon in ctx (type)", ctx, {
+        ctx->beacon[0].h.type = 1234;
+        ASSERT(false == validate_workspace(ctx));
+    });
+}
+
 TEST_FUNC(test_compare)
 {
     GROUP("beacon_compare APs");
@@ -33,9 +84,44 @@ TEST_FUNC(test_compare)
     });
 
     GROUP("beacon_compare Cells identical");
-    TEST("should return true and with 2 identical cell beacons", ctx, {
+    TEST("should return true and with 2 identical NR cell beacons", ctx, {
+        NR(a, 10, -108, true, 213, 142, 15614, 25564526, 287, 1040);
+        NR(b, 10, -98, true, 213, 142, 15614, 25564526, 287, 1040);
+
+        ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
+    });
+
+    TEST("should return true and with 2 identical LTE cell beacons", ctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         LTE(b, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
+
+        ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
+    });
+
+    TEST("should return true and with 2 identical UMTS cell beacons", ctx, {
+        UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 0, 0);
+        UMTS(b, 10, -98, true, 515, 2, 32768, 16843545, 0, 0);
+
+        ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
+    });
+
+    TEST("should return true and with 2 identical NBIOT cell beacons", ctx, {
+        NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
+        NBIOT(b, 10, -98, true, 515, 2, 20263, 15664525, 25583, 255);
+
+        ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
+    });
+
+    TEST("should return true and with 2 identical CDMA cell beacons", ctx, {
+        CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
+        CDMA(b, 10, -98, true, 5000, 16683, 25614, 22265, 0, 0);
+
+        ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
+    });
+
+    TEST("should return true and with 2 identical GSM cell beacons", ctx, {
+        GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -98, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
     });
@@ -63,17 +149,6 @@ TEST_FUNC(test_compare)
         ASSERT(diff == -1); // 2nd better
     });
 
-    TEST("should return false and calc diff with two NMR very similar", ctx, {
-        LTE_NMR(a, 10, -108, false, 387, 1000);
-        LTE_NMR(b, 10, -108, false, 38, 100);
-        int diff;
-
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == 1); // 1st better
-    });
-
     TEST("should return false and calc diff with two NMR one younger", ctx, {
         LTE_NMR(a, 10, -108, false, 387, 1000);
         LTE_NMR(b, 8, -10, false, 38, 100);
@@ -94,6 +169,28 @@ TEST_FUNC(test_compare)
         ASSERT(diff == -98); // 2nd better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
         ASSERT(diff == 98); // 1st better
+    });
+
+    TEST("should return false and report 1st best with two very similar cells", ctx, {
+        LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
+        LTE(b, 10, -108, true, 110, 222, 25614, 25664526, 45, 1000);
+        int diff;
+
+        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(diff == 1); // 1st better
+        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(diff == 1); // 1st better
+    });
+
+    TEST("should return false and report 1st best with two NMR very similar", ctx, {
+        LTE_NMR(a, 10, -108, false, 387, 1000);
+        LTE_NMR(b, 10, -108, false, 38, 100);
+        int diff;
+
+        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(diff == 1); // 1st better
+        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(diff == 1); // 1st better
     });
 
     TEST("should return false and calc diff with one NMR with different cell type", ctx, {
@@ -300,20 +397,52 @@ TEST_FUNC(test_compare)
 TEST_FUNC(test_insert)
 {
     // sanity checks
-    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS", ctx, {
-        BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
+    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with NULL ctx", ctx,
+        {
+            BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
+            Sky_errno_t sky_errno;
+
+            ASSERT(SKY_ERROR == insert_beacon(NULL, &sky_errno, &a, 0));
+            ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
+        });
+
+    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with corrupt ctx",
+        ctx, {
+            BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
+            Sky_errno_t sky_errno;
+
+            ctx->header.magic = 1234;
+            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a, 0));
+            ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
+        });
+
+    TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with bad beacon",
+        ctx, {
+            AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
+            Sky_errno_t sky_errno;
+
+            a.h.type = SKY_BEACON_MAX;
+            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a, NULL));
+            ASSERT(ctx->len == 0);
+            ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
+        });
+
+    TEST("should insert beacon in ctx->beacon[] at index 0 with NULL index", ctx, {
+        AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
         Sky_errno_t sky_errno;
 
-        ASSERT(SKY_ERROR == insert_beacon(NULL, &sky_errno, &a, 0));
-        ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, NULL));
+        ASSERT(AP_EQ(&a, ctx->beacon));
     });
 
     TEST("should insert beacon in ctx->beacon[] at index 0", ctx, {
         AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
         Sky_errno_t sky_errno;
+        int i;
 
-        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, 0));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, &i));
         ASSERT(AP_EQ(&a, ctx->beacon));
+        ASSERT(i == 0);
     });
 
     TEST("should insert 2 beacons in ctx->beacon[] and set index", ctx, {
@@ -337,6 +466,7 @@ TEST_FUNC(test_insert)
 
 BEGIN_TESTS(beacon_test)
 
+GROUP_CALL("validate_workspace", test_validate_workspace);
 GROUP_CALL("beacon_compare", test_compare);
 GROUP_CALL("beacon_insert", test_insert);
 
