@@ -43,10 +43,16 @@
 #define VAP_PARENT (1)
 #define VAP_FIRST_DATA (2)
 
+#define NIBBLE_MASK(n) (0xF0 >> (4 * ((n)&1)))
+#define LOCAL_ADMIN_MASK(byte) (0x02 & (byte))
+
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 
-/*! \brief Types of beacon in protity order
+/* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
+#define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
+
+/*! \brief Types of beacon in priority order
  */
 typedef enum {
     SKY_BEACON_AP = 1,

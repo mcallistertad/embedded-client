@@ -71,6 +71,29 @@ static int64_t flip_sign(int64_t value)
     return -value;
 }
 
+/*! \brief Get cell type
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell type
+ */
+static int16_t map_cell_type(Beacon_t *cell)
+{
+    uint16_t map[] = { /* force tidy code formatting */
+        [SKY_BEACON_NR] = Cell_Type_NR,
+        [SKY_BEACON_LTE] = Cell_Type_LTE,
+        [SKY_BEACON_UMTS] = Cell_Type_UMTS,
+        [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
+        [SKY_BEACON_CDMA] = Cell_Type_CDMA,
+        [SKY_BEACON_GSM] = Cell_Type_GSM,
+        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN
+    };
+    if (!is_cell_type(cell))
+        return Cell_Type_UNKNOWN;
+    else
+        return map[cell->h.type];
+}
+
 static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
     uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
@@ -211,7 +234,7 @@ static bool encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int
 static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
 {
     return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
-           pb_encode_varint(ostream, get_cell_type(cell)) &&
+           pb_encode_varint(ostream, map_cell_type(cell)) &&
            encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
            encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
            encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
@@ -361,7 +384,7 @@ int32_t serialize_request(
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.vaps = rq.cells = rq.gnss = ctx;
+    rq.aps = rq.vaps = rq.cells = ctx;
 
     rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
 

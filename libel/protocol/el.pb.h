@@ -166,23 +166,6 @@ typedef struct _NbiotCells {
 } NbiotCells;
 
 
-typedef PB_BYTES_ARRAY_T(16) Rq_device_id_t;
-typedef struct _Rq {
-    Rq_device_id_t device_id;
-    uint64_t timestamp;
-    void* aps;
-    void* gsm_cells;
-    void* umts_cells;
-    void* lte_cells;
-    void* cdma_cells;
-    void* nbiot_cells;
-    void* gnss;
-    void* cells;
-    void* vaps;
-/* @@protoc_insertion_point(struct:Rq) */
-} Rq;
-
-
 typedef struct _RqHeader {
     int32_t partner_id;
     int32_t crypto_info_length;
@@ -214,6 +197,23 @@ typedef struct _UmtsCells {
 } UmtsCells;
 
 
+typedef PB_BYTES_ARRAY_T(16) Rq_device_id_t;
+typedef struct _Rq {
+    Rq_device_id_t device_id;
+    uint64_t timestamp;
+    void* aps;
+    GsmCells gsm_cells;
+    UmtsCells umts_cells;
+    LteCells lte_cells;
+    CdmaCells cdma_cells;
+    NbiotCells nbiot_cells;
+    Gnss gnss;
+    void* cells;
+    void* vaps;
+/* @@protoc_insertion_point(struct:Rq) */
+} Rq;
+
+
 typedef PB_BYTES_ARRAY_T(8) Rs_used_aps_t;
 typedef struct _Rs {
     double lat;
@@ -230,7 +230,7 @@ typedef struct _Rs {
 #define RqHeader_init_default                    {0, 0, 0, 0, 0}
 #define RsHeader_init_default                    {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
-#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, Gnss_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -244,7 +244,7 @@ typedef struct _Rs {
 #define RqHeader_init_zero                       {0, 0, 0, 0, 0}
 #define RsHeader_init_zero                       {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
-#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, Gnss_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -326,17 +326,6 @@ typedef struct _Rs {
 #define NbiotCells_e_cellid_tag                  6
 #define NbiotCells_neg_rssi_tag                  7
 #define NbiotCells_age_tag                       8
-#define Rq_device_id_tag                         1
-#define Rq_timestamp_tag                         2
-#define Rq_aps_tag                               3
-#define Rq_vaps_tag                              11
-#define Rq_gsm_cells_tag                         4
-#define Rq_umts_cells_tag                        5
-#define Rq_lte_cells_tag                         6
-#define Rq_cdma_cells_tag                        7
-#define Rq_nbiot_cells_tag                       8
-#define Rq_gnss_tag                              9
-#define Rq_cells_tag                             10
 #define RqHeader_partner_id_tag                  1
 #define RqHeader_crypto_info_length_tag          2
 #define RqHeader_rq_length_tag                   3
@@ -353,6 +342,17 @@ typedef struct _Rs {
 #define UmtsCells_ucid_tag                       6
 #define UmtsCells_neg_rssi_tag                   7
 #define UmtsCells_age_tag                        8
+#define Rq_device_id_tag                         1
+#define Rq_timestamp_tag                         2
+#define Rq_aps_tag                               3
+#define Rq_vaps_tag                              11
+#define Rq_gsm_cells_tag                         4
+#define Rq_umts_cells_tag                        5
+#define Rq_lte_cells_tag                         6
+#define Rq_cdma_cells_tag                        7
+#define Rq_nbiot_cells_tag                       8
+#define Rq_gnss_tag                              9
+#define Rq_cells_tag                             10
 #define Rs_lat_tag                               1
 #define Rs_lon_tag                               2
 #define Rs_hpe_tag                               3
@@ -387,12 +387,12 @@ X(a, STATIC, SINGULAR, INT32, aes_padding_length, 2)
 X(a, STATIC, SINGULAR, BYTES, device_id, 1) \
 X(a, STATIC, SINGULAR, UINT64, timestamp, 2) \
 X(a, CALLBACK, SINGULAR, MESSAGE, aps, 3) \
-X(a, CALLBACK, SINGULAR, MESSAGE, gsm_cells, 4) \
-X(a, CALLBACK, SINGULAR, MESSAGE, umts_cells, 5) \
-X(a, CALLBACK, SINGULAR, MESSAGE, lte_cells, 6) \
-X(a, CALLBACK, SINGULAR, MESSAGE, cdma_cells, 7) \
-X(a, CALLBACK, SINGULAR, MESSAGE, nbiot_cells, 8) \
-X(a, CALLBACK, SINGULAR, MESSAGE, gnss, 9) \
+X(a, STATIC, SINGULAR, MESSAGE, gsm_cells, 4) \
+X(a, STATIC, SINGULAR, MESSAGE, umts_cells, 5) \
+X(a, STATIC, SINGULAR, MESSAGE, lte_cells, 6) \
+X(a, STATIC, SINGULAR, MESSAGE, cdma_cells, 7) \
+X(a, STATIC, SINGULAR, MESSAGE, nbiot_cells, 8) \
+X(a, STATIC, SINGULAR, MESSAGE, gnss, 9) \
 X(a, CALLBACK, REPEATED, MESSAGE, cells, 10) \
 X(a, CALLBACK, SINGULAR, BYTES, vaps, 11)
 extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field);

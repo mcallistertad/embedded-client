@@ -1,6 +1,7 @@
 doxygen/
 bin/
 build/
+packages/
 sample_client/*.o
 sample_client/sample_client
 nv_cache

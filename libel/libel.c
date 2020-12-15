@@ -53,6 +53,9 @@ static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
 static Sky_timefn_t sky_time;
 
+/*! \brief base of plugin chain */
+static Sky_plugin_table_t *sky_plugins;
+
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
@@ -66,7 +69,7 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  */
-Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky_state)
+static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache_t *sky_state)
 {
     bool update = false;
 
@@ -132,6 +135,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
     sky_time = (gettime == NULL) ? &time : gettime;
 
+    if (sky_register_plugins(&sky_plugins) != SKY_SUCCESS)
+        return sky_return(sky_errno, SKY_ERROR_NO_PLUGIN);
+
     /* if open already */
     if (sky_open_flag && sky_state) {
         /* parameters must be the same (no-op) or fail */
@@ -143,6 +149,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         else
             return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
     } else if (!sky_state || copy_state(sky_errno, &cache, sky_state) != SKY_SUCCESS) {
+        memset(&cache, 0, sizeof(cache));
         cache.header.magic = SKY_MAGIC;
         cache.header.size = sizeof(cache);
         cache.header.time = (uint32_t)(*sky_time)(NULL);
@@ -257,6 +264,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
     ctx->logf = sky_logf;
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
+    ctx->plugin = sky_plugins;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -305,10 +313,9 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, age %d", mac[0], mac[1],
-        mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
+        is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -360,10 +367,10 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "e-cellid: %lld, mcc: %u, mnc: %u, tac: %u, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
-        e_cellid, mcc, mnc, tac, pci, earfcn, rsrp, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp));
+    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rsrp %d, %sage %d", mcc,
+            mnc, tac, e_cellid, pci, earfcn, rsrp, is_connected ? "serve, " : "",
+            (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -386,9 +393,6 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
@@ -426,6 +430,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, earfcn, rsrp,
+        (int)(ctx->header.time - timestamp));
     return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
 }
@@ -444,14 +450,13 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_e
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
+Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ci, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rssi, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %u, ci: %lld, mcc: %u, mnc: %u, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc,
-        rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, rssi %d, %sage %d", lac, ci, mcc, mnc, rssi,
+        is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -470,9 +475,6 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
@@ -510,16 +512,16 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uin
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t lac,
+Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp,
     int16_t rscp, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %u, ucid: %lld, mcc: %u, mnc: %u, psc: %d, uarfcn: %d, rscp: %d, connect %s, age %d",
-        lac, ucid, mcc, mnc, psc, uarfcn, rscp, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp));
+    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && ucid != SKY_UNKNOWN_ID4)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
+            mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
+            (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -542,9 +544,6 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
@@ -581,6 +580,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t psc,
     int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", psc, uarfcn, rscp,
+        (int)(ctx->header.time - timestamp));
     return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -603,8 +604,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %u, nid: %u, bsid: %lld, rssi: %d, connect %s, age %d",
-        sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp));
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
+        is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
 
     /* Range check parameters */
     if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
@@ -615,9 +616,6 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
@@ -655,14 +653,14 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, int64_t e_cellid, uint32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,
+    uint16_t mnc, int64_t e_cellid, int32_t tac, int16_t ncid, int32_t earfcn, time_t timestamp,
     int16_t nrsrp, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %u, mnc: %u, e_cellid: %lld, tac: %u, nrsrp: %d, connect %s, age %d", mcc, mnc,
-        e_cellid, tac, nrsrp, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp));
+    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, nrsrp %d, %s, age %d", mcc, mnc, tac,
+            e_cellid, nrsrp, is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -673,7 +671,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 ||
+    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
+        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
         (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
         (e_cellid != SKY_UNKNOWN_ID4 && (e_cellid < 0 || e_cellid > 268435455)) ||
         (ncid != SKY_UNKNOWN_ID5 && (ncid < 0 || ncid > 503)) ||
@@ -685,9 +684,6 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
@@ -725,6 +721,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, nrsrp %d, age %d", ncid, earfcn, nrsrp,
+        (int)(ctx->header.time - timestamp));
     return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
@@ -747,15 +745,15 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
  */
 
 Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, int64_t nci, uint32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
+    uint16_t mnc, int64_t nci, int32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
     int16_t csi_rsrp, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "mcc: %u, mnc: %u, nci: %lld, tac: %d, pci: %d, nrarfcn: %d, rsrp: %d, connect %s, age %d",
-        mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp));
+    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && nci != SKY_UNKNOWN_ID4)
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d: %lld, %d, %d MHz, rsrp %d, %sage %d", mcc,
+            mnc, tac, nci, pci, nrarfcn, csi_rsrp, is_connected ? "serve, " : "",
+            (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -779,9 +777,6 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
 
     if (!validate_workspace(ctx))
         return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    // if (ctx->len > (CONFIG(ctx->cache, total_beacons) - 1)) /* room for one more? */
-    //     return sky_return(sky_errno, SKY_ERROR_TOO_MANY);
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
@@ -819,6 +814,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
 Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, nrarfcn, csi_rsrp,
+        (int)(ctx->header.time - timestamp));
     return sky_add_cell_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, csi_rsrp, false);
 }
@@ -918,9 +915,10 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, time %d",
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, age %d Sec",
             (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, (int)cached_time);
+            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+            (ctx->header.time - cached_time));
 #endif
         return SKY_FINALIZE_LOCATION;
     }
@@ -1037,7 +1035,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
-    if (add_to_cache(ctx, loc) == SKY_ERROR)
+    if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,
@@ -1097,16 +1095,22 @@ char *sky_perror(Sky_errno_t sky_errno)
         str = "At least one beacon must be added";
         break;
     case SKY_ERROR_ADD_CACHE:
-        str = "failed to add entry in cache";
+        str = "Failed to add entry in cache";
         break;
     case SKY_ERROR_GET_CACHE:
-        str = "failed to get entry from cache";
+        str = "Failed to get entry from cache";
         break;
     case SKY_ERROR_LOCATION_UNKNOWN:
-        str = "server failed to determine location";
+        str = "Server failed to determine location";
         break;
     case SKY_ERROR_SERVER_ERROR:
-        str = "server responded with an error";
+        str = "Server responded with an error";
+        break;
+    case SKY_ERROR_NO_PLUGIN:
+        str = "At least one plugin must be registered";
+        break;
+    case SKY_ERROR_INTERNAL:
+        str = "An unexpected error occured";
         break;
     default:
         str = "Unknown error code";
@@ -1171,21 +1175,21 @@ char *sky_pbeacon(Beacon_t *b)
     } else {
         switch (b->h.type) {
         case SKY_BEACON_AP:
-            return "Wi-Fi-NMR";
+            return "Wi-Fi";
         case SKY_BEACON_BLE:
-            return "BLE-NMR";
+            return "BLE";
         case SKY_BEACON_CDMA:
-            return "CDMA-NMR";
+            return "CDMA";
         case SKY_BEACON_GSM:
-            return "GSM-NMR";
+            return "GSM";
         case SKY_BEACON_LTE:
-            return "LTE-NMR";
+            return "LTE";
         case SKY_BEACON_NBIOT:
-            return "NB-IoT-NMR";
+            return "NB-IoT";
         case SKY_BEACON_UMTS:
-            return "UMTS-NMR";
+            return "UMTS";
         case SKY_BEACON_NR:
-            return "NR-NMR";
+            return "NR";
         default:
             return "\?\?\?";
         }

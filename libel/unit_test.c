@@ -289,9 +289,6 @@ int main(int ac, char **av)
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
 
-    printf("ctx: magic:%08X size:%08X crc:%08X\n", ctx->header.magic, ctx->header.size,
-        ctx->header.crc32);
-
     for (i = 0; i < scan_ap; i++) {
         b[i].h.magic = BEACON_MAGIC;
         b[i].h.type = SKY_BEACON_AP;
@@ -410,7 +407,6 @@ int main(int ac, char **av)
         if (t == SKY_BEACON_AP) {
             for (i--; i >= 0; i--) {
                 uint8_t *m = get_ap_mac(ctx, i);
-                m = m;
 
                 printf("ap mac:       %d MAC %02X:%02X:%02X:%02X:%02X:%02X\n", i, m[0], m[1], m[2],
                     m[3], m[4], m[5]);

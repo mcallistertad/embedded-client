@@ -17,7 +17,7 @@ PB_BIND(RsHeader, RsHeader, AUTO)
 PB_BIND(CryptoInfo, CryptoInfo, AUTO)
 
 
-PB_BIND(Rq, Rq, AUTO)
+PB_BIND(Rq, Rq, 2)
 
 
 PB_BIND(Aps, Aps, AUTO)
