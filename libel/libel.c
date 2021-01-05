@@ -644,7 +644,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param mnc mobile network code  (0-999)
  *  @param e_cellid nbiot beacon identifier (0-268435455)
  *  @param tac nbiot tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
- *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID4 if unknown
+ *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID5 if unknown
  *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
