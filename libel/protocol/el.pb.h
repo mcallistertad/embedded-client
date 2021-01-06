@@ -100,6 +100,7 @@ typedef struct _Cell {
     bool connected;
     uint32_t neg_rssi;
     uint32_t age;
+    uint32_t ta_plus_1;
 /* @@protoc_insertion_point(struct:Cell) */
 } Cell;
 
@@ -232,7 +233,7 @@ typedef struct _Rs {
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
 #define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, Gnss_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define UmtsCells_init_default                   {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define CdmaCells_init_default                   {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -246,7 +247,7 @@ typedef struct _Rs {
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
 #define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, Gnss_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define UmtsCells_init_zero                      {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define CdmaCells_init_zero                      {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -290,6 +291,7 @@ typedef struct _Rs {
 #define Cell_connected_tag                       8
 #define Cell_neg_rssi_tag                        9
 #define Cell_age_tag                             10
+#define Cell_ta_plus_1_tag                       11
 #define ClientConfig_total_beacons_tag           1
 #define ClientConfig_max_ap_beacons_tag          2
 #define ClientConfig_cache_match_threshold_tag   3
@@ -428,7 +430,8 @@ X(a, STATIC, SINGULAR, UINT32, id5_plus_1, 6) \
 X(a, STATIC, SINGULAR, UINT32, id6_plus_1, 7) \
 X(a, STATIC, SINGULAR, BOOL, connected, 8) \
 X(a, STATIC, SINGULAR, UINT32, neg_rssi, 9) \
-X(a, STATIC, SINGULAR, UINT32, age, 10)
+X(a, STATIC, SINGULAR, UINT32, age, 10) \
+X(a, STATIC, SINGULAR, UINT32, ta_plus_1, 11)
 #define Cell_CALLBACK NULL
 #define Cell_DEFAULT NULL
 
@@ -566,7 +569,7 @@ extern const pb_msgdesc_t ClientConfig_msg;
 #define CryptoInfo_size                          29
 /* Rq_size depends on runtime parameters */
 /* Aps_size depends on runtime parameters */
-#define Cell_size                                57
+#define Cell_size                                63
 /* GsmCells_size depends on runtime parameters */
 /* UmtsCells_size depends on runtime parameters */
 /* CdmaCells_size depends on runtime parameters */

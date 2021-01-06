@@ -246,7 +246,8 @@ static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *c
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) &&
            pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) &&
-           pb_encode_varint(ostream, get_cell_age(cell));
+           pb_encode_varint(ostream, get_cell_age(cell)) &&
+           encode_cell_id(ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
 }
 
 static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
