@@ -275,8 +275,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  *
  *   Scan all cachelines in the cache. 
  *   If the given beacon is found in the cache true is returned otherwise
- *   false. If prop is not NULL, the prooerties of the best matching
- *   beacon in the cache is saved. i.e. if there is a Used match in cache
+ *   false. A beacon may appear in multiple cache lines.
+ *   If prop is not NULL, algorithm searches all caches for best match
+ *   (beacon with Used == true is best) otherwise, first match is returned
  *
  *  @param ctx Skyhook request context
  *  @param b pointer to new beacon
