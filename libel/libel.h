@@ -152,7 +152,6 @@ typedef void Sky_ctx_t;
 #include "aes.h"
 #include "config.h"
 #include "beacons.h"
-#include "workspace.h"
 #include "plugin.h"
 #include "utilities.h"
 #endif
