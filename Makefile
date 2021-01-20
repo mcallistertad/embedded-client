@@ -35,7 +35,7 @@ INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLU
 VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}
 
 LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c plugin.c
-LIBELG_PLUG=$(shell find ${PLUGIN_DIR} -name 'register.c' -prune -o -name '*.c' -print)
+LIBELG_PLUG=$(shell find ${PLUGIN_DIR} -name '*.c' -print)
 #LIBELG_PLUG = ap_plugin_basic.c cell_plugin_basic.c register.c
 # LIBELG_PLUG = ap_plugin_vap_used.c cell_plugin_best.c
 PROTO_SRCS = ${SKY_PROTO_DIR}/proto.c ${SKY_PROTO_DIR}/el.pb.c p${NANO_PB_DIR}/pb_common.c ${NANO_PB_DIR}/pb_encode.c ${NANO_PB_DIR}/pb_decode.c
