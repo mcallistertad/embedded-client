@@ -190,6 +190,12 @@ typedef struct sky_cache {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
+#if SKY_CODE_AUTH_TBR
+    uint32_t sky_token_id; /* TBR token ID */
+    uint32_t sky_sku_len; /* SKU len (0 = non-TBR) */
+    uint8_t sky_sku[MAX_SKU]; /* device ID */
+    uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+#endif
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
     int len; /* number of cache lines */

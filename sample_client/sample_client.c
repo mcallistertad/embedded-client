@@ -36,6 +36,9 @@
 
 #define SCAN_LIST_SIZE 5
 
+/* sku / model */
+uint8_t sku[] = { "ABCDEFGH" };
+
 /* scan list definitions (platform dependant) */
 struct ap_scan {
     char mac[MAC_SIZE * 2];
@@ -227,8 +230,10 @@ int main(int argc, char *argv[])
 
     timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
+
     if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime) == SKY_ERROR) {
+            sku, sizeof(sku), 200, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes,
+            &mytime) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }

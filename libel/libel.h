@@ -36,6 +36,8 @@
 #define AES_SIZE 16
 
 #define MAX_DEVICE_ID 16
+#define MAX_SKU 16
+#define TBR_TOKEN_UNKNOWN 0
 
 /* March 1st 2019 */
 #define TIMESTAMP_2019_03_01 1551398400
@@ -81,10 +83,11 @@ typedef enum {
  */
 typedef enum {
     SKY_LOCATION_STATUS_SUCCESS = 0,
-    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
-    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
-    SKY_LOCATION_STATUS_DECODE_ERROR,
-    SKY_LOCATION_STATUS_API_SERVER_ERROR,
+    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR = 1,
+    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR = 2,
+    SKY_LOCATION_STATUS_DECODE_ERROR = 3,
+    SKY_LOCATION_STATUS_API_SERVER_ERROR = 4,
+    SKY_LOCATION_STATUS_AUTH_ERROR = 5,
 } Sky_loc_status_t;
 
 /*! \brief Skyhook location information
@@ -158,8 +161,9 @@ typedef void Sky_ctx_t;
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], uint8_t *sku, uint32_t sku_len, uint32_t cc,
+    void *state_buf, Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes,
+    Sky_timefn_t gettime);
 
 int32_t sky_sizeof_state(void *sky_state);
 
