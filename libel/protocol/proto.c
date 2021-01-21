@@ -331,31 +331,33 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 {
     Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
 
-    // Per the documentation here:
-    // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
-    //
-    switch (field->tag) {
-    case Rq_aps_tag:
-        if (get_num_aps(ctx))
-            return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
-        break;
-    case Rq_vaps_tag:
-        return encode_vap_data(ctx, ostream, Rq_vaps_tag, get_num_vaps(ctx), get_vap_data);
-        break;
+    if (ctx && ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN) {
+        // Per the documentation here:
+        // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
+        //
+        switch (field->tag) {
+        case Rq_aps_tag:
+            if (get_num_aps(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
+            break;
+        case Rq_vaps_tag:
+            return encode_vap_data(ctx, ostream, Rq_vaps_tag, get_num_vaps(ctx), get_vap_data);
+            break;
 
-    case Rq_cells_tag:
-        if (get_num_cells(ctx))
-            return encode_cell_fields(ctx, ostream);
-        break;
-    case Rq_gnss_tag:
-        if (get_num_gnss(ctx))
-            return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
-        break;
+        case Rq_cells_tag:
+            if (get_num_cells(ctx))
+                return encode_cell_fields(ctx, ostream);
+            break;
+        case Rq_gnss_tag:
+            if (get_num_gnss(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
+            break;
 
-    default:
-        if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
-            (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "Rq_callback() ERROR: unknown tag");
-        break;
+        default:
+            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
+                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "Rq_callback() ERROR: unknown tag");
+            break;
+        }
     }
 
     return true;
@@ -372,6 +374,7 @@ int32_t get_maximum_response_size(void)
 int32_t serialize_request(
     Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
 {
+    int tbr;
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
     struct AES_ctx aes_ctx;
@@ -400,8 +403,16 @@ int32_t serialize_request(
 
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
+#if SKY_CODE_AUTH_TBR
+    if ((tbr = get_ctx_sku_length(ctx)) && ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN) {
+        memcpy(rq.tbr.sku.bytes, get_ctx_sku(ctx), get_ctx_sku_length(ctx));
+        rq.tbr.sku.size = get_ctx_sku_length(ctx);
+        rq.tbr.cc = get_ctx_cc(ctx);
+    } else
+        rq.tbr.token_id = ctx->cache->sky_token_id;
+#endif
 
-    // Create and serialize the request header message.
+    // Create and serialize the request message.
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
     // Account for necessary encryption padding.
@@ -578,14 +589,25 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
         istream = pb_istream_from_buffer(buf, header.rs_length - crypto_info.aes_padding_length);
 
         if (!pb_decode(&istream, Rs_fields, &rs)) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return -1;
         } else {
+            if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN &&
+                rs.tbr.token_id != TBR_TOKEN_UNKNOWN) {
+                ctx->cache->sky_token_id = rs.tbr.token_id; // New TBR registration
+                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "New TBR authentication registration");
+            } else if (ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN &&
+                       header.status == RsHeader_Status_AUTH_ERROR) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "New TBR authentication undone!");
+                ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN; // TBR authorization expired
+            }
             loc->lat = rs.lat;
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;
             loc->location_source = (Sky_loc_source_t)rs.source;
             // Extract Used info for each AP from the Used_aps bytes
             apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Applied used info.");
         }
         if (apply_config_overrides(ctx->cache, &rs)) {
             if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)

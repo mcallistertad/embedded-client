@@ -110,8 +110,9 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache
  *  be truncated to 16 if larger, without causing an error.
  */
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], uint8_t *sku, uint32_t sku_len, uint32_t cc,
+    void *state_buf, Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes,
+    Sky_timefn_t gettime)
 {
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
@@ -144,7 +145,14 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
             partner_id == sky_state->sky_partner_id &&
-            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0)
+            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
+#if SKY_CODE_AUTH_TBR
+            ((sky_state->sky_sku_len && sku) ?
+                    sku_len == sky_state->sky_sku_len &&
+                        memcmp(sku, sky_state->sky_sku, sizeof(sky_state->sky_sku_len)) == 0 :
+                    true) &&
+            (cc != 0 ? cc == sky_state->sky_cc : true))
+#endif
             return sky_return(sky_errno, SKY_ERROR_NONE);
         else
             return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
@@ -185,6 +193,13 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
+#if SKY_CODE_AUTH_TBR
+    if (sku_len && sku) {
+        cache.sky_sku_len = sku_len;
+        memcpy(cache.sky_sku, sku, sku_len);
+        cache.sky_cc = cc;
+    }
+#endif
     sky_open_flag = true;
 
     if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
