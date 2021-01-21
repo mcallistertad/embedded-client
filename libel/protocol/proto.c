@@ -221,7 +221,8 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
 
-static bool encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
+static bool encode_cell_field_unkown(
+    pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
 {
     if (val != unknown)
         // Unknown values are not sent on the wire, meaning they "show up" with
@@ -235,19 +236,25 @@ static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *c
 {
     return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
            pb_encode_varint(ostream, map_cell_type(cell)) &&
-           encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
-           encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
-           encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
-           encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
-           encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
-           encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
+           encode_cell_field_unkown(
+               ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) &&
            pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) &&
            pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) &&
            pb_encode_varint(ostream, get_cell_age(cell)) &&
-           encode_cell_id(ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
+           encode_cell_field_unkown(ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
 }
 
 static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)

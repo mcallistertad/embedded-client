@@ -984,7 +984,7 @@ int64_t get_cell_ta(Beacon_t *cell)
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     default:
-        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
+        return SKY_UNKNOWN_TA;
     }
 }
 
