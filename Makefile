@@ -76,7 +76,7 @@ ${BIN_DIR} ${BUILD_DIR}:
 generate:
 	make -C ${SKY_PROTO_DIR}
 
-${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h  workspace.h
+${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 SRCFILES := $(shell find libel -path $(SKY_PROTO_DIR) -prune -o -name '*test*.c' -prune -o -type f -name '*.c' -print) \
@@ -88,7 +88,7 @@ unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}
 runtests: unittest
 	${BIN_DIR}/tests 2>/dev/null
 
-${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h workspace.h
+${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h
 	mkdir -p $(dir $@)
 	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
 
