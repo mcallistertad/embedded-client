@@ -104,25 +104,31 @@ typedef struct sky_location {
  */
 typedef enum {
     SKY_ERROR_NONE = 0,
-    SKY_ERROR_NEVER_OPEN,
-    SKY_ERROR_ALREADY_OPEN,
-    SKY_ERROR_BAD_PARAMETERS,
-    SKY_ERROR_TOO_MANY,
-    SKY_ERROR_BAD_WORKSPACE,
-    SKY_ERROR_BAD_STATE,
-    SKY_ERROR_DECODE_ERROR,
-    SKY_ERROR_ENCODE_ERROR,
-    SKY_ERROR_RESOURCE_UNAVAILABLE,
-    SKY_ERROR_CLOSE,
-    SKY_ERROR_BAD_KEY,
-    SKY_ERROR_NO_BEACONS,
-    SKY_ERROR_ADD_CACHE,
-    SKY_ERROR_GET_CACHE,
-    SKY_ERROR_LOCATION_UNKNOWN,
-    SKY_ERROR_SERVER_ERROR,
-    SKY_ERROR_NO_PLUGIN,
-    SKY_ERROR_INTERNAL,
-    SKY_ERROR_MAX
+    SKY_ERROR_NEVER_OPEN, // Operation failed because sky_open has not been completed
+    SKY_ERROR_ALREADY_OPEN, // Operation failed because sky_open has already been called
+    SKY_ERROR_BAD_PARAMETERS, // Operation failed because a parameter is invalid
+    SKY_ERROR_TOO_MANY, // N/A
+    SKY_ERROR_BAD_WORKSPACE, // Operation failed because workspace failed sanity checks
+    SKY_ERROR_BAD_STATE, // Operation failed because libel state failed sanity checks
+    SKY_ERROR_DECODE_ERROR, // Network message could not be decoded
+    SKY_ERROR_ENCODE_ERROR, // Network message could not be encoded
+    SKY_ERROR_RESOURCE_UNAVAILABLE, // Operation failed because resourse could not be assigned
+    SKY_ERROR_CLOSE, // N/A
+    SKY_ERROR_BAD_KEY, // N/A
+    SKY_ERROR_NO_BEACONS, // Operation failed because no beacons were added
+    SKY_ERROR_ADD_CACHE, // N/A
+    SKY_ERROR_GET_CACHE, // N/A
+    SKY_ERROR_LOCATION_UNKNOWN, // N/A
+    SKY_ERROR_SERVER_ERROR, // Operation failed because server reported an error
+    SKY_ERROR_NO_PLUGIN, // Operation failed because required plugin was not found
+    SKY_ERROR_INTERNAL, // Operation failed due to unexpected behavior
+    SKY_ERROR_AUTH, // Operation failed due to lack of authentication
+    SKY_ERROR_AUTH_RETRY, // Retry operation now to complete authentication
+    SKY_ERROR_AUTH_RETRY_8H, // Retry operation in 8hr to query authentication,
+    SKY_ERROR_AUTH_RETRY_16H, // Retry operation in 16hr to query authentication,
+    SKY_ERROR_AUTH_RETRY_1D, // Retry operation in 1 day to query authentication,
+    SKY_ERROR_AUTH_RETRY_30D, // Retry operation in 30 days to query authentication,
+    SKY_ERROR_MAX,
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
