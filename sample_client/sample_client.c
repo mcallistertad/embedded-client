@@ -341,6 +341,7 @@ int main(int argc, char *argv[])
         25187, // tac
         400, // pci
         4000, // nrarfcn
+        3844, // ta
         timestamp - 315, // timestamp
         -50, // rscp
         1); // serving
@@ -369,6 +370,7 @@ int main(int argc, char *argv[])
         700, // mnc
         502, // pci
         45500, // nrarfcn
+        7688, // ta
         timestamp - 315, // timestamp
         -50, // rscp
         1); // serving

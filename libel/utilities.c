@@ -963,6 +963,31 @@ int64_t get_cell_age(Beacon_t *cell)
     return cell->h.age;
 }
 
+/*! \brief Return cell ta value
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return beacon ta
+ */
+int64_t get_cell_ta(Beacon_t *cell)
+{
+    uint16_t type = get_cell_type(cell);
+
+    if (!cell)
+        return -1;
+    switch (type) {
+    case SKY_BEACON_GSM:
+    case SKY_BEACON_LTE:
+    case SKY_BEACON_NR:
+        return cell->cell.ta;
+    case SKY_BEACON_CDMA:
+    case SKY_BEACON_NBIOT:
+    case SKY_BEACON_UMTS:
+    default:
+        return SKY_UNKNOWN_TA;
+    }
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (num gnss)
  *
  *  @param ctx workspace buffer

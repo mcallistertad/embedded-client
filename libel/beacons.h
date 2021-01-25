@@ -118,6 +118,7 @@ struct cell {
         id5; // bsic (gsm), psc (umts), pci (lte, nr) or ncid (nb-iot). SKY_UNKNOWN_ID5 if unknown.
     int32_t
         freq; // arfcn(gsm), uarfcn (umts), earfcn (lte, nb-iot), nrarfcn (nr). SKY_UNKNOWN_ID6 if unknown.
+    int32_t ta; // SKY_UNKNOWN_TA if unknown.
 };
 
 // blue tooth
