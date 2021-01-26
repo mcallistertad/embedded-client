@@ -1075,6 +1075,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
         }
     }
+    ctx->cache->backoff = SKY_ERROR_NONE;
     loc->time = (*ctx->gettime)(NULL);
 
     /* Add location and current beacons to Cache */
@@ -1155,6 +1156,24 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_INTERNAL:
         str = "An unexpected error occured";
         break;
+    case SKY_ERROR_AUTH:
+        str = "Operation unauthorized";
+        break;
+    case SKY_ERROR_AUTH_RETRY:
+        str = "Operation unauthorized, retry now";
+        break;
+    case SKY_ERROR_AUTH_RETRY_8H:
+        str = "Operation unauthorized, retry in 8 hours";
+        break;
+    case SKY_ERROR_AUTH_RETRY_16H:
+        str = "Operation unauthorized, retry in 16 hours";
+        break;
+    case SKY_ERROR_AUTH_RETRY_1D:
+        str = "Operation unauthorized, retry in 24 hours";
+        break;
+    case SKY_ERROR_AUTH_RETRY_30D:
+        str = "Operation unauthorized, retry in a month";
+        break;
     default:
         str = "Unknown error code";
         break;
@@ -1186,6 +1205,9 @@ char *sky_pserver_status(Sky_loc_status_t status)
         break;
     case SKY_LOCATION_STATUS_API_SERVER_ERROR:
         str = "Server error determining location";
+        break;
+    case SKY_LOCATION_STATUS_AUTH_RETRY:
+        str = "Authentication needs retry";
         break;
     default:
         str = "Unknown server status";

@@ -193,6 +193,7 @@ typedef struct sky_cache {
     uint32_t sky_token_id; /* TBR token ID */
     char sky_sku[MAX_SKU]; /* product family ID */
     uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+    Sky_errno_t backoff; /* last auth error */
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
     int len; /* number of cache lines */

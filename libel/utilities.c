@@ -574,7 +574,8 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
     return ctx->cache->sky_device_id;
 }
 
-/*! \brief field extraction for dynamic use of Nanopb (ctx sky_token_id)
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
+>>>>>>> 8355173... [EC-104] handle TBR retry and backoff
  *
  *  @param ctx workspace buffer
  *

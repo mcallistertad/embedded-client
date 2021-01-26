@@ -400,6 +400,7 @@ int main(int argc, char *argv[])
     else
         printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
 
+retry_after_auth:
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
     ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
@@ -464,6 +465,9 @@ int main(int argc, char *argv[])
         exit(-1);
         break;
     }
+
+    if (ret_status != SKY_SUCCESS && loc.location_status == SKY_LOCATION_STATUS_AUTH_ERROR)
+        goto retry_after_auth; /* Repeat request if Authentication was required for last message */
 
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
         sky_pserver_status(loc.location_status), (int)loc.lat,
