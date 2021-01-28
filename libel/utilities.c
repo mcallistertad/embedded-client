@@ -429,9 +429,9 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         } else {
             strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %u, %u, %u, %llu, %u, %u MHz, rssi %d, age %d", prefixstr, b->cell.id1,
+                "%9s %u, %u, %u, %llu, %u, %u MHz, rssi %d, age %d, ta %d", prefixstr, b->cell.id1,
                 b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
-                b->h.age);
+                b->h.age, b->cell.ta);
         }
         break;
     default:
