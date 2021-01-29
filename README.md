@@ -32,7 +32,7 @@
             * [sky_add_cell_nr_beacon() - Adds a nr cell beacon to the request context](#sky_add_cell_nr_beacon---adds-a-nr-cell-beacon-to-the-request-context)
             * [sky_add_cell_nr_neighbor_beacon() - Adds a neighbor nr cell beacon to the request context](#sky_add_cell_nr_neighbor_beacon---adds-a-neighbor-nr-cell-beacon-to-the-request-context)
             * [sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context](#sky_add_gnss---adds-the-position-of-the-device-from-gnss-gps-glonass-or-others-to-the-request-context)
-            * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-user)
+            * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the application](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-application)
             * [sky_finalize_request() - generate a Skyhook request from the request context](#sky_finalize_request---generate-a-skyhook-request-from-the-request-context)
             * [sky_decode_response() - decodes a Skyhook server response](#sky_decode_response---decodes-a-skyhook-server-response)
             * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
@@ -119,15 +119,17 @@ The library will save the information provided in a request along with the locat
  1. Avoid platform specific dependencies i.e. ELG library will be written to be portable to many platforms.
 
 ### API conventions
- * User is responsible for providing the work space for any given request/response transaction.
+ * The application is responsible for providing the work space for any given request/response transaction.
  * The address of this work space is considered the unique identifier for a given location request/response transaction.
- * If more than one beacon is added with the connected flag = yes, only the most recent beacon is considered to be connected.
+ * If more than one beacon is added with the connected flag = yes, the most recently added beacon is considered to be the serving cell.
+ * If none of the cells added are marked connected, the first fully qualified cell is considered the serving cell.
  * sky_errno is always set, either to SKY_ERROR_NONE or to the error code.
- * The user may free the allocated work space after receiving a location (lat/long) from either sky_finalize_request or sky_decode_response, or an error from the API. 
+ * The application may free the allocated work space after receiving a location (lat/long) from either sky_finalize_request or sky_decode_response, or an error from the API. 
  * If time() returns a date prior to March 1, 2019, API will not match cached scans/locations.
  * The library includes SKY_LOG_LEVEL_DEBUG logging by default to assist with integration efforts. To remove this, build the library with SKY_DEBUG false. Passing a min_level value to sky_open() allows intermediate levels of logging.
  * The library is not thread safe.
- * User may preserve cache state by storing the state buffer provided by the call to sky_close(), and restoring the state buffer and passing it to sky_open().
+ * The application may preserve cache state by storing the state buffer provided by the call to sky_close(), and restoring the state buffer and passing it to sky_open().
+ * If a 
 
 ### Client Configuration
 
@@ -149,9 +151,9 @@ Your embedded client needs to be configured with a Skyhook partner ID and AES (e
 
    **Note** These value must be stored within the client application and passed to sky_open(). 
 
-The Skyhook Embedded Library creates (see sky_finalize_request()) and interprets (see sky_decode_response()) messages which are exchanged via a simple TCP (not HTTP) connection established by the client device (the "user") to the Skyhook Embedded Library Gateway (ELG) server. This message exchange must be done once for each call to sky_finalize_request() (unless the library is able to use a previously cached location). Because they are usually platform-dependent, the details associated with the establishment of this connection, and the associated send/receive mechanisms, are the responsibility of the user. See the sample_client directory within the library repo for an example of how this can be done using standard socket API calls.
+The Skyhook Embedded Library creates (see sky_finalize_request()) and interprets (see sky_decode_response()) messages which are exchanged via a simple TCP (not HTTP) connection established by the client device (the "user") to the Skyhook Embedded Library Gateway (ELG) server. This message exchange must be done once for each call to sky_finalize_request() (unless the library is able to use a previously cached location). Because they are usually platform-dependent, the details associated with the establishment of this connection, and the associated send/receive mechanisms, are the responsibility of the application. See the sample_client directory within the library repo for an example of how this can be done using standard socket API calls.
 
-In general, the user must take the following steps in order to perform this exchange:
+In general, the application must take the following steps in order to perform this exchange:
 
  1. Establish a TCP connection to the configured host and port number (see the Configuration Parameters table above)
  1. Send the request
@@ -161,7 +163,7 @@ In general, the user must take the following steps in order to perform this exch
 ### General Sequence of Operations
 ![missing image](https://github.com/SkyhookWireless/embedded-client/blob/master/images/elg_embedded_image.png?raw=true)
 
-Figure 1 - The User is expected to make a sequence of calls as shown
+Figure 1 - The The application is expected to make a sequence of calls as shown
 
 ## API Reference
 
@@ -229,14 +231,14 @@ Sky_ctx_t* sky_new_request(void *workspace_buf,
 )
 
 /* Parameters
- * workspace_buf        Pointer to workspace provided by user
+ * workspace_buf        Pointer to workspace provided by application
  * bufsize              Workspace buffer size (from sky_sizeof_workspace)
  * sky_errno            Pointer to error code
 
  * Returns              Pointer to the initialized workspace context buffer or NULL
  */
 ```
-Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers.
+Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. The application can decode the error using sky_perror(). Initializes request context with Magic numbers.
 
 ### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
@@ -590,7 +592,7 @@ time_t timestamp)
  ```
 Adds the GNSS information to the request context. Returns SKY_ERROR for failure or the SKY_SUCCESS.  In case of failure sky_error is set to error code. 
 
-### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
+### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the application
 
 
 ```c
@@ -608,7 +610,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
  ```
-Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user.
+Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the application.
 
 ### sky_finalize_request() - generate a Skyhook request from the request context
 
@@ -624,7 +626,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
 /* Parameters
  * ctx              Skyhook request context
  * sky_errno        sky_errno is set to the error code
- * request_buf      Request buffer (allocated by the user) into which the Skyhook server request will be encoded
+ * request_buf      Request buffer (allocated by the application) into which the Skyhook server request will be encoded
  * bufsize          Request buffer size in bytes (should be set to the result of the call to sky_sizeof_request_buf() function)
  * loc              Pointer to the structure where latitude, longitude are written
  * response_size    the space required to hold the server response
@@ -632,7 +634,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
  * Returns          SKY_FINALIZE_REQUEST, SKY_FINALIZE_LOCATION or SKY_FINALIZE_ERROR and sets sky_errno with error code
  */
  ```
-Returns SKY_FINALIZE_ERROR and sets sky_error if an error occurs. If the result is SKY_FINALIZE_REQUEST, the request buffer is filled in with the serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the result is SKY_FINALIZE_LOCATION, the location (lat, lon, hpe and source) are filled in from a previously successful server response held in the cache. 
+Returns SKY_FINALIZE_ERROR and sets sky_error if an error occurs. If the result is SKY_FINALIZE_REQUEST, the request buffer is filled in with the serialized request data which the application must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the result is SKY_FINALIZE_LOCATION, the location (lat, lon, hpe and source) are filled in from a previously successful server response held in the cache. 
 
 ### sky_decode_response() - decodes a Skyhook server response
 
@@ -654,7 +656,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 ```
-User calls this to process the network response from the Skyhook server. Returns SKY_ERROR and sets sky_error if the response buffer could not be decoded or other error occurred, otherwise SKY_SUCCESS is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
+The application calls this to process the network response from the Skyhook server. Returns SKY_ERROR and sets sky_error if the response buffer could not be decoded or other error occurred, otherwise SKY_SUCCESS is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
 
 ### sky_perror() - returns a string which describes the meaning of sky_errno codes
 
