@@ -141,17 +141,20 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* if open already */
     if (sky_open_flag && sky_state) {
-        /* parameters must be the same (no-op) or fail */
+        /* if library is already open and sky_open parameters match those we already, have */
+        /* we can ignore this call to sky_open, otherwise report error already open */
         if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
             partner_id == sky_state->sky_partner_id &&
-            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
+            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0
 #if SKY_CODE_AUTH_TBR
-            ((sky_state->sky_sku_len && sku) ?
-                    sku_len == sky_state->sky_sku_len &&
-                        memcmp(sku, sky_state->sky_sku, sizeof(sky_state->sky_sku_len)) == 0 :
-                    true) &&
+            && ((sky_state->sky_sku_len && sku) ?
+                       sku_len == sky_state->sky_sku_len &&
+                           memcmp(sku, sky_state->sky_sku, sizeof(sky_state->sky_sku_len)) == 0 :
+                       true) &&
             (cc != 0 ? cc == sky_state->sky_cc : true))
+#else
+        )
 #endif
             return sky_return(sky_errno, SKY_ERROR_NONE);
         else

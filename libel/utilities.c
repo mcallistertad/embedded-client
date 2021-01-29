@@ -574,6 +574,7 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
     return ctx->cache->sky_device_id;
 }
 
+#if SKY_CODE_AUTH_TBR
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
  *
  *  @param ctx workspace buffer
@@ -584,6 +585,7 @@ uint8_t *get_ctx_sku(Sky_ctx_t *ctx)
 {
     return ctx->cache->sky_sku;
 }
+#endif
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
  *
@@ -596,6 +598,7 @@ uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
     return ctx->cache->sky_id_len;
 }
 
+#if SKY_CODE_AUTH_TBR
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku_len)
  *
  *  @param ctx workspace buffer
@@ -617,6 +620,8 @@ uint32_t get_ctx_cc(Sky_ctx_t *ctx)
 {
     return ctx->cache->sky_cc;
 }
+#endif
+
 /*! \brief field extraction for dynamic use of Nanopb (ctx logf)
  *
  *  @param ctx workspace buffer
