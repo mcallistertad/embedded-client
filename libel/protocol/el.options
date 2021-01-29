@@ -9,6 +9,6 @@ Rq.device_id  max_size:16
 Rq.vaps  max_size:100
 Rs.used_aps   max_size: 8
 CryptoInfo.iv max_size:16
-TbrInfo.device_id max_size:16
-TbrInfo.sku max_size:32
+TbrRegistration.device_id max_size:16
+TbrRegistration.sku max_size:32
 

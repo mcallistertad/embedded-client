@@ -187,7 +187,7 @@ typedef struct _RsHeader {
 
 
 typedef struct _TbrRegistration {
-    pb_callback_t sku;
+    char sku[32];
     int32_t cc;
 /* @@protoc_insertion_point(struct:TbrRegistration) */
 } TbrRegistration;
@@ -251,7 +251,7 @@ typedef struct _Rs {
 #define RsHeader_init_default                    {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
 #define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_default, 0, {{NULL}, NULL}}
-#define TbrRegistration_init_default             {{{NULL}, NULL}, 0}
+#define TbrRegistration_init_default             {"", 0}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -266,7 +266,7 @@ typedef struct _Rs {
 #define RsHeader_init_zero                       {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
 #define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_zero, 0, {{NULL}, NULL}}
-#define TbrRegistration_init_zero                {{{NULL}, NULL}, 0}
+#define TbrRegistration_init_zero                {"", 0}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -454,9 +454,9 @@ extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_f
 #define Rq_tbr_MSGTYPE TbrRegistration
 
 #define TbrRegistration_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING, sku, 3) \
+X(a, STATIC, SINGULAR, STRING, sku, 3) \
 X(a, STATIC, SINGULAR, INT32, cc, 4)
-#define TbrRegistration_CALLBACK pb_default_field_callback
+#define TbrRegistration_CALLBACK NULL
 #define TbrRegistration_DEFAULT NULL
 
 #define Aps_FIELDLIST(X, a) \
@@ -622,7 +622,7 @@ extern const pb_msgdesc_t ClientConfig_msg;
 #define RsHeader_size                            24
 #define CryptoInfo_size                          29
 /* Rq_size depends on runtime parameters */
-/* TbrRegistration_size depends on runtime parameters */
+#define TbrRegistration_size                     44
 /* Aps_size depends on runtime parameters */
 #define Cell_size                                63
 /* GsmCells_size depends on runtime parameters */
