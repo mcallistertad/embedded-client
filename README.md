@@ -160,7 +160,13 @@ In general, the user must take the following steps in order to perform this exch
 
 If an authentication registration step is required, the user may receive an Authentication Retry error when decoding a server response. In these cases, the request must be regenerated (sky_finalize_response) and re-sent. Typically, such a retry is required only to initially establish permission, or to transition to a new authentication period (new contract).
 
+The configuration also allows a cache to be established. When a server response is decoded, the location and scan information is stored in the cache. Susequent calls to sky_finalize_request() will compare scan information in the request with the cache. If a good match is found, the cached location is returned along with a request buffer. The application may use the cached location (reduced network traffic) or send the request (update server with the UlAppData and position). For a stationary device the scan matching helps reduce significantly the number of transactions to server (by 80 - 90%) and allows client to report last known location without accuracy impact. This results in significant power consumption savings. For high speed moving devices (driving), scan matching fails typically as a result it has no impact on battery or accuracy. For slow speed moving devices (walking/biking) the stationary logic helps reduce number of transactions to server by ~50% but may introduce some lag in reported fixes relative to device location.
+
 The user may decide to send a request to the ELG server, even though a previously cached location was found. This allows application data to be reported to the server, and, when the library is opened with debounce = 'true', cached locations are reported. This allows for optional server updates during stationary periods.
+
+The User may decide to aggregate beacons from multiple scans. in environment with low APs, RF interference or poor HW WiFi scan, this technique may improve accuracy and yield significantly. In environment with many APs, it has no impact. Time to first fix is longer. Up to extra 10sec. This needs to be accounted in application layer and confirmed acceptable. There is minor battery impact on power consumption due to multiple scans in some cases detailed above. The timestamp associated with each beacon must accurately reflects the time at which the scan was captured.
+
+The configuration also allows the maximum size of downlink application data to be defined. This provides the ability to limit the buffer space required to receive a response message. This value must accomodate the length of downlink application date set at the server. The server will not send application data that is longer than this value in response messages.
 
 ### General Sequence of Operations
 ![missing image](https://github.com/SkyhookWireless/embedded-client-private/blob/gcleary-EC-121/images/elg_embedded_image.png?raw=true)
@@ -289,6 +295,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
     uint16_t mnc,
     int16_t pci,
     int32_t earfcn,
+    int32_t ta,
     time_t timestamp,
     int16_t rsrp,
     bool is_connected
@@ -303,6 +310,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
  * mnc          mobile network code (0-999)
  * pci          mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
  * earfcn,      channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
+ * ta           timing-advance (0-7690), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -346,6 +354,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
     int64_t ci,
     uint16_t mcc,
     uint16_t mnc,
+    int32_t ta,
     time_t timestamp,
     int16_t rssi,
     bool is_connected
@@ -358,6 +367,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
  * ci           gsm cell identifier (0-65535)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
+ * ta           timing-advance (0-63), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -522,6 +532,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
     int32_t tac,
     int16_t pci,
     int32_t nrarfcn,
+    int32_t ta,
     time_t timestamp,
     int16_t nrsrp
 )
@@ -535,6 +546,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
  * tac          tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
  * pci          physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
  * nrarfcn      channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
+ * ta           timing-advance (0-63), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
