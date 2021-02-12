@@ -413,18 +413,21 @@ int32_t serialize_request(
      */
     if (get_ctx_sku_length(ctx) != 0) {
         if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN) {
+            /* build a tbr registration request */
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.tbr.sku.bytes, get_ctx_sku(ctx), get_ctx_sku_length(ctx));
             rq.tbr.sku.size = get_ctx_sku_length(ctx);
             rq.tbr.cc = get_ctx_cc(ctx);
         } else
+            /* build tbr location request */
             rq.token_id = ctx->cache->sky_token_id;
 #if SKY_TBR_DEVICE_ID
         memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
         rq.device_id.size = get_ctx_id_length(ctx);
 #endif
     } else {
+        /* build legacy location request */
         memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
         rq.device_id.size = get_ctx_id_length(ctx);
     }
@@ -615,17 +618,17 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                  * request must have been a TBR registration request.
                  * Save the token_id for use in subsequent location requests. */
                 ctx->cache->sky_token_id = rs.token_id;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR authentication registration");
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
+                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 /* Fall through to handle any config overrides returned from the server */
             } else if (ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN &&
                        header.status == RsHeader_Status_AUTH_ERROR) {
                 // Response contains Error but we have a TBR token,
                 // meaning that the request must have been a failed TBR location request.
                 // Clear the token_id because it is invalid.
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication invalid!");
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
                 ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
+                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 /* Fall through to handle any config overrides returned from the server */
             } else {
                 loc->lat = rs.lat;

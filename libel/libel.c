@@ -153,10 +153,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
             partner_id == sky_state->sky_partner_id &&
             memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
-            ((sku && (sku_len = strlen(sky_state->sky_sku))) ?
-                    memcmp(sku, sky_state->sky_sku, sku_len) == 0 :
-                    true) &&
-            (cc != 0 ? cc == sky_state->sky_cc : true))
+            IMPLIES(sku_len = strlen(sky_state->sky_sku),
+                memcmp(sku, sky_state->sky_sku, sku_len) == 0) &&
+            IMPLIES(cc != 0, cc == sky_state->sky_cc))
             return sky_return(sky_errno, SKY_ERROR_NONE);
         else
             return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
@@ -1063,10 +1062,18 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     if (deserialize_response(ctx, response_buf, bufsize, loc) < 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Response decode failure");
         return sky_return(sky_errno, SKY_ERROR_DECODE_ERROR);
-    } else if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Server error. Status: %s",
-            sky_pserver_status(loc->location_status));
-        return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
+    } else {
+        switch (loc->location_status) {
+        case SKY_LOCATION_STATUS_SUCCESS:
+            break;
+        case SKY_LOCATION_STATUS_AUTH_RETRY:
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
+            break;
+        default:
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
+                sky_pserver_status(loc->location_status));
+            return sky_return(sky_errno, SKY_ERROR_SERVER_ERROR);
+        }
     }
     loc->time = (*ctx->gettime)(NULL);
 
