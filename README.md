@@ -52,7 +52,8 @@
 The Skyhook Embedded Client is a small library written in C. It is intended to be
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
-geolocation of the device on which it runs. This repo also includes a sample client application
+geolocation of the device on which it runs. It is known as the 'embedded library',
+sometimes referenced as libel. This repo also includes a sample client application
 which illustrates how the library can be used by your application (see below).
 
 Instructions for cloning and building the library are below.
@@ -123,7 +124,7 @@ The library will save the information provided in a request along with the locat
  * The address of this work space is considered the unique identifier for a given location request/response transaction.
  * If more than one beacon is added with the connected flag = yes, only the most recent beacon is considered to be connected.
  * sky_errno is always set, either to SKY_ERROR_NONE or to the error code.
- * The user may free the allocated work space after receiving a location (lat/long) from either sky_finalize_request or sky_decode_response, or an error from the API. 
+ * The user may free the allocated work space after a location (lat/long) results from either sky_finalize_request or sky_decode_response, or an error from the API. 
  * If time() returns a date prior to March 1, 2019, API will not match cached scans/locations.
  * The library includes SKY_LOG_LEVEL_DEBUG logging by default to assist with integration efforts. To remove this, build the library with SKY_DEBUG false. Passing a min_level value to sky_open() allows intermediate levels of logging.
  * The library is not thread safe.
@@ -158,8 +159,18 @@ In general, the user must take the following steps in order to perform this exch
  1. Wait for and then receive the response (use whatever timeout value is appropriate for the network in which the device is expected to run; the additional latency overhead imposed by the Skyhook service itself should be well under one second)
  1. Close the TCP connection
 
+If an authentication registration step is required, the user may receive an Authentication Retry error when decoding a server response. In these cases, sky_finalize_response() must be called again, and the resulting request buffer resent to the Skyhook server. Typically, such a retry is required only to initially establish permission, or to transition to a new authentication period (new contract).
+
+The user may decide to send a request to the ELG server, even though a previously cached location was found. This allows (uplink) application data to be reported to the server, and, when sky_open() is called with debounce = 'true', cached locations are reported. This allows for optional server updates during stationary periods.
+
+The User may decide to add beacons from multiple scans to a single request. In an environment with few APs, high RF interference or poor HW WiFi scan, this technique may improve accuracy and yield significantly. In an environment with many APs, it has no impact. Time to first fix may be up to 10 seconds longer. This needs to be accounted in application layer and confirmed acceptable. There is minor battery impact on power consumption due to multiple scans in some cases detailed above. The timestamp associated with each beacon must accurately reflects the time at which the scan was captured.
+
+The following are build time configuration parameters
+ * CACHE_SIZE allows a cache to be established. The value is the number of cachelines in the cache. A value of 0 disables the cache. When a server response is decoded, the location and scan information is stored in the cache. Susequent calls to sky_finalize_request() will compare scan information in the request with the cache. If a good match is found, the cached location is returned along with a request buffer. The application may use the cached location (reduced network traffic) or send the request (update server with the uplink application data and position). For a stationary device the scan matching helps reduce significantly the number of transactions to server (by 80 - 90%) and allows client to report last known location without accuracy impact. This results in significant power consumption savings. For high speed moving devices (driving), scan matching fails typically and as a result it has no impact on battery or accuracy. For slow speed moving devices (walking/biking) the stationary logic helps reduce number of transactions to server by ~50% but may introduce some lag in reported fixes relative to device location.
+ * SKY_MAX_DL_APP_DATA allows the maximum size of downlink application data to be defined, however the default of 100 is recommended. This provides the ability to limit the buffer space required to receive a response message. This value must accomodate the length of downlink application date set at the server. The server will not send application data that is longer than this value in response messages.
+
 ### General Sequence of Operations
-![missing image](https://github.com/SkyhookWireless/embedded-client/blob/master/images/elg_embedded_image.png?raw=true)
+![missing image](https://github.com/SkyhookWireless/embedded-client-private/blob/gcleary-EC-121/images/elg_embedded_image.png?raw=true)
 
 Figure 1 - The User is expected to make a sequence of calls as shown
 
@@ -173,11 +184,15 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     uint32_t id_len,
     uint32_t partner_id,
     uint8_t aes_key[16],
+    uint8_t *sku,
+    uint32_t sku_len,
+    uint32_t cc,
     void *state_buf,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
-    Sky_timefn_t gettime
+    Sky_timefn_t gettime,
+    bool debounce
 )
  
 /* Parameters
@@ -186,16 +201,20 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * id_len       length if the Device ID, typically 6, Max 16 bytes
  * partner_id   Skyhook assigned credentials
  * aes_key      Skyhook assigned encryption key
+ * sku          Skyhook assigned model number / product identifier
+ * sku_len      length of the sku
+ * cc           Country Code (optional) country in which the device was registered. 0 if undefined
  * state_buf    pointer to a state buffer (provided by sky_close) or NULL
  * min_level    logging function is called for msg with equal or greater level
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
  * gettime      pointer to time function
+ * debounce     true to report matching cache location in request (stationary detection)
  *
  * Returns      SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
  ```
-Called once to set up any resources needed by the library (e.g. cache space). Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (SKY_ERROR_BAD_STATE). If logf() is not NULL, the log messages will be generated if they were turned on during compilation (SKY_DEBUG). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to SKY_LOG_LEVEL_ERROR, only log messages with level SYK_LOG_LEVEL_CRITICAL and SKY_LOG_LEVEL_ERROR will be generated. If gettime is not NULL, this function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time) , otherwise the library calls time().
+Called once to set up any resources needed by the library (e.g. cache space). Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (SKY_ERROR_BAD_STATE). If sku_len is non-zero, libel will attempt to use Token Based Registration which ensures devices operate within authorized licensing period. Without sku, a simple key based authentication is used. If logf() is not NULL, the log messages will be generated if they were turned on during compilation (SKY_DEBUG). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to SKY_LOG_LEVEL_ERROR, only log messages with level SYK_LOG_LEVEL_CRITICAL and SKY_LOG_LEVEL_ERROR will be generated. If gettime is not NULL, this function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time) , otherwise the library calls time(). When debounce is false, the generated request always reports the workspace beacons to the server. When true, and a previously cached location is a match, the cached beacons are reported to the server.
 
 ### sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.
 
@@ -277,6 +296,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
     uint16_t mnc,
     int16_t pci,
     int32_t earfcn,
+    int32_t ta,
     time_t timestamp,
     int16_t rsrp,
     bool is_connected
@@ -291,6 +311,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
  * mnc          mobile network code (0-999)
  * pci          mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
  * earfcn,      channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
+ * ta           timing-advance (0-7690), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -334,6 +355,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
     int64_t ci,
     uint16_t mcc,
     uint16_t mnc,
+    int32_t ta,
     time_t timestamp,
     int16_t rssi,
     bool is_connected
@@ -346,6 +368,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
  * ci           gsm cell identifier (0-65535)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
+ * ta           timing-advance (0-63), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -510,6 +533,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
     int32_t tac,
     int16_t pci,
     int32_t nrarfcn,
+    int32_t ta,
     time_t timestamp,
     int16_t nrsrp
 )
@@ -523,6 +547,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
  * tac          tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
  * pci          physical cell ID (0-1007), SKY_UNKNOWN_ID5 if unknown
  * nrarfcn      channel (0-3279165), SKY_UNKNOWN_ID6 if unknown
+ * ta           timing-advance (0-63), SKY_UNKNOWN_TA if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * nrsrp        Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  * is_connected this beacon is currently connected, false if unknown
@@ -595,7 +620,7 @@ Adds the GNSS information to the request context. Returns SKY_ERROR for failure 
 
 ```c
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, 
-    uint32_t* size,
+    uint32_t *size,
     Sky_errno_t *sky_errno
 )
  
@@ -608,7 +633,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
  ```
-Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user.
+Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user. The size returned includes the Configuration value of SKY_MAX_DL_APP_DATA to accomodate any downlink application data.
 
 ### sky_finalize_request() - generate a Skyhook request from the request context
 
@@ -617,6 +642,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     void *request_buf,
     uint32_t bufsize,
+    uint8_t *ul_app_data,
+    uint32_t *ul_app_data_len,
     Sky_location_t *loc,
     uint32_t *response_size
 )
@@ -626,6 +653,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
  * sky_errno        sky_errno is set to the error code
  * request_buf      Request buffer (allocated by the user) into which the Skyhook server request will be encoded
  * bufsize          Request buffer size in bytes (should be set to the result of the call to sky_sizeof_request_buf() function)
+ * ul_app_data      Location of uplink application data
+ * ul_app_data_len  Length of uplink application data
  * loc              Pointer to the structure where latitude, longitude are written
  * response_size    the space required to hold the server response
  
@@ -633,6 +662,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
  */
  ```
 Returns SKY_FINALIZE_ERROR and sets sky_error if an error occurs. If the result is SKY_FINALIZE_REQUEST, the request buffer is filled in with the serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the result is SKY_FINALIZE_LOCATION, the location (lat, lon, hpe and source) are filled in from a previously successful server response held in the cache. 
+A device will remain authenticated during a valid contract period, and thereafter during an extended contract. However, sky_finalize_request() will enforce service prohibition periods after repeated authentication failures. An error will be returned, and sky_errno set to SKY_SERVICE_DENIED, if the user attempts to generate a request too soon after decoding a response which indicated that the user should retry after waiting a period of time (8, 16, 24 hours or 30 days). If ul_app_data is not NULL and ulapp_data_len is non-zero, the application data will be included in the request. Note that the user must send the generated request to the server even when SKY_FINALIZE_LOCATION is returned, if app_data needs to be sent to the server or the cached location needs to be reported.
 
 ### sky_decode_response() - decodes a Skyhook server response
 
@@ -641,6 +671,8 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     void *response_buf,
     uint32_t bufsize,
+    uint8_t **dl_app_data,
+    uint32_t *dl_app_data_len,
     Sky_location_t *loc
 )
  
@@ -649,12 +681,16 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
  * sky_errno        sky_errno is set to the error code
  * response_buf     buffer holding the skyhook server response
  * bufsize          Size of response buffer in bytes as returned by sky_finalize_request
+ * dl_app_data      Pointer updated to reference any downlink application data in the response_buf
+ * dl_app_data_len  Pointer to Size of downlink application data present in response_buf. May be 0
  * loc              where to save device latitude, longitude etc from cache if known
  
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 ```
 User calls this to process the network response from the Skyhook server. Returns SKY_ERROR and sets sky_error if the response buffer could not be decoded or other error occurred, otherwise SKY_SUCCESS is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
+If the user provides non-NULL dl_app_data, it is set to point to the beginning of application data in the response_buf, and if dl_app_data_len is non-NULL it is written with the number of application data bytes.
+If the request required an authentication registration step, sky_decode_response() returns SKY_ERROR, and sets sky_errno to SKY_RETRY_AUTHENTICATION. The user is expected to call sky_finalize_request() again, and re-send the request.
 
 ### sky_perror() - returns a string which describes the meaning of sky_errno codes
 
@@ -709,7 +745,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno,
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 ```
-Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriately. If sky_state was provided (not NULL), it will be set to point to sky_sizeof_state bytes of state buffer, which should be saved to non-volatile memory, 
+Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriately. If sky_state was provided (not NULL), it will be set to point to sky_sizeof_state() bytes of state buffer, which should be saved to non-volatile memory, 
 
 ### Appendix
 ### API Return Codes
@@ -742,6 +778,13 @@ Returns SKY_SUCCESS on success, SKY_ERROR on error and sets sky_errno appropriat
 | `SKY_ERROR_GET_CACHE`                           | Internal error trying to find a location in the cache state
 | `SKY_ERROR_LOCATION_UNKNOWN`                    | Server response indicates no location could be determined
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
+| `SKY_RETRY_AUTHENTICATION`                      | Server indicated that authentication was required and user must retry
+| `SKY_SERVICE_DENIED`                            | Libel temporarily blocked this service after a request fails authenication
+| `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours
+| `SKY_AUTH_RETRY_16HR`                           | Server indicated that authentication failed. Service is blocked for 16 hours
+| `SKY_AUTH_RETRY_24HR`                           | Server indicated that authentication failed. Service is blocked for 24 hours
+| `SKY_AUTH_RETRY_30DAY`                          | Server indicated that authentication failed. Service is blocked for 30 Days
+
 
 ### API Location Result
 The library returns location information as `Sky_location_t`:
