@@ -288,7 +288,6 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
 
-    printf("encode_gnss_fields got %d fields\n", num_gnss);
     return encode_repeated_int_field(
                ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat_scaled, NULL) &&
            encode_repeated_int_field(
@@ -335,7 +334,6 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
     //
-    printf("Rq_callback tag %d\n", field->tag);
     switch (field->tag) {
     case Rq_aps_tag:
         if (get_num_aps(ctx))
@@ -350,13 +348,13 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
             return encode_cell_fields(ctx, ostream);
         break;
     case Rq_gnss_tag:
-        printf("got Rq_gnss_tag\n");
         if (get_num_gnss(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
         break;
 
     default:
-        printf("Rq_callback() ERROR: unknown tag. %d\n", field->tag);
+        if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
+            (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "Rq_callback() ERROR: unknown tag");
         break;
     }
 
