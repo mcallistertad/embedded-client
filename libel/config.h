@@ -71,8 +71,6 @@
 
 /*! \brief TBR Authentication
  */
-#define SKY_CODE_AUTH_TBR true // Include code to encode requests using TBR authentication token
-#define SKY_TBR_DEVICE_ID                                                                          \
-    false // Include device_id in location requests (typically omitted from TBR requests)
+#define SKY_TBR_DEVICE_ID false // Include device_id in location requests (typically omitted)
 
 #endif

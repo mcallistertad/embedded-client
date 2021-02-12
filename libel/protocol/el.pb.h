@@ -207,6 +207,7 @@ typedef struct _UmtsCells {
 
 
 typedef PB_BYTES_ARRAY_T(16) Rq_device_id_t;
+typedef PB_BYTES_ARRAY_T(256) Rq_ul_app_data_t;
 typedef struct _Rq {
     Rq_device_id_t device_id;
     uint64_t timestamp;
@@ -227,12 +228,13 @@ typedef struct _Rq {
     int32_t token_id;
     TbrRegistration tbr;
     int32_t max_dl_app_data;
-    pb_callback_t ul_app_data;
+    Rq_ul_app_data_t ul_app_data;
 /* @@protoc_insertion_point(struct:Rq) */
 } Rq;
 
 
 typedef PB_BYTES_ARRAY_T(8) Rs_used_aps_t;
+typedef PB_BYTES_ARRAY_T(100) Rs_dl_app_data_t;
 typedef struct _Rs {
     double lat;
     double lon;
@@ -241,7 +243,7 @@ typedef struct _Rs {
     ClientConfig config;
     Rs_used_aps_t used_aps;
     int32_t token_id;
-    pb_callback_t dl_app_data;
+    Rs_dl_app_data_t dl_app_data;
 /* @@protoc_insertion_point(struct:Rs) */
 } Rs;
 
@@ -250,7 +252,7 @@ typedef struct _Rs {
 #define RqHeader_init_default                    {0, 0, 0, 0, 0}
 #define RsHeader_init_default                    {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
-#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_default, 0, {{NULL}, NULL}}
+#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_default, 0, {0, {0}}}
 #define TbrRegistration_init_default             {"", 0}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -260,12 +262,12 @@ typedef struct _Rs {
 #define LteCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define NbiotCells_init_default                  {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Gnss_init_default                        {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Rs_init_default                          {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_default, {0, {0}}, 0, {{NULL}, NULL}}
+#define Rs_init_default                          {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_default, {0, {0}}, 0, {0, {0}}}
 #define ClientConfig_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define RqHeader_init_zero                       {0, 0, 0, 0, 0}
 #define RsHeader_init_zero                       {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
-#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_zero, 0, {{NULL}, NULL}}
+#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_zero, 0, {0, {0}}}
 #define TbrRegistration_init_zero                {"", 0}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -275,7 +277,7 @@ typedef struct _Rs {
 #define LteCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define NbiotCells_init_zero                     {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Gnss_init_zero                           {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Rs_init_zero                             {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_zero, {0, {0}}, 0, {{NULL}, NULL}}
+#define Rs_init_zero                             {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_zero, {0, {0}}, 0, {0, {0}}}
 #define ClientConfig_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -439,7 +441,7 @@ X(a, CALLBACK, SINGULAR, BYTES, cache, 16) \
 X(a, STATIC, SINGULAR, INT32, token_id, 17) \
 X(a, STATIC, SINGULAR, MESSAGE, tbr, 18) \
 X(a, STATIC, SINGULAR, INT32, max_dl_app_data, 19) \
-X(a, CALLBACK, SINGULAR, BYTES, ul_app_data, 20)
+X(a, STATIC, SINGULAR, BYTES, ul_app_data, 20)
 extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field);
 #define Rq_CALLBACK Rq_callback
 #define Rq_DEFAULT NULL
@@ -565,8 +567,8 @@ X(a, STATIC, SINGULAR, UENUM, source, 4) \
 X(a, STATIC, SINGULAR, MESSAGE, config, 5) \
 X(a, STATIC, SINGULAR, BYTES, used_aps, 6) \
 X(a, STATIC, SINGULAR, INT32, token_id, 7) \
-X(a, CALLBACK, SINGULAR, BYTES, dl_app_data, 8)
-#define Rs_CALLBACK pb_default_field_callback
+X(a, STATIC, SINGULAR, BYTES, dl_app_data, 8)
+#define Rs_CALLBACK NULL
 #define Rs_DEFAULT NULL
 #define Rs_config_MSGTYPE ClientConfig
 
@@ -631,7 +633,7 @@ extern const pb_msgdesc_t ClientConfig_msg;
 /* LteCells_size depends on runtime parameters */
 /* NbiotCells_size depends on runtime parameters */
 /* Gnss_size depends on runtime parameters */
-/* Rs_size depends on runtime parameters */
+#define Rs_size                                  211
 #define ClientConfig_size                        60
 
 #ifdef __cplusplus

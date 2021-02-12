@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <ctype.h>
 #define SKY_LIBEL
 #include "libel.h"
 #include "proto.h"
@@ -60,6 +61,7 @@ static Sky_plugin_table_t *sky_plugins;
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
+static bool validate_sku(char *sku);
 
 /*! \brief Copy a state buffer to cache
  *
@@ -96,6 +98,8 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache
  *  @param id_len length if the Device ID, typically 6, Max 16 bytes
  *  @param partner_id Skyhook assigned credentials
  *  @param aes_key Skyhook assigned encryption key
+ *  @param sku unique name of device family, must be non-empty to enable TBR Auth
+ *  @param cc County code where device is being registered, 0 if unknown
  *  @param state_buf pointer to a state buffer (provided by sky_close) or NULL
  *  @param min_level logging function is called for msg with equal or greater level
  *  @param logf pointer to logging function
@@ -110,9 +114,8 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache
  *  be truncated to 16 if larger, without causing an error.
  */
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], uint8_t *sku, uint32_t sku_len, uint32_t cc,
-    void *state_buf, Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes,
-    Sky_timefn_t gettime)
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *state_buf,
+    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
@@ -120,10 +123,13 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     Sky_cache_t *sky_state = state_buf;
     int i = 0;
     int j = 0;
+    uint32_t sku_len = 0;
 
     memset(&cache, 0, sizeof(cache));
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? MAX_DEVICE_ID : id_len;
+    sku = !sku ? "" : sku;
+    sku_len = strlen(sku);
 
     if (sky_state != NULL && !validate_cache(sky_state, logf)) {
         if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
@@ -146,16 +152,11 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
             partner_id == sky_state->sky_partner_id &&
-            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0
-#if SKY_CODE_AUTH_TBR
-            && ((sky_state->sky_sku_len && sku) ?
-                       sku_len == sky_state->sky_sku_len &&
-                           memcmp(sku, sky_state->sky_sku, sizeof(sky_state->sky_sku_len)) == 0 :
-                       true) &&
+            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
+            ((sku && (sku_len = strlen(sky_state->sky_sku))) ?
+                    memcmp(sku, sky_state->sky_sku, sku_len) == 0 :
+                    true) &&
             (cc != 0 ? cc == sky_state->sky_cc : true))
-#else
-        )
-#endif
             return sky_return(sky_errno, SKY_ERROR_NONE);
         else
             return sky_return(sky_errno, SKY_ERROR_ALREADY_OPEN);
@@ -189,20 +190,17 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
-        !validate_aes_key(aes_key))
+        !validate_aes_key(aes_key) || !validate_sku(sku))
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     cache.sky_id_len = id_len;
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
-#if SKY_CODE_AUTH_TBR
     if (sku_len && sku) {
-        cache.sky_sku_len = sku_len;
-        memcpy(cache.sky_sku, sku, sku_len);
+        memcpy(cache.sky_sku, sku, MAX_SKU);
         cache.sky_cc = cc;
     }
-#endif
     sky_open_flag = true;
 
     if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
@@ -1297,6 +1295,30 @@ static bool validate_partner_id(uint32_t partner_id)
         return false;
     else
         return true; /* TODO check upper bound? */
+}
+
+/*! \brief sanity check the sku
+ *
+ *  @param sku this is expected to be ascii text string of no more than SKU_SIZE
+ *
+ *  @return true or false
+ */
+static bool validate_sku(char *sku)
+{
+    char *p = sku;
+    uint32_t sku_len = 0;
+
+    if (!sku)
+        return true;
+    else if ((sku_len = strlen(sku)) > MAX_SKU)
+        return false;
+    else {
+        for (; isprint(*p); p++)
+            ; /* count contiguous printable chars */
+        if (p - sku != sku_len)
+            return false;
+    }
+    return true;
 }
 
 /*! \brief sanity check the aes_key

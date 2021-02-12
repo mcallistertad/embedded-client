@@ -331,16 +331,12 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 {
     Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
 
-#if SKY_CODE_AUTH_TBR
-    /* If we are building code which uses TBR auth,
+    /* If we are building request which uses TBR auth,
      * and we do not currently have a token_id,
      * then we need to encode a registration request,
-     * which does not need any beacon info
+     * which does not include any beacon info
      */
-    if (ctx && ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN) {
-#else
-    if (ctx) {
-#endif
+    if (ctx && (!get_ctx_sku_length(ctx) || ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN)) {
         // Per the documentation here:
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
@@ -409,7 +405,6 @@ int32_t serialize_request(
 
     rq.timestamp = (int64_t)ctx->header.time;
 
-#if SKY_CODE_AUTH_TBR
     /* if we have been given a sku, then
      * if we don't yet have a token_id,
      * then build a tbr registration request
@@ -418,18 +413,21 @@ int32_t serialize_request(
      */
     if (get_ctx_sku_length(ctx) != 0) {
         if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN) {
-            memcpy(rq.tbr.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
-            rq.tbr.device_id.size = get_ctx_id_length(ctx);
+            memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
+            rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.tbr.sku.bytes, get_ctx_sku(ctx), get_ctx_sku_length(ctx));
             rq.tbr.sku.size = get_ctx_sku_length(ctx);
             rq.tbr.cc = get_ctx_cc(ctx);
         } else
             rq.token_id = ctx->cache->sky_token_id;
+#if SKY_TBR_DEVICE_ID
+        memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
+        rq.device_id.size = get_ctx_id_length(ctx);
+#endif
     } else {
         memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
         rq.device_id.size = get_ctx_id_length(ctx);
     }
-#endif
 
     // Create and serialize the request message.
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
@@ -612,7 +610,6 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         } else {
-#if SKY_CODE_AUTH_TBR
             if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN && rs.token_id != TBR_TOKEN_UNKNOWN) {
                 /* Response contains TBR token, meaning that the
                  * request must have been a TBR registration request.
@@ -631,7 +628,6 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
                 /* Fall through to handle any config overrides returned from the server */
             } else {
-#endif
                 loc->lat = rs.lat;
                 loc->lon = rs.lon;
                 loc->hpe = (uint16_t)rs.hpe;
@@ -639,9 +635,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 // Extract Used info for each AP from the Used_aps bytes
                 apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Applied used info.");
-#if SKY_CODE_AUTH_TBR
             }
-#endif
             ret = 0;
         }
         if (apply_config_overrides(ctx->cache, &rs)) {
