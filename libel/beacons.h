@@ -52,6 +52,9 @@
 
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
+
+#define has_gps(c) (c != NULL && !isnan((c)->gps.lat))
+
 /*! \brief Types of beacon in priority order
  */
 typedef enum {

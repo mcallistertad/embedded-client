@@ -208,7 +208,7 @@ typedef struct _Rq {
     LteCells lte_cells;
     CdmaCells cdma_cells;
     NbiotCells nbiot_cells;
-    Gnss gnss;
+    void* gnss;
     void* cells;
     void* vaps;
 /* @@protoc_insertion_point(struct:Rq) */
@@ -231,7 +231,7 @@ typedef struct _Rs {
 #define RqHeader_init_default                    {0, 0, 0, 0, 0}
 #define RsHeader_init_default                    {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
-#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, Gnss_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -245,7 +245,7 @@ typedef struct _Rs {
 #define RqHeader_init_zero                       {0, 0, 0, 0, 0}
 #define RsHeader_init_zero                       {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
-#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, Gnss_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
@@ -394,7 +394,7 @@ X(a, STATIC, SINGULAR, MESSAGE, umts_cells, 5) \
 X(a, STATIC, SINGULAR, MESSAGE, lte_cells, 6) \
 X(a, STATIC, SINGULAR, MESSAGE, cdma_cells, 7) \
 X(a, STATIC, SINGULAR, MESSAGE, nbiot_cells, 8) \
-X(a, STATIC, SINGULAR, MESSAGE, gnss, 9) \
+X(a, CALLBACK, SINGULAR, MESSAGE, gnss, 9) \
 X(a, CALLBACK, REPEATED, MESSAGE, cells, 10) \
 X(a, CALLBACK, SINGULAR, BYTES, vaps, 11)
 extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field);
