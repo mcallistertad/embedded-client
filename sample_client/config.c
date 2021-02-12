@@ -149,6 +149,11 @@ int load_config(char *filename, Config_t *config)
             hex2bin(str, config->device_len * 2, config->device_id, MAX_DEVICE_ID);
             continue;
         }
+
+        if (sscanf(line, "SKU %s", str) == 1) {
+            strncpy(config->sku, str, MAX_SKU);
+            continue;
+        }
     }
     config->filename = filename;
     fclose(fp);
