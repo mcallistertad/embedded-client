@@ -116,6 +116,9 @@ static Sky_status_t insert_beacon(
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
+    /* ignore connected flag for nmr beacons */
+    if (is_connected && is_cell_nmr(b))
+        is_connected = false;
     /* find correct position to insert based on type, AP and BLE first */
     for (i = 0; i < ctx->len; i++)
         if (ctx->beacon[i].h.type >= b->h.type ||
@@ -169,7 +172,8 @@ static Sky_status_t insert_beacon(
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d", sky_pbeacon(b), i);
 
-    if (is_connected)
+    /* Assume the first added cell is connected */
+    if (is_connected || (is_cell_type(b) && !is_cell_nmr(b) && (ctx->len - ctx->ap_len) == 1))
         // New beacon is the connected one, so update index.
         ctx->connected = i;
     else if (i <= ctx->connected)
@@ -625,6 +629,11 @@ static bool cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
+    if (ctx->connected == -1) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 connected cells in workspace");
+        return false;
+    }
+
     /* for each cell in workspace, compare with cacheline */
     for (j = ctx->ap_len; j < ctx->len; j++) {
         if (ctx->connected == j && beacon_in_cache(ctx, &ctx->beacon[j], cl)) {
@@ -687,8 +696,6 @@ int find_best_match(Sky_ctx_t *ctx, bool put)
 
             for (j = start; j < end; j++) {
                 if (beacon_in_cache(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %d type %s matches cache %d of %d", j,
-                        sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE)
                     score[i] = score[i] + 1.0;
                 }
             }

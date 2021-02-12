@@ -37,7 +37,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 7
+#define SW_VERSION 12
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -304,10 +304,10 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "%02X:%02X:%02X:%02X:%02X:%02X, rssi: %d, freq %d, connect %s, age %d", mac[0], mac[1],
-        mac[2], mac[3], mac[4], mac[5], rssi, frequency, is_connected ? "true" : "false",
-        (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
+        is_connected ? "serve " : "",
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     if (!sky_open_flag)
         return sky_return(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -358,10 +358,9 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     Beacon_t b;
 
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "e-cellid: %lld, mcc: %u, mnc: %u, tac: %d, pci: %d, earfcn: %d, rsrp: %d, connect %s, age %d",
-            e_cellid, mcc, mnc, tac, pci, earfcn, rsrp, is_connected ? "true" : "false",
-            (int)(ctx->header.time - timestamp))
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rsrp %d, %sage %d", mcc,
+            mnc, tac, e_cellid, pci, earfcn, rsrp, is_connected ? "serve, " : "",
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -420,8 +419,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "pci: %d, earfcn: %d, rsrp: %d, age %d", pci, earfcn, rsrp,
-        (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, earfcn, rsrp,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
     return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, timestamp, rsrp, false);
 }
@@ -445,9 +444,9 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "lac: %d, ci: %lld, mcc: %u, mnc: %u, rssi: %d, connect %s, age %d", lac, ci, mcc, mnc,
-        rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, rssi %d, %sage %d", lac, ci, mcc, mnc, rssi,
+        is_connected ? "serve, " : "",
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -509,10 +508,9 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
     Beacon_t b;
 
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && ucid != SKY_UNKNOWN_ID4)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "lac: %d, ucid: %lld, mcc: %u, mnc: %u, psc: %d, uarfcn: %d, rscp: %d, connect %s, age %d",
-            lac, ucid, mcc, mnc, psc, uarfcn, rscp, is_connected ? "true" : "false",
-            (int)(ctx->header.time - timestamp))
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
+            mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -571,8 +569,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t psc,
     int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "psc: %d, uarfcn: %d, rscp: %d, age %d", psc, uarfcn, rscp,
-        (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", psc, uarfcn, rscp,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
     return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -595,8 +593,9 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 {
     Beacon_t b;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sid: %u, nid: %d, bsid: %lld, rssi: %d, connect %s, age %d",
-        sid, nid, bsid, rssi, is_connected ? "true" : "false", (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
+        is_connected ? "serve, " : "",
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* Range check parameters */
     if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
@@ -634,7 +633,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
  *  @param mnc mobile network code  (0-999)
  *  @param e_cellid nbiot beacon identifier (0-268435455)
  *  @param tac nbiot tracking area code identifier (1-65535), SKY_UNKNOWN_ID3 if unknown
- *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID4 if unknown
+ *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID5 if unknown
  *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
@@ -649,10 +648,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     Beacon_t b;
 
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "mcc: %u, mnc: %u, e_cellid: %lld, tac: %d, ncid: %d, earfcn: %d, nrsrp: %d, connect %s, age %d",
-            mcc, mnc, e_cellid, tac, ncid, earfcn, nrsrp, is_connected ? "true" : "false",
-            (int)(ctx->header.time - timestamp))
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
+            mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -712,8 +710,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno,
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ncid: %d, earfcn:%d, nrsrp: %d, age %d", ncid, earfcn, nrsrp,
-        (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz nrsrp %d, age %d", ncid, earfcn, nrsrp,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
@@ -743,10 +741,9 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     Beacon_t b;
 
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && nci != SKY_UNKNOWN_ID4)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "mcc: %u, mnc: %u, nci: %lld, tac: %d, pci: %d, nrarfcn: %d, csi_rsrp: %d, connect %s, age %d",
-            mcc, mnc, nci, tac, pci, nrarfcn, csi_rsrp, is_connected ? "true" : "false",
-            (int)(ctx->header.time - timestamp))
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rsrp %d, %sage %d", mcc,
+            mnc, tac, nci, pci, nrarfcn, csi_rsrp, is_connected ? "serve, " : "",
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -806,8 +803,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
 Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "pci: %d, nrarfcn: %d, rsrp: %d, age %d", pci, nrarfcn,
-        csi_rsrp, (int)(ctx->header.time - timestamp))
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, nrarfcn, csi_rsrp,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
     return sky_add_cell_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, timestamp, csi_rsrp, false);
 }
@@ -832,14 +829,15 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe: %d, alt: %d.%02d, vpe: %d,", (int)lat,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe %d, alt %d.%02d, vpe %d,", (int)lat,
         (int)fabs(round(1000000 * (lat - (int)lat))), (int)lon,
         (int)fabs(round(1000000 * (lon - (int)lon))), hpe, (int)altitude,
         (int)fabs(round(100 * (altitude - (int)altitude))), vpe)
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing: %d.%01d, nsat: %d, %d", (int)speed,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing %d.%01d, nsat %d, age %d", (int)speed,
         (int)fabs(round(10 * (speed - (int)speed))), (int)bearing,
-        (int)fabs(round(1 * (bearing - (int)bearing))), nsat, (int)timestamp)
+        (int)fabs(round(1 * (bearing - (int)bearing))), nsat,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp))
 
     /* range check parameters */
     if (isnan(lat) || isnan(lon)) /* don't fail for empty gnss */
@@ -1022,7 +1020,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     if (add_to_cache(ctx, loc) == SKY_ERROR)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to add to cache")
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe %d", (int)loc->lat,
         (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
         (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe)
 
