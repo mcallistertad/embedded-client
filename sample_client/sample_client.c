@@ -466,7 +466,7 @@ retry_after_auth:
         break;
     }
 
-    if (ret_status != SKY_SUCCESS && loc.location_status == SKY_LOCATION_STATUS_AUTH_ERROR)
+    if (ret_status != SKY_SUCCESS && loc.location_status == SKY_LOCATION_STATUS_AUTH_RETRY)
         goto retry_after_auth; /* Repeat request if Authentication was required for last message */
 
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
