@@ -1,6 +1,7 @@
 Rq.aps           type:FT_CALLBACK, callback_datatype:"void*"
 Rq.vaps          type:FT_CALLBACK, callback_datatype:"void*"
 Rq.cells         type:FT_CALLBACK, callback_datatype:"void*"
+Rq.gnss          type:FT_CALLBACK, callback_datatype:"void*"
 # ------
 # Do not change the following values.
 # ------

@@ -288,6 +288,7 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
 
+    printf("encode_gnss_fields got %d fields\n", num_gnss);
     return encode_repeated_int_field(
                ctx, ostream, Gnss_lat_tag, num_gnss, get_gnss_lat_scaled, NULL) &&
            encode_repeated_int_field(
@@ -334,6 +335,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
     // Per the documentation here:
     // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
     //
+    printf("Rq_callback tag %d\n", field->tag);
     switch (field->tag) {
     case Rq_aps_tag:
         if (get_num_aps(ctx))
@@ -348,6 +350,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
             return encode_cell_fields(ctx, ostream);
         break;
     case Rq_gnss_tag:
+        printf("got Rq_gnss_tag\n");
         if (get_num_gnss(ctx))
             return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
         break;
@@ -393,7 +396,7 @@ int32_t serialize_request(
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.vaps = rq.cells = ctx;
+    rq.aps = rq.vaps = rq.cells = rq.gnss = ctx;
 
     rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
 

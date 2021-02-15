@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
     else
         printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
 
-    sky_add_gnss(
+    ret_status = sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
     if (ret_status == SKY_SUCCESS)
         printf("GNSS added\n");
