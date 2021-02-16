@@ -357,10 +357,8 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
             if (get_num_gnss(ctx))
                 return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
             break;
-
         default:
-            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
-                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "Rq_callback() ERROR: unknown tag");
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unknown tag %d", field->tag);
             break;
         }
     }
@@ -613,24 +611,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         } else {
-            if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN && rs.token_id != TBR_TOKEN_UNKNOWN) {
-                /* Response contains TBR token, meaning that the
-                 * request must have been a TBR registration request.
-                 * Save the token_id for use in subsequent location requests. */
-                ctx->cache->sky_token_id = rs.token_id;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
-                /* Fall through to handle any config overrides returned from the server */
-            } else if (ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN &&
-                       header.status == RsHeader_Status_AUTH_ERROR) {
-                // Response contains Error but we have a TBR token,
-                // meaning that the request must have been a failed TBR location request.
-                // Clear the token_id because it is invalid.
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
-                ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
-                /* Fall through to handle any config overrides returned from the server */
-            } else {
+            if (header.status != RsHeader_Status_AUTH_ERROR && rs.token_id != TBR_TOKEN_UNKNOWN) {
                 loc->lat = rs.lat;
                 loc->lon = rs.lon;
                 loc->hpe = (uint16_t)rs.hpe;
@@ -638,6 +619,23 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 // Extract Used info for each AP from the Used_aps bytes
                 apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Applied used info.");
+            } else if (rs.token_id != TBR_TOKEN_UNKNOWN) { /* successful TBR registration request */
+                /* Save the token_id for use in subsequent location requests. */
+                ctx->cache->sky_token_id = rs.token_id;
+                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
+                /* Fall through to handle any config overrides returned from the server */
+            } else if (ctx->cache->sky_token_id !=
+                       TBR_TOKEN_UNKNOWN) { /* failed TBR location request */
+                /* Clear the token_id because it is invalid. */
+                ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
+                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
+                /* Fall through to handle any config overrides returned from the server */
+            } else { /* failed TBR registration */
+                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
+                /* Fall through to handle any config overrides returned from the server */
             }
             ret = 0;
         }

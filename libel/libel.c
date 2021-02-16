@@ -1053,6 +1053,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc)
 {
+    /* are we decoding response to tbr registration request */
+    bool tbr_register =
+        (strlen(ctx->cache->sky_sku) && (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN));
+
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1068,7 +1072,23 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             break;
         case SKY_LOCATION_STATUS_AUTH_RETRY:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
-            break;
+            if (!tbr_register) { /* Location request faild auth, retry */
+                ctx->cache->backoff = SKY_ERROR_NONE;
+                return sky_return(sky_errno, SKY_ERROR_AUTH_RETRY);
+            } else if (ctx->cache->backoff ==
+                       SKY_ERROR_NONE) /* Registration request faild auth, retry */
+                return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY));
+            else if (ctx->cache->backoff ==
+                     SKY_ERROR_AUTH_RETRY) /* Registration request faild again, retry after 8hr */
+                return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_8H));
+            else if (ctx->cache->backoff ==
+                     SKY_ERROR_AUTH_RETRY_8H) /* Registration request faild again, retry after 16hr */
+                return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_16H));
+            else if (ctx->cache->backoff ==
+                     SKY_ERROR_AUTH_RETRY_16H) /* Registration request faild again, retry after 24hr */
+                return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_1D));
+            else
+                return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_30D));
         default:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
                 sky_pserver_status(loc->location_status));
