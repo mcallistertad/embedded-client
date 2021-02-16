@@ -396,7 +396,7 @@ int32_t serialize_request(
 
     rq.aps = rq.vaps = rq.cells = rq.gnss = ctx;
 
-    rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
+    rq.timestamp = (int64_t)ctx->header.time;
 
     memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
     rq.device_id.size = get_ctx_id_length(ctx);
