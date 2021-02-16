@@ -170,7 +170,7 @@ The following are build time configuration parameters
  * SKY_MAX_DL_APP_DATA allows the maximum size of downlink application data to be defined, however the default of 100 is recommended. This provides the ability to limit the buffer space required to receive a response message. This value must accomodate the length of downlink application date set at the server. The server will not send application data that is longer than this value in response messages.
 
 ### General Sequence of Operations
-![missing image](https://github.com/SkyhookWireless/embedded-client-private/blob/gcleary-EC-121/images/elg_embedded_image.png?raw=true)
+![missing image](https://github.com/SkyhookWireless/embedded-client-private/blob/develop/images/elg_embedded_image.png?raw=true)
 
 Figure 1 - The User is expected to make a sequence of calls as shown
 
