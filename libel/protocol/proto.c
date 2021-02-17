@@ -420,8 +420,8 @@ int32_t serialize_request(
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
             strncpy(rq.tbr.sku, get_ctx_sku(ctx), MAX_SKU_LEN);
             rq.tbr.cc = get_ctx_cc(ctx);
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR Registration required: Partner ID: %d, SKU '%.s'",
-                rq_hdr.partner_id, MAX_SKU_LEN, rq.tbr.sku);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR Registration required: Partner ID: %d, SKU '%s'",
+                rq_hdr.partner_id, rq.tbr.sku);
             LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, rq.device_id.bytes, rq.device_id.size);
         } else {
             /* build tbr location request */
