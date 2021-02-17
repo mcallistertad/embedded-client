@@ -197,7 +197,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     cache.sky_partner_id = partner_id;
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
     if (sku_len && sku) {
-        memcpy(cache.sky_sku, sku, MAX_SKU);
+        memcpy(cache.sky_sku, sku, MAX_SKU_LEN);
         cache.sky_cc = cc;
     }
     sky_open_flag = true;
@@ -251,7 +251,8 @@ int32_t sky_sizeof_workspace(void)
  *
  *  @return Pointer to the initialized workspace context buffer or NULL
  */
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno)
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
+    uint32_t ul_app_data_len, Sky_errno_t *sky_errno)
 {
     int i;
     Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
@@ -304,6 +305,8 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *s
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
                     CACHE_SIZE, now - ctx->cache->cacheline[i].time);
             }
+            ctx->cache->sky_ul_app_data_len = ul_app_data_len;
+            memcpy(ctx->cache->sky_ul_app_data, ul_app_data, ul_app_data_len);
         }
         DUMP_CACHE(ctx);
     }
@@ -1359,7 +1362,7 @@ static bool validate_sku(char *sku)
 
     if (!sku)
         return true;
-    else if ((sku_len = strlen(sku)) > MAX_SKU)
+    else if ((sku_len = strlen(sku)) > MAX_SKU_LEN)
         return false;
     else {
         for (; isprint(*p); p++)

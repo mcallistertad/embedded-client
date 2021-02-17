@@ -574,8 +574,40 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
     return ctx->cache->sky_device_id;
 }
 
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_id_len
+ */
+uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_id_len;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_device_id
+ */
+uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_ul_app_data;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_id_len
+ */
+uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_ul_app_data_len;
+}
+
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
->>>>>>> 8355173... [EC-104] handle TBR retry and backoff
  *
  *  @param ctx workspace buffer
  *
@@ -606,17 +638,6 @@ char *get_ctx_sku(Sky_ctx_t *ctx)
 uint32_t get_ctx_sku_length(Sky_ctx_t *ctx)
 {
     return strlen(ctx->cache->sky_sku);
-}
-
-/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
- *
- *  @param ctx workspace buffer
- *
- *  @return sky_id_len
- */
-uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
-{
-    return ctx->cache->sky_id_len;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_cc)

@@ -130,7 +130,7 @@ Sky_ctx_t *_test_sky_ctx()
     //memset(ctx, 0, bufsize);
 
     Sky_errno_t sky_errno = -1;
-    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, (uint8_t *)"uplink app data", 16, &sky_errno) != ctx) {
         fprintf(stderr, "sky_new_request() returned bad value\n");
         fprintf(stderr, "sky_errno contains '%s'\n", sky_perror(sky_errno));
         exit(-1);

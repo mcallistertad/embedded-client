@@ -36,7 +36,7 @@
 #define AES_SIZE 16
 
 #define MAX_DEVICE_ID 16
-#define MAX_SKU 16
+#define MAX_SKU_LEN 33 // with terminating NULL
 #define TBR_TOKEN_UNKNOWN 0
 
 /* March 1st 2019 */
@@ -98,6 +98,8 @@ typedef struct sky_location {
     uint32_t time;
     Sky_loc_source_t location_source;
     Sky_loc_status_t location_status;
+    uint8_t *dl_app_data;
+    uint32_t dl_app_data_len;
 } Sky_location_t;
 
 /*! \brief sky_errno Error Codes
@@ -174,7 +176,8 @@ int32_t sky_sizeof_state(void *sky_state);
 
 int32_t sky_sizeof_workspace(void);
 
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno);
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
+    uint32_t ul_app_data_len, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t mac[MAC_SIZE],
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);

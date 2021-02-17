@@ -191,7 +191,9 @@ typedef struct sky_cache {
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
     uint32_t sky_token_id; /* TBR token ID */
-    char sky_sku[MAX_SKU]; /* product family ID */
+    uint32_t sky_ul_app_data_len; /* uplink app data length */
+    uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
+    char sky_sku[MAX_SKU_LEN]; /* product family ID */
     uint16_t sky_cc; /* Optional Country Code (0 = unused) */
     Sky_errno_t backoff; /* last auth error */
     uint32_t sky_partner_id; /* partner ID */

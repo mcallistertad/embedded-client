@@ -187,7 +187,7 @@ typedef struct _RsHeader {
 
 
 typedef struct _TbrRegistration {
-    char sku[32];
+    char sku[33];
     int32_t cc;
 /* @@protoc_insertion_point(struct:TbrRegistration) */
 } TbrRegistration;
@@ -207,7 +207,7 @@ typedef struct _UmtsCells {
 
 
 typedef PB_BYTES_ARRAY_T(16) Rq_device_id_t;
-typedef PB_BYTES_ARRAY_T(256) Rq_ul_app_data_t;
+typedef PB_BYTES_ARRAY_T(100) Rq_ul_app_data_t;
 typedef struct _Rq {
     Rq_device_id_t device_id;
     uint64_t timestamp;
@@ -624,7 +624,7 @@ extern const pb_msgdesc_t ClientConfig_msg;
 #define RsHeader_size                            24
 #define CryptoInfo_size                          29
 /* Rq_size depends on runtime parameters */
-#define TbrRegistration_size                     44
+#define TbrRegistration_size                     45
 /* Aps_size depends on runtime parameters */
 #define Cell_size                                63
 /* GsmCells_size depends on runtime parameters */

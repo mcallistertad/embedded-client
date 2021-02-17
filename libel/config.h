@@ -73,4 +73,9 @@
  */
 #define SKY_TBR_DEVICE_ID false // Include device_id in location requests (typically omitted)
 
+/*! \brief Application Data
+ */
+#define SKY_MAX_DL_APP_DATA 100 // Max space reserved for downlink app data
+#define SKY_MAX_UL_APP_DATA 100 // Max space reserved for uplink app data
+
 #endif

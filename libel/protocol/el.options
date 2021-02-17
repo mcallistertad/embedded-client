@@ -7,9 +7,9 @@ Rq.gnss          type:FT_CALLBACK, callback_datatype:"void*"
 # ------
 Rq.device_id     max_size:16
 Rq.vaps          max_size:100
-Rq.ul_app_data   max_size:256
-Rs.used_aps      max_size: 8
-Rs.dl_app_data   max_size: 100
+Rq.ul_app_data   max_size:100
+Rs.used_aps      max_size:8
+Rs.dl_app_data   max_size:100
 CryptoInfo.iv    max_size:16
-TbrRegistration.sku max_size:32
+TbrRegistration.sku max_size:33 // 32 + terminating null
 
