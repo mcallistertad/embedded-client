@@ -453,8 +453,12 @@ retry_after_auth:
         /* Decode the response from server or cache */
         ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, &loc);
 
-        if (ret_status != SKY_SUCCESS)
+        if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
+            if (sky_errno == SKY_ERROR_AUTH_RETRY)
+                goto retry_after_auth; /* Repeat request if Authentication was required for last message */
+        }
+
         break;
     case SKY_FINALIZE_LOCATION:
         /* Location was found in the cache. No need to go to server. */
@@ -465,9 +469,6 @@ retry_after_auth:
         exit(-1);
         break;
     }
-
-    if (ret_status != SKY_SUCCESS && loc.location_status == SKY_LOCATION_STATUS_AUTH_RETRY)
-        goto retry_after_auth; /* Repeat request if Authentication was required for last message */
 
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
         sky_pserver_status(loc.location_status), (int)loc.lat,
