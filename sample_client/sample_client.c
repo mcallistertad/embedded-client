@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     memset(p, 0, bufsize);
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, (uint8_t *)"sample_client", 13, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
@@ -411,7 +411,7 @@ retry_after_auth:
     } else
         printf("Required buffer size = %d\n", request_size);
 
-    prequest = malloc(request_size);
+    prequest = malloc(request_size * sizeof(uint8_t));
 
     /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
     /* which case the loc parameter will contain the location result which was */
@@ -473,6 +473,7 @@ retry_after_auth:
         sky_pserver_status(loc.location_status), (int)loc.lat,
         (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
         (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
+    printf("Downlink data: %.*s\n", loc.dl_app_data_len, loc.dl_app_data);
 
     ret_status = sky_close(&sky_errno, &pstate);
 

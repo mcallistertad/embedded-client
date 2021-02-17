@@ -37,7 +37,7 @@ typedef struct client_config {
     uint8_t device_id[MAX_DEVICE_ID];
     uint8_t device_len;
     uint8_t key[AES_SIZE];
-    char sku[MAX_SKU];
+    char sku[MAX_SKU_LEN];
 } Config_t;
 
 uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);

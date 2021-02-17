@@ -151,7 +151,7 @@ int load_config(char *filename, Config_t *config)
         }
 
         if (sscanf(line, "SKU %s", str) == 1) {
-            strncpy(config->sku, str, MAX_SKU);
+            strncpy(config->sku, str, sizeof(config->sku));
             continue;
         }
     }
