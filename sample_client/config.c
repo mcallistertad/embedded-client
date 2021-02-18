@@ -183,4 +183,5 @@ void print_config(Config_t *config)
     printf("Key: %32s\n", key);
     printf("Partner Id: %d\n", config->partner_id);
     printf("Device: %12s\n", device);
+    printf("SKU: %s\n", config->sku);
 }
