@@ -36,6 +36,8 @@
 #include "limits.h"
 #include "assert.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 /* extract the n-th bit from used AP array of l bytes */
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
@@ -634,8 +636,12 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 loc->lon = rs.lon;
                 loc->hpe = (uint16_t)rs.hpe;
                 loc->location_source = (Sky_loc_source_t)rs.source;
-                loc->dl_app_data = rs.dl_app_data.bytes;
+                /* copy any downlink data to state buffer */
+                loc->dl_app_data = ctx->cache->sky_dl_app_data;
+                memcpy(ctx->cache->sky_dl_app_data, rs.dl_app_data.bytes,
+                    MIN(rs.dl_app_data.size, sizeof(ctx->cache->sky_dl_app_data)));
                 loc->dl_app_data_len = rs.dl_app_data.size;
+                LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, rs.dl_app_data.bytes, rs.dl_app_data.size);
                 // Extract Used info for each AP from the Used_aps bytes
                 apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Applied used info.");
@@ -644,6 +650,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 ctx->cache->sky_token_id = rs.token_id;
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
+                LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, rs.dl_app_data.bytes, rs.dl_app_data.size);
                 /* Fall through to handle any config overrides returned from the server */
             } else if (ctx->cache->sky_token_id !=
                        TBR_TOKEN_UNKNOWN) { /* failed TBR location request */

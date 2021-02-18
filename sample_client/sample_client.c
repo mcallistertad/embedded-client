@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
     else
         printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
 
-    ret_status = sky_add_gnss(
+    sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
     if (ret_status == SKY_SUCCESS)
         printf("GNSS added\n");
@@ -474,7 +474,9 @@ retry_after_auth:
         sky_pserver_status(loc.location_status), (int)loc.lat,
         (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
         (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
-    printf("Downlink data: %.*s\n", loc.dl_app_data_len, loc.dl_app_data);
+    if (loc.location_status == SKY_LOCATION_STATUS_SUCCESS)
+        printf(
+            "Downlink data: %.*s(%d)\n", loc.dl_app_data_len, loc.dl_app_data, loc.dl_app_data_len);
 
     ret_status = sky_close(&sky_errno, &pstate);
 

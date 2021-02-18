@@ -71,7 +71,7 @@
 
 /*! \brief TBR Authentication
  */
-#define SKY_TBR_DEVICE_ID false // Include device_id in location requests (typically omitted)
+#define SKY_TBR_DEVICE_ID true // Include device_id in location requests (typically omitted)
 
 /*! \brief Application Data
  */
