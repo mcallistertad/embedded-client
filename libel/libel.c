@@ -948,8 +948,12 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
     /* check cache against beacons for match */
     if ((c = get_from_cache(ctx)) >= 0) {
-        if (loc != NULL)
+        if (loc != NULL) {
             *loc = ctx->cache->cacheline[c].loc;
+            /* return latest downlink data to application */
+            loc->dl_app_data = ctx->cache->sky_dl_app_data;
+            loc->dl_app_data_len = ctx->cache->sky_dl_app_data_len;
+        }
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
