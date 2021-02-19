@@ -281,6 +281,10 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
     ctx->plugin = sky_plugins;
+    ctx->auth_state = !is_tbr_enabled(ctx) ?
+                          STATE_TBR_DISABLED :
+                          ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERD :
+                                                                          STATE_TBR_GOT_TOKEN;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -1062,10 +1066,6 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc)
 {
-    /* are we decoding response to tbr registration request */
-    bool tbr_register =
-        (strlen(ctx->cache->sky_sku) && (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN));
-
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return sky_return(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1081,7 +1081,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             break;
         case SKY_LOCATION_STATUS_AUTH_RETRY:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
-            if (!tbr_register) { /* Location request failed auth, retry */
+            if (ctx->auth_state == STATE_TBR_GOT_TOKEN) { /* Location request failed auth, retry */
                 ctx->cache->backoff = SKY_ERROR_NONE;
                 return sky_return(sky_errno, SKY_ERROR_AUTH_RETRY);
             } else if (ctx->cache->backoff ==

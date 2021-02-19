@@ -426,7 +426,6 @@ int32_t serialize_request(
             rq.tbr.cc = get_ctx_cc(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR Registration required: Partner ID: %d, SKU '%s'",
                 rq_hdr.partner_id, rq.tbr.sku);
-            LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, rq.device_id.bytes, rq.device_id.size);
         } else {
             /* build tbr location request */
             rq.token_id = ctx->cache->sky_token_id;
@@ -633,8 +632,9 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         } else {
-            if (header.status != RsHeader_Status_AUTH_ERROR && rs.token_id == TBR_TOKEN_UNKNOWN) {
-                /* Response is not an error and it was not a registration response with token */
+            if (header.status != RsHeader_Status_AUTH_ERROR &&
+                ctx->auth_state != STATE_TBR_UNREGISTERD) {
+                /* Response is not an error and it was a location response */
                 loc->lat = rs.lat;
                 loc->lon = rs.lon;
                 loc->hpe = (uint16_t)rs.hpe;
@@ -649,17 +649,20 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             } else if (rs.token_id != TBR_TOKEN_UNKNOWN) {
                 /* successful TBR registration response */
                 /* Save the token_id for use in subsequent location requests. */
+                ctx->auth_state = STATE_TBR_GOT_TOKEN;
                 ctx->cache->sky_token_id = rs.token_id;
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
             } else if (ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN) {
                 /* failed TBR location request */
                 /* Clear the token_id because it is invalid. */
+                ctx->auth_state = STATE_TBR_UNREGISTERD;
                 ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
             } else {
                 /* failed TBR registration */
+                ctx->auth_state = STATE_TBR_UNREGISTERD;
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
             }

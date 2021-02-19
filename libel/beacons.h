@@ -168,6 +168,12 @@ typedef struct sky_cacheline {
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
+typedef enum sky_tbr_state {
+    STATE_TBR_DISABLED, /* not configured for TBR */
+    STATE_TBR_UNREGISTERD, /* Need to register */
+    STATE_TBR_GOT_TOKEN /* Got a token */
+} Sky_tbr_state_t;
+
 /* Access the cache config parameters */
 #define CONFIG(cache, param) (cache->config.param)
 
@@ -221,6 +227,7 @@ typedef struct sky_ctx {
     int16_t save_to; /* cacheline with best match for saving */
     Sky_cache_t *cache;
     void *plugin;
+    Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
 } Sky_ctx_t;
 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);

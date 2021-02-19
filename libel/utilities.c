@@ -223,8 +223,6 @@ static size_t _strnlen(const char *str, size_t max_len)
  */
 bool is_tbr_enabled(Sky_ctx_t *ctx)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sku '%s' len %d", ctx->cache->sky_sku,
-        _strnlen(ctx->cache->sky_sku, MAX_SKU_LEN));
     return (_strnlen(ctx->cache->sky_sku, MAX_SKU_LEN) > 0);
 }
 
