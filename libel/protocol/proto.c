@@ -633,27 +633,28 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             return ret;
         } else {
             switch (ctx->auth_state) {
-            case STATE_TBR_UNREGISTERD:
+            case STATE_TBR_UNREGISTERED:
                 if (rs.token_id == TBR_TOKEN_UNKNOWN) {
                     /* failed TBR registration */
-                    ctx->auth_state = STATE_TBR_UNREGISTERD;
+                    ctx->auth_state = STATE_TBR_UNREGISTERED;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
                 } else {
                     /* successful TBR registration response */
                     /* Save the token_id for use in subsequent location requests. */
-                    ctx->auth_state = STATE_TBR_GOT_TOKEN;
+                    ctx->auth_state = STATE_TBR_REGISTERED;
                     ctx->cache->sky_token_id = rs.token_id;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
                 }
-                /* Application must retry because this was a registration */
+                /* User must retry because this was a registration */
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                 break;
-            case STATE_TBR_GOT_TOKEN:
+            case STATE_TBR_REGISTERED:
                 if (header.status == RsHeader_Status_AUTH_ERROR) {
                     /* failed TBR location request */
                     /* Clear the token_id because it is invalid. */
-                    ctx->auth_state = STATE_TBR_UNREGISTERD;
+                    ctx->auth_state = STATE_TBR_UNREGISTERED;
                     ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
+                    /* Application must retry to re-register */
                     loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
                     break;
@@ -661,13 +662,12 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                     /* fall through */
                 }
             case STATE_TBR_DISABLED:
-                /* Legacy or tbr location request */
                 if (header.status == RsHeader_Status_AUTH_ERROR) {
                     /* failed legacy location request */
                     loc->location_status = SKY_LOCATION_STATUS_API_SERVER_ERROR;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Auth Error");
                 } else {
-                    /* location request */
+                    /* Legacy or tbr location request */
                     loc->lat = rs.lat;
                     loc->lon = rs.lon;
                     loc->hpe = (uint16_t)rs.hpe;
