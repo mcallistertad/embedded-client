@@ -307,6 +307,8 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
             }
             ctx->cache->sky_ul_app_data_len = ul_app_data_len;
             memcpy(ctx->cache->sky_ul_app_data, ul_app_data, ul_app_data_len);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Downlink data: '%.*s'",
+                ctx->cache->sky_dl_app_data_len, ctx->cache->sky_dl_app_data);
         }
         DUMP_CACHE(ctx);
     }
@@ -1079,20 +1081,20 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             break;
         case SKY_LOCATION_STATUS_AUTH_RETRY:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
-            if (!tbr_register) { /* Location request faild auth, retry */
+            if (!tbr_register) { /* Location request failed auth, retry */
                 ctx->cache->backoff = SKY_ERROR_NONE;
                 return sky_return(sky_errno, SKY_ERROR_AUTH_RETRY);
             } else if (ctx->cache->backoff ==
-                       SKY_ERROR_NONE) /* Registration request faild auth, retry */
+                       SKY_ERROR_NONE) /* Registration request failed auth, retry */
                 return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY) /* Registration request faild again, retry after 8hr */
+                     SKY_ERROR_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
                 return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_8H));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY_8H) /* Registration request faild again, retry after 16hr */
+                     SKY_ERROR_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
                 return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_16H));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY_16H) /* Registration request faild again, retry after 24hr */
+                     SKY_ERROR_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
                 return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_1D));
             else
                 return sky_return(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_30D));
@@ -1109,9 +1111,10 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from server %d.%06d,%d.%06d hpe: %d", (int)loc->lat,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+        "Location from server %d.%06d,%d.%06d hpe: %d, %d dl_app_data_len", (int)loc->lat,
         (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe);
+        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, loc->dl_app_data_len);
 
     return sky_return(sky_errno, SKY_ERROR_NONE);
 }

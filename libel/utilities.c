@@ -195,6 +195,39 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
     return true;
 }
 
+/*! \brief return length of string bounded by max_len
+ *
+ *  @param s string
+ *  @param max_len size limit
+ *
+ *  @return length of s up to max_len
+ */
+static size_t _strnlen(const char *str, size_t max_len)
+{
+    const char *p = str;
+
+    if (!str)
+        return 0;
+
+    while (*p != '\0' && (p - str) < max_len) {
+        p++;
+    }
+    return p - str;
+}
+
+/*! \brief return true if library is configured for tbr authentication
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return is tbr enabled
+ */
+bool is_tbr_enabled(Sky_ctx_t *ctx)
+{
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sku '%s' len %d", ctx->cache->sky_sku,
+        _strnlen(ctx->cache->sky_sku, MAX_SKU_LEN));
+    return (_strnlen(ctx->cache->sky_sku, MAX_SKU_LEN) > 0);
+}
+
 #if SKY_DEBUG
 /*! \brief basename return pointer to the basename of path or path
  *
@@ -627,17 +660,6 @@ uint32_t get_ctx_token_id(Sky_ctx_t *ctx)
 char *get_ctx_sku(Sky_ctx_t *ctx)
 {
     return ctx->cache->sky_sku;
-}
-
-/*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku_len)
- *
- *  @param ctx workspace buffer
- *
- *  @return sky_sku_len
- */
-uint32_t get_ctx_sku_length(Sky_ctx_t *ctx)
-{
-    return strlen(ctx->cache->sky_sku);
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_cc)
