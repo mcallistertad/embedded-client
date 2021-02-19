@@ -4,10 +4,10 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG)
+CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
 else
 CC = armcc
-CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG)
+CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
 endif
 
 ifdef NO_FORK
