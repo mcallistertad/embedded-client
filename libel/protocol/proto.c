@@ -632,39 +632,56 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         } else {
-            if (header.status != RsHeader_Status_AUTH_ERROR &&
-                ctx->auth_state != STATE_TBR_UNREGISTERD) {
-                /* Response is not an error and it was a location response */
-                loc->lat = rs.lat;
-                loc->lon = rs.lon;
-                loc->hpe = (uint16_t)rs.hpe;
-                loc->location_source = (Sky_loc_source_t)rs.source;
-                /* copy any downlink data to state buffer */
-                loc->dl_app_data = ctx->cache->sky_dl_app_data;
-                ctx->cache->sky_dl_app_data_len = loc->dl_app_data_len =
-                    MIN(rs.dl_app_data.size, sizeof(ctx->cache->sky_dl_app_data));
-                memmove(ctx->cache->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
-                // Extract Used info for each AP from the Used_aps bytes
-                apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
-            } else if (rs.token_id != TBR_TOKEN_UNKNOWN) {
-                /* successful TBR registration response */
-                /* Save the token_id for use in subsequent location requests. */
-                ctx->auth_state = STATE_TBR_GOT_TOKEN;
-                ctx->cache->sky_token_id = rs.token_id;
+            switch (ctx->auth_state) {
+            case STATE_TBR_UNREGISTERD:
+                if (rs.token_id == TBR_TOKEN_UNKNOWN) {
+                    /* failed TBR registration */
+                    ctx->auth_state = STATE_TBR_UNREGISTERD;
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
+                } else {
+                    /* successful TBR registration response */
+                    /* Save the token_id for use in subsequent location requests. */
+                    ctx->auth_state = STATE_TBR_GOT_TOKEN;
+                    ctx->cache->sky_token_id = rs.token_id;
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
+                }
+                /* Application must retry because this was a registration */
                 loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
-            } else if (ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN) {
-                /* failed TBR location request */
-                /* Clear the token_id because it is invalid. */
-                ctx->auth_state = STATE_TBR_UNREGISTERD;
-                ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
-            } else {
-                /* failed TBR registration */
-                ctx->auth_state = STATE_TBR_UNREGISTERD;
-                loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
+                break;
+            case STATE_TBR_GOT_TOKEN:
+                if (header.status == RsHeader_Status_AUTH_ERROR) {
+                    /* failed TBR location request */
+                    /* Clear the token_id because it is invalid. */
+                    ctx->auth_state = STATE_TBR_UNREGISTERD;
+                    ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
+                    loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
+                    break;
+                } else {
+                    /* fall through */
+                }
+            case STATE_TBR_DISABLED:
+                /* Legacy or tbr location request */
+                if (header.status == RsHeader_Status_AUTH_ERROR) {
+                    /* failed legacy location request */
+                    loc->location_status = SKY_LOCATION_STATUS_API_SERVER_ERROR;
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Auth Error");
+                } else {
+                    /* location request */
+                    loc->lat = rs.lat;
+                    loc->lon = rs.lon;
+                    loc->hpe = (uint16_t)rs.hpe;
+                    loc->location_source = (Sky_loc_source_t)rs.source;
+                    /* copy any downlink data to state buffer */
+                    loc->dl_app_data = ctx->cache->sky_dl_app_data;
+                    ctx->cache->sky_dl_app_data_len = loc->dl_app_data_len =
+                        MIN(rs.dl_app_data.size, sizeof(ctx->cache->sky_dl_app_data));
+                    memmove(
+                        ctx->cache->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
+                    // Extract Used info for each AP from the Used_aps bytes
+                    apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
+                }
+                break;
             }
             ret = 0;
         }
