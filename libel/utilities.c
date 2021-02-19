@@ -195,26 +195,6 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
     return true;
 }
 
-/*! \brief return length of string bounded by max_len
- *
- *  @param s string
- *  @param max_len size limit
- *
- *  @return length of s up to max_len
- */
-static size_t _strnlen(const char *str, size_t max_len)
-{
-    const char *p = str;
-
-    if (!str)
-        return 0;
-
-    while (*p != '\0' && (p - str) < max_len) {
-        p++;
-    }
-    return p - str;
-}
-
 /*! \brief return true if library is configured for tbr authentication
  *
  *  @param ctx workspace buffer
@@ -223,7 +203,7 @@ static size_t _strnlen(const char *str, size_t max_len)
  */
 bool is_tbr_enabled(Sky_ctx_t *ctx)
 {
-    return (_strnlen(ctx->cache->sky_sku, MAX_SKU_LEN) > 0);
+    return (ctx->cache->sky_sku[0] != '\0');
 }
 
 #if SKY_DEBUG
@@ -484,8 +464,8 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     int i;
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len, ctx->ap_len,
-        ctx->connected);
+        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d%s%s", ctx->len, ctx->ap_len,
+        ctx->connected, is_tbr_enabled(ctx) ? ", TBR" : "", ctx->debounce ? ", Debounce" : "");
     for (i = 0; i < ctx->len; i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 

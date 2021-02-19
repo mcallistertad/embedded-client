@@ -285,10 +285,11 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
     ctx->rand_bytes = sky_rand_bytes;
     ctx->gettime = sky_time;
     ctx->plugin = sky_plugins;
+    ctx->debounce = sky_debounce;
     ctx->auth_state = !is_tbr_enabled(ctx) ?
                           STATE_TBR_DISABLED :
-                          ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERD :
-                                                                          STATE_TBR_GOT_TOKEN;
+                          ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
+                                                                          STATE_TBR_REGISTERED;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -963,7 +964,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         cl = &ctx->cache->cacheline[c];
         if (loc != NULL) {
             *loc = cl->loc;
-            /* return latest downlink data to application */
+            /* return latest downlink data to user */
             loc->dl_app_data = ctx->cache->sky_dl_app_data;
             loc->dl_app_data_len = ctx->cache->sky_dl_app_data_len;
         }
@@ -977,6 +978,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 #endif
         if (ctx->debounce) {
             /* populate workspace with cached beacons */
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
             NUM_BEACONS(ctx) = cl->len;
             NUM_APS(ctx) = cl->ap_len;
             ctx->connected = cl->connected;
@@ -1013,8 +1015,9 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
         *sky_errno = SKY_ERROR_NONE;
 
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request buffer of %d bytes prepared%s", rc,
-            (ret == SKY_FINALIZE_LOCATION) ? " from cache" : " from workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request buffer of %d bytes prepared %s", rc,
+            (ctx->debounce && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
+                                                              "from workspace");
         LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, request_buf, rc);
         return ret;
     } else {
@@ -1098,7 +1101,8 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             break;
         case SKY_LOCATION_STATUS_AUTH_RETRY:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
-            if (ctx->auth_state == STATE_TBR_GOT_TOKEN) { /* Location request failed auth, retry */
+            if (ctx->auth_state ==
+                STATE_TBR_UNREGISTERED) { /* Location request failed auth, retry */
                 ctx->cache->backoff = SKY_ERROR_NONE;
                 return sky_return(sky_errno, SKY_ERROR_AUTH_RETRY);
             } else if (ctx->cache->backoff ==

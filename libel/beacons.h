@@ -170,8 +170,8 @@ typedef struct sky_cacheline {
 
 typedef enum sky_tbr_state {
     STATE_TBR_DISABLED, /* not configured for TBR */
-    STATE_TBR_UNREGISTERD, /* Need to register */
-    STATE_TBR_GOT_TOKEN /* Got a token */
+    STATE_TBR_UNREGISTERED, /* need to register */
+    STATE_TBR_REGISTERED /* we have a valid token */
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
