@@ -115,7 +115,7 @@ Sky_ctx_t *_test_sky_ctx()
     uint32_t bufsize;
 
     if (sky_open(&_ctx_errno, (uint8_t *)TEST_DEVICE_ID, 6, TEST_PARTNER_ID, _aes_key, TEST_SKU,
-            200, NULL, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL) == SKY_ERROR) {
+            200, NULL, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL, false) == SKY_ERROR) {
         fprintf(stderr, "Failure setting up mock context, aborting!\n");
         exit(-1);
     }

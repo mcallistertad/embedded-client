@@ -218,6 +218,7 @@ typedef struct sky_ctx {
     Sky_randfn_t rand_bytes;
     Sky_log_level_t min_level;
     Sky_timefn_t gettime;
+    bool debounce;
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */

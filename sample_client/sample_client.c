@@ -229,8 +229,8 @@ int main(int argc, char *argv[])
     /* Initialize the Skyhook resources */
 
     if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            config.sku, 200, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes,
-            &mytime) == SKY_ERROR) {
+            config.sku, 200, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
+            true) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
