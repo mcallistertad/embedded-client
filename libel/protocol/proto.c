@@ -636,7 +636,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             case STATE_TBR_UNREGISTERED:
                 if (rs.token_id == TBR_TOKEN_UNKNOWN) {
                     /* failed TBR registration */
-                    ctx->auth_state = STATE_TBR_UNREGISTERED;
+                    /* Auth state remains unchanged */
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
                 } else {
                     /* successful TBR registration response */
@@ -654,7 +654,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                     /* Clear the token_id because it is invalid. */
                     ctx->auth_state = STATE_TBR_UNREGISTERED;
                     ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
-                    /* Application must retry to re-register */
+                    /* Application must re-register */
                     loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
                     break;
@@ -673,11 +673,10 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                     loc->hpe = (uint16_t)rs.hpe;
                     loc->location_source = (Sky_loc_source_t)rs.source;
                     /* copy any downlink data to state buffer */
-                    loc->dl_app_data = ctx->cache->sky_dl_app_data;
-                    ctx->cache->sky_dl_app_data_len = loc->dl_app_data_len =
-                        MIN(rs.dl_app_data.size, sizeof(ctx->cache->sky_dl_app_data));
-                    memmove(
-                        ctx->cache->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
+                    loc->dl_app_data = ctx->sky_dl_app_data;
+                    ctx->sky_dl_app_data_len = loc->dl_app_data_len =
+                        MIN(rs.dl_app_data.size, sizeof(ctx->sky_dl_app_data));
+                    memmove(ctx->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
                     // Extract Used info for each AP from the Used_aps bytes
                     apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
                 }

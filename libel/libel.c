@@ -106,7 +106,7 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_cache_t *c, Sky_cache
  *  @param logf pointer to logging function
  *  @param rand_bytes pointer to random function
  *  @param gettime pointer to time function
- *  @param debounce true if cached beacons should be added to request
+ *  @param debounce true if cached beacons should be added to request rather than newly scanned
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -323,8 +323,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         ctx->cache->sky_sku);
     dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, ctx->cache->sky_device_id,
         ctx->cache->sky_id_len, 0);
-    dump_hex16(__FILE__, "Downlink data", ctx, SKY_LOG_LEVEL_DEBUG, ctx->cache->sky_dl_app_data,
-        ctx->cache->sky_dl_app_data_len, 0);
     DUMP_WORKSPACE(ctx);
     return ctx;
 }
@@ -968,9 +966,9 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         cl = &ctx->cache->cacheline[c];
         if (loc != NULL) {
             *loc = cl->loc;
-            /* return latest downlink data to user */
-            loc->dl_app_data = ctx->cache->sky_dl_app_data;
-            loc->dl_app_data_len = ctx->cache->sky_dl_app_data_len;
+            /* no downlink data to report to user */
+            loc->dl_app_data = NULL;
+            loc->dl_app_data_len = 0;
         }
         *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
@@ -981,7 +979,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
             (ctx->header.time - cached_time));
 #endif
         if (ctx->debounce) {
-            /* populate workspace with cached beacons */
+            /* overwrite workspace with cached beacons */
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
             NUM_BEACONS(ctx) = cl->len;
             NUM_APS(ctx) = cl->ap_len;

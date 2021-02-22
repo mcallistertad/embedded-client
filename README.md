@@ -257,7 +257,7 @@ Sky_ctx_t* sky_new_request(void *workspace_buf,
  * Returns              Pointer to the initialized workspace context buffer or NULL
  */
 ```
-Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers and saves uplink app data.
+Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers, sets downlink app data buffer to empty and saves uplink app data.
 
 ### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
@@ -635,7 +635,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  * Returns          SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
  ```
-Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user. The size returned includes the Configuration value of SKY_MAX_DL_APP_DATA to accomodate any downlink application data.
+Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user. The size returned includes the length of any uplink application data reported to sky_new_request().
 
 ### sky_finalize_request() - generate a Skyhook request from the request context
 
@@ -644,8 +644,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     void *request_buf,
     uint32_t bufsize,
-    uint8_t *ul_app_data,
-    uint32_t *ul_app_data_len,
     Sky_location_t *loc,
     uint32_t *response_size
 )
@@ -662,7 +660,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx,
  */
  ```
 Returns SKY_FINALIZE_ERROR and sets sky_error if an error occurs. If the result is SKY_FINALIZE_REQUEST, the request buffer is filled in with the serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the result is SKY_FINALIZE_LOCATION, the location (lat, lon, hpe and source) are filled in from a previously successful server response held in the cache. 
-A device will remain authenticated during a valid contract period, and thereafter during an extended contract. However, sky_finalize_request() will enforce service prohibition periods after repeated authentication failures. An error will be returned, and sky_errno set to SKY_SERVICE_DENIED, if the user attempts to generate a request too soon after decoding a response which indicated that the user should retry after waiting a period of time (8, 16, 24 hours or 30 days). Note that the user must send the generated request to the server even when SKY_FINALIZE_LOCATION is returned, if app_data needs to be sent to the server or the cached location needs to be reported.
+A device will remain authenticated during a valid contract period, and thereafter during an extended contract. However, sky_finalize_request() will enforce service prohibition periods after repeated authentication failures. An error will be returned, and sky_errno set to SKY_SERVICE_DENIED, if the user attempts to generate a request too soon after decoding a response which indicated that the user should retry after waiting a period of time (8, 16, 24 hours or 30 days). Note that the user must send the generated request to the server even when SKY_FINALIZE_LOCATION is returned, if downlink data is to be collected in a response, or uplink data needs to be sent to the server or the cached location needs to be reported (debounce).
 
 ### sky_decode_response() - decodes a Skyhook server response
 
@@ -671,8 +669,6 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
     Sky_errno_t *sky_errno,
     void *response_buf,
     uint32_t bufsize,
-    uint8_t **dl_app_data,
-    uint32_t *dl_app_data_len,
     Sky_location_t *loc
 )
  
@@ -687,7 +683,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
  */
 ```
 User calls this to process the network response from the Skyhook server. Returns SKY_ERROR and sets sky_error if the response buffer could not be decoded or other error occurred, otherwise SKY_SUCCESS is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
-If the server sends downlink application data in the response, loc is updated with a pointer to the data and its length. Zero length indicates that there was no data.
+If the server sends downlink application data in the response, it is copied into the workspace and loc is updated with its length and a pointer to the data. Zero length indicates that there was no data.
 If the request required an authentication registration step, sky_decode_response() returns SKY_ERROR, and sets sky_errno to SKY_RETRY_AUTHENTICATION. The user is expected to call sky_finalize_request() again, and re-send the request.
 
 ### sky_perror() - returns a string which describes the meaning of sky_errno codes
