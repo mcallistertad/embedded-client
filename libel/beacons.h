@@ -201,7 +201,7 @@ typedef struct sky_cache {
     uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-    char sky_sku[MAX_SKU_LEN]; /* product family ID */
+    char sky_sku[MAX_SKU_LEN + 1]; /* product family ID */
     uint16_t sky_cc; /* Optional Country Code (0 = unused) */
     Sky_errno_t backoff; /* last auth error */
     uint32_t sky_partner_id; /* partner ID */

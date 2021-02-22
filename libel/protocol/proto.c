@@ -394,7 +394,7 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(MAX_SKU_LEN >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->cache->sky_sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 

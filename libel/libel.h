@@ -36,7 +36,7 @@
 #define AES_SIZE 16
 
 #define MAX_DEVICE_ID 16
-#define MAX_SKU_LEN 33 // with terminating NULL
+#define MAX_SKU_LEN 32 // excluding terminating NULL
 #define TBR_TOKEN_UNKNOWN 0
 
 /* March 1st 2019 */
