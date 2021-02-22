@@ -316,11 +316,15 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
             }
             ctx->cache->sky_ul_app_data_len = ul_app_data_len;
             memcpy(ctx->cache->sky_ul_app_data, ul_app_data, ul_app_data_len);
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Downlink data: '%.*s'",
-                ctx->cache->sky_dl_app_data_len, ctx->cache->sky_dl_app_data);
         }
         DUMP_CACHE(ctx);
     }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", ctx->cache->sky_partner_id,
+        ctx->cache->sky_sku);
+    dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, ctx->cache->sky_device_id,
+        ctx->cache->sky_id_len, 0);
+    dump_hex16(__FILE__, "Downlink data", ctx, SKY_LOG_LEVEL_DEBUG, ctx->cache->sky_dl_app_data,
+        ctx->cache->sky_dl_app_data_len, 0);
     DUMP_WORKSPACE(ctx);
     return ctx;
 }
