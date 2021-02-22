@@ -228,7 +228,7 @@ int logfmt(
     va_list ap;
     char buf[SKY_LOG_LENGTH];
     int ret, n;
-    if (ctx == NULL || level > ctx->min_level || function == NULL)
+    if (ctx == NULL || ctx->logf == NULL || level > ctx->min_level || function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
@@ -262,7 +262,8 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     char buf[SKY_LOG_LENGTH];
     uint8_t *b = (uint8_t *)buffer;
     int n, N;
-    if (level > ctx->min_level || function == NULL || buffer == NULL || bufsize <= 0)
+    if (ctx == NULL || ctx->logf == NULL || level > ctx->min_level || function == NULL ||
+        buffer == NULL || bufsize <= 0)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name> <buf offset>:")
