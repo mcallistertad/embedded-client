@@ -60,6 +60,8 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
 void dump_ap(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
 void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func);
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func);
+int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
+    void *buffer, uint32_t bufsize, int buf_offset);
 void config_defaults(Sky_cache_t *c);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int32_t get_num_cells(Sky_ctx_t *ctx);

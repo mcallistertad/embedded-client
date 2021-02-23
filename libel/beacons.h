@@ -170,8 +170,8 @@ typedef struct sky_cacheline {
 
 typedef enum sky_tbr_state {
     STATE_TBR_DISABLED, /* not configured for TBR */
-    STATE_TBR_UNREGISTERD, /* Need to register */
-    STATE_TBR_GOT_TOKEN /* Got a token */
+    STATE_TBR_UNREGISTERED, /* need to register */
+    STATE_TBR_REGISTERED /* we have a valid token */
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
@@ -218,6 +218,7 @@ typedef struct sky_ctx {
     Sky_randfn_t rand_bytes;
     Sky_log_level_t min_level;
     Sky_timefn_t gettime;
+    bool debounce;
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
@@ -228,6 +229,8 @@ typedef struct sky_ctx {
     Sky_cache_t *cache;
     void *plugin;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
+    uint32_t sky_dl_app_data_len; /* downlink app data length */
+    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
 } Sky_ctx_t;
 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
