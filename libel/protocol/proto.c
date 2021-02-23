@@ -372,11 +372,6 @@ int32_t get_maximum_response_size(void)
 {
     // Account for space needed for downlink app data too
     return RsHeader_size + CryptoInfo_size + 1 +
-           /*
-           AES_BLOCKLEN * ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE +
-                               SKY_MAX_DL_APP_DATA + AES_BLOCKLEN - 1) /
-                              AES_BLOCKLEN);
-                              */
            AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
 }
 
