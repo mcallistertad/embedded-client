@@ -161,7 +161,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
             partner_id == sky_state->sky_partner_id &&
             memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
             strcmp(sku, sky_state->sky_sku) == 0 && cc == sky_state->sky_cc)
-            return sky_return(sky_errno, SKY_ERROR_NONE);
+            return set_error_status(sky_errno, SKY_ERROR_NONE);
         else
             return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
     } else if (!sky_state || copy_state(sky_errno, &cache, sky_state) != SKY_SUCCESS) {
