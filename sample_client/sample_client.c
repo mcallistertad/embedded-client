@@ -34,9 +34,6 @@
 #include "send.h"
 #include "config.h"
 
-/* set to false to turn off debounce feature */
-#define DEBOUNCE true
-
 #define SCAN_LIST_SIZE 5
 
 /* scan list definitions (platform dependant) */
@@ -232,8 +229,8 @@ int main(int argc, char *argv[])
     /* Initialize the Skyhook resources */
 
     if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            config.sku, 200, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
-            DEBOUNCE) == SKY_ERROR) {
+            config.sku, config.cc, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
+            config.debounce) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
@@ -253,7 +250,6 @@ int main(int argc, char *argv[])
     if (sky_new_request(ctx, bufsize, (uint8_t *)"sample_client", 13, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
-        exit(-1);
     }
 
     /* Add APs to the request */
@@ -432,9 +428,6 @@ retry_after_auth:
     }
 
     switch (finalize) {
-    case SKY_FINALIZE_LOCATION:
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
     case SKY_FINALIZE_REQUEST:
         /* Need to send the request to the server. */
         response = malloc(response_size * sizeof(uint8_t));
@@ -462,12 +455,14 @@ retry_after_auth:
 
         if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
-            /* Retry if necessary, NOTE error is received if the immediate retry also fails due
-             * to the need to backoff (delay) for a period */
-            if (loc.location_status == SKY_LOCATION_STATUS_AUTH_RETRY)
+            if (sky_errno == SKY_ERROR_AUTH_RETRY)
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
         }
 
+        break;
+    case SKY_FINALIZE_LOCATION:
+        /* Location was found in the cache. No need to go to server. */
+        printf("Location found in cache\n");
         break;
     case SKY_FINALIZE_ERROR:
         printf("Error finalizing request\n");
