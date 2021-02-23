@@ -372,11 +372,6 @@ int32_t get_maximum_response_size(void)
 {
     // Account for space needed for downlink app data too
     return RsHeader_size + CryptoInfo_size + 1 +
-           /*
-           AES_BLOCKLEN * ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE +
-                               SKY_MAX_DL_APP_DATA + AES_BLOCKLEN - 1) /
-                              AES_BLOCKLEN);
-                              */
            AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
 }
 
@@ -394,7 +389,7 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(MAX_SKU_LEN >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->cache->sky_sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
@@ -604,7 +599,6 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "header.rs_length %d", header.rs_length);
     if (header.rs_length) {
         buf += hdr_size;
 
@@ -691,11 +685,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
         if (CONFIG(ctx->cache, last_config_time) == 0)
             CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
     } else if (hdr_size > 0) {
-        (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "hdr_size > 0");
-        if (!is_tbr_enabled(ctx)) {
-            (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "hdr_size > 0");
+        if (!is_tbr_enabled(ctx))
             loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
-        }
         ret = 0;
     }
 

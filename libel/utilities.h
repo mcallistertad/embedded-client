@@ -43,7 +43,7 @@
 #define LOG_BUFFER(c, l, b, s)
 #endif
 
-Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
+Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);

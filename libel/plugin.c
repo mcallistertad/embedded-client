@@ -95,7 +95,7 @@ Sky_status_t sky_plugin_equal(
 
     if (!validate_workspace(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
     p = ctx->plugin;
@@ -126,7 +126,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 
     if (!validate_workspace(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
     while (p) {
@@ -157,7 +157,7 @@ Sky_status_t sky_plugin_cache_match(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int 
 
     if (!validate_workspace(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
     while (p) {
@@ -188,7 +188,7 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 
     if (!validate_workspace(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return sky_return(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
     while (p) {

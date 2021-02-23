@@ -253,6 +253,7 @@ int main(int argc, char *argv[])
     if (sky_new_request(ctx, bufsize, (uint8_t *)"sample_client", 13, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
+        exit(-1);
     }
 
     /* Add APs to the request */
@@ -461,7 +462,9 @@ retry_after_auth:
 
         if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_ERROR_AUTH_RETRY)
+            /* Retry if necessary, NOTE error is received if the immediate retry also fails due
+             * to the need to backoff (delay) for a period */
+            if (loc.location_status == SKY_LOCATION_STATUS_AUTH_RETRY)
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
         }
 
