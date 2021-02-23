@@ -150,16 +150,14 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* if open already */
     if (sky_open_flag && sky_state) {
-        /* if library is already open and sky_open parameters match those we already, have */
+        /* if library is already open and sky_open parameters match those we already have, */
         /* we can ignore this call to sky_open, otherwise report error already open */
         if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
             id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(cache) &&
             partner_id == sky_state->sky_partner_id &&
             memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
-            IMPLIES(sku_len = strlen(sky_state->sky_sku),
-                memcmp(sku, sky_state->sky_sku, sku_len) == 0) &&
-            IMPLIES(cc != 0, cc == sky_state->sky_cc))
-            return set_error_status(sky_errno, SKY_ERROR_NONE);
+            strcmp(sku, sky_state->sky_sku) == 0 && cc == sky_state->sky_cc)
+            return sky_return(sky_errno, SKY_ERROR_NONE);
         else
             return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
     } else if (!sky_state || copy_state(sky_errno, &cache, sky_state) != SKY_SUCCESS) {
@@ -199,8 +197,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     memcpy(cache.sky_device_id, device_id, id_len);
     cache.sky_partner_id = partner_id;
     memcpy(cache.sky_aes_key, aes_key, sizeof(cache.sky_aes_key));
-    if (sku_len && sku) {
-        memcpy(cache.sky_sku, sku, MAX_SKU_LEN);
+    if (sku_len) {
+        strcpy(cache.sky_sku, sku);
         cache.sky_cc = cc;
     }
     sky_open_flag = true;
