@@ -42,7 +42,7 @@
  *
  *  @return Sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code)
+Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code)
 {
     if (sky_errno != NULL)
         *sky_errno = code;
