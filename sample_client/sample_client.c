@@ -227,8 +227,10 @@ int main(int argc, char *argv[])
 
     timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
+
     if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime) == SKY_ERROR) {
+            config.sku, config.cc, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
+            config.debounce) == SKY_ERROR) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
@@ -245,7 +247,7 @@ int main(int argc, char *argv[])
     memset(p, 0, bufsize);
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, (uint8_t *)"sample_client", 13, &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
@@ -391,13 +393,14 @@ int main(int argc, char *argv[])
     else
         printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
 
-    ret_status = sky_add_gnss(
+    sky_add_gnss(
         ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
     if (ret_status == SKY_SUCCESS)
         printf("GNSS added\n");
     else
         printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
 
+retry_after_auth:
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
     ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
@@ -408,7 +411,7 @@ int main(int argc, char *argv[])
     } else
         printf("Required buffer size = %d\n", request_size);
 
-    prequest = malloc(request_size);
+    prequest = malloc(request_size * sizeof(uint8_t));
 
     /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
     /* which case the loc parameter will contain the location result which was */
@@ -450,8 +453,12 @@ int main(int argc, char *argv[])
         /* Decode the response from server or cache */
         ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, &loc);
 
-        if (ret_status != SKY_SUCCESS)
+        if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
+            if (sky_errno == SKY_RETRY_AUTH)
+                goto retry_after_auth; /* Repeat request if Authentication was required for last message */
+        }
+
         break;
     case SKY_FINALIZE_LOCATION:
         /* Location was found in the cache. No need to go to server. */
@@ -467,6 +474,9 @@ int main(int argc, char *argv[])
         sky_pserver_status(loc.location_status), (int)loc.lat,
         (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
         (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
+    if (loc.location_status == SKY_LOCATION_STATUS_SUCCESS)
+        printf(
+            "Downlink data: %.*s(%d)\n", loc.dl_app_data_len, loc.dl_app_data, loc.dl_app_data_len);
 
     ret_status = sky_close(&sky_errno, &pstate);
 

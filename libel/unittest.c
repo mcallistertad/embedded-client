@@ -114,8 +114,8 @@ Sky_ctx_t *_test_sky_ctx()
         0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
     uint32_t bufsize;
 
-    if (sky_open(&_ctx_errno, (uint8_t *)TEST_DEVICE_ID, 6, TEST_PARTNER_ID, _aes_key, NULL,
-            SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL) == SKY_ERROR) {
+    if (sky_open(&_ctx_errno, (uint8_t *)TEST_DEVICE_ID, 6, TEST_PARTNER_ID, _aes_key, TEST_SKU,
+            200, NULL, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL, false) == SKY_ERROR) {
         fprintf(stderr, "Failure setting up mock context, aborting!\n");
         exit(-1);
     }
@@ -130,7 +130,7 @@ Sky_ctx_t *_test_sky_ctx()
     //memset(ctx, 0, bufsize);
 
     Sky_errno_t sky_errno = -1;
-    if (sky_new_request(ctx, bufsize, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, (uint8_t *)"uplink app data", 16, &sky_errno) != ctx) {
         fprintf(stderr, "sky_new_request() returned bad value\n");
         fprintf(stderr, "sky_errno contains '%s'\n", sky_perror(sky_errno));
         exit(-1);

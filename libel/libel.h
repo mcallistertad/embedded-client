@@ -36,6 +36,8 @@
 #define AES_SIZE 16
 
 #define MAX_DEVICE_ID 16
+#define MAX_SKU_LEN 32 // excluding terminating NULL
+#define TBR_TOKEN_UNKNOWN 0
 
 /* March 1st 2019 */
 #define TIMESTAMP_2019_03_01 1551398400
@@ -81,10 +83,11 @@ typedef enum {
  */
 typedef enum {
     SKY_LOCATION_STATUS_SUCCESS = 0,
-    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
-    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
-    SKY_LOCATION_STATUS_DECODE_ERROR,
-    SKY_LOCATION_STATUS_API_SERVER_ERROR,
+    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR = 1,
+    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR = 2,
+    SKY_LOCATION_STATUS_DECODE_ERROR = 3,
+    SKY_LOCATION_STATUS_API_SERVER_ERROR = 4,
+    SKY_LOCATION_STATUS_AUTH_RETRY = 5,
 } Sky_loc_status_t;
 
 /*! \brief Skyhook location information
@@ -95,31 +98,39 @@ typedef struct sky_location {
     uint32_t time;
     Sky_loc_source_t location_source;
     Sky_loc_status_t location_status;
+    uint8_t *dl_app_data;
+    uint32_t dl_app_data_len;
 } Sky_location_t;
 
 /*! \brief sky_errno Error Codes
  */
 typedef enum {
     SKY_ERROR_NONE = 0,
-    SKY_ERROR_NEVER_OPEN,
-    SKY_ERROR_ALREADY_OPEN,
-    SKY_ERROR_BAD_PARAMETERS,
-    SKY_ERROR_TOO_MANY,
-    SKY_ERROR_BAD_WORKSPACE,
-    SKY_ERROR_BAD_STATE,
-    SKY_ERROR_DECODE_ERROR,
-    SKY_ERROR_ENCODE_ERROR,
-    SKY_ERROR_RESOURCE_UNAVAILABLE,
-    SKY_ERROR_CLOSE,
-    SKY_ERROR_BAD_KEY,
-    SKY_ERROR_NO_BEACONS,
-    SKY_ERROR_ADD_CACHE,
-    SKY_ERROR_GET_CACHE,
-    SKY_ERROR_LOCATION_UNKNOWN,
-    SKY_ERROR_SERVER_ERROR,
-    SKY_ERROR_NO_PLUGIN,
-    SKY_ERROR_INTERNAL,
-    SKY_ERROR_MAX
+    SKY_ERROR_NEVER_OPEN, // Operation failed because sky_open has not been completed
+    SKY_ERROR_ALREADY_OPEN, // Operation failed because sky_open has already been called
+    SKY_ERROR_BAD_PARAMETERS, // Operation failed because a parameter is invalid
+    SKY_ERROR_TOO_MANY, // N/A
+    SKY_ERROR_BAD_WORKSPACE, // Operation failed because workspace failed sanity checks
+    SKY_ERROR_BAD_STATE, // Operation failed because libel state failed sanity checks
+    SKY_ERROR_DECODE_ERROR, // Network message could not be decoded
+    SKY_ERROR_ENCODE_ERROR, // Network message could not be encoded
+    SKY_ERROR_RESOURCE_UNAVAILABLE, // Operation failed because resourse could not be assigned
+    SKY_ERROR_CLOSE, // N/A
+    SKY_ERROR_BAD_KEY, // N/A
+    SKY_ERROR_NO_BEACONS, // Operation failed because no beacons were added
+    SKY_ERROR_ADD_CACHE, // N/A
+    SKY_ERROR_GET_CACHE, // N/A
+    SKY_ERROR_LOCATION_UNKNOWN, // N/A
+    SKY_ERROR_SERVER_ERROR, // Operation failed because server reported an error
+    SKY_ERROR_NO_PLUGIN, // Operation failed because required plugin was not found
+    SKY_ERROR_INTERNAL, // Operation failed due to unexpected behavior
+    SKY_ERROR_AUTH, // Operation failed due to lack of authentication
+    SKY_RETRY_AUTH, // Retry operation now to complete authentication
+    SKY_RETRY_AUTH_8H, // Retry operation in 8hr to query authentication,
+    SKY_RETRY_AUTH_16H, // Retry operation in 16hr to query authentication,
+    SKY_RETRY_AUTH_1D, // Retry operation in 1 day to query authentication,
+    SKY_RETRY_AUTH_30D, // Retry operation in 30 days to query authentication,
+    SKY_ERROR_MAX,
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
@@ -158,14 +169,16 @@ typedef void Sky_ctx_t;
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *state_buf,
+    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime,
+    bool debounce);
 
 int32_t sky_sizeof_state(void *sky_state);
 
 int32_t sky_sizeof_workspace(void);
 
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno);
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
+    uint32_t ul_app_data_len, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t mac[MAC_SIZE],
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);

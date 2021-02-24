@@ -42,7 +42,7 @@
  *
  *  @return Sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code)
+Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code)
 {
     if (sky_errno != NULL)
         *sky_errno = code;
@@ -193,6 +193,17 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
     }
 
     return true;
+}
+
+/*! \brief return true if library is configured for tbr authentication
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return is tbr enabled
+ */
+bool is_tbr_enabled(Sky_ctx_t *ctx)
+{
+    return (ctx->cache->sky_sku[0] != '\0');
 }
 
 #if SKY_DEBUG
@@ -454,8 +465,8 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     int i;
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d", ctx->len, ctx->ap_len,
-        ctx->connected);
+        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d%s%s", ctx->len, ctx->ap_len,
+        ctx->connected, is_tbr_enabled(ctx) ? ", TBR" : "", ctx->debounce ? ", Debounce" : "");
     for (i = 0; i < ctx->len; i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
@@ -584,6 +595,61 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
 {
     return ctx->cache->sky_id_len;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_device_id
+ */
+uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_ul_app_data;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_id_len
+ */
+uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_ul_app_data_len;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_token_id
+ */
+uint32_t get_ctx_token_id(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_token_id;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_sku
+ */
+char *get_ctx_sku(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_sku;
+}
+
+/*! \brief field extraction for dynamic use of Nanopb (ctx sky_cc)
+ *
+ *  @param ctx workspace buffer
+ *
+ *  @return sky_cc
+ */
+uint32_t get_ctx_cc(Sky_ctx_t *ctx)
+{
+    return ctx->cache->sky_cc;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx logf)

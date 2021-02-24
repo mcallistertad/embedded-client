@@ -43,10 +43,11 @@
 #define LOG_BUFFER(c, l, b, s)
 #endif
 
-Sky_status_t sky_return(Sky_errno_t *sky_errno, Sky_errno_t code);
+Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
 int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);
+bool is_tbr_enabled(Sky_ctx_t *ctx);
 #if SKY_DEBUG
 const char *sky_basename(const char *path);
 int logfmt(
@@ -59,6 +60,8 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
 void dump_ap(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
 void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func);
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func);
+int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
+    void *buffer, uint32_t bufsize, int buf_offset);
 void config_defaults(Sky_cache_t *c);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int32_t get_num_cells(Sky_ctx_t *ctx);
@@ -68,6 +71,12 @@ uint32_t get_ctx_partner_id(Sky_ctx_t *ctx);
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx);
 uint8_t *get_ctx_device_id(Sky_ctx_t *ctx);
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx);
+uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx);
+uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx);
+uint32_t get_ctx_token_id(Sky_ctx_t *ctx);
+char *get_ctx_sku(Sky_ctx_t *ctx);
+uint32_t get_ctx_sku_length(Sky_ctx_t *ctx);
+uint32_t get_ctx_cc(Sky_ctx_t *ctx);
 
 int32_t get_num_aps(Sky_ctx_t *ctx);
 uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx);

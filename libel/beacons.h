@@ -168,6 +168,12 @@ typedef struct sky_cacheline {
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
+typedef enum sky_tbr_state {
+    STATE_TBR_DISABLED, /* not configured for TBR */
+    STATE_TBR_UNREGISTERED, /* need to register */
+    STATE_TBR_REGISTERED /* we have a valid token */
+} Sky_tbr_state_t;
+
 /* Access the cache config parameters */
 #define CONFIG(cache, param) (cache->config.param)
 
@@ -190,6 +196,14 @@ typedef struct sky_cache {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
+    uint32_t sky_token_id; /* TBR token ID */
+    uint32_t sky_ul_app_data_len; /* uplink app data length */
+    uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
+    uint32_t sky_dl_app_data_len; /* downlink app data length */
+    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
+    char sky_sku[MAX_SKU_LEN + 1]; /* product family ID */
+    uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+    Sky_errno_t backoff; /* last auth error */
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
     int len; /* number of cache lines */
@@ -204,6 +218,7 @@ typedef struct sky_ctx {
     Sky_randfn_t rand_bytes;
     Sky_log_level_t min_level;
     Sky_timefn_t gettime;
+    bool debounce;
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
@@ -213,6 +228,9 @@ typedef struct sky_ctx {
     int16_t save_to; /* cacheline with best match for saving */
     Sky_cache_t *cache;
     void *plugin;
+    Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
+    uint32_t sky_dl_app_data_len; /* downlink app data length */
+    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
 } Sky_ctx_t;
 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);

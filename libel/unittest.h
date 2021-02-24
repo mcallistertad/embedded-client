@@ -26,6 +26,8 @@
 #define TEST_DEVICE_ID "123456123456112233445566"
 #define TEST_PARTNER_ID 2
 #define TEST_KEY "000102030405060708090a0b0c0d0e0f"
+// #define TEST_SKU "widgit"
+#define TEST_SKU ""
 
 /* ANSI Colors */
 #define ESC "\033"
@@ -65,13 +67,15 @@
 /*! \brief Sets group description for subsequent tests
  *  @param const char* string
  */
-#define GROUP(S) _test_set_group(_ctx, (S)) 
+#define GROUP(S) _test_set_group(_ctx, (S))
 
 /*! \brief call function defined by TEST_FUNC
  *  @param const char* Group description
  *  @param void (*)(Test_ctx) Test function
  */
-#define GROUP_CALL(S, F) GROUP(S); F(_ctx);
+#define GROUP_CALL(S, F)                                                                           \
+    GROUP(S);                                                                                      \
+    F(_ctx);
 
 /* If building on POSIX system, use fork to better isolate tests
    otherwise just print */
