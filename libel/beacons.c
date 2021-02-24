@@ -27,6 +27,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <limits.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -153,6 +154,9 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
             remove_beacon(ctx, j);
     }
 
+    /* ignore connected flag for nmr beacons */
+    if (is_cell_nmr(b))
+        b->h.connected = false;
     /* find correct position to insert based on type */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         if (beacon_compare(ctx, b, &ctx->beacon[j], &diff) == false)
@@ -183,8 +187,13 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d", sky_pbeacon(b), j);
 
-    if (!b->h.connected && j <= ctx->connected)
-        // New beacon was inserted before the connected one, and not connected so update its index.
+    /* Assume the first added cell is connected */
+    if (b->h.connected || (is_cell_type(b) && !is_cell_nmr(b) && (ctx->len - ctx->ap_len) == 1)) {
+        // New beacon is the connected one, so update index.
+        b->h.connected = true;
+        ctx->connected = j;
+    } else if (j <= ctx->connected)
+        // New beacon was inserted before the connected one, so update its index.
         ctx->connected++;
 
     if (b->h.type == SKY_BEACON_AP)

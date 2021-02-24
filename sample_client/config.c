@@ -186,7 +186,7 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
         if (sscanf(line, "DEBOUNCE %s", str) == 1) {
-            if (strcasecmp(str, "off") == 0)
+            if (strcasecmp(str, "off") == 0 || strcasecmp(str, "false") == 0)
                 config->debounce = 0;
             continue;
         }
@@ -229,6 +229,6 @@ void print_config(Config_t *config)
     printf("Device: %12s\n", device);
     printf("SKU: %s\n", config->sku);
     printf("CC: %d\n", config->cc);
-    printf("Debounce: %s\n", config->debounce ? "on" : "off");
+    printf("Debounce: %s\n", config->debounce ? "true" : "false");
     printf("Uplink data: %s\n", ul_app_data);
 }

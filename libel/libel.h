@@ -44,6 +44,7 @@
 
 #define SECONDS_IN_HOUR (60 * 60)
 
+/* Definitions for use when adding cell beacons with unknown parameters */
 #define SKY_UNKNOWN_ID1 ((uint16_t)0xFFFF)
 #define SKY_UNKNOWN_ID2 ((uint16_t)0xFFFF)
 #define SKY_UNKNOWN_ID3 ((int32_t)-1)
@@ -124,12 +125,12 @@ typedef enum {
     SKY_ERROR_SERVER_ERROR, // Operation failed because server reported an error
     SKY_ERROR_NO_PLUGIN, // Operation failed because required plugin was not found
     SKY_ERROR_INTERNAL, // Operation failed due to unexpected behavior
-    SKY_ERROR_AUTH, // Operation failed due to lack of authentication
-    SKY_RETRY_AUTH, // Retry operation now to complete authentication
-    SKY_RETRY_AUTH_8H, // Retry operation in 8hr to query authentication,
-    SKY_RETRY_AUTH_16H, // Retry operation in 16hr to query authentication,
-    SKY_RETRY_AUTH_1D, // Retry operation in 1 day to query authentication,
-    SKY_RETRY_AUTH_30D, // Retry operation in 30 days to query authentication,
+    SKY_SERVICE_DENIED, // Operation failed due to lack of authentication
+    SKY_AUTH_RETRY, // Retry operation now to complete authentication
+    SKY_AUTH_RETRY_8H, // Retry operation in 8hr to query authentication,
+    SKY_AUTH_RETRY_16H, // Retry operation in 16hr to query authentication,
+    SKY_AUTH_RETRY_1D, // Retry operation in 1 day to query authentication,
+    SKY_AUTH_RETRY_30D, // Retry operation in 30 days to query authentication,
     SKY_ERROR_MAX,
 } Sky_errno_t;
 
