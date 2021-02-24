@@ -102,11 +102,11 @@ int validate_workspace(Sky_ctx_t *ctx)
  *
  *  @return true if cache is valid, else false
  */
-int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
+int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 {
     int i, j;
 
-    if (c == NULL) {
+    if (s == NULL) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: NULL pointer");
@@ -114,14 +114,14 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
         return false;
     }
 
-    if (c->len != CACHE_SIZE) {
+    if (s->len != CACHE_SIZE) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
 #endif
         return false;
     }
-    if (c->newest >= CACHE_SIZE) {
+    if (s->newest >= CACHE_SIZE) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: newest too big for CACHE_SIZE");
@@ -129,17 +129,17 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
         return false;
     }
 
-    if (c->header.magic != SKY_MAGIC) {
+    if (s->header.magic != SKY_MAGIC) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: bad magic in header");
 #endif
         return false;
     }
-    if (c->header.crc32 ==
-        sky_crc32(&c->header.magic, (uint8_t *)&c->header.crc32 - (uint8_t *)&c->header.magic)) {
+    if (s->header.crc32 ==
+        sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         for (i = 0; i < CACHE_SIZE; i++) {
-            if (c->cacheline[i].len > TOTAL_BEACONS) {
+            if (s->cacheline[i].len > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
                     (*logf)(SKY_LOG_LEVEL_ERROR,
@@ -149,14 +149,14 @@ int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf)
             }
 
             for (j = 0; j < TOTAL_BEACONS; j++) {
-                if (c->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
+                if (s->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
 #if SKY_DEBUG
                     if (logf != NULL)
                         (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon info");
 #endif
                     return false;
                 }
-                if (c->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
+                if (s->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
 #if SKY_DEBUG
                     if (logf != NULL)
                         (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon type");
@@ -203,7 +203,7 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
  */
 bool is_tbr_enabled(Sky_ctx_t *ctx)
 {
-    return (ctx->cache->sky_sku[0] != '\0');
+    return (ctx->state->sky_sku[0] != '\0');
 }
 
 #if SKY_DEBUG
@@ -409,10 +409,10 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
-    } else if (ctx->cache && b >= ctx->cache->cacheline[0].beacon &&
-               b < ctx->cache->cacheline[CACHE_SIZE - 1].beacon +
-                       ctx->cache->cacheline[CACHE_SIZE - 1].len) {
-        idx_b = b - ctx->cache->cacheline[0].beacon;
+    } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
+               b < ctx->state->cacheline[CACHE_SIZE - 1].beacon +
+                       ctx->state->cacheline[CACHE_SIZE - 1].len) {
+        idx_b = b - ctx->state->cacheline[0].beacon;
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
         snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
@@ -470,23 +470,23 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     for (i = 0; i < ctx->len; i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
-    if (CONFIG(ctx->cache, last_config_time) == 0) {
+    if (CONFIG(ctx->state, last_config_time) == 0) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->cache, total_beacons),
-            CONFIG(ctx->cache, max_ap_beacons), CONFIG(ctx->cache, max_vap_per_ap),
-            CONFIG(ctx->cache, max_vap_per_rq));
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->state, total_beacons),
+            CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
+            CONFIG(ctx->state, max_vap_per_rq));
     } else {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->cache, total_beacons),
-            CONFIG(ctx->cache, max_ap_beacons), CONFIG(ctx->cache, max_vap_per_ap),
-            CONFIG(ctx->cache, max_vap_per_rq),
-            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->cache, last_config_time)));
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->state, total_beacons),
+            CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
+            CONFIG(ctx->state, max_vap_per_rq),
+            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->state, last_config_time)));
     }
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Config: Threshold:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI)",
-        CONFIG(ctx->cache, cache_match_used_threshold),
-        CONFIG(ctx->cache, cache_match_all_threshold), CONFIG(ctx->cache, cache_age_threshold),
-        CONFIG(ctx->cache, cache_beacon_threshold), -CONFIG(ctx->cache, cache_neg_rssi_threshold));
+        CONFIG(ctx->state, cache_match_used_threshold),
+        CONFIG(ctx->state, cache_match_all_threshold), CONFIG(ctx->state, cache_age_threshold),
+        CONFIG(ctx->state, cache_beacon_threshold), -CONFIG(ctx->state, cache_neg_rssi_threshold));
 #endif
 }
 
@@ -505,15 +505,15 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
     Sky_cacheline_t *c;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        c = &ctx->cache->cacheline[i];
+        c = &ctx->state->cacheline[i];
         if (c->len == 0 || c->time == 0) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->cache->len, c->len,
+                "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->state->len, c->len,
                 c->ap_len, c->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->cache->len,
-                ctx->cache->newest == i ? "<-newest" : "", (int)c->loc.lat,
+                "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
+                ctx->state->newest == i ? "<-newest" : "", (int)c->loc.lat,
                 (int)fabs(round(1000000 * (c->loc.lat - (int)c->loc.lat))), (int)c->loc.lon,
                 (int)fabs(round(1000000 * (c->loc.lon - (int)c->loc.lon))), c->loc.hpe, c->len);
             for (j = 0; j < c->len; j++) {
@@ -530,26 +530,26 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
  *
  *  @return void
  */
-void config_defaults(Sky_cache_t *c)
+void config_defaults(Sky_state_t *s)
 {
-    if (CONFIG(c, total_beacons) == 0)
-        CONFIG(c, total_beacons) = TOTAL_BEACONS;
-    if (CONFIG(c, max_ap_beacons) == 0)
-        CONFIG(c, max_ap_beacons) = MAX_AP_BEACONS;
-    if (CONFIG(c, cache_match_used_threshold) == 0)
-        CONFIG(c, cache_match_used_threshold) = CACHE_MATCH_THRESHOLD_USED;
-    if (CONFIG(c, cache_match_all_threshold) == 0)
-        CONFIG(c, cache_match_all_threshold) = CACHE_MATCH_THRESHOLD_ALL;
-    if (CONFIG(c, cache_age_threshold) == 0)
-        CONFIG(c, cache_age_threshold) = CACHE_AGE_THRESHOLD;
-    if (CONFIG(c, cache_beacon_threshold) == 0)
-        CONFIG(c, cache_beacon_threshold) = CACHE_BEACON_THRESHOLD;
-    if (CONFIG(c, cache_neg_rssi_threshold) == 0)
-        CONFIG(c, cache_neg_rssi_threshold) = CACHE_RSSI_THRESHOLD;
-    if (CONFIG(c, max_vap_per_ap) == 0)
-        CONFIG(c, max_vap_per_ap) = MAX_VAP_PER_AP;
-    if (CONFIG(c, max_vap_per_rq) == 0)
-        CONFIG(c, max_vap_per_rq) = MAX_VAP_PER_RQ;
+    if (CONFIG(s, total_beacons) == 0)
+        CONFIG(s, total_beacons) = TOTAL_BEACONS;
+    if (CONFIG(s, max_ap_beacons) == 0)
+        CONFIG(s, max_ap_beacons) = MAX_AP_BEACONS;
+    if (CONFIG(s, cache_match_used_threshold) == 0)
+        CONFIG(s, cache_match_used_threshold) = CACHE_MATCH_THRESHOLD_USED;
+    if (CONFIG(s, cache_match_all_threshold) == 0)
+        CONFIG(s, cache_match_all_threshold) = CACHE_MATCH_THRESHOLD_ALL;
+    if (CONFIG(s, cache_age_threshold) == 0)
+        CONFIG(s, cache_age_threshold) = CACHE_AGE_THRESHOLD;
+    if (CONFIG(s, cache_beacon_threshold) == 0)
+        CONFIG(s, cache_beacon_threshold) = CACHE_BEACON_THRESHOLD;
+    if (CONFIG(s, cache_neg_rssi_threshold) == 0)
+        CONFIG(s, cache_neg_rssi_threshold) = CACHE_RSSI_THRESHOLD;
+    if (CONFIG(s, max_vap_per_ap) == 0)
+        CONFIG(s, max_vap_per_ap) = MAX_VAP_PER_AP;
+    if (CONFIG(s, max_vap_per_rq) == 0)
+        CONFIG(s, max_vap_per_rq) = MAX_VAP_PER_RQ;
     /* Add new config parameters here */
 }
 
@@ -561,7 +561,7 @@ void config_defaults(Sky_cache_t *c)
  */
 uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_partner_id;
+    return ctx->state->sky_partner_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key)
@@ -572,7 +572,7 @@ uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
  */
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_aes_key;
+    return ctx->state->sky_aes_key;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
@@ -583,7 +583,7 @@ uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
  */
 uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_device_id;
+    return ctx->state->sky_device_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
@@ -594,7 +594,7 @@ uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
  */
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_id_len;
+    return ctx->state->sky_id_len;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
@@ -605,7 +605,7 @@ uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
  */
 uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_ul_app_data;
+    return ctx->state->sky_ul_app_data;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
@@ -616,7 +616,7 @@ uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx)
  */
 uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_ul_app_data_len;
+    return ctx->state->sky_ul_app_data_len;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
@@ -627,7 +627,7 @@ uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx)
  */
 uint32_t get_ctx_token_id(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_token_id;
+    return ctx->state->sky_token_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
@@ -638,7 +638,7 @@ uint32_t get_ctx_token_id(Sky_ctx_t *ctx)
  */
 char *get_ctx_sku(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_sku;
+    return ctx->state->sky_sku;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_cc)
@@ -649,7 +649,7 @@ char *get_ctx_sku(Sky_ctx_t *ctx)
  */
 uint32_t get_ctx_cc(Sky_ctx_t *ctx)
 {
-    return ctx->cache->sky_cc;
+    return ctx->state->sky_cc;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx logf)
@@ -1260,7 +1260,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param");
         return 0;
     }
-    for (; !no_more && nvap < CONFIG(ctx->cache, max_vap_per_rq);) {
+    for (; !no_more && nvap < CONFIG(ctx->state, max_vap_per_rq);) {
         /* Walk through APs counting vap, when max_vap_per_rq is reached */
         /* then walk through again, truncating the compressed bytes */
         no_more = true;
@@ -1269,7 +1269,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
             if (w->ap.vg_len > cap_vap[j]) {
                 cap_vap[j]++;
                 nvap++;
-                if (nvap == CONFIG(ctx->cache, max_vap_per_rq))
+                if (nvap == CONFIG(ctx->state, max_vap_per_rq))
                     break;
                 if (w->ap.vg_len > cap_vap[j])
                     no_more = false;

@@ -45,7 +45,7 @@
 
 Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_workspace(Sky_ctx_t *ctx);
-int validate_cache(Sky_cache_t *c, Sky_loggerfn_t logf);
+int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);
 bool is_tbr_enabled(Sky_ctx_t *ctx);
 #if SKY_DEBUG
@@ -62,7 +62,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func);
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func);
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize, int buf_offset);
-void config_defaults(Sky_cache_t *c);
+void config_defaults(Sky_state_t *s);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int32_t get_num_cells(Sky_ctx_t *ctx);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);

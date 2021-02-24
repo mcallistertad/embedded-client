@@ -251,9 +251,9 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     }
 
     /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons) &&
+    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
         (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
-            (CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons))))
+            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons))))
         return SKY_SUCCESS;
 
 #ifdef VERBOSE_DEBUG
@@ -262,7 +262,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
-        if (NUM_BEACONS(ctx) > CONFIG(ctx->cache, total_beacons))
+        if (NUM_BEACONS(ctx) > CONFIG(ctx->state, total_beacons))
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
@@ -297,7 +297,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
     }
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (beacon_in_cacheline(ctx, b, &ctx->cache->cacheline[i], &result)) {
+        if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
             best_prop.in_cache = true;
@@ -479,10 +479,10 @@ int find_oldest(Sky_ctx_t *ctx)
     int oldest = (*ctx->gettime)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->cache->cacheline[i].time == 0)
+        if (ctx->state->cacheline[i].time == 0)
             return i;
-        else if (ctx->cache->cacheline[i].time < oldest) {
-            oldest = ctx->cache->cacheline[i].time;
+        else if (ctx->state->cacheline[i].time < oldest) {
+            oldest = ctx->state->cacheline[i].time;
             oldestc = i;
         }
     }
@@ -530,12 +530,12 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         if (ctx->beacon[j].h.connected && beacon_in_cacheline(ctx, &ctx->beacon[j], cl, NULL)) {
 #ifdef VERBOSE_DEBUG
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - serving cells match",
-                cl - ctx->cache->cacheline);
+                cl - ctx->state->cacheline);
 #endif
             return false;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->cache->cacheline);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->state->cacheline);
     return true;
 }
 

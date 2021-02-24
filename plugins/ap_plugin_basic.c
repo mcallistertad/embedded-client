@@ -133,7 +133,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     float ideal_rssi[MAX_AP_BEACONS + 1];
     Beacon_t *b;
 
-    if (NUM_APS(ctx) <= CONFIG(ctx->cache, max_ap_beacons))
+    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons))
         return false;
 
     if (ctx->beacon[0].h.type != SKY_BEACON_AP)
@@ -165,18 +165,18 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     /* throw out weak one, not in cache, not Virtual Group or Unused  */
     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Weakest beacon rssi: %d(%d) vs %d threshold",
         EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi), ctx->beacon[NUM_APS(ctx) - 1].h.rssi,
-        -CONFIG(ctx->cache, cache_neg_rssi_threshold));
+        -CONFIG(ctx->state, cache_neg_rssi_threshold));
     if (EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) <
-        -CONFIG(ctx->cache, cache_neg_rssi_threshold)) {
+        -CONFIG(ctx->state, cache_neg_rssi_threshold)) {
         for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
             if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
-                    -CONFIG(ctx->cache, cache_neg_rssi_threshold) &&
+                    -CONFIG(ctx->state, cache_neg_rssi_threshold) &&
                 !ctx->beacon[i].ap.property.in_cache)
                 reject = i;
         }
         for (i = NUM_APS(ctx) - 1; i > 0 && reject == -1; i--) {
             if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
-                -CONFIG(ctx->cache, cache_neg_rssi_threshold))
+                -CONFIG(ctx->state, cache_neg_rssi_threshold))
                 reject = i;
         }
         if (reject == -1)
@@ -252,7 +252,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     }
 #ifdef VERBOSE_DEBUG
     LOGFMT(
-        ctx, SKY_LOG_LEVEL_DEBUG, "%d APs in cache %d", num_aps_cached, cl - ctx->cache->cacheline);
+        ctx, SKY_LOG_LEVEL_DEBUG, "%d APs in cache %d", num_aps_cached, cl - ctx->state->cacheline);
 #endif
     return num_aps_cached;
 }
@@ -277,7 +277,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len);
 
-    if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons)) {
+    if (ctx->ap_len <= CONFIG(ctx->state, max_ap_beacons)) {
         return false;
     }
 
@@ -343,13 +343,13 @@ static void update_newest_cacheline(Sky_ctx_t *ctx)
     int newest = 0, idx = 0;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->cache->cacheline[i].time > newest) {
-            newest = ctx->cache->cacheline[i].time;
+        if (ctx->state->cacheline[i].time > newest) {
+            newest = ctx->state->cacheline[i].time;
             idx = i;
         }
     }
     if (newest) {
-        ctx->cache->newest = idx;
+        ctx->state->newest = idx;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", idx);
     }
 }
@@ -366,7 +366,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     int oldest_idx = -1;
     uint32_t oldest_age = 0, youngest_age = UINT_MAX; /* age is in seconds, larger means older */
 
-    if (ctx->ap_len <= CONFIG(ctx->cache, max_ap_beacons))
+    if (ctx->ap_len <= CONFIG(ctx->state, max_ap_beacons))
         return false;
 
     /* Find the youngest and oldest APs search from weakest */
@@ -443,10 +443,10 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
     /* expire old cachelines and note first empty cacheline as best line to save to */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->cache->cacheline[i];
+        cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
         if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->cache, cache_age_threshold) * SECONDS_IN_HOUR)) {
+                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
             cl->time = 0;
         }
@@ -469,7 +469,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
     /* score each cache line wrt beacon match ratio */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->cache->cacheline[i];
+        cl = &ctx->state->cacheline[i];
         threshold = ratio = score = 0;
         if (cl->time == 0 || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -485,7 +485,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
-                threshold = CONFIG(ctx->cache, cache_match_used_threshold);
+                threshold = CONFIG(ctx->state, cache_match_used_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);
@@ -569,7 +569,7 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
         i = find_oldest(ctx);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "find_oldest chose cache %d of %d", i, CACHE_SIZE);
     }
-    cl = &ctx->cache->cacheline[i];
+    cl = &ctx->state->cacheline[i];
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
         cl->time = 0; /* clear cacheline */
@@ -586,7 +586,7 @@ static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->connected = ctx->connected;
     cl->loc = *loc;
     cl->time = now;
-    ctx->cache->newest = i;
+    ctx->state->newest = i;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
