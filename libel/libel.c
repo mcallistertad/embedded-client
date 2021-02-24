@@ -262,19 +262,19 @@ static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
             sky_perror(cache.backoff), (int)(now - cache.header.time));
         switch (cache.backoff) {
-        case SKY_ERROR_AUTH_RETRY_8H:
+        case SKY_RETRY_AUTH_8H:
             if (now - cache.header.time < (8 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_ERROR_AUTH_RETRY_16H:
+        case SKY_RETRY_AUTH_16H:
             if (now - cache.header.time < (16 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_ERROR_AUTH_RETRY_1D:
+        case SKY_RETRY_AUTH_1D:
             if (now - cache.header.time < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_ERROR_AUTH_RETRY_30D:
+        case SKY_RETRY_AUTH_30D:
             if (now - cache.header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
@@ -1160,23 +1160,21 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 &c->header.magic, (uint8_t *)&c->header.crc32 - (uint8_t *)&c->header.magic);
             if (ctx->auth_state == STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
                 ctx->cache->backoff = SKY_ERROR_NONE;
-                return set_error_status(sky_errno, SKY_ERROR_AUTH_RETRY);
+                return set_error_status(sky_errno, SKY_RETRY_AUTH);
             } else if (ctx->cache->backoff ==
                        SKY_ERROR_NONE) /* Registration request failed auth, retry */
-                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY));
+                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_RETRY_AUTH));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
-                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_8H));
+                     SKY_RETRY_AUTH) /* Registration request failed again, retry after 8hr */
+                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_RETRY_AUTH_8H));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
-                return set_error_status(
-                    sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_16H));
+                     SKY_RETRY_AUTH_8H) /* Registration request failed again, retry after 16hr */
+                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_RETRY_AUTH_16H));
             else if (ctx->cache->backoff ==
-                     SKY_ERROR_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
-                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_1D));
+                     SKY_RETRY_AUTH_16H) /* Registration request failed again, retry after 24hr */
+                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_RETRY_AUTH_1D));
             else
-                return set_error_status(
-                    sky_errno, (ctx->cache->backoff = SKY_ERROR_AUTH_RETRY_30D));
+                return set_error_status(sky_errno, (ctx->cache->backoff = SKY_RETRY_AUTH_30D));
         default:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
                 sky_pserver_status(loc->location_status));
@@ -1268,19 +1266,19 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_AUTH:
         str = "Operation unauthorized";
         break;
-    case SKY_ERROR_AUTH_RETRY:
+    case SKY_RETRY_AUTH:
         str = "Operation unauthorized, retry now";
         break;
-    case SKY_ERROR_AUTH_RETRY_8H:
+    case SKY_RETRY_AUTH_8H:
         str = "Operation unauthorized, retry in 8 hours";
         break;
-    case SKY_ERROR_AUTH_RETRY_16H:
+    case SKY_RETRY_AUTH_16H:
         str = "Operation unauthorized, retry in 16 hours";
         break;
-    case SKY_ERROR_AUTH_RETRY_1D:
+    case SKY_RETRY_AUTH_1D:
         str = "Operation unauthorized, retry in 24 hours";
         break;
-    case SKY_ERROR_AUTH_RETRY_30D:
+    case SKY_RETRY_AUTH_30D:
         str = "Operation unauthorized, retry in a month";
         break;
     default:
