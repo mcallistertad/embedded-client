@@ -41,7 +41,7 @@
 /* extract the n-th bit from used AP array of l bytes */
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
-static bool apply_config_overrides(Sky_cache_t *c, Rs *rs);
+static bool apply_config_overrides(Sky_state_t *s, Rs *rs);
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
@@ -339,7 +339,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
      * then we need to encode a registration request,
      * which does not include any beacon info
      */
-    if (ctx && (!is_tbr_enabled(ctx) || ctx->cache->sky_token_id != TBR_TOKEN_UNKNOWN)) {
+    if (ctx && (!is_tbr_enabled(ctx) || ctx->state->sky_token_id != TBR_TOKEN_UNKNOWN)) {
         // Per the documentation here:
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
@@ -389,7 +389,7 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(sizeof(ctx->cache->sky_sku) >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->state->sky_sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
@@ -413,7 +413,7 @@ int32_t serialize_request(
      * make a legacy style request
      */
     if (is_tbr_enabled(ctx)) {
-        if (ctx->cache->sky_token_id == TBR_TOKEN_UNKNOWN) {
+        if (ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN) {
             /* build a tbr registration request */
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
@@ -423,7 +423,7 @@ int32_t serialize_request(
                 rq_hdr.partner_id, rq.tbr.sku);
         } else {
             /* build tbr location request */
-            rq.token_id = ctx->cache->sky_token_id;
+            rq.token_id = ctx->state->sky_token_id;
             rq.max_dl_app_data = SKY_MAX_DL_APP_DATA;
             rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
             memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
@@ -544,7 +544,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
         if (nap++ > size * CHAR_BIT)
             break;
     }
-    for (v = 0; v < CONFIG(ctx->cache, max_vap_per_ap); v++) {
+    for (v = 0; v < CONFIG(ctx->state, max_vap_per_ap); v++) {
         for (i = 0; i < NUM_APS(ctx); i++) {
             if (v < NUM_VAPS(&ctx->beacon[i])) {
                 ctx->beacon[i].ap.vg_prop[v].used = GET_USED_AP(used, size, nap);
@@ -636,7 +636,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                     /* successful TBR registration response */
                     /* Save the token_id for use in subsequent location requests. */
                     ctx->auth_state = STATE_TBR_REGISTERED;
-                    ctx->cache->sky_token_id = rs.token_id;
+                    ctx->state->sky_token_id = rs.token_id;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
                 }
                 /* User must retry because this was a registration */
@@ -647,7 +647,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                     /* failed TBR location request */
                     /* Clear the token_id because it is invalid. */
                     ctx->auth_state = STATE_TBR_UNREGISTERED;
-                    ctx->cache->sky_token_id = TBR_TOKEN_UNKNOWN;
+                    ctx->state->sky_token_id = TBR_TOKEN_UNKNOWN;
                     /* Application must re-register */
                     loc->location_status = SKY_LOCATION_STATUS_AUTH_RETRY;
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
@@ -678,12 +678,12 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             }
             ret = 0;
         }
-        if (apply_config_overrides(ctx->cache, &rs)) {
+        if (apply_config_overrides(ctx->state, &rs)) {
             if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
                 (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->cache, last_config_time) == 0)
-            CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
+        if (CONFIG(ctx->state, last_config_time) == 0)
+            CONFIG(ctx->state, last_config_time) = (*ctx->gettime)(NULL);
     } else if (hdr_size > 0) {
         if (!is_tbr_enabled(ctx))
             loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
@@ -715,56 +715,56 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief update dynamic config params with server overrides
  *
- *  @param c cache buffer
+ *  @param s state buffer
  *
  *  @return bool true if new override is recived from server
  */
-static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
+static bool apply_config_overrides(Sky_state_t *s, Rs *rs)
 {
     bool override = false;
 
-    config_defaults(c);
-    if (rs->config.total_beacons != 0 && rs->config.total_beacons != CONFIG(c, total_beacons)) {
+    config_defaults(s);
+    if (rs->config.total_beacons != 0 && rs->config.total_beacons != CONFIG(s, total_beacons)) {
         if (rs->config.total_beacons < TOTAL_BEACONS && rs->config.total_beacons > 1) {
-            CONFIG(c, total_beacons) = rs->config.total_beacons;
+            CONFIG(s, total_beacons) = rs->config.total_beacons;
         }
     }
-    if (rs->config.max_ap_beacons != 0 && rs->config.max_ap_beacons != CONFIG(c, max_ap_beacons)) {
+    if (rs->config.max_ap_beacons != 0 && rs->config.max_ap_beacons != CONFIG(s, max_ap_beacons)) {
         if (rs->config.max_ap_beacons < MAX_AP_BEACONS) {
-            CONFIG(c, max_ap_beacons) = rs->config.max_ap_beacons;
+            CONFIG(s, max_ap_beacons) = rs->config.max_ap_beacons;
         }
     }
     if (rs->config.cache_match_all_threshold != 0 &&
-        rs->config.cache_match_all_threshold != CONFIG(c, cache_match_all_threshold)) {
+        rs->config.cache_match_all_threshold != CONFIG(s, cache_match_all_threshold)) {
         if (rs->config.cache_match_all_threshold > 0 &&
             rs->config.cache_match_all_threshold <= 100) {
-            CONFIG(c, cache_match_all_threshold) = rs->config.cache_match_all_threshold;
+            CONFIG(s, cache_match_all_threshold) = rs->config.cache_match_all_threshold;
         }
     }
     if (rs->config.cache_match_used_threshold != 0 &&
-        rs->config.cache_match_used_threshold != CONFIG(c, cache_match_used_threshold)) {
+        rs->config.cache_match_used_threshold != CONFIG(s, cache_match_used_threshold)) {
         if (rs->config.cache_match_used_threshold > 0 &&
             rs->config.cache_match_used_threshold <= 100) {
-            CONFIG(c, cache_match_used_threshold) = rs->config.cache_match_used_threshold;
+            CONFIG(s, cache_match_used_threshold) = rs->config.cache_match_used_threshold;
         }
     }
     if (rs->config.cache_age_threshold != 0 &&
-        rs->config.cache_age_threshold != CONFIG(c, cache_age_threshold)) {
+        rs->config.cache_age_threshold != CONFIG(s, cache_age_threshold)) {
         if (rs->config.cache_age_threshold < 9000) {
-            CONFIG(c, cache_age_threshold) = rs->config.cache_age_threshold;
+            CONFIG(s, cache_age_threshold) = rs->config.cache_age_threshold;
         }
     }
     if (rs->config.cache_beacon_threshold != 0 &&
-        rs->config.cache_beacon_threshold != CONFIG(c, cache_beacon_threshold)) {
-        if (rs->config.cache_beacon_threshold < CONFIG(c, total_beacons)) {
-            CONFIG(c, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
+        rs->config.cache_beacon_threshold != CONFIG(s, cache_beacon_threshold)) {
+        if (rs->config.cache_beacon_threshold < CONFIG(s, total_beacons)) {
+            CONFIG(s, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
         }
     }
     if (rs->config.cache_neg_rssi_threshold != 0 &&
-        rs->config.cache_neg_rssi_threshold != CONFIG(c, cache_neg_rssi_threshold)) {
+        rs->config.cache_neg_rssi_threshold != CONFIG(s, cache_neg_rssi_threshold)) {
         if (rs->config.cache_neg_rssi_threshold >= 10 &&
             rs->config.cache_neg_rssi_threshold < 128) {
-            CONFIG(c, cache_neg_rssi_threshold) = rs->config.cache_neg_rssi_threshold;
+            CONFIG(s, cache_neg_rssi_threshold) = rs->config.cache_neg_rssi_threshold;
         }
     }
     override = (rs->config.total_beacons != 0 || rs->config.max_ap_beacons != 0 ||

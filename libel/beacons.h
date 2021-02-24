@@ -175,7 +175,7 @@ typedef enum sky_tbr_state {
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
-#define CONFIG(cache, param) (cache->config.param)
+#define CONFIG(state, param) (state->config.param)
 
 typedef struct sky_config_pad {
     uint32_t last_config_time; /* time when the last new config was received */
@@ -192,7 +192,7 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-typedef struct sky_cache {
+typedef struct sky_state {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
@@ -210,7 +210,7 @@ typedef struct sky_cache {
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
     int newest;
     Sky_config_t config; /* dynamic config parameters */
-} Sky_cache_t;
+} Sky_state_t;
 
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
@@ -226,7 +226,7 @@ typedef struct sky_ctx {
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t save_to; /* cacheline with best match for saving */
-    Sky_cache_t *cache;
+    Sky_state_t *state;
     void *plugin;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */

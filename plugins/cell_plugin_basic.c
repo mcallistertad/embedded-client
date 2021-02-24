@@ -113,11 +113,11 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
     Beacon_t *b = &ctx->beacon[i];
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
-        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons));
+        CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons));
 
     /* no work to do if workspace not full of max cell */
     if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
-        CONFIG(ctx->cache, total_beacons) - CONFIG(ctx->cache, max_ap_beacons)) {
+        CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
         return SKY_ERROR;
     }
@@ -184,10 +184,10 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
     /* expire old cachelines and note first empty cacheline as best line to save to */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->cache->cacheline[i];
+        cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
         if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->cache, cache_age_threshold) * SECONDS_IN_HOUR)) {
+                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
             cl->time = 0;
         }
@@ -202,7 +202,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
 
     /* score each cache line wrt beacon match ratio */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->cache->cacheline[i];
+        cl = &ctx->state->cacheline[i];
         threshold = ratio = score = 0;
         if (cl->time == 0 || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -214,7 +214,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
             threshold = 100.0; /* 100% match */
             score = 0.0;
             for (int j = NUM_APS(ctx) - 1; j < NUM_BEACONS(ctx); j++) {
-                if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->cache->cacheline[i], NULL)) {
+                if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
 #ifdef VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
