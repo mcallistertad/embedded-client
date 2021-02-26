@@ -5,7 +5,6 @@ TEST_FUNC(test_validate_workspace)
         ctx->len < 0 || ctx->ap_len < 0
         ctx->len > TOTAL_BEACONS + 1
         ctx->ap_len > MAX_AP_BEACONS + 1
-        ctx->connected > TOTAL_BEACONS + 1
         ctx->header.crc32 == sky_crc32(...)
         ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX
         */
@@ -25,11 +24,6 @@ TEST_FUNC(test_validate_workspace)
 
     TEST("should return false with too small AP length in ctx", ctx, {
         ctx->ap_len = -3;
-        ASSERT(false == validate_workspace(ctx));
-    });
-
-    TEST("should return false with bad comnected info in ctx", ctx, {
-        ctx->connected = 1234;
         ASSERT(false == validate_workspace(ctx));
     });
 

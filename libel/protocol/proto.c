@@ -179,6 +179,7 @@ static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32
     size_t i;
 
     for (i = 0; i < num_beacons; i++) {
+        /* encode index of first connected AP */
         if (callback(ctx, i)) {
             retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, i + 1);
 

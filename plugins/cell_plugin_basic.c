@@ -125,17 +125,18 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 
     /* sanity check, last beacon must be a cell */
     if (is_cell_type(b)) {
-        /* cells added in priority order (except connected)
-         * if lowest last cell is connected, remove next lowest priority beacon */
-        if (NUM_BEACONS(ctx) > 1 && ctx->connected == NUM_BEACONS(ctx) - 1) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (keep serving cell)",
-                NUM_BEACONS(ctx) - 2);
-            return remove_beacon(ctx, NUM_BEACONS(ctx) - 2);
+        /* cells are added in priority order within type
+         * if there are two or more cells, remove one of the two choosing
+         * either a non-connected one or if both connected, the last one
+         */
+        if ((NUM_BEACONS(ctx) - NUM_APS(ctx)) > 1 && b->h.connected &&
+            !ctx->beacon[i - 1].h.connected) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (keep connected cell)", i - 1);
+            return remove_beacon(ctx, i - 1);
         } else {
             /* otherwise, remove last beacon */
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)",
-                NUM_BEACONS(ctx) - 1);
-            return remove_beacon(ctx, NUM_BEACONS(ctx) - 1);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)", i);
+            return remove_beacon(ctx, i);
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Not a cell?");

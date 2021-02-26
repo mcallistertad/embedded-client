@@ -55,11 +55,6 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 
     if (is_ap_type(&ctx->beacon[index]))
         NUM_APS(ctx) -= 1;
-    if (ctx->connected == index)
-        ctx->connected = -1;
-    else if (index < ctx->connected)
-        // Removed beacon precedes the connected one, so update its index.
-        ctx->connected--;
 
     memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
         sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
@@ -94,16 +89,16 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     if (is_ap_type(b)) { /* If new beacon is AP */
         for (j = 0; j < NUM_APS(ctx); j++) {
             if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
-                /* reject new beacon if already have serving AP, or it is older or weaker */
+                /* reject new beacon if already have connected AP, or it is older or weaker */
                 if (ctx->beacon[j].h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not connected)");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else if (b->h.connected && ctx->beacon[j].ap.vg_len) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate VAP (marked serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate VAP (marked connected)");
                     ctx->beacon[j].h.connected = b->h.connected;
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else if (b->h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (connected)");
                     break; /* fall through to remove exiting duplicate */
                 } else if (b->h.age > ctx->beacon[j].h.age) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (older)");
@@ -126,12 +121,12 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     } else if (is_cell_type(b)) { /* If new beacon is one of the cell types */
         for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
             if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
-                /* reject new beacon if already have serving cell, or it is older or weaker */
+                /* reject new beacon if already have connected cell, or it is older or weaker */
                 if (ctx->beacon[j].h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (not serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (not connected)");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else if (b->h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (connected)");
                     break; /* fall through to remove exiting duplicate */
                 } else if (get_cell_age(b) > get_cell_age(&ctx->beacon[j])) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (older)");
@@ -162,13 +157,6 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
                 break;
     }
 
-    if (b->h.connected)
-        /* if new beacon is connected, update info about connected */
-        ctx->connected = j;
-    else if (ctx->connected != -1 && j <= ctx->connected)
-        // New beacon inserted before the connected one, so update its index.
-        ctx->connected++;
-
     /* add beacon at the end */
     if (j == NUM_BEACONS(ctx)) {
         ctx->beacon[j] = *b;
@@ -183,8 +171,8 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     if (index != NULL)
         *index = j;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d %sconnected %d",
-        sky_pbeacon(b), j, b->h.connected ? "* " : "", ctx->connected);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d %s", sky_pbeacon(b), j,
+        b->h.connected ? "* " : "");
 
     if (is_ap_type(b))
         NUM_APS(ctx)++;
@@ -217,7 +205,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
     int n, i = -1;
-    Beacon_t *w, tmp;
+    Beacon_t *w;
 
     if (is_ap_type(b)) {
         if (!validate_mac(b->ap.mac, ctx))
@@ -227,19 +215,6 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* connected flag for nmr beacons always false */
     if (is_cell_nmr(b))
         b->h.connected = false;
-    /* Assume the first added cell is connected */
-    else if (is_cell_type(b) && ctx->connected == -1)
-        b->h.connected = true;
-
-    /* if workspace has a connected beacon, and the new one is connected,
-     * mark existing one not connected and re-sort before adding a new connected beacon */
-    if (ctx->connected != -1 && b->h.connected) {
-        tmp = ctx->beacon[ctx->connected];
-        tmp.h.connected = false;
-        remove_beacon(ctx, ctx->connected);
-        insert_beacon(ctx, sky_errno, &tmp, NULL);
-        ctx->connected = -1;
-    }
 
     /* insert the beacon */
     n = NUM_BEACONS(ctx);
@@ -364,7 +339,7 @@ bool beacon_in_cacheline(
  *
  *  if both are AP, return false and set diff to difference in rssi
  *  if both are cell and same cell type, return false and set diff as below
- *   serving cell
+ *   connected cell
  *   youngest
  *   in cache
  *   strongest
@@ -426,7 +401,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
-            /* cell comparison is type, connected, or youngest, or type or stongest */
+            /* cell comparison is type, connected, or youngest, or stongest */
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
 #ifdef VERBOSE_DEBUG
@@ -498,10 +473,41 @@ int find_oldest(Sky_ctx_t *ctx)
     return oldestc;
 }
 
+/*! \brief workspace has cell
+ *
+ * @param ctx Skyhook request context
+ *
+ * @return index of first connected cell or first fully qualified cell, or -1
+ */
+static int workspace_has_cell(Sky_ctx_t *ctx)
+{
+    int j;
+
+    /* for each cell in workspace, return index of connected one */
+    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
+        if (ctx->beacon[j].h.connected) {
+#ifdef VERBOSE_DEBUG
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cell %d is connected", j);
+#endif
+            return j;
+        }
+    }
+    /* for each cell in workspace, return index of first fully qualified one */
+    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
+        if (!is_cell_nmr(&ctx->beacon[j])) {
+#ifdef VERBOSE_DEBUG
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cell %d is most significant", j);
+#endif
+            return j;
+        }
+    }
+    return -1;
+}
+
 /*! \brief test cell in workspace has changed from that in cache
  *
  *  false if either workspace or cache has no cells
- *  false if serving cell matches cache
+ *  false if connected cell matches cache
  *  true otherwise
  *
  *  @param ctx Skyhook request context
@@ -526,22 +532,19 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if (ctx->connected == -1) {
+    if ((j = workspace_has_cell(ctx)) == -1) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no serving cell in workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in workspace");
 #endif
         return false;
     }
 
-    /* for each cell in workspace, compare with cacheline */
-    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-        if (ctx->beacon[j].h.connected && beacon_in_cacheline(ctx, &ctx->beacon[j], cl, NULL)) {
+    if (beacon_in_cacheline(ctx, &ctx->beacon[j], cl, NULL)) {
 #ifdef VERBOSE_DEBUG
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - serving cells match",
-                cl - ctx->state->cacheline);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - significant cell %d matches",
+            cl - ctx->state->cacheline, j);
 #endif
-            return false;
-        }
+        return false;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->state->cacheline);
     return true;
