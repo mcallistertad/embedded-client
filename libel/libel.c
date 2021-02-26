@@ -974,6 +974,67 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
+/*! \brief Determines the required size of the network request buffer
+ *
+ *  @param ctx Skyhook request context
+ *  @param size parameter which will be set to the size value
+ *  @param sky_errno skyErrno is set to the error code
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
+{
+    Sky_cacheline_t *cl;
+    int c, j, rc, rq_config = false;
+
+    if (!validate_workspace(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+
+    if (size == NULL)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    rq_config =
+        (ctx->state->config.last_config_time == 0) ||
+        (((*ctx->gettime)(NULL)-ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
+        rq_config && ctx->state->config.last_config_time != 0 ? "Timeout" :
+                                                                rq_config ? "Forced" : "No");
+
+    if (rq_config)
+        ctx->state->config.last_config_time = 0; /* request on next serialize */
+
+    // Trim any excess vap from workspace
+    select_vap(ctx);
+
+    /* check cache against beacons for match */
+    if ((c = get_from_cache(ctx)) >= 0) {
+        cl = &ctx->state->cacheline[c];
+        *sky_errno = SKY_ERROR_NONE;
+        if (ctx->debounce) {
+            /* overwrite workspace with cached beacons */
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
+            NUM_BEACONS(ctx) = cl->len;
+            NUM_APS(ctx) = cl->ap_len;
+            ctx->connected = cl->connected;
+            for (j = 0; j < NUM_BEACONS(ctx); j++)
+                ctx->beacon[j] = cl->beacon[j];
+        }
+    }
+
+    /* encode request into the bit bucket, just to determine the length of the
+     * encoded message */
+    rc = serialize_request(ctx, NULL, 0, SW_VERSION, rq_config);
+
+    if (rc > 0) {
+        *size = (uint32_t)rc;
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sizeof request %d", rc);
+        return set_error_status(sky_errno, SKY_ERROR_NONE);
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to size request");
+        return set_error_status(sky_errno, SKY_ERROR_ENCODE_ERROR);
+    }
+}
+
 /*! \brief generate a Skyhook request from the request context
  *
  *  @param ctx Skyhook request context
@@ -989,7 +1050,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size)
 {
-    int c, j, rc;
+    int c, rc;
     Sky_cacheline_t *cl;
     Sky_finalize_t ret = SKY_FINALIZE_ERROR;
 
@@ -1010,8 +1071,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache against beacons for match */
-    if ((c = get_from_cache(ctx)) >= 0) {
+    /* check cache match result */
+    if ((c = ctx->get_from) >= 0) {
         cl = &ctx->state->cacheline[c];
         if (loc != NULL) {
             *loc = cl->loc;
@@ -1027,15 +1088,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
             (ctx->header.time - cached_time));
 #endif
-        if (ctx->debounce) {
-            /* overwrite workspace with cached beacons */
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
-            NUM_BEACONS(ctx) = cl->len;
-            NUM_APS(ctx) = cl->ap_len;
-            ctx->connected = cl->connected;
-            for (j = 0; j < NUM_BEACONS(ctx); j++)
-                ctx->beacon[j] = cl->beacon[j];
-        }
         ret = SKY_FINALIZE_LOCATION;
     } else
         ret = SKY_FINALIZE_REQUEST;
@@ -1076,51 +1128,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to encode request");
         return SKY_FINALIZE_ERROR;
-    }
-}
-
-/*! \brief Determines the required size of the network request buffer
- *
- *  @param ctx Skyhook request context
- *  @param size parameter which will be set to the size value
- *  @param sky_errno skyErrno is set to the error code
- *
- *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
- */
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
-{
-    int rc, rq_config = false;
-
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-
-    if (size == NULL)
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* encode request into the bit bucket, just to determine the length of the
-     * encoded message */
-    rq_config =
-        (ctx->state->config.last_config_time == 0) ||
-        (((*ctx->gettime)(NULL)-ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && ctx->state->config.last_config_time != 0 ? "Timeout" :
-                                                                rq_config ? "Forced" : "No");
-
-    if (rq_config)
-        ctx->state->config.last_config_time = 0; /* request on next serialize */
-
-    // Trim any excess vap from workspace
-    select_vap(ctx);
-
-    rc = serialize_request(ctx, NULL, 0, SW_VERSION, rq_config);
-
-    if (rc > 0) {
-        *size = (uint32_t)rc;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "sizeof request %d", rc);
-        return set_error_status(sky_errno, SKY_ERROR_NONE);
-    } else {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to size request");
-        return set_error_status(sky_errno, SKY_ERROR_ENCODE_ERROR);
     }
 }
 
