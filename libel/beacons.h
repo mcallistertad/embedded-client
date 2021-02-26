@@ -225,7 +225,8 @@ typedef struct sky_ctx {
     int16_t connected; /* which beacon is conneted (-1 == none) */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
-    int16_t save_to; /* cacheline with best match for saving */
+    int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
+    int16_t save_to; /* cacheline with best match for saving scan*/
     Sky_state_t *state;
     void *plugin;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */

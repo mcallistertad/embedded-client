@@ -88,6 +88,7 @@ typedef enum {
     SKY_LOCATION_STATUS_DECODE_ERROR = 3,
     SKY_LOCATION_STATUS_API_SERVER_ERROR = 4,
     SKY_LOCATION_STATUS_AUTH_RETRY = 5,
+    SKY_LOCATION_STATUS_UNABLE_TO_LOCATE = 6,
 } Sky_loc_status_t;
 
 /*! \brief Skyhook location information
