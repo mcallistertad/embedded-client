@@ -41,8 +41,7 @@
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t beacon_equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
 {
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -107,7 +106,7 @@ static Sky_status_t beacon_equal(
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
+static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 {
     int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
     Beacon_t *b = &ctx->beacon[i];
@@ -134,8 +133,8 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
             return remove_beacon(ctx, NUM_BEACONS(ctx) - 2);
         } else {
             /* otherwise, remove last beacon */
-            LOGFMT(
-                ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)", ctx->len - 1);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)",
+                NUM_BEACONS(ctx) - 1);
             return remove_beacon(ctx, NUM_BEACONS(ctx) - 1);
         }
     }
@@ -160,7 +159,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
@@ -287,8 +286,8 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
-    .equal = beacon_equal, /*Compare two beacons for equality */
-    .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
-    .cache_match = beacon_match, /* Find best match between workspace and cache lines */
+    .equal = equal, /*Compare two beacons for equality */
+    .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
+    .cache_match = match, /* Find best match between workspace and cache lines */
     .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
 };

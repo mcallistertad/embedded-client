@@ -455,7 +455,7 @@ retry_after_auth:
 
         if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_RETRY_AUTH)
+            if (sky_errno == SKY_AUTH_RETRY)
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
         }
 

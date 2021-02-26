@@ -1009,7 +1009,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* There must be at least one beacon */
-    if (ctx->len == 0 && !has_gps(ctx)) {
+    if (NUM_BEACONS(ctx) == 0 && !has_gps(ctx)) {
         *sky_errno = SKY_ERROR_NO_BEACONS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
         return ret;
@@ -1052,7 +1052,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
-        ctx->len, bufsize);
+        NUM_BEACONS(ctx), bufsize);
 
 #if SKY_DEBUG
     if (ctx->state->config.last_config_time == 0)

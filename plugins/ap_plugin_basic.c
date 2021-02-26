@@ -43,8 +43,7 @@
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t beacon_equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
 {
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -152,12 +151,12 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
              jump++, i += up_down * jump, up_down = -up_down) {
             b = &ctx->beacon[i];
             if (!b->ap.property.in_cache) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small. %s beacon",
-                    !jump ? "Remove middle Uncached" : "Found Uncached");
+                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, %s beacon",
+                    !jump ? "remove middle uncached" : "remove uncached");
                 return remove_beacon(ctx, i) == SKY_SUCCESS;
             }
         }
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small. Removing cached beacon");
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, remove cached beacon");
         return remove_beacon(ctx, NUM_APS(ctx) / 2) == SKY_SUCCESS;
     }
 
@@ -245,9 +244,9 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     int j, i;
     if (!ctx || !cl)
         return -1;
-    for (j = 0; j < ctx->ap_len; j++) {
-        for (i = 0; i < cl->ap_len; i++) {
-            num_aps_cached += beacon_equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL) ? 1 : 0;
+    for (j = 0; j < NUM_APS(ctx); j++) {
+        for (i = 0; i < NUM_APS(cl); i++) {
+            num_aps_cached += equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL) ? 1 : 0;
         }
     }
 #ifdef VERBOSE_DEBUG
@@ -274,14 +273,12 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     bool cached = false;
 #endif
 
-    LOGFMT(
-        ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)ctx->ap_len, (int)ctx->len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)NUM_APS(ctx),
+        (int)NUM_BEACONS(ctx));
 
-    if (ctx->ap_len <= CONFIG(ctx->state, max_ap_beacons)) {
+    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons)) {
         return false;
     }
-
-    DUMP_WORKSPACE(ctx);
 
     /* look for any AP beacon that is 'similar' to another */
     if (ctx->beacon[0].h.type != SKY_BEACON_AP) {
@@ -366,11 +363,11 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     int oldest_idx = -1;
     uint32_t oldest_age = 0, youngest_age = UINT_MAX; /* age is in seconds, larger means older */
 
-    if (ctx->ap_len <= CONFIG(ctx->state, max_ap_beacons))
+    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons))
         return false;
 
     /* Find the youngest and oldest APs search from weakest */
-    for (i = ctx->ap_len - 1; i >= 0; i--) {
+    for (i = NUM_APS(ctx) - 1; i >= 0; i--) {
         if (ctx->beacon[i].h.age < youngest_age) {
             youngest_age = ctx->beacon[i].h.age;
         }
@@ -390,7 +387,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     return false;
 }
 
-static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
+static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 {
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
@@ -420,7 +417,7 @@ static Sky_status_t beacon_remove_worst(Sky_ctx_t *ctx)
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
@@ -546,7 +543,7 @@ static Sky_status_t beacon_match(Sky_ctx_t *ctx, int *idx)
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-static Sky_status_t beacon_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
     int i = ctx->save_to;
     int j;
@@ -612,8 +609,8 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
-    .equal = beacon_equal, /*Compare two beacons for equality */
-    .remove_worst = beacon_remove_worst, /* Remove least desirable beacon from workspace */
-    .cache_match = beacon_match, /* Find best match between workspace and cache lines */
-    .add_to_cache = beacon_to_cache /* Copy workspace beacons to a cacheline */
+    .equal = equal, /*Compare two beacons for equality */
+    .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
+    .cache_match = match, /* Find best match between workspace and cache lines */
+    .add_to_cache = to_cache /* Copy workspace beacons to a cacheline */
 };

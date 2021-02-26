@@ -53,7 +53,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
     if (index >= NUM_BEACONS(ctx))
         return SKY_ERROR;
 
-    if (ctx->beacon[index].h.type == SKY_BEACON_AP)
+    if (is_ap_type(&ctx->beacon[index]))
         NUM_APS(ctx) -= 1;
     if (ctx->connected == index)
         ctx->connected = -1;
@@ -91,7 +91,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     }
 
     /* check for duplicate */
-    if (!is_cell_type(b)) { /* If new beacon is AP or BLE */
+    if (is_ap_type(b)) { /* If new beacon is AP */
         for (j = 0; j < NUM_APS(ctx); j++) {
             if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
                 /* reject new beacon if already have serving AP, or it is older or weaker */
@@ -99,7 +99,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not serving)");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else if (b->h.connected && ctx->beacon[j].ap.vg_len) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (serving)");
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate VAP (marked serving)");
                     ctx->beacon[j].h.connected = b->h.connected;
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else if (b->h.connected) {
@@ -123,7 +123,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
         /* if a better duplicate was found, remove existing worse beacon */
         if (j < NUM_APS(ctx))
             remove_beacon(ctx, j);
-    } else { /* If new beacon is one of the cell types */
+    } else if (is_cell_type(b)) { /* If new beacon is one of the cell types */
         for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
             if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
                 /* reject new beacon if already have serving cell, or it is older or weaker */
@@ -152,24 +152,22 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
         /* if a better duplicate was found, remove existing worse beacon */
         if (j < NUM_BEACONS(ctx))
             remove_beacon(ctx, j);
-    }
+    } else
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Unsupported beacon type");
 
-    /* ignore connected flag for nmr beacons */
-    if (is_cell_nmr(b))
-        b->h.connected = false;
-    /* find correct position to insert based on type */
+    /* find correct position to insert based on priority */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         if (beacon_compare(ctx, b, &ctx->beacon[j], &diff) == false)
             if (diff >= 0) // stop if the new beacon is better
                 break;
     }
 
-    if (b->h.connected) {
-        /* if new beacon is connected, update info about any previously connected */
-        if (ctx->connected >= 0)
-            ctx->beacon[ctx->connected].h.connected = false;
+    if (b->h.connected)
+        /* if new beacon is connected, update info about connected */
         ctx->connected = j;
-    }
+    else if (ctx->connected != -1 && j <= ctx->connected)
+        // New beacon inserted before the connected one, so update its index.
+        ctx->connected++;
 
     /* add beacon at the end */
     if (j == NUM_BEACONS(ctx)) {
@@ -185,18 +183,10 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     if (index != NULL)
         *index = j;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d", sky_pbeacon(b), j);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d %sconnected %d",
+        sky_pbeacon(b), j, b->h.connected ? "* " : "", ctx->connected);
 
-    /* Assume the first added cell is connected */
-    if (b->h.connected || (is_cell_type(b) && !is_cell_nmr(b) && (ctx->len - ctx->ap_len) == 1)) {
-        // New beacon is the connected one, so update index.
-        b->h.connected = true;
-        ctx->connected = j;
-    } else if (j <= ctx->connected)
-        // New beacon was inserted before the connected one, so update its index.
-        ctx->connected++;
-
-    if (b->h.type == SKY_BEACON_AP)
+    if (is_ap_type(b))
         NUM_APS(ctx)++;
     return SKY_SUCCESS;
 }
@@ -229,12 +219,20 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     int n, i = -1;
     Beacon_t *w, tmp;
 
-    if (b->h.type == SKY_BEACON_AP) {
+    if (is_ap_type(b)) {
         if (!validate_mac(b->ap.mac, ctx))
             return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
-    /* if workspace has a connected beacon already, re-sort (not connected) it before adding a new connected beacon */
+    /* connected flag for nmr beacons always false */
+    if (is_cell_nmr(b))
+        b->h.connected = false;
+    /* Assume the first added cell is connected */
+    else if (is_cell_type(b) && ctx->connected == -1)
+        b->h.connected = true;
+
+    /* if workspace has a connected beacon, and the new one is connected,
+     * mark existing one not connected and re-sort before adding a new connected beacon */
     if (ctx->connected != -1 && b->h.connected) {
         tmp = ctx->beacon[ctx->connected];
         tmp.h.connected = false;
@@ -244,15 +242,15 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     }
 
     /* insert the beacon */
-    n = ctx->len;
+    n = NUM_BEACONS(ctx);
     if (insert_beacon(ctx, sky_errno, b, &i) == SKY_ERROR)
         return SKY_ERROR;
-    if (n == ctx->len) // no beacon added, must be duplicate because there was no error
+    if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
 
     /* Update the AP just added to workspace */
     w = &ctx->beacon[i];
-    if (b->h.type == SKY_BEACON_AP) {
+    if (is_ap_type(b)) {
         if (!beacon_in_cache(ctx, b, &w->ap.property)) {
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
@@ -262,12 +260,13 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
         (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
-            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons))))
-        return SKY_SUCCESS;
-
+            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
 #ifdef VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
+        DUMP_WORKSPACE(ctx);
 #endif
+        return SKY_SUCCESS;
+    }
+
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
