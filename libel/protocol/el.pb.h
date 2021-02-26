@@ -21,11 +21,12 @@ typedef enum _RsHeader_Status {
     RsHeader_Status_BAD_PARTNER_ID_ERROR = 2,
     RsHeader_Status_DECODE_FAILURE_ERROR = 3,
     RsHeader_Status_API_SERVER_ERROR = 4,
-    RsHeader_Status_AUTH_ERROR = 5
+    RsHeader_Status_AUTH_ERROR = 5,
+    RsHeader_Status_UNABLE_TO_LOCATE = 6
 } RsHeader_Status;
 #define _RsHeader_Status_MIN RsHeader_Status_SUCCESS
-#define _RsHeader_Status_MAX RsHeader_Status_AUTH_ERROR
-#define _RsHeader_Status_ARRAYSIZE ((RsHeader_Status)(RsHeader_Status_AUTH_ERROR+1))
+#define _RsHeader_Status_MAX RsHeader_Status_UNABLE_TO_LOCATE
+#define _RsHeader_Status_ARRAYSIZE ((RsHeader_Status)(RsHeader_Status_UNABLE_TO_LOCATE+1))
 
 typedef enum _Cell_Type {
     Cell_Type_UNKNOWN = 0,

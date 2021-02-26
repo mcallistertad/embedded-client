@@ -1322,6 +1322,9 @@ char *sky_pserver_status(Sky_loc_status_t status)
     case SKY_LOCATION_STATUS_AUTH_RETRY:
         str = "Authentication needs retry";
         break;
+    case SKY_LOCATION_STATUS_UNABLE_TO_LOCATE:
+        str = "Server reports unable to determine location";
+        break;
     default:
         str = "Unknown server status";
         break;
