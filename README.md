@@ -130,7 +130,7 @@ The library will save the information provided in a request along with the locat
  * The library is not thread safe.
  * The user may preserve cache state by storing the state buffer provided by the call to sky_close(), and restoring the state buffer and passing it to sky_open().
  * The library can interact with the server in either of two authentication modes, Token Based Registration (TBR) or a simple key based scheme. The best one for you will depend on licensing terms, privacy considerations and other specific implementation requirements
- * The API calls used to add beacons from a scan provide a 'connected' parameter which is used to indicate whether a particular beacon is active i.e. an AP which is connected or a Serving Cell.
+ * The API calls used to add beacons from a scan provide a `is_connected` parameter which is used to indicate whether a particular beacon is actively serving the device i.e. a Wi-Fi AP which is connected and/or a Serving Cell.
 
 ### Authentication
 #### Token Based Registration
