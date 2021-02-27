@@ -1165,7 +1165,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
         switch (loc->location_status) {
         case SKY_LOCATION_STATUS_SUCCESS:
             break;
-        case SKY_LOCATION_STATUS_AUTH_RETRY:
+        case SKY_LOCATION_STATUS_AUTH_ERROR:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
             /* note the time of this server response in the state */
             s->header.time = (uint32_t)(*sky_time)(NULL);
@@ -1326,8 +1326,8 @@ char *sky_pserver_status(Sky_loc_status_t status)
     case SKY_LOCATION_STATUS_API_SERVER_ERROR:
         str = "Server error determining location";
         break;
-    case SKY_LOCATION_STATUS_AUTH_RETRY:
-        str = "Authentication needs retry";
+    case SKY_LOCATION_STATUS_AUTH_ERROR:
+        str = "Server error authentication error";
         break;
     case SKY_LOCATION_STATUS_UNABLE_TO_LOCATE:
         str = "Server reports unable to determine location";
