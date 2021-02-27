@@ -559,7 +559,7 @@ int get_from_cache(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         return SKY_ERROR;
     }
-    ctx->get_from = sky_plugin_cache_match(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1;
+    ctx->get_from = sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1;
     return ctx->get_from;
 }
 

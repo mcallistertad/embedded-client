@@ -976,6 +976,9 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 
 /*! \brief Determines the required size of the network request buffer
  *
+ *  Size is determined by doing a dry run of encoding the request
+ *  but this requires the workspace to be prepared first
+ *
  *  @param ctx Skyhook request context
  *  @param size parameter which will be set to the size value
  *  @param sky_errno skyErrno is set to the error code
@@ -993,6 +996,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
+    /* determine whether request_client_conf should be true in request message */
     rq_config =
         (ctx->state->config.last_config_time == 0) ||
         (((*ctx->gettime)(NULL)-ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL);
@@ -1003,13 +1007,16 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     if (rq_config)
         ctx->state->config.last_config_time = 0; /* request on next serialize */
 
-    // Trim any excess vap from workspace
+    /* Trim any excess vap from workspace i.e. total number of vap
+     * in workspace cannot exceed max that a request can carry
+     */
     select_vap(ctx);
 
-    /* check cache against beacons for match */
+    /* check cache against beacons for match
+     * setting from_cache if a matching cacheline is found
+     * */
     if ((c = get_from_cache(ctx)) >= 0) {
         cl = &ctx->state->cacheline[c];
-        *sky_errno = SKY_ERROR_NONE;
         if (ctx->debounce) {
             /* overwrite workspace with cached beacons */
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");

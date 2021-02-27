@@ -49,7 +49,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 Sky_status_t sky_plugin_equal(
     Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop);
 Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
-Sky_status_t sky_plugin_cache_match(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx);
+Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx);
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc);
 
 #endif
