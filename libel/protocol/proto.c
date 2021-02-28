@@ -408,6 +408,8 @@ int32_t serialize_request(
 
     rq.timestamp = (int64_t)ctx->header.time;
 
+    rq.cache_hits = ctx->state->cache_hits;
+
     /* if we have been given a sku, then
      * if we don't yet have a token_id,
      * then build a tbr registration request

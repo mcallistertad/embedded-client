@@ -1018,14 +1018,21 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
      * */
     if ((c = get_from_cache(ctx)) >= 0) {
         cl = &ctx->state->cacheline[c];
-        if (ctx->debounce) {
-            /* overwrite workspace with cached beacons */
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
-            NUM_BEACONS(ctx) = cl->len;
-            NUM_APS(ctx) = cl->ap_len;
-            for (j = 0; j < NUM_BEACONS(ctx); j++)
-                ctx->beacon[j] = cl->beacon[j];
-        }
+
+        /* cache hit */
+        /* count the number of cache hits processed between requests sent to server */
+        if (ctx->state->cache_hits < 127) {
+            ctx->state->cache_hits++;
+            if (ctx->debounce) {
+                /* overwrite workspace with cached beacons */
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
+                NUM_BEACONS(ctx) = cl->len;
+                NUM_APS(ctx) = cl->ap_len;
+                for (j = 0; j < NUM_BEACONS(ctx); j++)
+                    ctx->beacon[j] = cl->beacon[j];
+            }
+        } else
+            ctx->state->cache_hits = 0; /* 127 cache hits is a lot, start counting again and */
     }
 
     /* encode request into the bit bucket, just to determine the length of the
@@ -1163,6 +1170,8 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     } else {
         switch (loc->location_status) {
         case SKY_LOCATION_STATUS_SUCCESS:
+            ctx->state->cache_hits =
+                0; /* reset number of cache_hits when request to server was successful */
             break;
         case SKY_LOCATION_STATUS_AUTH_ERROR:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");

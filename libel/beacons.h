@@ -211,6 +211,7 @@ typedef struct sky_state {
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
     int newest;
     Sky_config_t config; /* dynamic config parameters */
+    uint8_t cache_hits; /* count the client cache hits */
 } Sky_state_t;
 
 typedef struct sky_ctx {
