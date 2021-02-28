@@ -489,7 +489,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     b.cell.id4 = e_cellid;
     b.cell.id5 = pci;
     b.cell.freq = earfcn;
-    if (!is_cell_nmr(&b) && is_connected)
+    if (!is_cell_nmr(&b))
         b.cell.ta = ta;
     else
         b.cell.ta = SKY_UNKNOWN_TA;
@@ -576,10 +576,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     b.cell.id2 = mnc;
     b.cell.id3 = lac;
     b.cell.id4 = ci;
-    if (is_connected)
-        b.cell.ta = ta;
-    else
-        b.cell.ta = SKY_UNKNOWN_TA;
+    b.cell.ta = ta;
 
     return add_beacon(ctx, sky_errno, &b);
 }
@@ -889,7 +886,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     b.cell.id4 = nci;
     b.cell.id5 = pci;
     b.cell.freq = nrarfcn;
-    if (!is_cell_nmr(&b) && is_connected) // TA only for serving cell
+    if (!is_cell_nmr(&b))
         b.cell.ta = ta;
     else
         b.cell.ta = SKY_UNKNOWN_TA;
