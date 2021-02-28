@@ -247,7 +247,8 @@ int main(int argc, char *argv[])
     memset(p, 0, bufsize);
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, (uint8_t *)"sample_client", 13, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, (uint8_t *)config.ul_app_data, config.ul_app_data_len,
+            &sky_errno) != ctx) {
         printf("sky_new_request() returned bad value\n");
         printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
     }
@@ -428,8 +429,12 @@ retry_after_auth:
     }
 
     switch (finalize) {
+    case SKY_FINALIZE_LOCATION:
+        /* Location was found in the cache. No need to go to server. */
+        printf("Location found in cache\n");
+    //  break;  /* Going to server optional */
     case SKY_FINALIZE_REQUEST:
-        /* Need to send the request to the server. */
+        /* send the request to the server. */
         response = malloc(response_size * sizeof(uint8_t));
         printf("server=%s, port=%d\n", config.server, config.port);
         printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
@@ -459,10 +464,6 @@ retry_after_auth:
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
         }
 
-        break;
-    case SKY_FINALIZE_LOCATION:
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
         break;
     case SKY_FINALIZE_ERROR:
         printf("Error finalizing request\n");
