@@ -123,22 +123,15 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 
     DUMP_WORKSPACE(ctx);
 
-    /* sanity check, last beacon must be a cell */
+    /* sanity check last beacon, if we get here, it should be a cell */
     if (is_cell_type(b)) {
-        /* cells added in priority order (except connected)
-         * if lowest last cell is connected, remove next lowest priority beacon */
-        if (NUM_BEACONS(ctx) > 1 && ctx->connected == NUM_BEACONS(ctx) - 1) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (keep serving cell)",
-                NUM_BEACONS(ctx) - 2);
-            return remove_beacon(ctx, NUM_BEACONS(ctx) - 2);
-        } else {
-            /* otherwise, remove last beacon */
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)",
-                NUM_BEACONS(ctx) - 1);
-            return remove_beacon(ctx, NUM_BEACONS(ctx) - 1);
-        }
+        /* cells are priority order
+         * remove last beacon
+         */
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)", i);
+        return remove_beacon(ctx, i);
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Not a cell?");
+    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
     return SKY_ERROR;
 }
 

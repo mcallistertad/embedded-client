@@ -333,7 +333,6 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
-    ctx->connected = -1; /* all unconnected */
 
     if (backoff_violation(ctx, now)) {
         *sky_errno = SKY_SERVICE_DENIED;
@@ -1037,7 +1036,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
             NUM_BEACONS(ctx) = cl->len;
             NUM_APS(ctx) = cl->ap_len;
-            ctx->connected = cl->connected;
             for (j = 0; j < NUM_BEACONS(ctx); j++)
                 ctx->beacon[j] = cl->beacon[j];
         }

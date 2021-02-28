@@ -78,10 +78,6 @@ int validate_workspace(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many AP beacons");
         return false;
     }
-    if (ctx->connected > TOTAL_BEACONS + 1) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad connected value");
-        return false;
-    }
     if (ctx->header.crc32 == sky_crc32(&ctx->header.magic,
                                  (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
@@ -465,9 +461,9 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 #if SKY_DEBUG
     int i;
 
-    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "Dump WorkSpace: Got %d beacons, WiFi %d, connected %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
-        ctx->connected, is_tbr_enabled(ctx) ? ", TBR" : "", ctx->debounce ? ", Debounce" : "");
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Dump WorkSpace: Got %d beacons, WiFi %d, %s%s",
+        NUM_BEACONS(ctx), NUM_APS(ctx), is_tbr_enabled(ctx) ? ", TBR" : "",
+        ctx->debounce ? ", Debounce" : "");
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
@@ -827,9 +823,9 @@ bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 {
     if (ctx == NULL || idx > NUM_APS(ctx)) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param");
-        return 0;
+        return false;
     }
-    return idx == ctx->connected;
+    return ctx->beacon[idx].h.connected;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/timestamp)
@@ -1002,7 +998,7 @@ bool get_cell_connected_flag(Sky_ctx_t *ctx, Beacon_t *cell)
 {
     if (!ctx || !cell)
         return -1;
-    return ctx->connected >= 0 && &ctx->beacon[ctx->connected] == cell;
+    return cell->h.connected;
 }
 
 /*! \brief Return cell RSSI value

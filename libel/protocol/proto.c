@@ -172,13 +172,14 @@ static bool encode_vap_data(
     return true;
 }
 
-static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
     uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
 
     for (i = 0; i < num_beacons; i++) {
+        /* encode index of first connected AP */
         if (callback(ctx, i)) {
             retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, i + 1);
 
@@ -214,7 +215,7 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
-    return encode_connected_field(
+    return encode_connected_ap_field(
                ctx, ostream, num_beacons, Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
            encode_repeated_int_field(ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
            encode_optimized_repeated_field(ctx, ostream, num_beacons, Aps_common_freq_plus_1_tag,
