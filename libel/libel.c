@@ -1026,7 +1026,6 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
             NUM_BEACONS(ctx) = cl->len;
             NUM_APS(ctx) = cl->ap_len;
-            ctx->connected = cl->connected;
             for (j = 0; j < NUM_BEACONS(ctx); j++)
                 ctx->beacon[j] = cl->beacon[j];
         }
