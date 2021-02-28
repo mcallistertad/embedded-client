@@ -52,6 +52,30 @@ typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
+/*! \brief Map cell type
+ *
+ *  @param cell Pointer to beacon (cell)
+ *
+ *  @return cell type
+ */
+static int16_t map_cell_type(Beacon_t *cell)
+{
+    static uint16_t map[] = { /* force neater formatting */
+        [SKY_BEACON_NR] = Cell_Type_NR,
+        [SKY_BEACON_LTE] = Cell_Type_LTE,
+        [SKY_BEACON_UMTS] = Cell_Type_UMTS,
+        [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
+        [SKY_BEACON_CDMA] = Cell_Type_CDMA,
+        [SKY_BEACON_GSM] = Cell_Type_GSM,
+        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN
+    };
+
+    if (!is_cell_type(cell))
+        return Cell_Type_UNKNOWN;
+    else
+        return map[cell->h.type];
+}
+
 static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 {
     size_t i;
@@ -72,29 +96,6 @@ static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
 static int64_t flip_sign(int64_t value)
 {
     return -value;
-}
-
-/*! \brief Get cell type
- *
- *  @param cell Pointer to beacon (cell)
- *
- *  @return cell type
- */
-static int16_t map_cell_type(Beacon_t *cell)
-{
-    uint16_t map[] = { /* force tidy code formatting */
-        [SKY_BEACON_NR] = Cell_Type_NR,
-        [SKY_BEACON_LTE] = Cell_Type_LTE,
-        [SKY_BEACON_UMTS] = Cell_Type_UMTS,
-        [SKY_BEACON_NBIOT] = Cell_Type_NBIOT,
-        [SKY_BEACON_CDMA] = Cell_Type_CDMA,
-        [SKY_BEACON_GSM] = Cell_Type_GSM,
-        [SKY_BEACON_MAX] = Cell_Type_UNKNOWN
-    };
-    if (!is_cell_type(cell))
-        return Cell_Type_UNKNOWN;
-    else
-        return map[cell->h.type];
 }
 
 static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
@@ -171,13 +172,14 @@ static bool encode_vap_data(
     return true;
 }
 
-static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
     uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
 
     for (i = 0; i < num_beacons; i++) {
+        /* encode index of first connected AP */
         if (callback(ctx, i)) {
             retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, i + 1);
 
@@ -213,7 +215,7 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
-    return encode_connected_field(
+    return encode_connected_ap_field(
                ctx, ostream, num_beacons, Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
            encode_repeated_int_field(ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
            encode_optimized_repeated_field(ctx, ostream, num_beacons, Aps_common_freq_plus_1_tag,

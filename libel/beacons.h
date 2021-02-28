@@ -47,6 +47,8 @@
 #define NIBBLE_MASK(n) (0xF0 >> (4 * ((n)&1)))
 #define LOCAL_ADMIN_MASK(byte) (0x02 & (byte))
 
+#define is_ap_type(c) ((c)->h.type == SKY_BEACON_AP)
+
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 
@@ -163,7 +165,6 @@ typedef struct sky_cacheline {
     int16_t len; /* number of beacons */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
     uint32_t time;
-    int16_t connected; /* which beacon is conneted (-1 == none) */
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
@@ -222,7 +223,6 @@ typedef struct sky_ctx {
     int16_t len; /* number of beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     int16_t ap_len; /* number of AP beacons in list (0 == none) */
-    int16_t connected; /* which beacon is conneted (-1 == none) */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */

@@ -50,7 +50,7 @@ struct ap_scan aps[] = /* clang-format off */
                       { "826AB092DC99", 300, 3660, -130 },
                       { "283B823629F0", 300, 3660, -90 },
                       { "283B821C712A", 300, 3660, -77 },
-                      { "0024D2E08E5D", 300, 3660, -92 },
+ //                     { "0024D2E08E5D", 300, 3660, -92 },
                       { "283B821CC232", 300, 3660, -91 },
                       { "74DADA5E1015", 300, 3660, -88 },
                       { "B482FEA46221", 300, 3660, -89 },
@@ -455,7 +455,7 @@ retry_after_auth:
 
         if (ret_status != SKY_SUCCESS) {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_RETRY_AUTH)
+            if (sky_errno == SKY_AUTH_RETRY)
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
         }
 

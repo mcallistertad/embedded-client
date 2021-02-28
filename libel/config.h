@@ -31,7 +31,7 @@
 #endif
 
 #ifndef SKY_LOG_LENGTH
-#define SKY_LOG_LENGTH 200
+#define SKY_LOG_LENGTH 120
 #endif
 
 /*! \brief The maximum number of beacons passed to the server in a request

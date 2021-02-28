@@ -261,19 +261,19 @@ static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
             sky_perror(state.backoff), (int)(now - state.header.time));
         switch (state.backoff) {
-        case SKY_RETRY_AUTH_8H:
+        case SKY_AUTH_RETRY_8H:
             if (now - state.header.time < (8 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_RETRY_AUTH_16H:
+        case SKY_AUTH_RETRY_16H:
             if (now - state.header.time < (16 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_RETRY_AUTH_1D:
+        case SKY_AUTH_RETRY_1D:
             if (now - state.header.time < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_RETRY_AUTH_30D:
+        case SKY_AUTH_RETRY_30D:
             if (now - state.header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
@@ -333,10 +333,9 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
-    ctx->connected = -1; /* all unconnected */
 
     if (backoff_violation(ctx, now)) {
-        *sky_errno = SKY_ERROR_AUTH;
+        *sky_errno = SKY_SERVICE_DENIED;
         return NULL;
     }
 
@@ -390,7 +389,8 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
-        is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
+        is_connected ? "serve " : "",
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     if (!sky_open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -512,7 +512,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_e
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, earfcn, rsrp,
-        (int)(ctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
     return sky_add_cell_lte_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, SKY_UNKNOWN_TA, timestamp, rsrp, false);
 }
@@ -609,7 +609,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && ucid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
-            (int)(ctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -669,7 +669,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_
     int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", psc, uarfcn, rscp,
-        (int)(ctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
     return sky_add_cell_umts_beacon(ctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -693,7 +693,8 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     Beacon_t b;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
-        is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
+        is_connected ? "serve, " : "",
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* Range check parameters */
     if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
@@ -747,8 +748,9 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     Beacon_t b;
 
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, nrsrp %d, %s, age %d", mcc, mnc, tac,
-            e_cellid, nrsrp, is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
+            mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -810,7 +812,8 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, nrsrp %d, age %d", ncid, earfcn, nrsrp,
-        (int)(ctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
+
     return sky_add_cell_nb_iot_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
 }
@@ -842,7 +845,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && nci != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d: %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, nci, pci, nrarfcn, ta, csi_rsrp, is_connected ? "serve, " : "",
-            (int)(ctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
      * be unvalued (meaning user is attempting to add a neighbor cell). Partial
@@ -909,7 +912,7 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_er
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, nrarfcn, csi_rsrp,
-        (int)(ctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
     return sky_add_cell_nr_beacon(ctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, SKY_UNKNOWN_TA, timestamp,
         csi_rsrp, false);
@@ -935,14 +938,15 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp)
 {
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe: %d, alt: %d.%02d, vpe: %d,", (int)lat,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe %d, alt %d.%02d, vpe %d,", (int)lat,
         (int)fabs(round(1000000 * (lat - (int)lat))), (int)lon,
         (int)fabs(round(1000000 * (lon - (int)lon))), hpe, (int)altitude,
         (int)fabs(round(100 * (altitude - (int)altitude))), vpe);
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing: %d.%01d, nsat: %d, %d", (int)speed,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing %d.%01d, nsat %d, age %d", (int)speed,
         (int)fabs(round(10 * (speed - (int)speed))), (int)bearing,
-        (int)fabs(round(1 * (bearing - (int)bearing))), nsat, (int)timestamp);
+        (int)fabs(round(1 * (bearing - (int)bearing))), nsat,
+        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* range check parameters */
     if (isnan(lat) || isnan(lon)) /* don't fail for empty gnss */
@@ -1067,12 +1071,12 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     if (backoff_violation(ctx, (uint32_t)(*sky_time)(NULL))) {
-        *sky_errno = SKY_ERROR_AUTH;
-        return SKY_FINALIZE_ERROR;
+        *sky_errno = SKY_SERVICE_DENIED;
+        return ret;
     }
 
     /* There must be at least one beacon */
-    if (ctx->len == 0 && !has_gps(ctx)) {
+    if (NUM_BEACONS(ctx) == 0 && !has_gps(ctx)) {
         *sky_errno = SKY_ERROR_NO_BEACONS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
         return ret;
@@ -1087,7 +1091,6 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
             loc->dl_app_data = NULL;
             loc->dl_app_data_len = 0;
         }
-        *sky_errno = SKY_ERROR_NONE;
 #if SKY_DEBUG
         time_t cached_time = loc->time;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, age %d Sec",
@@ -1106,7 +1109,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
-        ctx->len, bufsize);
+        NUM_BEACONS(ctx), bufsize);
 
 #if SKY_DEBUG
     if (ctx->state->config.last_config_time == 0)
@@ -1173,21 +1176,21 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 &s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic);
             if (ctx->auth_state == STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
                 ctx->state->backoff = SKY_ERROR_NONE;
-                return set_error_status(sky_errno, SKY_RETRY_AUTH);
+                return set_error_status(sky_errno, SKY_AUTH_RETRY);
             } else if (ctx->state->backoff ==
                        SKY_ERROR_NONE) /* Registration request failed auth, retry */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_RETRY_AUTH));
+                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY));
             else if (ctx->state->backoff ==
-                     SKY_RETRY_AUTH) /* Registration request failed again, retry after 8hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_RETRY_AUTH_8H));
+                     SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
+                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_8H));
             else if (ctx->state->backoff ==
-                     SKY_RETRY_AUTH_8H) /* Registration request failed again, retry after 16hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_RETRY_AUTH_16H));
+                     SKY_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
+                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_16H));
             else if (ctx->state->backoff ==
-                     SKY_RETRY_AUTH_16H) /* Registration request failed again, retry after 24hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_RETRY_AUTH_1D));
+                     SKY_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
+                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_1D));
             else
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_RETRY_AUTH_30D));
+                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_30D));
         default:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
                 sky_pserver_status(loc->location_status));
@@ -1276,22 +1279,22 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_INTERNAL:
         str = "An unexpected error occured";
         break;
-    case SKY_ERROR_AUTH:
-        str = "Operation unauthorized";
+    case SKY_SERVICE_DENIED:
+        str = "Operation denied";
         break;
-    case SKY_RETRY_AUTH:
+    case SKY_AUTH_RETRY:
         str = "Operation unauthorized, retry now";
         break;
-    case SKY_RETRY_AUTH_8H:
+    case SKY_AUTH_RETRY_8H:
         str = "Operation unauthorized, retry in 8 hours";
         break;
-    case SKY_RETRY_AUTH_16H:
+    case SKY_AUTH_RETRY_16H:
         str = "Operation unauthorized, retry in 16 hours";
         break;
-    case SKY_RETRY_AUTH_1D:
+    case SKY_AUTH_RETRY_1D:
         str = "Operation unauthorized, retry in 24 hours";
         break;
-    case SKY_RETRY_AUTH_30D:
+    case SKY_AUTH_RETRY_30D:
         str = "Operation unauthorized, retry in a month";
         break;
     default:
