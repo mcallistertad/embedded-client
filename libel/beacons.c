@@ -366,14 +366,17 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
         return false;
     }
 
-    /* if beacons can't be compared for equality, order like this */
+    /* if beacons can't be compared for equality (different types), order like this */
     if ((equality = sky_plugin_equal(ctx, NULL, new, wb, NULL)) == SKY_ERROR) {
-        /* types increase in value as they become lower priority */
-        /* so we have to invert the sign of the comparison value */
+        if (new->h.connected != wb->h.connected)
+            /* connected is best */
+            better = new->h.connected ? 1 : -1;
         if (is_cell_nmr(new) != is_cell_nmr(wb))
-            /* fully qualified is best */
+            /* fully qualified is next */
             better = (!is_cell_nmr(new) ? 1 : -1);
         else
+            /* then type which increase in value as they become lower priority */
+            /* so we have to invert the sign of the comparison value */
             better = -(new->h.type - wb->h.type);
 #ifdef VERBOSE_DEBUG
         dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
@@ -386,8 +389,8 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     else {
         /* if the beacons can be compared and are not equivalent, determine which is better */
         if (new->h.type == SKY_BEACON_AP || new->h.type == SKY_BEACON_BLE) {
+            /* Compare APs by rssi */
             if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
-                /* Compare APs by rssi */
                 better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
 #ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WiFi rssi score %d (%s)", better,
@@ -397,11 +400,11 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
+        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
-            /* cell comparison is type, connected, or youngest, or stongest */
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
 #ifdef VERBOSE_DEBUG
@@ -473,17 +476,19 @@ int find_oldest(Sky_ctx_t *ctx)
     return oldestc;
 }
 
-/*! \brief workspace has cell
+/*! \brief get workspace index of cell
+ *
+ * cells are in priority order by type, connected, age and strength
  *
  * @param ctx Skyhook request context
  *
  * @return index of first connected cell or first fully qualified cell, or -1
  */
-static int workspace_has_cell(Sky_ctx_t *ctx)
+static int get_workspace_cell_index(Sky_ctx_t *ctx)
 {
     int j;
 
-    /* for each cell in workspace, return index of connected one */
+    /* return index of highest priority connected one */
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
         if (ctx->beacon[j].h.connected) {
 #ifdef VERBOSE_DEBUG
@@ -492,7 +497,7 @@ static int workspace_has_cell(Sky_ctx_t *ctx)
             return j;
         }
     }
-    /* for each cell in workspace, return index of first fully qualified one */
+    /* return index of highest priority first fully qualified one */
     for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
         if (!is_cell_nmr(&ctx->beacon[j])) {
 #ifdef VERBOSE_DEBUG
@@ -507,7 +512,9 @@ static int workspace_has_cell(Sky_ctx_t *ctx)
 /*! \brief test cell in workspace has changed from that in cache
  *
  *  false if either workspace or cache has no cells
- *  false if connected cell matches cache
+ *  false if highest priority workspace cell (which is
+ *  assumed to be the serving cell, regardless of whether or
+ *  not the user has marked it "connected") matches cache
  *  true otherwise
  *
  *  @param ctx Skyhook request context
@@ -532,7 +539,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if ((j = workspace_has_cell(ctx)) == -1) {
+    if ((j = get_workspace_cell_index(ctx)) == -1) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in workspace");
 #endif
