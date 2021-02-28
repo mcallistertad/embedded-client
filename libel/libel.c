@@ -1016,11 +1016,12 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     /* check cache against beacons for match
      * setting from_cache if a matching cacheline is found
      * */
-    if ((c = get_from_cache(ctx)) >= 0) {
+    c = get_from_cache(ctx);
+    if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[c];
 
         /* cache hit */
-        /* count the number of cache hits processed between requests sent to server */
+        /* count of consecutive cache hits since last cache miss */
         if (ctx->state->cache_hits < 127) {
             ctx->state->cache_hits++;
             if (ctx->debounce) {
@@ -1031,8 +1032,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 for (j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
             }
-        } else
-            ctx->state->cache_hits = 0; /* 127 cache hits is a lot, start counting again and */
+        } else {
+            ctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
+            ctx->state->cache_hits = 0; /* report 0 for cache miss */
+        }
     }
 
     /* encode request into the bit bucket, just to determine the length of the
@@ -1064,7 +1067,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size)
 {
-    int c, rc;
+    int rc;
     Sky_cacheline_t *cl;
     Sky_finalize_t ret = SKY_FINALIZE_ERROR;
 
@@ -1086,8 +1089,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* check cache match result */
-    if ((c = ctx->get_from) >= 0) {
-        cl = &ctx->state->cacheline[c];
+    if (IS_CACHE_HIT(ctx)) {
+        cl = &ctx->state->cacheline[ctx->get_from];
         if (loc != NULL) {
             *loc = cl->loc;
             /* no downlink data to report to user */
@@ -1168,10 +1171,14 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Response decode failure");
         return set_error_status(sky_errno, SKY_ERROR_DECODE_ERROR);
     } else {
-        switch (loc->location_status) {
-        case SKY_LOCATION_STATUS_SUCCESS:
+        if (IS_CACHE_MISS(ctx))
+            ctx->state->cache_hits = 0; /* report 0 for cache miss */
+        /* if this is a response from a cache miss, clear cache_hits count */
+        if (IS_CACHE_MISS(ctx))
             ctx->state->cache_hits =
                 0; /* reset number of cache_hits when request to server was successful */
+        switch (loc->location_status) {
+        case SKY_LOCATION_STATUS_SUCCESS:
             break;
         case SKY_LOCATION_STATUS_AUTH_ERROR:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
