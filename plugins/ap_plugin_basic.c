@@ -146,7 +146,16 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     /* if the rssi range is small, throw away middle beacon */
 
     if (band_range < 0.5) {
-        /* search from middle of range looking for uncached beacon */
+        /* search from middle of range looking for uncached and unconnected beacon */
+        for (jump = 0, up_down = -1, i = NUM_APS(ctx) / 2; i >= 0 && i < NUM_APS(ctx);
+             jump++, i += up_down * jump, up_down = -up_down) {
+            b = &ctx->beacon[i];
+            if (!b->ap.property.in_cache && !b->ap.h.connected) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, %s beacon",
+                    !jump ? "remove middle unconnected uncached" : "remove unconnected uncached");
+                return remove_beacon(ctx, i) == SKY_SUCCESS;
+            }
+        }
         for (jump = 0, up_down = -1, i = NUM_APS(ctx) / 2; i >= 0 && i < NUM_APS(ctx);
              jump++, i += up_down * jump, up_down = -up_down) {
             b = &ctx->beacon[i];
@@ -156,17 +165,24 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
                 return remove_beacon(ctx, i) == SKY_SUCCESS;
             }
         }
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, remove cached beacon");
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING,
+            "Warning: rssi range is small, remove cached or connected beacon");
         return remove_beacon(ctx, NUM_APS(ctx) / 2) == SKY_SUCCESS;
     }
 
     /* if beacon with min RSSI is below threshold, */
-    /* throw out weak one, not in cache, not Virtual Group or Unused  */
+    /* throw out weak one, not connected or not in cache if possible */
     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Weakest beacon rssi: %d(%d) vs %d threshold",
         EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi), ctx->beacon[NUM_APS(ctx) - 1].h.rssi,
         -CONFIG(ctx->state, cache_neg_rssi_threshold));
     if (EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) <
         -CONFIG(ctx->state, cache_neg_rssi_threshold)) {
+        for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
+            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
+                    -CONFIG(ctx->state, cache_neg_rssi_threshold) &&
+                !ctx->beacon[i].ap.h.connected && !ctx->beacon[i].ap.property.in_cache)
+                reject = i;
+        }
         for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
             if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
                     -CONFIG(ctx->state, cache_neg_rssi_threshold) &&
@@ -180,8 +196,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
         }
         if (reject == -1)
             reject =
-                NUM_APS(ctx) -
-                1; // reject lowest rssi value if there is no non-virtual group and no uncached or Unused beacon
+                NUM_APS(ctx) - 1; // reject lowest rssi value if there no uncached or Unused beacon
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Discarding beacon %d with very weak strength", reject);
         return remove_beacon(ctx, reject) == SKY_SUCCESS;
     }
@@ -196,16 +211,27 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
 
     /* find AP with poorest fit to ideal rssi */
     /* always keep lowest and highest rssi */
-    /* unless all the middle candidates are in the cache or virtual group */
+    /* unless all the middle candidates are connected or in the cache */
     for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
-        if (!ctx->beacon[i].ap.property.in_cache &&
+        if (!ctx->beacon[i].ap.property.in_cache && !ctx->beacon[i].ap.h.connected &&
             fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
             worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
             reject = i;
         }
     }
+    /* haven't found a beacon to remove yet due to matching cached beacons and connected */
+    /* find poorest fit which may be in cache */
     if (reject == -1) {
-        /* haven't found a beacon to remove yet due to matching cached beacons */
+        for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
+            if (!ctx->beacon[i].ap.h.connected &&
+                fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
+                worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
+                reject = i;
+            }
+        }
+    }
+    if (reject == -1) {
+        /* haven't found a beacon to remove yet due to matching cached beacons or connected */
         /* Throw away either lowest or highest rssi valued beacons if not cached */
         if (!ctx->beacon[NUM_APS(ctx) - 1].ap.property.in_cache)
             reject = NUM_APS(ctx) - 1;
@@ -270,7 +296,6 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     int cmp, rm = -1;
 #if SKY_DEBUG
     int keep = -1;
-    bool cached = false;
 #endif
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)NUM_APS(ctx),
@@ -290,11 +315,27 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     for (j = NUM_APS(ctx) - 1; j >= 0; j--) {
         for (i = j - 1; i >= 0; i--) {
             if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
-                if (ctx->beacon[j].ap.property.in_cache) {
+                if (ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) {
                     rm = i;
 #if SKY_DEBUG
                     keep = j;
-                    cached = true;
+#endif
+                } else if (!ctx->beacon[j].ap.h.connected && ctx->beacon[i].ap.h.connected) {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+#endif
+                } else if (ctx->beacon[j].ap.property.in_cache &&
+                           !ctx->beacon[i].ap.property.in_cache) {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+#endif
+                } else if (!ctx->beacon[j].ap.property.in_cache &&
+                           ctx->beacon[i].ap.property.in_cache) {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
 #endif
                 } else {
                     rm = j;
@@ -303,11 +344,27 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
 #endif
                 }
             } else if (cmp > 0) {
-                if (ctx->beacon[i].ap.property.in_cache) {
+                if (ctx->beacon[i].ap.h.connected && !ctx->beacon[j].ap.h.connected) {
                     rm = j;
 #if SKY_DEBUG
                     keep = i;
-                    cached = true;
+#endif
+                } else if (!ctx->beacon[i].ap.h.connected && ctx->beacon[j].ap.h.connected) {
+                    rm = i;
+#if SKY_DEBUG
+                    keep = j;
+#endif
+                } else if (ctx->beacon[i].ap.property.in_cache &&
+                           !ctx->beacon[j].ap.property.in_cache) {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
+#endif
+                } else if (!ctx->beacon[i].ap.property.in_cache &&
+                           ctx->beacon[j].ap.property.in_cache) {
+                    rm = j;
+#if SKY_DEBUG
+                    keep = i;
 #endif
                 } else {
                     rm = i;
@@ -317,8 +374,9 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
                 }
             }
             if (rm != -1) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s", rm, keep,
-                    cached ? " (cached)" : "");
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", rm, keep,
+                    ctx->beacon[keep].ap.h.connected ? " (connected)" : "",
+                    ctx->beacon[keep].ap.property.in_cache ? " (cached)" : "");
                 remove_beacon(ctx, rm);
                 return true;
             }
@@ -390,7 +448,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
 static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 {
     /* beacon is AP and is subject to filtering */
-    /* discard virtual duplicates of remove one based on rssi distribution */
+    /* discard virtual duplicates or remove one based on age or rssi distribution */
     if (!remove_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx) && !remove_worst_ap_by_rssi(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to remove worst AP, try next plugin?");
         return SKY_ERROR;
