@@ -55,7 +55,10 @@
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
 
-#define has_gps(c) (c != NULL && !isnan((c)->gps.lat))
+#define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
+
+#define IS_CACHE_HIT(c) ((c)->get_from != -1)
+#define IS_CACHE_MISS(c) ((c)->get_from == -1)
 
 /*! \brief Types of beacon in priority order
  */
@@ -211,6 +214,7 @@ typedef struct sky_state {
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
     int newest;
     Sky_config_t config; /* dynamic config parameters */
+    uint8_t cache_hits; /* count the client cache hits */
 } Sky_state_t;
 
 typedef struct sky_ctx {

@@ -221,7 +221,7 @@ typedef struct _Rq {
     void* gnss;
     void* cells;
     void* vaps;
-    uint32_t seq_num;
+    uint32_t cache_hits;
     uint32_t score;
     uint32_t score_threshold;
     pb_callback_t ctx;
@@ -381,7 +381,7 @@ typedef struct _Rs {
 #define Rq_gnss_tag                              9
 #define Rq_cells_tag                             10
 #define Rq_vaps_tag                              11
-#define Rq_seq_num_tag                           12
+#define Rq_cache_hits_tag                        12
 #define Rq_score_tag                             13
 #define Rq_score_threshold_tag                   14
 #define Rq_ctx_tag                               15
@@ -434,7 +434,7 @@ X(a, STATIC, SINGULAR, MESSAGE, nbiot_cells, 8) \
 X(a, CALLBACK, SINGULAR, MESSAGE, gnss, 9) \
 X(a, CALLBACK, REPEATED, MESSAGE, cells, 10) \
 X(a, CALLBACK, SINGULAR, BYTES, vaps, 11) \
-X(a, STATIC, SINGULAR, UINT32, seq_num, 12) \
+X(a, STATIC, SINGULAR, UINT32, cache_hits, 12) \
 X(a, STATIC, SINGULAR, UINT32, score, 13) \
 X(a, STATIC, SINGULAR, UINT32, score_threshold, 14) \
 X(a, CALLBACK, SINGULAR, BYTES, ctx, 15) \
