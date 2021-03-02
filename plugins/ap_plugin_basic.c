@@ -37,6 +37,8 @@
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
+#define AP_BELOW_RSSI_THRESHOLD(ctx, idx)                                                          \
+    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) < -CONFIG((ctx)->state, cache_neg_rssi_threshold))
 
 /*! \brief compare beacons for equality
  *
@@ -121,6 +123,10 @@ static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
 
 /*! \brief try to remove one AP by selecting an AP which leaves best spread of rssi values
  *
+ *  Workspace AP beacons are stored in decreasing rssi order
+ *  Avoid removing first and last beacons (with highest and lowest rssi) as this likely
+ *  would reduce the overall range of rssi values.
+ *
  *  @param ctx Skyhook request context
  *
  *  @return boot true if beacon removed or false
@@ -128,7 +134,7 @@ static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
 static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
 {
     int i, reject, jump, up_down;
-    float band_range, worst;
+    float band_range, worst, difference;
     float ideal_rssi[MAX_AP_BEACONS + 1];
     Beacon_t *b;
 
@@ -143,7 +149,12 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
                      EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi)) /
                  ((float)NUM_APS(ctx) - 1);
 
-    /* if the rssi range is small, throw away middle beacon */
+    /* if the rssi range is small
+     * first, look for and remove an uncached *and* unconnected AP.
+     * If there isn't one, look for and remove an uncached AP.
+     * In either case, search from the middle outward in order to
+     * avoid reducing an already small RSSI value range
+     */
 
     if (band_range < 0.5) {
         /* search from middle of range looking for uncached and unconnected beacon */
@@ -171,32 +182,22 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     }
 
     /* if beacon with min RSSI is below threshold, */
-    /* throw out weak one, not connected or not in cache if possible */
-    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Weakest beacon rssi: %d(%d) vs %d threshold",
-        EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi), ctx->beacon[NUM_APS(ctx) - 1].h.rssi,
-        -CONFIG(ctx->state, cache_neg_rssi_threshold));
-    if (EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi) <
-        -CONFIG(ctx->state, cache_neg_rssi_threshold)) {
+    /* throw out a weak one */
+    if (AP_BELOW_RSSI_THRESHOLD(ctx, NUM_APS(ctx) - 1)) {
+        /* find weak ap not connected amd not in cache if possible */
         for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
-            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
-                    -CONFIG(ctx->state, cache_neg_rssi_threshold) &&
-                !ctx->beacon[i].ap.h.connected && !ctx->beacon[i].ap.property.in_cache)
-                reject = i;
-        }
-        for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
-            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
-                    -CONFIG(ctx->state, cache_neg_rssi_threshold) &&
+            if (AP_BELOW_RSSI_THRESHOLD(ctx, i) && !ctx->beacon[i].ap.h.connected &&
                 !ctx->beacon[i].ap.property.in_cache)
                 reject = i;
         }
-        for (i = NUM_APS(ctx) - 1; i > 0 && reject == -1; i--) {
-            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) <
-                -CONFIG(ctx->state, cache_neg_rssi_threshold))
+        /* Second, if none found, try to find uncached, weak, AP. */
+        for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
+            if (AP_BELOW_RSSI_THRESHOLD(ctx, i) && !ctx->beacon[i].ap.property.in_cache)
                 reject = i;
         }
+        /* Third, if none found, remove weakest AP. */
         if (reject == -1)
-            reject =
-                NUM_APS(ctx) - 1; // reject lowest rssi value if there no uncached or Unused beacon
+            reject = NUM_APS(ctx) - 1;
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Discarding beacon %d with very weak strength", reject);
         return remove_beacon(ctx, reject) == SKY_SUCCESS;
     }
@@ -213,19 +214,20 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     /* always keep lowest and highest rssi */
     /* unless all the middle candidates are connected or in the cache */
     for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
+        difference = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
         if (!ctx->beacon[i].ap.property.in_cache && !ctx->beacon[i].ap.h.connected &&
-            fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
-            worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
+            difference >= worst) {
+            worst = difference;
             reject = i;
         }
     }
     /* haven't found a beacon to remove yet due to matching cached beacons and connected */
     /* find poorest fit which may be in cache */
     if (reject == -1) {
-        for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
-            if (!ctx->beacon[i].ap.h.connected &&
-                fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]) >= worst) {
-                worst = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
+        for (i = 1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
+            difference = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
+            if (!ctx->beacon[i].ap.h.connected && difference >= worst) {
+                worst = difference;
                 reject = i;
             }
         }
@@ -244,9 +246,10 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     for (i = 0; i < NUM_APS(ctx); i++) {
         b = &ctx->beacon[i];
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s: %-2d, %s ideal %d.%02d fit %2d.%02d MAC %02X:%02X:%02X:%02X:%02X:%02X (%d)",
-            (reject == i) ? "remove" : "      ", i, b->ap.property.in_cache ? "Cached" : "      ",
-            (int)ideal_rssi[i], (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
+            "%-2d %s %s: %-2d, %s ideal %d.%02d fit %2d.%02d MAC %02X:%02X:%02X:%02X:%02X:%02X (%d)",
+            i, b->ap.h.connected ? "*" : " ", (reject == i) ? "remove" : "      ", i,
+            b->ap.property.in_cache ? "Cached" : "      ", (int)ideal_rssi[i],
+            (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
             (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]), ideal_rssi[i],
             (int)fabs(round(100 * (fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]) -
                                       (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i])))),
@@ -294,9 +297,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
 {
     int i, j;
     int cmp, rm = -1;
-#if SKY_DEBUG
     int keep = -1;
-#endif
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)NUM_APS(ctx),
         (int)NUM_BEACONS(ctx));
@@ -311,68 +312,53 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-    /* start search with weakest beacons first */
-    for (j = NUM_APS(ctx) - 1; j >= 0; j--) {
+#ifdef VERBOSE_DEBUG
+    DUMP_WORKSPACE(ctx);
+#endif
+    /* Compare all beacons, looking for similar macs
+     * Try to keep lowest of two beacons with similar macs, unless
+     * the lower one is connected or in cache and the other is not
+     */
+    for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
             if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
-                if (ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) {
+                /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
+                 *
+                 * If j is connected and i is not or
+                 * if i and j have the same connected state and j is in cache and i is not
+                 *  remove i
+                 * otherwise remove j
+                 */
+                if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
+                    ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
+                        (ctx->beacon[j].ap.property.in_cache &&
+                            !ctx->beacon[i].ap.property.in_cache))) {
                     rm = i;
-#if SKY_DEBUG
                     keep = j;
-#endif
-                } else if (!ctx->beacon[j].ap.h.connected && ctx->beacon[i].ap.h.connected) {
-                    rm = j;
-#if SKY_DEBUG
-                    keep = i;
-#endif
-                } else if (ctx->beacon[j].ap.property.in_cache &&
-                           !ctx->beacon[i].ap.property.in_cache) {
-                    rm = i;
-#if SKY_DEBUG
-                    keep = j;
-#endif
-                } else if (!ctx->beacon[j].ap.property.in_cache &&
-                           ctx->beacon[i].ap.property.in_cache) {
-                    rm = i;
-#if SKY_DEBUG
-                    keep = j;
-#endif
                 } else {
                     rm = j;
-#if SKY_DEBUG
                     keep = i;
-#endif
                 }
             } else if (cmp > 0) {
-                if (ctx->beacon[i].ap.h.connected && !ctx->beacon[j].ap.h.connected) {
+                /* i has higher mac so we will remove it unless connected or in cache indicate otherwise
+                 *
+                 * If i is connected and j is not or
+                 * if i and j have the same connected state and i is in cache and j is not
+                 *  remove j
+                 * otherwise remove i
+                 */
+                if ((ctx->beacon[i].ap.h.connected && !ctx->beacon[j].ap.h.connected) ||
+                    ((ctx->beacon[i].ap.h.connected == ctx->beacon[j].ap.h.connected &&
+                        (ctx->beacon[i].ap.property.in_cache &&
+                            !ctx->beacon[j].ap.property.in_cache)))) {
                     rm = j;
-#if SKY_DEBUG
                     keep = i;
-#endif
-                } else if (!ctx->beacon[i].ap.h.connected && ctx->beacon[j].ap.h.connected) {
-                    rm = i;
-#if SKY_DEBUG
-                    keep = j;
-#endif
-                } else if (ctx->beacon[i].ap.property.in_cache &&
-                           !ctx->beacon[j].ap.property.in_cache) {
-                    rm = j;
-#if SKY_DEBUG
-                    keep = i;
-#endif
-                } else if (!ctx->beacon[i].ap.property.in_cache &&
-                           ctx->beacon[j].ap.property.in_cache) {
-                    rm = j;
-#if SKY_DEBUG
-                    keep = i;
-#endif
                 } else {
                     rm = i;
-#if SKY_DEBUG
                     keep = j;
-#endif
                 }
             }
+            (void)keep; /* suppress compiler warning if SKY_DEBUG false */
             if (rm != -1) {
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", rm, keep,
                     ctx->beacon[keep].ap.h.connected ? " (connected)" : "",
@@ -411,6 +397,8 @@ static void update_newest_cacheline(Sky_ctx_t *ctx)
 
 /*! \brief try to reduce AP by filtering out the oldest one
  *
+ *  Workspace AP beacons are stored in decreasing rssi order
+ *
  *  @param ctx Skyhook request context
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
@@ -424,7 +412,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons))
         return false;
 
-    /* Find the youngest and oldest APs search from weakest */
+    /* Find the youngest and oldest APs. Search from weakest remembering oldest and weakest */
     for (i = NUM_APS(ctx) - 1; i >= 0; i--) {
         if (ctx->beacon[i].h.age < youngest_age) {
             youngest_age = ctx->beacon[i].h.age;
@@ -436,7 +424,7 @@ static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
     }
 
     /* if the oldest and youngest beacons have the same age,
-     * there is nothing to do. Otherwise remove the oldest */
+     * there is nothing to do. Otherwise remove the oldest (and weakest) */
     if (youngest_age != oldest_age && oldest_idx != -1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d oldest", oldest_idx);
         remove_beacon(ctx, oldest_idx);
