@@ -85,16 +85,12 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
  *  @param macB pointer to the second MAC
  *  @param pn pointer to nibble index of where they differ if similar (0-11)
  *
- *  @return -1, 0 or 1
- *  return 0 when NOT similar, -1 indicates parent is B, 1 parent is A
- *  if macs are similar, and index is not NULL, index is set to nibble index of difference
- *  if macs are identical, 1 is returned
+ *  @return negative, 0 or positive
+ *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
+ *  if macs are similar, and pn is not NULL, *pn is set to nibble index of difference
  */
 static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
 {
-    /* Return 1 (true) if OUIs are identical and no more than 1 hex digits
-     * differ between the two MACs. Else return 0 (false).
-     */
     size_t num_diff = 0; // Num hex digits which differ
     size_t idx_diff = 0; // nibble digit which differs
     size_t n;
