@@ -282,7 +282,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 }
 
 /*! \brief select between two virtual APs which should be removed,
- * and then remove it
+ *  and then remove it
  *
  *  keep beacons with connectedness and then in_cache properties
  *
@@ -314,8 +314,9 @@ static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
- *         When similar, remove beacon with highesr mac address
- *         unless it is in cache, then choose to remove the uncached beacon
+ *
+ *  When similar, remove beacon with highesr mac address
+ *  unless it is in cache, then choose to remove the uncached beacon
  *
  *  @param ctx Skyhook request context
  *
