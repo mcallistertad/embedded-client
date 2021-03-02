@@ -42,26 +42,29 @@ struct ap_scan {
     uint32_t age;
     uint32_t frequency;
     int16_t rssi;
+    bool connected;
 };
 
 /* some rssi values intentionally out of range */
 struct ap_scan aps[] = /* clang-format off */ 
-                    { { "283B8264E08B", 300, 3660, -8 },
-                      { "826AB092DC99", 300, 3660, -130 },
-                      { "283B823629F0", 300, 3660, -90 },
-                      { "283B821C712A", 300, 3660, -77 },
- //                     { "0024D2E08E5D", 300, 3660, -92 },
-                      { "283B821CC232", 300, 3660, -91 },
-                      { "74DADA5E1015", 300, 3660, -88 },
-                      { "B482FEA46221", 300, 3660, -89 },
-                      { "74DAD95E1015", 300, 3660, -88 },
-                      { "B482F1A46221", 300, 3660, -89 },
-                      { "283B821CC232", 300, 3660, -91 },
-                      { "283B822CC232", 300, 3660, -91 },
-                      { "283B823CC232", 300, 3660, -91 },
-                      { "283B824CC232", 300, 3660, -91 },
-                      { "283B825CC232", 300, 3660, -91 },
-                      { "EC22809E00DB", 300, 3660, -90 } };
+                    { { "283B8264E08B", 300, 3660, -8, 0 },
+                      { "823AB292D699", 30, 3660, -30, 1 },
+                      { "2A32825649F0", 300, 3660, -70, 0 },
+                      { "826AB092DC99", 30, 3660, -130, 0 },
+                      { "283B823629F0", 300, 3660, -90, 0 },
+                      { "283B821C712A", 30, 3660, -77, 0 },
+ //                     { "0024D2E08E5D", 300, 3660, -92, 0 },
+                      { "283B821CC232", 30, 3660, -91, 0 },
+                      { "74DADA5E1015", 300, 3660, -88, 0 },
+                      { "B482FEA46221", 30, 3660, -89, 0 },
+                      { "74DAD95E1015", 300, 3660, -88, 0 },
+                      { "B482F1A46221", 30, 3660, -89, 0 },
+                      { "283B821CC232", 300, 3660, -91, 0 },
+                      { "283B822CC232", 30, 3660, -91, 0 },
+                      { "283B823CC232", 300, 3660, -91, 0 },
+                      { "283B824CC232", 300, 3660, -91, 0 },
+                      { "283B825CC232", 30, 3660, -91, 0 },
+                      { "EC22809E00DB", 300, 3660, -90, 0 } };
 
 /* clang-format on */
 
@@ -257,8 +260,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
         uint8_t mac[MAC_SIZE];
         if (hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
-            ret_status = sky_add_ap_beacon(
-                ctx, &sky_errno, mac, timestamp - aps[i].age, aps[i].rssi, aps[i].frequency, 1);
+            ret_status = sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp - aps[i].age,
+                aps[i].rssi, aps[i].frequency, aps[i].connected);
             if (ret_status == SKY_SUCCESS)
                 printf("AP #%d added\n", i);
             else
