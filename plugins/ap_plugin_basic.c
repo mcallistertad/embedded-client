@@ -281,21 +281,36 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     return num_aps_cached;
 }
 
-static void virtual_ap_selector(Sky_ctx_t *ctx, int i, int j, int *rmIdx, int *keepIdx)
+/*! \brief select between two virtual APs which should be removed
+ *
+ *  keep beacons with connectedness and then in_cache properties
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return true if beacon removed or false otherwise
+ */
+static bool virtual_ap_selector(Sky_ctx_t *ctx, int i, int j)
 {
+    int rm, keep;
+    /* If j is connected and i is not, remove i
+     * if i and j have the same connected state and j is in cache and i is not
+     *  remove i
+     * otherwise remove j
+     */
     if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
         ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
-         (ctx->beacon[j].ap.property.in_cache &&
-          !ctx->beacon[i].ap.property.in_cache))) {
-        *rmIdx = i;
-        *keepIdx = j;
+            (ctx->beacon[j].ap.property.in_cache && !ctx->beacon[i].ap.property.in_cache))) {
+        rm = i;
+        keep = j;
     } else {
-        *rmIdx = j;
-        *keepIdx = i;
+        rm = j;
+        keep = i;
     }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", rm, keep,
+        ctx->beacon[keep].ap.h.connected ? " (connected)" : "",
+        ctx->beacon[keep].ap.property.in_cache ? " (cached)" : "");
+    return (remove_beacon(ctx, rm) == SKY_SUCCESS);
 }
-
-
 
 /*! \brief try to reduce AP by filtering out virtual AP
  *         When similar, remove beacon with highesr mac address
@@ -308,8 +323,7 @@ static void virtual_ap_selector(Sky_ctx_t *ctx, int i, int j, int *rmIdx, int *k
 static bool remove_virtual_ap(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp, rm = -1;
-    int keep = -1;
+    int cmp;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)NUM_APS(ctx),
         (int)NUM_BEACONS(ctx));
@@ -336,25 +350,13 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
             if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
                 /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
                  *
-                 * If j is connected and i is not or
-                 * if i and j have the same connected state and j is in cache and i is not
-                 *  remove i
-                 * otherwise remove j
                  */
-                virtual_ap_selector(ctx, i, j, &rm, &keep);
+                return virtual_ap_selector(ctx, i, j);
             } else if (cmp > 0) {
                 /* situation is exactly reversed (i has higher mac) but logic is otherwise
                  * identical
                  */
-                virtual_ap_selector(ctx, j, i, &rm, &keep);
-            }
-            (void)keep; /* suppress compiler warning if SKY_DEBUG false */
-            if (rm != -1) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", rm, keep,
-                    ctx->beacon[keep].ap.h.connected ? " (connected)" : "",
-                    ctx->beacon[keep].ap.property.in_cache ? " (cached)" : "");
-                remove_beacon(ctx, rm);
-                return true;
+                return virtual_ap_selector(ctx, j, i);
             }
         }
     }
