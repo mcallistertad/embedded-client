@@ -281,6 +281,22 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     return num_aps_cached;
 }
 
+static void virtual_ap_selector(Sky_ctx_t *ctx, int i, int j, int *rmIdx, int *keepIdx)
+{
+    if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
+        ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
+         (ctx->beacon[j].ap.property.in_cache &&
+          !ctx->beacon[i].ap.property.in_cache))) {
+        *rmIdx = i;
+        *keepIdx = j;
+    } else {
+        *rmIdx = j;
+        *keepIdx = i;
+    }
+}
+
+
+
 /*! \brief try to reduce AP by filtering out virtual AP
  *         When similar, remove beacon with highesr mac address
  *         unless it is in cache, then choose to remove the uncached beacon
@@ -325,34 +341,12 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
                  *  remove i
                  * otherwise remove j
                  */
-                if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
-                    ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
-                        (ctx->beacon[j].ap.property.in_cache &&
-                            !ctx->beacon[i].ap.property.in_cache))) {
-                    rm = i;
-                    keep = j;
-                } else {
-                    rm = j;
-                    keep = i;
-                }
+                virtual_ap_selector(ctx, i, j, &rm, &keep);
             } else if (cmp > 0) {
-                /* i has higher mac so we will remove it unless connected or in cache indicate otherwise
-                 *
-                 * If i is connected and j is not or
-                 * if i and j have the same connected state and i is in cache and j is not
-                 *  remove j
-                 * otherwise remove i
+                /* situation is exactly reversed (i has higher mac) but logic is otherwise
+                 * identical
                  */
-                if ((ctx->beacon[i].ap.h.connected && !ctx->beacon[j].ap.h.connected) ||
-                    ((ctx->beacon[i].ap.h.connected == ctx->beacon[j].ap.h.connected &&
-                        (ctx->beacon[i].ap.property.in_cache &&
-                            !ctx->beacon[j].ap.property.in_cache)))) {
-                    rm = j;
-                    keep = i;
-                } else {
-                    rm = i;
-                    keep = j;
-                }
+                virtual_ap_selector(ctx, j, i, &rm, &keep);
             }
             (void)keep; /* suppress compiler warning if SKY_DEBUG false */
             if (rm != -1) {
