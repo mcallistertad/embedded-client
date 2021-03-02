@@ -281,7 +281,8 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     return num_aps_cached;
 }
 
-/*! \brief select between two virtual APs which should be removed
+/*! \brief select between two virtual APs which should be removed,
+ * and then remove it
  *
  *  keep beacons with connectedness and then in_cache properties
  *
@@ -289,27 +290,27 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *
  *  @return true if beacon removed or false otherwise
  */
-static bool virtual_ap_selector(Sky_ctx_t *ctx, int i, int j)
+static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
 {
-    int rm, keep;
-    /* If j is connected and i is not, remove i
-     * if i and j have the same connected state and j is in cache and i is not
-     *  remove i
-     * otherwise remove j
+    /* Assume we'll keep i and discard j. Then, apply following
+     * logic to see if this should be reversed:
+     * If j is connected and i is not, keep j
+     * If i and j have the same connected state and j is in cache and i is not,
+     * keep j.
      */
+    int tmp;
+
     if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
         ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
             (ctx->beacon[j].ap.property.in_cache && !ctx->beacon[i].ap.property.in_cache))) {
-        rm = i;
-        keep = j;
-    } else {
-        rm = j;
-        keep = i;
+        tmp = i;
+        i = j;
+        j = tmp;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", rm, keep,
-        ctx->beacon[keep].ap.h.connected ? " (connected)" : "",
-        ctx->beacon[keep].ap.property.in_cache ? " (cached)" : "");
-    return (remove_beacon(ctx, rm) == SKY_SUCCESS);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", i, j,
+        ctx->beacon[i].ap.h.connected ? " (connected)" : "",
+        ctx->beacon[i].ap.property.in_cache ? " (cached)" : "");
+    return (remove_beacon(ctx, j) == SKY_SUCCESS);
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
@@ -351,12 +352,12 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
                 /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
                  *
                  */
-                return virtual_ap_selector(ctx, i, j);
+                return remove_poorest_of_pair(ctx, i, j);
             } else if (cmp > 0) {
                 /* situation is exactly reversed (i has higher mac) but logic is otherwise
                  * identical
                  */
-                return virtual_ap_selector(ctx, j, i);
+                return remove_poorest_of_pair(ctx, j, i);
             }
         }
     }
