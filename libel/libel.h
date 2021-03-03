@@ -126,7 +126,7 @@ typedef enum {
     SKY_ERROR_SERVER_ERROR, // Operation failed because server reported an error
     SKY_ERROR_NO_PLUGIN, // Operation failed because required plugin was not found
     SKY_ERROR_INTERNAL, // Operation failed due to unexpected behavior
-    SKY_SERVICE_DENIED, // Operation failed due to lack of authentication
+    SKY_ERROR_SERVICE_DENIED, // Service blocked due to repeated errors
     SKY_AUTH_RETRY, // Retry operation now to complete authentication
     SKY_AUTH_RETRY_8H, // Retry operation in 8hr to query authentication,
     SKY_AUTH_RETRY_16H, // Retry operation in 16hr to query authentication,

@@ -335,7 +335,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
     }
 
     if (backoff_violation(ctx, now)) {
-        *sky_errno = SKY_SERVICE_DENIED;
+        *sky_errno = SKY_ERROR_SERVICE_DENIED;
         return NULL;
     }
 
@@ -1077,7 +1077,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     if (backoff_violation(ctx, (uint32_t)(*sky_time)(NULL))) {
-        *sky_errno = SKY_SERVICE_DENIED;
+        *sky_errno = SKY_ERROR_SERVICE_DENIED;
         return ret;
     }
 
@@ -1291,8 +1291,8 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_INTERNAL:
         str = "An unexpected error occured";
         break;
-    case SKY_SERVICE_DENIED:
-        str = "Operation denied";
+    case SKY_ERROR_SERVICE_DENIED:
+        str = "Service blocked due to repeated errors";
         break;
     case SKY_AUTH_RETRY:
         str = "Operation unauthorized, retry now";
