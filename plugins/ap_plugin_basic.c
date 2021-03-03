@@ -307,7 +307,7 @@ static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
         i = j;
         j = tmp;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", i, j,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", j, i,
         ctx->beacon[i].ap.h.connected ? " (connected)" : "",
         ctx->beacon[i].ap.property.in_cache ? " (cached)" : "");
     return (remove_beacon(ctx, j) == SKY_SUCCESS);
