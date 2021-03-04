@@ -27,8 +27,8 @@ ifeq ($(PLUGIN_DIR), )
 	PLUGIN_DIR = plugins
 endif
 SKY_PROTO_DIR = $(API_DIR)/protocol
-NANO_PB_DIR = .submodules/nanopb
-AES_DIR = .submodules/tiny-AES128-C
+NANO_PB_DIR = submodules/nanopb
+AES_DIR = submodules/tiny-AES128-C
 
 INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLUGIN_DIR}
 
@@ -46,17 +46,17 @@ LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 
 .PHONY: all
 
-all: .submodules/nanopb/.git .submodules/tiny-AES128-C/.git .submodules/embedded-protocol/.git lib runtests
+all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests
 
-.submodules/nanopb/.git:
+submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 
-.submodules/tiny-AES128-C/.git:
+submodules/tiny-AES128-C/.git:
 	@echo "submodule tiny-AES128-C must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 
-.submodules/embedded-protocol/.git:
+submodules/embedded-protocol/.git:
 	@echo "submodule embedded-protocol must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
 	exit 1
 

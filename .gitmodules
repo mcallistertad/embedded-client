@@ -1,11 +1,11 @@
 [submodule ".submodules/nanopb"]
-	path = .submodules/nanopb
+	path = submodules/nanopb
 	url = https://github.com/SkyhookWireless/nanopb.git
 	ignore = untracked
 [submodule ".submodules/tiny-AES128-C"]
-	path = .submodules/tiny-AES128-C
+	path = submodules/tiny-AES128-C
 	url = https://github.com/SkyhookWireless/tiny-AES-c.git
 	ignore = untracked
 [submodule ".submodules/embedded-protocol"]
-	path = .submodules/embedded-protocol
+	path = submodules/embedded-protocol
 	url = git@github.com:SkyhookWireless/embedded-protocol.git
