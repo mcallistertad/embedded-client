@@ -611,7 +611,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             "STATE_TBR_UNREGISTERED" :
             (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
                                                         "STATE_TBR_DISABLED",
-        sky_pserver_status(header.status));
+        sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
     if (header.rs_length) {

@@ -461,7 +461,16 @@ retry_after_auth:
         /* Decode the response from server or cache */
         ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, &loc);
 
-        if (ret_status != SKY_SUCCESS) {
+        if (ret_status == SKY_SUCCESS) {
+            printf(
+                "Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
+                sky_pserver_status(loc.location_status), (int)loc.lat,
+                (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
+                (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
+            if (loc.location_status == SKY_LOCATION_STATUS_SUCCESS)
+                printf("Downlink data: %.*s(%d)\n", loc.dl_app_data_len, loc.dl_app_data,
+                    loc.dl_app_data_len);
+        } else {
             printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
             if (sky_errno == SKY_AUTH_RETRY)
                 goto retry_after_auth; /* Repeat request if Authentication was required for last message */
@@ -473,14 +482,6 @@ retry_after_auth:
         exit(-1);
         break;
     }
-
-    printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
-        sky_pserver_status(loc.location_status), (int)loc.lat,
-        (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
-        (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
-    if (loc.location_status == SKY_LOCATION_STATUS_SUCCESS)
-        printf(
-            "Downlink data: %.*s(%d)\n", loc.dl_app_data_len, loc.dl_app_data, loc.dl_app_data_len);
 
     ret_status = sky_close(&sky_errno, &pstate);
 

@@ -1161,6 +1161,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     uint32_t bufsize, Sky_location_t *loc)
 {
     Sky_state_t *s = ctx->state;
+
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1171,14 +1172,28 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Response decode failure");
         return set_error_status(sky_errno, SKY_ERROR_DECODE_ERROR);
     } else {
-        if (IS_CACHE_MISS(ctx))
-            ctx->state->cache_hits = 0; /* report 0 for cache miss */
         /* if this is a response from a cache miss, clear cache_hits count */
         if (IS_CACHE_MISS(ctx))
-            ctx->state->cache_hits =
-                0; /* reset number of cache_hits when request to server was successful */
+            ctx->state->cache_hits = 0;
+
+        /* set error status based on server error code */
         switch (loc->location_status) {
         case SKY_LOCATION_STATUS_SUCCESS:
+            /* Server reports success so clear backoff period tracking */
+            s->backoff = SKY_ERROR_NONE;
+            loc->time = (*ctx->gettime)(NULL);
+
+            /* Add location and current beacons to Cache */
+            if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
+                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
+
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Location from server %d.%06d,%d.%06d hpe: %d, %d dl_app_data_len", (int)loc->lat,
+                (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+                (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+                loc->dl_app_data_len);
+
+            return set_error_status(sky_errno, SKY_ERROR_NONE);
             break;
         case SKY_LOCATION_STATUS_AUTH_ERROR:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
@@ -1186,6 +1201,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             s->header.time = (uint32_t)(*sky_time)(NULL);
             s->header.crc32 = sky_crc32(
                 &s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic);
+
             if (ctx->auth_state == STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
                 ctx->state->backoff = SKY_ERROR_NONE;
                 return set_error_status(sky_errno, SKY_AUTH_RETRY);
@@ -1203,25 +1219,18 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_1D));
             else
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_30D));
+            break;
+        case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
+        case SKY_LOCATION_STATUS_DECODE_ERROR:
+            return set_error_status(sky_errno, SKY_ERROR_AUTH);
+            break;
+        case SKY_LOCATION_STATUS_UNABLE_TO_LOCATE:
+            return set_error_status(sky_errno, SKY_ERROR_LOCATION_UNKNOWN);
+            break;
         default:
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
-                sky_pserver_status(loc->location_status));
             return set_error_status(sky_errno, SKY_ERROR_SERVER_ERROR);
         }
     }
-    s->backoff = SKY_ERROR_NONE;
-    loc->time = (*ctx->gettime)(NULL);
-
-    /* Add location and current beacons to Cache */
-    if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
-
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-        "Location from server %d.%06d,%d.%06d hpe: %d, %d dl_app_data_len", (int)loc->lat,
-        (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, loc->dl_app_data_len);
-
-    return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
 /*! \brief returns a string which describes the meaning of sky_errno codes
@@ -1246,9 +1255,6 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_BAD_PARAMETERS:
         str = "Validation of parameters failed";
         break;
-    case SKY_ERROR_TOO_MANY:
-        str = "Too many beacons";
-        break;
     case SKY_ERROR_BAD_WORKSPACE:
         str = "The workspace buffer is corrupt";
         break;
@@ -1264,20 +1270,8 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_RESOURCE_UNAVAILABLE:
         str = "Can\'t allocate non-volatile storage";
         break;
-    case SKY_ERROR_CLOSE:
-        str = "Failed to cleanup resources during close";
-        break;
-    case SKY_ERROR_BAD_KEY:
-        str = "AES_Key is not valid format";
-        break;
     case SKY_ERROR_NO_BEACONS:
         str = "At least one beacon must be added";
-        break;
-    case SKY_ERROR_ADD_CACHE:
-        str = "Failed to add entry in cache";
-        break;
-    case SKY_ERROR_GET_CACHE:
-        str = "Failed to get entry from cache";
         break;
     case SKY_ERROR_LOCATION_UNKNOWN:
         str = "Server failed to determine location";
@@ -1309,7 +1303,10 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_AUTH_RETRY_30D:
         str = "Operation unauthorized, retry in a month";
         break;
-    default:
+    case SKY_ERROR_AUTH:
+        str = "Operation failed due to authentication error";
+        break;
+    case SKY_ERROR_MAX:
         str = "Unknown error code";
         break;
     }
