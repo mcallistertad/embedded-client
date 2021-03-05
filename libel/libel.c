@@ -1202,7 +1202,11 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             s->header.crc32 = sky_crc32(
                 &s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic);
 
-            if (ctx->auth_state == STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
+            if (ctx->auth_state ==
+                STATE_TBR_DISABLED) { /* Non-TBR Location request failed auth, error */
+                return set_error_status(sky_errno, SKY_ERROR_AUTH);
+            } else if (ctx->auth_state ==
+                       STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
                 ctx->state->backoff = SKY_ERROR_NONE;
                 return set_error_status(sky_errno, SKY_AUTH_RETRY);
             } else if (ctx->state->backoff ==
