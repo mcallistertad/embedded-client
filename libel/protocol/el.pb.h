@@ -20,11 +20,13 @@ typedef enum _RsHeader_Status {
     RsHeader_Status_UNSPECIFIED_ERROR = 1,
     RsHeader_Status_BAD_PARTNER_ID_ERROR = 2,
     RsHeader_Status_DECODE_FAILURE_ERROR = 3,
-    RsHeader_Status_API_SERVER_ERROR = 4
+    RsHeader_Status_API_SERVER_ERROR = 4,
+    RsHeader_Status_AUTH_ERROR = 5,
+    RsHeader_Status_UNABLE_TO_LOCATE = 6
 } RsHeader_Status;
 #define _RsHeader_Status_MIN RsHeader_Status_SUCCESS
-#define _RsHeader_Status_MAX RsHeader_Status_API_SERVER_ERROR
-#define _RsHeader_Status_ARRAYSIZE ((RsHeader_Status)(RsHeader_Status_API_SERVER_ERROR+1))
+#define _RsHeader_Status_MAX RsHeader_Status_UNABLE_TO_LOCATE
+#define _RsHeader_Status_ARRAYSIZE ((RsHeader_Status)(RsHeader_Status_UNABLE_TO_LOCATE+1))
 
 typedef enum _Cell_Type {
     Cell_Type_UNKNOWN = 0,
@@ -100,6 +102,7 @@ typedef struct _Cell {
     bool connected;
     uint32_t neg_rssi;
     uint32_t age;
+    uint32_t ta_plus_1;
 /* @@protoc_insertion_point(struct:Cell) */
 } Cell;
 
@@ -111,6 +114,10 @@ typedef struct _ClientConfig {
     uint32_t cache_age_threshold;
     uint32_t cache_beacon_threshold;
     uint32_t cache_neg_rssi_threshold;
+    uint32_t cache_match_all_threshold;
+    uint32_t cache_match_used_threshold;
+    uint32_t max_vap_per_ap;
+    uint32_t max_vap_per_rq;
 /* @@protoc_insertion_point(struct:ClientConfig) */
 } ClientConfig;
 
@@ -180,6 +187,13 @@ typedef struct _RsHeader {
 } RsHeader;
 
 
+typedef struct _TbrRegistration {
+    char sku[33];
+    int32_t cc;
+/* @@protoc_insertion_point(struct:TbrRegistration) */
+} TbrRegistration;
+
+
 typedef struct _UmtsCells {
     uint32_t connected_idx_plus_1;
     uint32_t common_age_plus_1;
@@ -194,6 +208,7 @@ typedef struct _UmtsCells {
 
 
 typedef PB_BYTES_ARRAY_T(16) Rq_device_id_t;
+typedef PB_BYTES_ARRAY_T(100) Rq_ul_app_data_t;
 typedef struct _Rq {
     Rq_device_id_t device_id;
     uint64_t timestamp;
@@ -205,16 +220,31 @@ typedef struct _Rq {
     NbiotCells nbiot_cells;
     void* gnss;
     void* cells;
+    void* vaps;
+    uint32_t cache_hits;
+    uint32_t score;
+    uint32_t score_threshold;
+    pb_callback_t ctx;
+    pb_callback_t cache;
+    int32_t token_id;
+    TbrRegistration tbr;
+    int32_t max_dl_app_data;
+    Rq_ul_app_data_t ul_app_data;
 /* @@protoc_insertion_point(struct:Rq) */
 } Rq;
 
 
+typedef PB_BYTES_ARRAY_T(8) Rs_used_aps_t;
+typedef PB_BYTES_ARRAY_T(100) Rs_dl_app_data_t;
 typedef struct _Rs {
     double lat;
     double lon;
     uint32_t hpe;
     Rs_Source source;
     ClientConfig config;
+    Rs_used_aps_t used_aps;
+    int32_t token_id;
+    Rs_dl_app_data_t dl_app_data;
 /* @@protoc_insertion_point(struct:Rs) */
 } Rs;
 
@@ -223,31 +253,33 @@ typedef struct _Rs {
 #define RqHeader_init_default                    {0, 0, 0, 0, 0}
 #define RsHeader_init_default                    {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_default                  {{0, {0}}, 0}
-#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_default                          {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_default, UmtsCells_init_default, LteCells_init_default, CdmaCells_init_default, NbiotCells_init_default, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_default, 0, {0, {0}}}
+#define TbrRegistration_init_default             {"", 0}
 #define Aps_init_default                         {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define Cell_init_default                        {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define UmtsCells_init_default                   {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define CdmaCells_init_default                   {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define LteCells_init_default                    {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define NbiotCells_init_default                  {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Gnss_init_default                        {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Rs_init_default                          {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_default}
-#define ClientConfig_init_default                {0, 0, 0, 0, 0, 0}
+#define Rs_init_default                          {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_default, {0, {0}}, 0, {0, {0}}}
+#define ClientConfig_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define RqHeader_init_zero                       {0, 0, 0, 0, 0}
 #define RsHeader_init_zero                       {0, 0, _RsHeader_Status_MIN}
 #define CryptoInfo_init_zero                     {{0, {0}}, 0}
-#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
+#define Rq_init_zero                             {{0, {0}}, 0, {{NULL}, NULL}, GsmCells_init_zero, UmtsCells_init_zero, LteCells_init_zero, CdmaCells_init_zero, NbiotCells_init_zero, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, TbrRegistration_init_zero, 0, {0, {0}}}
+#define TbrRegistration_init_zero                {"", 0}
 #define Aps_init_zero                            {0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define Cell_init_zero                           {_Cell_Type_MIN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define GsmCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define UmtsCells_init_zero                      {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define CdmaCells_init_zero                      {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define LteCells_init_zero                       {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define NbiotCells_init_zero                     {0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define Gnss_init_zero                           {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define Rs_init_zero                             {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_zero}
-#define ClientConfig_init_zero                   {0, 0, 0, 0, 0, 0}
+#define Rs_init_zero                             {0, 0, 0, _Rs_Source_MIN, ClientConfig_init_zero, {0, {0}}, 0, {0, {0}}}
+#define ClientConfig_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define Gnss_lat_tag                             1
@@ -283,12 +315,17 @@ typedef struct _Rs {
 #define Cell_connected_tag                       8
 #define Cell_neg_rssi_tag                        9
 #define Cell_age_tag                             10
+#define Cell_ta_plus_1_tag                       11
 #define ClientConfig_total_beacons_tag           1
 #define ClientConfig_max_ap_beacons_tag          2
 #define ClientConfig_cache_match_threshold_tag   3
 #define ClientConfig_cache_age_threshold_tag     4
 #define ClientConfig_cache_beacon_threshold_tag  5
 #define ClientConfig_cache_neg_rssi_threshold_tag 6
+#define ClientConfig_cache_match_all_threshold_tag 7
+#define ClientConfig_cache_match_used_threshold_tag 8
+#define ClientConfig_max_vap_per_ap_tag          9
+#define ClientConfig_max_vap_per_rq_tag          10
 #define CryptoInfo_iv_tag                        1
 #define CryptoInfo_aes_padding_length_tag        2
 #define GsmCells_connected_idx_plus_1_tag        1
@@ -323,6 +360,8 @@ typedef struct _Rs {
 #define RsHeader_crypto_info_length_tag          1
 #define RsHeader_rs_length_tag                   2
 #define RsHeader_status_tag                      3
+#define TbrRegistration_sku_tag                  3
+#define TbrRegistration_cc_tag                   4
 #define UmtsCells_connected_idx_plus_1_tag       1
 #define UmtsCells_common_age_plus_1_tag          2
 #define UmtsCells_mcc_tag                        3
@@ -341,11 +380,24 @@ typedef struct _Rs {
 #define Rq_nbiot_cells_tag                       8
 #define Rq_gnss_tag                              9
 #define Rq_cells_tag                             10
+#define Rq_vaps_tag                              11
+#define Rq_cache_hits_tag                        12
+#define Rq_score_tag                             13
+#define Rq_score_threshold_tag                   14
+#define Rq_ctx_tag                               15
+#define Rq_cache_tag                             16
+#define Rq_token_id_tag                          17
+#define Rq_tbr_tag                               18
+#define Rq_max_dl_app_data_tag                   19
+#define Rq_ul_app_data_tag                       20
 #define Rs_lat_tag                               1
 #define Rs_lon_tag                               2
 #define Rs_hpe_tag                               3
 #define Rs_source_tag                            4
 #define Rs_config_tag                            5
+#define Rs_used_aps_tag                          6
+#define Rs_token_id_tag                          7
+#define Rs_dl_app_data_tag                       8
 
 /* Struct field encoding specification for nanopb */
 #define RqHeader_FIELDLIST(X, a) \
@@ -380,7 +432,17 @@ X(a, STATIC, SINGULAR, MESSAGE, lte_cells, 6) \
 X(a, STATIC, SINGULAR, MESSAGE, cdma_cells, 7) \
 X(a, STATIC, SINGULAR, MESSAGE, nbiot_cells, 8) \
 X(a, CALLBACK, SINGULAR, MESSAGE, gnss, 9) \
-X(a, CALLBACK, REPEATED, MESSAGE, cells, 10)
+X(a, CALLBACK, REPEATED, MESSAGE, cells, 10) \
+X(a, CALLBACK, SINGULAR, BYTES, vaps, 11) \
+X(a, STATIC, SINGULAR, UINT32, cache_hits, 12) \
+X(a, STATIC, SINGULAR, UINT32, score, 13) \
+X(a, STATIC, SINGULAR, UINT32, score_threshold, 14) \
+X(a, CALLBACK, SINGULAR, BYTES, ctx, 15) \
+X(a, CALLBACK, SINGULAR, BYTES, cache, 16) \
+X(a, STATIC, SINGULAR, INT32, token_id, 17) \
+X(a, STATIC, SINGULAR, MESSAGE, tbr, 18) \
+X(a, STATIC, SINGULAR, INT32, max_dl_app_data, 19) \
+X(a, STATIC, SINGULAR, BYTES, ul_app_data, 20)
 extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field);
 #define Rq_CALLBACK Rq_callback
 #define Rq_DEFAULT NULL
@@ -392,6 +454,13 @@ extern bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_f
 #define Rq_nbiot_cells_MSGTYPE NbiotCells
 #define Rq_gnss_MSGTYPE Gnss
 #define Rq_cells_MSGTYPE Cell
+#define Rq_tbr_MSGTYPE TbrRegistration
+
+#define TbrRegistration_FIELDLIST(X, a) \
+X(a, STATIC, SINGULAR, STRING, sku, 3) \
+X(a, STATIC, SINGULAR, INT32, cc, 4)
+#define TbrRegistration_CALLBACK NULL
+#define TbrRegistration_DEFAULT NULL
 
 #define Aps_FIELDLIST(X, a) \
 X(a, STATIC, SINGULAR, UINT32, connected_idx_plus_1, 1) \
@@ -414,7 +483,8 @@ X(a, STATIC, SINGULAR, UINT32, id5_plus_1, 6) \
 X(a, STATIC, SINGULAR, UINT32, id6_plus_1, 7) \
 X(a, STATIC, SINGULAR, BOOL, connected, 8) \
 X(a, STATIC, SINGULAR, UINT32, neg_rssi, 9) \
-X(a, STATIC, SINGULAR, UINT32, age, 10)
+X(a, STATIC, SINGULAR, UINT32, age, 10) \
+X(a, STATIC, SINGULAR, UINT32, ta_plus_1, 11)
 #define Cell_CALLBACK NULL
 #define Cell_DEFAULT NULL
 
@@ -495,7 +565,10 @@ X(a, STATIC, SINGULAR, DOUBLE, lat, 1) \
 X(a, STATIC, SINGULAR, DOUBLE, lon, 2) \
 X(a, STATIC, SINGULAR, UINT32, hpe, 3) \
 X(a, STATIC, SINGULAR, UENUM, source, 4) \
-X(a, STATIC, SINGULAR, MESSAGE, config, 5)
+X(a, STATIC, SINGULAR, MESSAGE, config, 5) \
+X(a, STATIC, SINGULAR, BYTES, used_aps, 6) \
+X(a, STATIC, SINGULAR, INT32, token_id, 7) \
+X(a, STATIC, SINGULAR, BYTES, dl_app_data, 8)
 #define Rs_CALLBACK NULL
 #define Rs_DEFAULT NULL
 #define Rs_config_MSGTYPE ClientConfig
@@ -506,7 +579,11 @@ X(a, STATIC, SINGULAR, UINT32, max_ap_beacons, 2) \
 X(a, STATIC, SINGULAR, UINT32, cache_match_threshold, 3) \
 X(a, STATIC, SINGULAR, UINT32, cache_age_threshold, 4) \
 X(a, STATIC, SINGULAR, UINT32, cache_beacon_threshold, 5) \
-X(a, STATIC, SINGULAR, UINT32, cache_neg_rssi_threshold, 6)
+X(a, STATIC, SINGULAR, UINT32, cache_neg_rssi_threshold, 6) \
+X(a, STATIC, SINGULAR, UINT32, cache_match_all_threshold, 7) \
+X(a, STATIC, SINGULAR, UINT32, cache_match_used_threshold, 8) \
+X(a, STATIC, SINGULAR, UINT32, max_vap_per_ap, 9) \
+X(a, STATIC, SINGULAR, UINT32, max_vap_per_rq, 10)
 #define ClientConfig_CALLBACK NULL
 #define ClientConfig_DEFAULT NULL
 
@@ -514,6 +591,7 @@ extern const pb_msgdesc_t RqHeader_msg;
 extern const pb_msgdesc_t RsHeader_msg;
 extern const pb_msgdesc_t CryptoInfo_msg;
 extern const pb_msgdesc_t Rq_msg;
+extern const pb_msgdesc_t TbrRegistration_msg;
 extern const pb_msgdesc_t Aps_msg;
 extern const pb_msgdesc_t Cell_msg;
 extern const pb_msgdesc_t GsmCells_msg;
@@ -530,6 +608,7 @@ extern const pb_msgdesc_t ClientConfig_msg;
 #define RsHeader_fields &RsHeader_msg
 #define CryptoInfo_fields &CryptoInfo_msg
 #define Rq_fields &Rq_msg
+#define TbrRegistration_fields &TbrRegistration_msg
 #define Aps_fields &Aps_msg
 #define Cell_fields &Cell_msg
 #define GsmCells_fields &GsmCells_msg
@@ -546,16 +625,17 @@ extern const pb_msgdesc_t ClientConfig_msg;
 #define RsHeader_size                            24
 #define CryptoInfo_size                          29
 /* Rq_size depends on runtime parameters */
+#define TbrRegistration_size                     45
 /* Aps_size depends on runtime parameters */
-#define Cell_size                                57
+#define Cell_size                                63
 /* GsmCells_size depends on runtime parameters */
 /* UmtsCells_size depends on runtime parameters */
 /* CdmaCells_size depends on runtime parameters */
 /* LteCells_size depends on runtime parameters */
 /* NbiotCells_size depends on runtime parameters */
 /* Gnss_size depends on runtime parameters */
-#define Rs_size                                  64
-#define ClientConfig_size                        36
+#define Rs_size                                  211
+#define ClientConfig_size                        60
 
 #ifdef __cplusplus
 } /* extern "C" */

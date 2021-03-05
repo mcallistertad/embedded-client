@@ -1,7 +1,7 @@
 /*! \file sample_client/config.c
  *  \brief Skyhook Embedded Library
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <ctype.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "libel.h"
@@ -98,6 +100,29 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
     return 0;
 }
 
+/*! \brief Compare two strings S1 and S2, ignoring case, returning less than,
+ *  equal to or greater than zero
+ *
+ *  @param s1 pointer to first string
+ *  @param s2 pointer to second string
+ *
+ *  @return 0 for equality, less or greater than 0 indicating difference
+ */
+static int strcasecmp(const char *s1, const char *s2)
+{
+    const unsigned char *p1 = (const unsigned char *)s1;
+    const unsigned char *p2 = (const unsigned char *)s2;
+    int result;
+    if (p1 == p2)
+        return 0;
+    if (!p1 || !p2)
+        return p1 - p2;
+    while ((result = tolower(*p1) - tolower(*p2)) == 0)
+        if (*p1++ == '\0' || *p2++ == '\0')
+            break;
+    return result;
+}
+
 /*! \brief read configuration from a file
  *
  *  @param filename pointer to the filename
@@ -118,6 +143,8 @@ int load_config(char *filename, Config_t *config)
         printf("Error: unable to open config file - %s", filename);
         return -1;
     }
+    memset(config, '\0', sizeof(*config));
+    config->debounce = 1;
     while (fgets(line, sizeof(line), fp)) {
         if (strlen(line) < 4)
             continue;
@@ -149,6 +176,25 @@ int load_config(char *filename, Config_t *config)
             hex2bin(str, config->device_len * 2, config->device_id, MAX_DEVICE_ID);
             continue;
         }
+
+        if (sscanf(line, "SKU %s", str) == 1) {
+            strncpy(config->sku, str, sizeof(config->sku));
+            continue;
+        }
+        if (sscanf(line, "CC %d", &val) == 1) {
+            config->cc = (uint16_t)(val & 0xFFFF);
+            continue;
+        }
+        if (sscanf(line, "DEBOUNCE %s", str) == 1) {
+            if (strcasecmp(str, "off") == 0 || strcasecmp(str, "false") == 0)
+                config->debounce = 0;
+            continue;
+        }
+        if (sscanf(line, "UL_APP_DATA %s", str) == 1) {
+            config->ul_app_data_len = strlen(str) / 2;
+            hex2bin(str, config->ul_app_data_len * 2, config->ul_app_data, config->ul_app_data_len);
+            continue;
+        }
     }
     config->filename = filename;
     fclose(fp);
@@ -166,11 +212,14 @@ void print_config(Config_t *config)
 {
     char key[AES_SIZE * 2 + 1];
     char device[MAX_DEVICE_ID * 2 + 1];
+    char ul_app_data[SKY_MAX_DL_APP_DATA * 2 + 1];
 
     bin2hex(key, AES_SIZE * 2, config->key, AES_SIZE);
     key[AES_SIZE * 2] = '\0';
     bin2hex(device, sizeof(device), config->device_id, config->device_len);
     device[config->device_len * 2] = '\0';
+    bin2hex(ul_app_data, sizeof(ul_app_data), config->ul_app_data, config->ul_app_data_len);
+    ul_app_data[config->ul_app_data_len * 2] = '\0';
 
     printf("Configuration file: %s\n", config->filename);
     printf("Server: %s\n", config->server);
@@ -178,4 +227,8 @@ void print_config(Config_t *config)
     printf("Key: %32s\n", key);
     printf("Partner Id: %d\n", config->partner_id);
     printf("Device: %12s\n", device);
+    printf("SKU: %s\n", config->sku);
+    printf("CC: %d\n", config->cc);
+    printf("Debounce: %s\n", config->debounce ? "true" : "false");
+    printf("Uplink data: %s\n", ul_app_data);
 }

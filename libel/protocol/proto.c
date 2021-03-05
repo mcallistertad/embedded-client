@@ -30,17 +30,25 @@
 #include <pb_decode.h>
 
 #include "el.pb.h"
+#define SKY_LIBEL
 #include "proto.h"
 #include "aes.h"
+#include "limits.h"
+#include "assert.h"
 
-static bool apply_config_overrides(Sky_cache_t *c, Rs *rs);
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+/* extract the n-th bit from used AP array of l bytes */
+#define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
+
+static bool apply_config_overrides(Sky_state_t *s, Rs *rs);
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
 
+typedef uint8_t *(*DataGetterb)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
-typedef float (*DataGetterf)(Sky_ctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
 
@@ -129,13 +137,49 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
     return true;
 }
 
-static bool encode_connected_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+static bool encode_vap_data(
+    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
+{
+    size_t i;
+
+    // Get and encode the field size.
+    pb_ostream_t substream = PB_OSTREAM_SIZING;
+
+    // Encode field tag.
+    if (!pb_encode_tag(ostream, PB_WT_STRING, tag))
+        return false;
+
+    for (i = 0; i < num_elems; i++) {
+        uint8_t *data = getter(ctx, i);
+
+        /* *data == len, data + 1 == first byte of data */
+        if (!pb_encode_string(&substream, data + 1, *data))
+            return false;
+    }
+
+    if (!pb_encode_varint(ostream, substream.bytes_written))
+        return false;
+
+    // Now encode the field for real.
+    for (i = 0; i < num_elems; i++) {
+        uint8_t *data = getter(ctx, i);
+
+        /* *data == len, data + 1 == first byte of data */
+        if (!pb_encode_string(ostream, data + 1, *data))
+            return false;
+    }
+
+    return true;
+}
+
+static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
     uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
 
     for (i = 0; i < num_beacons; i++) {
+        /* encode index of first connected AP */
         if (callback(ctx, i)) {
             retval = pb_encode_tag(ostream, PB_WT_VARINT, tag) && pb_encode_varint(ostream, i + 1);
 
@@ -171,7 +215,7 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
-    return encode_connected_field(
+    return encode_connected_ap_field(
                ctx, ostream, num_beacons, Aps_connected_idx_plus_1_tag, get_ap_is_connected) &&
            encode_repeated_int_field(ctx, ostream, Aps_mac_tag, num_beacons, mac_to_int, NULL) &&
            encode_optimized_repeated_field(ctx, ostream, num_beacons, Aps_common_freq_plus_1_tag,
@@ -182,7 +226,8 @@ static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
                ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
 
-static bool encode_cell_id(pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
+static bool encode_cell_field_element(
+    pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
 {
     if (val != unknown)
         // Unknown values are not sent on the wire, meaning they "show up" with
@@ -196,18 +241,26 @@ static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *c
 {
     return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
            pb_encode_varint(ostream, map_cell_type(cell)) &&
-           encode_cell_id(ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
-           encode_cell_id(ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
-           encode_cell_id(ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
-           encode_cell_id(ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
-           encode_cell_id(ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
-           encode_cell_id(ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
+           encode_cell_field_element(
+               ostream, Cell_id1_plus_1_tag, get_cell_id1(cell), SKY_UNKNOWN_ID1) &&
+           encode_cell_field_element(
+               ostream, Cell_id2_plus_1_tag, get_cell_id2(cell), SKY_UNKNOWN_ID2) &&
+           encode_cell_field_element(
+               ostream, Cell_id3_plus_1_tag, get_cell_id3(cell), SKY_UNKNOWN_ID3) &&
+           encode_cell_field_element(
+               ostream, Cell_id4_plus_1_tag, get_cell_id4(cell), SKY_UNKNOWN_ID4) &&
+           encode_cell_field_element(
+               ostream, Cell_id5_plus_1_tag, get_cell_id5(cell), SKY_UNKNOWN_ID5) &&
+           encode_cell_field_element(
+               ostream, Cell_id6_plus_1_tag, get_cell_id6(cell), SKY_UNKNOWN_ID6) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_connected_tag) &&
            pb_encode_varint(ostream, get_cell_connected_flag(ctx, cell)) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_neg_rssi_tag) &&
            pb_encode_varint(ostream, -get_cell_rssi(cell)) &&
            pb_encode_tag(ostream, PB_WT_VARINT, Cell_age_tag) &&
-           pb_encode_varint(ostream, get_cell_age(cell));
+           pb_encode_varint(ostream, get_cell_age(cell)) &&
+           encode_cell_field_element(
+               ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
 }
 
 static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
@@ -283,25 +336,35 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 {
     Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
 
-    // Per the documentation here:
-    // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
-    //
-    switch (field->tag) {
-    case Rq_aps_tag:
-        if (get_num_aps(ctx))
-            return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
-        break;
-    case Rq_cells_tag:
-        if (get_num_cells(ctx))
-            return encode_cell_fields(ctx, ostream);
-        break;
-    case Rq_gnss_tag:
-        if (get_num_gnss(ctx))
-            return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
-        break;
-    default:
-        printf("Rq_callback() ERROR: unknown tag.\n");
-        break;
+    /* If we are building request which uses TBR auth,
+     * and we do not currently have a token_id,
+     * then we need to encode a registration request,
+     * which does not include any beacon info
+     */
+    if (ctx && (!is_tbr_enabled(ctx) || ctx->state->sky_token_id != TBR_TOKEN_UNKNOWN)) {
+        // Per the documentation here:
+        // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
+        //
+        switch (field->tag) {
+        case Rq_aps_tag:
+            if (get_num_aps(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_ap_fields);
+            break;
+        case Rq_vaps_tag:
+            return encode_vap_data(ctx, ostream, Rq_vaps_tag, get_num_vaps(ctx), get_vap_data);
+            break;
+        case Rq_cells_tag:
+            if (get_num_cells(ctx))
+                return encode_cell_fields(ctx, ostream);
+            break;
+        case Rq_gnss_tag:
+            if (get_num_gnss(ctx))
+                return encode_submessage(ctx, ostream, field->tag, encode_gnss_fields);
+            break;
+        default:
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unknown tag %d", field->tag);
+            break;
+        }
     }
 
     return true;
@@ -309,10 +372,9 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
 
 int32_t get_maximum_response_size(void)
 {
+    // Account for space needed for downlink app data too
     return RsHeader_size + CryptoInfo_size + 1 +
-           AES_BLOCKLEN *
-               ((Rs_size - ClientConfig_size + MAX_CLIENTCONFIG_SIZE + AES_BLOCKLEN - 1) /
-                   AES_BLOCKLEN);
+           AES_BLOCKLEN * ((Rs_size + AES_BLOCKLEN - 1) / AES_BLOCKLEN);
 }
 
 int32_t serialize_request(
@@ -329,6 +391,8 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
+    assert(sizeof(ctx->state->sky_sku) >= sizeof(rq.tbr.sku));
+
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // sky_new_request initializes rand_bytes if user does not
@@ -340,14 +404,50 @@ int32_t serialize_request(
 
     memset(&rq, 0, sizeof(rq));
 
-    rq.aps = rq.cells = rq.gnss = ctx;
+    rq.aps = rq.vaps = rq.cells = rq.gnss = ctx;
 
-    rq.timestamp = (int64_t)(*ctx->gettime)(NULL);
+    rq.timestamp = (int64_t)ctx->header.time;
 
-    memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), get_ctx_id_length(ctx));
-    rq.device_id.size = get_ctx_id_length(ctx);
+    rq.cache_hits = ctx->state->cache_hits;
 
-    // Create and serialize the request header message.
+    /* if we have been given a sku, then
+     * if we don't yet have a token_id,
+     * then build a tbr registration request
+     * else
+     * make a legacy style request
+     */
+    if (is_tbr_enabled(ctx)) {
+        if (ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN) {
+            /* build a tbr registration request */
+            rq.device_id.size = get_ctx_id_length(ctx);
+            memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
+            strncpy(rq.tbr.sku, get_ctx_sku(ctx), MAX_SKU_LEN);
+            rq.tbr.cc = get_ctx_cc(ctx);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR Registration required: Partner ID: %d, SKU '%s'",
+                rq_hdr.partner_id, rq.tbr.sku);
+        } else {
+            /* build tbr location request */
+            rq.token_id = ctx->state->sky_token_id;
+            rq.max_dl_app_data = SKY_MAX_DL_APP_DATA;
+            rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
+            memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
+#if SKY_TBR_DEVICE_ID
+            rq.device_id.size = get_ctx_id_length(ctx);
+            memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
+#endif
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR location request: token %d", rq.token_id);
+        }
+    } else {
+        /* build legacy location request */
+        rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
+        memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
+        rq.device_id.size = get_ctx_id_length(ctx);
+        memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
+        LOGFMT(
+            ctx, SKY_LOG_LEVEL_DEBUG, "simple location request: partner id %d", rq_hdr.partner_id);
+    }
+
+    // Create and serialize the request message.
     pb_get_encoded_size(&rq_size, Rq_fields, &rq);
 
     // Account for necessary encryption padding.
@@ -371,6 +471,8 @@ int32_t serialize_request(
 
     total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
+    DUMP_WORKSPACE(ctx);
+
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
     //
@@ -378,8 +480,11 @@ int32_t serialize_request(
         return total_length;
 
     // Return an error indication if the supplied buffer is too small.
-    if (total_length > buf_len)
+    if (total_length > buf_len) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "supplied buffer is too small %d > %d", total_length,
+            buf_len);
         return -1;
+    }
 
     *buf = (uint8_t)hdr_size;
 
@@ -389,16 +494,20 @@ int32_t serialize_request(
 
     if (pb_encode(&ostream, RqHeader_fields, &rq_hdr))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding request header");
         return -1;
+    }
 
     // Serialize the crypto_info message.
     ostream = pb_ostream_from_buffer(buf + bytes_written, crypto_info_size);
 
     if (pb_encode(&ostream, CryptoInfo_fields, &rq_crypto_info))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding crypto info");
         return -1;
+    }
 
     // Serialize the request body.
     //
@@ -409,8 +518,10 @@ int32_t serialize_request(
     // Initialize request body.
     if (pb_encode(&ostream, Rq_fields, &rq))
         bytes_written += ostream.bytes_written;
-    else
+    else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "encoding request fields");
         return -1;
+    }
 
     // Encrypt the (serialized) request body.
     //
@@ -425,10 +536,38 @@ int32_t serialize_request(
     return bytes_written + aes_padding_length;
 }
 
+int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
+{
+    int i, v, nap = 0;
+
+    if (!ctx || size > TOTAL_BEACONS * MAX_VAP_PER_AP)
+        return -1;
+
+    for (i = 0; i < NUM_APS(ctx); i++) {
+        ctx->beacon[nap].ap.property.used = GET_USED_AP(used, size, nap);
+        if (nap++ > size * CHAR_BIT)
+            break;
+    }
+    for (v = 0; v < CONFIG(ctx->state, max_vap_per_ap); v++) {
+        for (i = 0; i < NUM_APS(ctx); i++) {
+            if (v < NUM_VAPS(&ctx->beacon[i])) {
+                ctx->beacon[i].ap.vg_prop[v].used = GET_USED_AP(used, size, nap);
+                if (nap++ > size * CHAR_BIT)
+                    break;
+            }
+        }
+        if (nap > size * CHAR_BIT)
+            break;
+    }
+
+    return 0;
+}
+
 int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
     uint8_t hdr_size = *buf;
     struct AES_ctx aes_ctx;
+    int32_t ret = -1;
 
     RsHeader header;
 
@@ -447,33 +586,45 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     // header.
     //
     if (buf_len < 1)
-        return -1;
+        return ret;
 
     buf += 1;
 
     if (buf_len < 1 + hdr_size)
-        return -1;
+        return ret;
 
     istream = pb_istream_from_buffer(buf, hdr_size);
+    if (hdr_size == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Empty response");
+        return ret;
+    }
 
     if (!pb_decode(&istream, RsHeader_fields, &header)) {
-        return -1;
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "failed to decode header");
+        return ret;
     }
 
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
+            "STATE_TBR_UNREGISTERED" :
+            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
+                                                        "STATE_TBR_DISABLED",
+        sky_pserver_status(loc->location_status));
 
+    /* if response contains a body */
     if (header.rs_length) {
         buf += hdr_size;
 
         // Deserialize the crypto_info.
         if (buf_len < 1 + hdr_size + header.crypto_info_length + header.rs_length)
-            return -1;
+            return ret;
 
         istream = pb_istream_from_buffer(buf, header.crypto_info_length);
 
         if (!pb_decode(&istream, CryptoInfo_fields, &crypto_info)) {
-            return -1;
+            return ret;
         }
 
         buf += header.crypto_info_length;
@@ -487,22 +638,68 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
         istream = pb_istream_from_buffer(buf, header.rs_length - crypto_info.aes_padding_length);
 
         if (!pb_decode(&istream, Rs_fields, &rs)) {
-            return -1;
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
+            return ret;
+        }
+        if (apply_config_overrides(ctx->state, &rs)) {
+            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
+                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
+        }
+        if (CONFIG(ctx->state, last_config_time) == 0)
+            CONFIG(ctx->state, last_config_time) = (*ctx->gettime)(NULL);
+    }
+    ret = 0;
+    switch (ctx->auth_state) {
+    case STATE_TBR_UNREGISTERED:
+        if (rs.token_id == TBR_TOKEN_UNKNOWN) {
+            /* failed TBR registration */
+            /* Auth state remains unchanged */
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR registration failed!");
         } else {
+            /* successful TBR registration response */
+            /* Save the token_id for use in subsequent location requests. */
+            ctx->auth_state = STATE_TBR_REGISTERED;
+            ctx->state->sky_token_id = rs.token_id;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
+        }
+        /* User must retry because this was a registration */
+        loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
+        break;
+    case STATE_TBR_REGISTERED:
+        if (header.status == RsHeader_Status_AUTH_ERROR) {
+            /* failed TBR location request */
+            /* Clear the token_id because it is invalid. */
+            ctx->auth_state = STATE_TBR_UNREGISTERED;
+            ctx->state->sky_token_id = TBR_TOKEN_UNKNOWN;
+            /* Application must re-register */
+            loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
+            break;
+        } else {
+            /* fall through */
+        }
+    case STATE_TBR_DISABLED:
+        if (header.status == RsHeader_Status_AUTH_ERROR) {
+            /* failed legacy location request */
+            loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
+        } else {
+            /* Legacy or tbr location request */
             loc->lat = rs.lat;
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;
             loc->location_source = (Sky_loc_source_t)rs.source;
+            /* copy any downlink data to state buffer */
+            loc->dl_app_data = ctx->sky_dl_app_data;
+            ctx->sky_dl_app_data_len = loc->dl_app_data_len =
+                MIN(rs.dl_app_data.size, sizeof(ctx->sky_dl_app_data));
+            memmove(ctx->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
+            // Extract Used info for each AP from the Used_aps bytes
+            apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
         }
-        if (apply_config_overrides(ctx->cache, &rs)) {
-            if (ctx->logf)
-                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
-        }
-        if (CONFIG(ctx->cache, last_config_time) == 0)
-            CONFIG(ctx->cache, last_config_time) = (*ctx->gettime)(NULL);
+        break;
     }
 
-    return 0;
+    return ret;
 }
 
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx)
@@ -527,52 +724,61 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief update dynamic config params with server overrides
  *
- *  @param c cache buffer
+ *  @param s state buffer
  *
  *  @return bool true if new override is recived from server
  */
-static bool apply_config_overrides(Sky_cache_t *c, Rs *rs)
+static bool apply_config_overrides(Sky_state_t *s, Rs *rs)
 {
     bool override = false;
 
-    config_defaults(c);
-    if (rs->config.total_beacons != 0 && rs->config.total_beacons != CONFIG(c, total_beacons)) {
+    config_defaults(s);
+    if (rs->config.total_beacons != 0 && rs->config.total_beacons != CONFIG(s, total_beacons)) {
         if (rs->config.total_beacons < TOTAL_BEACONS && rs->config.total_beacons > 1) {
-            CONFIG(c, total_beacons) = rs->config.total_beacons;
+            CONFIG(s, total_beacons) = rs->config.total_beacons;
         }
     }
-    if (rs->config.max_ap_beacons != 0 && rs->config.max_ap_beacons != CONFIG(c, max_ap_beacons)) {
+    if (rs->config.max_ap_beacons != 0 && rs->config.max_ap_beacons != CONFIG(s, max_ap_beacons)) {
         if (rs->config.max_ap_beacons < MAX_AP_BEACONS) {
-            CONFIG(c, max_ap_beacons) = rs->config.max_ap_beacons;
+            CONFIG(s, max_ap_beacons) = rs->config.max_ap_beacons;
         }
     }
-    if (rs->config.cache_match_threshold != 0 &&
-        rs->config.cache_match_threshold != CONFIG(c, cache_match_threshold)) {
-        if (rs->config.cache_match_threshold > 0 && rs->config.cache_match_threshold <= 100) {
-            CONFIG(c, cache_match_threshold) = rs->config.cache_match_threshold;
+    if (rs->config.cache_match_all_threshold != 0 &&
+        rs->config.cache_match_all_threshold != CONFIG(s, cache_match_all_threshold)) {
+        if (rs->config.cache_match_all_threshold > 0 &&
+            rs->config.cache_match_all_threshold <= 100) {
+            CONFIG(s, cache_match_all_threshold) = rs->config.cache_match_all_threshold;
+        }
+    }
+    if (rs->config.cache_match_used_threshold != 0 &&
+        rs->config.cache_match_used_threshold != CONFIG(s, cache_match_used_threshold)) {
+        if (rs->config.cache_match_used_threshold > 0 &&
+            rs->config.cache_match_used_threshold <= 100) {
+            CONFIG(s, cache_match_used_threshold) = rs->config.cache_match_used_threshold;
         }
     }
     if (rs->config.cache_age_threshold != 0 &&
-        rs->config.cache_age_threshold != CONFIG(c, cache_age_threshold)) {
+        rs->config.cache_age_threshold != CONFIG(s, cache_age_threshold)) {
         if (rs->config.cache_age_threshold < 9000) {
-            CONFIG(c, cache_age_threshold) = rs->config.cache_age_threshold;
+            CONFIG(s, cache_age_threshold) = rs->config.cache_age_threshold;
         }
     }
     if (rs->config.cache_beacon_threshold != 0 &&
-        rs->config.cache_beacon_threshold != CONFIG(c, cache_beacon_threshold)) {
-        if (rs->config.cache_beacon_threshold < CONFIG(c, total_beacons)) {
-            CONFIG(c, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
+        rs->config.cache_beacon_threshold != CONFIG(s, cache_beacon_threshold)) {
+        if (rs->config.cache_beacon_threshold < CONFIG(s, total_beacons)) {
+            CONFIG(s, cache_beacon_threshold) = rs->config.cache_beacon_threshold;
         }
     }
     if (rs->config.cache_neg_rssi_threshold != 0 &&
-        rs->config.cache_neg_rssi_threshold != CONFIG(c, cache_neg_rssi_threshold)) {
+        rs->config.cache_neg_rssi_threshold != CONFIG(s, cache_neg_rssi_threshold)) {
         if (rs->config.cache_neg_rssi_threshold >= 10 &&
             rs->config.cache_neg_rssi_threshold < 128) {
-            CONFIG(c, cache_neg_rssi_threshold) = rs->config.cache_neg_rssi_threshold;
+            CONFIG(s, cache_neg_rssi_threshold) = rs->config.cache_neg_rssi_threshold;
         }
     }
     override = (rs->config.total_beacons != 0 || rs->config.max_ap_beacons != 0 ||
-                rs->config.cache_match_threshold != 0 || rs->config.cache_age_threshold != 0 ||
+                rs->config.cache_match_all_threshold != 0 ||
+                rs->config.cache_match_used_threshold != 0 || rs->config.cache_age_threshold != 0 ||
                 rs->config.cache_beacon_threshold != 0 || rs->config.cache_neg_rssi_threshold != 0);
 
     /* Add new config parameters here */

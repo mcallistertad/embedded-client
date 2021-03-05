@@ -1,7 +1,13 @@
 doxygen/
 bin/
 build/
+build_unittests/libel/
+build_unittests/plugins/
+packages/
 sample_client/*.o
 sample_client/sample_client
-nv_cache
+nv_cache_*
 tags
+cmake-build-*
+CMakeLists.txt
+.idea
