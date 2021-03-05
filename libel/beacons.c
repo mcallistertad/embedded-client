@@ -476,40 +476,9 @@ int find_oldest(Sky_ctx_t *ctx)
     return oldestc;
 }
 
-/*! \brief get workspace index of cell
+/*! \brief test serving cell in workspace has changed from that in cache
  *
- * cells are in priority order by type, connected, age and strength
- *
- * @param ctx Skyhook request context
- *
- * @return index of first connected cell or first fully qualified cell, or -1
- */
-static int get_workspace_cell_index(Sky_ctx_t *ctx)
-{
-    int j;
-
-    /* return index of highest priority connected one */
-    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-        if (ctx->beacon[j].h.connected) {
-#ifdef VERBOSE_DEBUG
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cell %d is connected", j);
-#endif
-            return j;
-        }
-    }
-    /* return index of highest priority first fully qualified one */
-    for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-        if (!is_cell_nmr(&ctx->beacon[j])) {
-#ifdef VERBOSE_DEBUG
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cell %d is most significant", j);
-#endif
-            return j;
-        }
-    }
-    return -1;
-}
-
-/*! \brief test cell in workspace has changed from that in cache
+ *  Cells in workspace are in priority order
  *
  *  false if either workspace or cache has no cells
  *  false if highest priority workspace cell (which is
@@ -524,7 +493,7 @@ static int get_workspace_cell_index(Sky_ctx_t *ctx)
  */
 int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
-    int j;
+    Beacon_t *w, *c;
     if (!ctx || !cl) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -539,21 +508,18 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if ((j = get_workspace_cell_index(ctx)) == -1) {
+    w = &ctx->beacon[NUM_APS(ctx)];
+    c = &cl->beacon[NUM_APS(cl)];
+    if (is_cell_nmr(w) || is_cell_nmr(c)) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
 #endif
         return false;
     }
 
-    if (beacon_in_cacheline(ctx, &ctx->beacon[j], cl, NULL)) {
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - significant cell %d matches",
-            cl - ctx->state->cacheline, j);
-#endif
+    if (sky_plugin_equal(ctx, NULL, w, c, NULL) == SKY_SUCCESS)
         return false;
-    }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d - cell mismatch", cl - ctx->state->cacheline);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
 }
 
