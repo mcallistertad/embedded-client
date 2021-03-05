@@ -1304,7 +1304,7 @@ char *sky_perror(Sky_errno_t sky_errno)
         str = "Operation unauthorized, retry in a month";
         break;
     case SKY_ERROR_AUTH:
-        str = "Operation faild due to authentication error";
+        str = "Operation failed due to authentication error";
         break;
     case SKY_ERROR_MAX:
         str = "Unknown error code";
