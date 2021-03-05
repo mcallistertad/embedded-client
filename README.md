@@ -133,7 +133,7 @@ The library will save the information provided in a request along with the locat
  * The API calls used to add beacons from a scan provide a `is_connected` parameter which is used to indicate whether a particular beacon is actively serving the device i.e. a Wi-Fi AP which is connected and/or a Serving Cell.
 
 ### Authentication
-The user may interpret failures to authenticate after attempting to decode the response from the server. See the information about sky_decode_response() for details.
+For a full list of errors that can be reported when decoding a server response, see sky_decode_response()
 #### Token Based Registration (TBR)
 A device will remain authenticated during a valid licensed period, and thereafter if the license period is extended.
 However, if there are repeated authentication failures, perhaps due to an expired contract, the library will enforce service prohibition periods. An error will be returned, and sky_errno set to `SKY_ERROR_SERVICE_DENIED`, if the user attempts to generate a request too soon after decoding an unauthorized response. Specific codes are reported when the user is expected to delay the next request.
@@ -143,9 +143,8 @@ However, if there are repeated authentication failures, perhaps due to an expire
  * 'SKY_AUTH_RETRY_16HR' delay for 16 hours
  * 'SKY_AUTH_RETRY_1D' delay for 1 day (24 hours)
  * 'SKY_AUTH_RETRY_30D' delay for 30 days
-
 #### Simple Key based
-If the user has chosen to use the library in this mode, there are a few features that are not available, these are noted in the remainder of the document with (TBR only). Authentication errors will result in an error being returned, and sky_errno set to `SKY_ERROR_SERVER_ERROR`.
+If the user has chosen to use the library in this mode, there are a few features that are not available, these are noted in the remainder of the document with (TBR only). Authentication errors will result in an error being returned, and sky_errno set to `SKY_ERROR_AUTH`.
 
 ### Client Configuration
 
@@ -881,7 +880,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
 User calls this to process the network response from the Skyhook server. Returns `SKY_ERROR` and sets sky_errno if the response buffer could not be decoded or other error occurred, otherwise `SKY_SUCCESS` is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen. If the server sends downlink application data in the response, it is copied into the workspace and loc is updated with its length and a pointer to the data. Zero length indicates that there was no data. Note that if the user allocated the memory for the workspace, the downlink data is unavailable after this memory has been freed.
 If the request required an authentication registration step, sky_decode_response() returns `SKY_ERROR`, and sets sky_errno to `SKY_RETRY_AUTH`. The user is expected to call sky_finalize_request() again and re-send the request (TBR only).
 
-If the response message could be decoded (`SKY_ERROR_DECODE_ERROR` was not returned), the location_status field of the Sky_location_t structure will proved more information about the result of the request. If the location_status is `SKY_LOCATION_STATUS_SUCCESS`, the locations_source field provides information about how the location was derived from the scan.
+If `SKY_SUCCESS` is returned, the locations_source field provides information about how the location was derived from the scan.
 
 sky_decode_response() may report the following error conditions in sky_errno:
 
@@ -891,6 +890,8 @@ sky_decode_response() may report the following error conditions in sky_errno:
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 | `SKY_ERROR_DECODE_ERROR`                        | Libel was unable to decode the response message
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
+| `SKY_ERROR_LOCATION_UNKNOWN`                    | Server failed to determine a location
+| `SKY_ERROR_AUTH`                                | Server failed to authenticate the request
 | `SKY_AUTH_RETRY`                                | Server indicated that authentication was required and user must retry (TBR only)
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)
 | `SKY_AUTH_RETRY_16HR`                           | Server indicated that authentication failed. Service is blocked for 16 hours (TBR only)
@@ -1003,30 +1004,17 @@ sky_close() may report the following error conditions in sky_errno:
 The library returns location information as `Sky_location_t` from sky_decode_response():
 
 ```c
-
 typedef struct sky_location {
     float lat, lon; /* GNSS info */
     uint16_t hpe;
     uint32_t time;
     Sky_loc_source_t location_source;
-    Sky_loc_status_t location_status;
+    Sky_loc_status_t location_status; /* reserved */
     uint8* dl_app_data;
     uint8 dl_data_len;
 } Sky_location_t;
 ```
-The location_status field can have one of the following values if sky_decode_response() does not return `SKY_ERROR_DECODE_ERROR`:
-
-| Location Status                                 | Description
-| ----------------------------------------------- | --------------------------------------------------------------
-| `SKY_LOCATION_STATUS_SUCCESS`                   | location was determined successfully
-| `SKY_LOCATION_STATUS_UNSPECIFIED_ERROR`         | Server reported an unspecified error
-| `SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR`      | Server reported an error looking up partner ID
-| `SKY_LOCATION_STATUS_DECODE_ERROR`              | Server reported an error while decoding request
-| `SKY_LOCATION_STATUS_API_SERVER_ERROR`          | Server reported an error while processing request
-| `SKY_LOCATION_STATUS_AUTH_ERROR`                | Server reported an authentication error
-| `SKY_LOCATION_STATUS_UNABLE_TO_LOCATE`          | Location could not be deduced from the beacon information
-
-The location_source field can have one of the following values if location_status has the value `SKY_LOCATION_STATUS_SUCCESS`:
+The location_source field can have one of the following values:
 
 | Location Source                                 | Description
 | ----------------------------------------------- | --------------------------------------------------------------
