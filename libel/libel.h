@@ -132,6 +132,7 @@ typedef enum {
     SKY_AUTH_RETRY_16H, // Retry operation in 16hr to query authentication,
     SKY_AUTH_RETRY_1D, // Retry operation in 1 day to query authentication,
     SKY_AUTH_RETRY_30D, // Retry operation in 30 days to query authentication,
+    SKY_ERROR_AUTH_ERROR, // Operation failed because server reported authentication error
     SKY_ERROR_MAX,
 } Sky_errno_t;
 

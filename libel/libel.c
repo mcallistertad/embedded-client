@@ -1161,6 +1161,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     uint32_t bufsize, Sky_location_t *loc)
 {
     Sky_state_t *s = ctx->state;
+    Sky_errno_t errno = SKY_ERROR_SERVER_ERROR;
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1203,10 +1204,19 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_1D));
             else
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_30D));
+            break;
         default:
+            if (loc->location_status == SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR)
+                errno = SKY_ERROR_AUTH_ERROR;
+            else if (loc->location_status == SKY_LOCATION_STATUS_DECODE_ERROR)
+                errno = SKY_ERROR_SERVER_DECODE;
+            else if (loc->location_status == SKY_LOCATION_STATUS_AUTH_ERROR)
+                errno = SKY_ERROR_AUTH_ERROR;
+            else if (loc->location_status == SKY_LOCATION_STATUS_UNABLE_TO_LOCATE)
+                errno = SKY_ERROR_LOCATION_UNKNOWN;
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Error. Location status: %s",
                 sky_pserver_status(loc->location_status));
-            return set_error_status(sky_errno, SKY_ERROR_SERVER_ERROR);
+            return set_error_status(sky_errno, errno);
         }
     }
     s->backoff = SKY_ERROR_NONE;
@@ -1308,6 +1318,12 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     case SKY_AUTH_RETRY_30D:
         str = "Operation unauthorized, retry in a month";
+        break;
+    case SKY_ERROR_AUTH_ERROR:
+        str = "Operation faild due to authentication error";
+        break;
+    case SKY_ERROR_SERVER_DECODE:
+        str = "Server responded with request decode error";
         break;
     default:
         str = "Unknown error code";
