@@ -133,10 +133,11 @@ The library will save the information provided in a request along with the locat
  * The API calls used to add beacons from a scan provide a `is_connected` parameter which is used to indicate whether a particular beacon is actively serving the device i.e. a Wi-Fi AP which is connected and/or a Serving Cell.
 
 ### Authentication
+The user may interpret failures to authenticate after attempting to decode the response from the server. See the information about sky_decode_response() for details.
 #### Token Based Registration (TBR)
 A device will remain authenticated during a valid licensed period, and thereafter if the license period is extended.
 However, if there are repeated authentication failures, perhaps due to an expired contract, the library will enforce service prohibition periods. An error will be returned, and sky_errno set to `SKY_ERROR_SERVICE_DENIED`, if the user attempts to generate a request too soon after decoding an unauthorized response. Specific codes are reported when the user is expected to delay the next request.
- * `SKY_ERROR_SERVICE_DENIED` request denied due to authentiication
+ * `SKY_ERROR_SERVICE_DENIED` Service blocked due to repeated errors
  * `SKY_AUTH_RETRY` retry immediately
  * 'SKY_AUTH_RETRY_8HR' delay for 8 hours
  * 'SKY_AUTH_RETRY_16HR' delay for 16 hours
@@ -144,7 +145,7 @@ However, if there are repeated authentication failures, perhaps due to an expire
  * 'SKY_AUTH_RETRY_30D' delay for 30 days
 
 #### Simple Key based
-If the user has chosen to use the library in this mode, there are a few features that are not available, these are noted in the remainder of the document with (TBR only).
+If the user has chosen to use the library in this mode, there are a few features that are not available, these are noted in the remainder of the document with (TBR only). Authentication errors will result in an error being returned, and sky_errno set to `SKY_ERROR_SERVER_ERROR`.
 
 ### Client Configuration
 
@@ -228,7 +229,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  ```
 Called once to set up any resources needed by the library (e.g. cache space). Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (`SKY_ERROR_BAD_STATE`). If sku is a non-zero length string, libel will attempt to use TBR authentication otherwise a simple key based authentication is used. cc is the Mobile Country Code of the country in which the device was registered to operate. If logf() is not NULL, the log messages will be generated if they were turned on during compilation (`SKY_DEBUG`). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to `SKY_LOG_LEVEL_ERROR`, only log messages with level `SKY_LOG_LEVEL_CRITICAL` and `SKY_LOG_LEVEL_ERROR` will be generated. If gettime is not NULL, this function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time) , otherwise the library calls time(). When debounce is false, the generated request always reports the workspace beacons to the server. When true, and a previously cached location is a match, the cached beacons are reported to the server.
 
-`sky_open()` may report the following error conditions in sky_errno 
+`sky_open()` may report the following error conditions in sky_errno :
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -281,14 +282,14 @@ Sky_ctx_t* sky_new_request(void *workspace_buf,
 ```
 Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers, sets downlink app data buffer to empty and saves uplink app data.
 
-sky_new_request() may report the following error conditions in sky_errno 
+sky_new_request() may report the following error conditions in sky_errno :
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenicate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
 
 ### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
@@ -316,7 +317,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx,
  ```
 Adds the Wi-Fi access point information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set to error code. If enough Wi-Fi beacons are already in the request context, sky_add_ap_beacon() may remove the least useful beacon.
 
-sky_add_ap_beacon() may report the following error conditions in sky_errno
+sky_add_ap_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -361,7 +362,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 ```
 Adds the cell lte or lte-CatM1  information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error. 
 
-sky_add_cell_lte_beacon() may report the following error conditions in sky_errno
+sky_add_cell_lte_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -396,7 +397,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
 
 Adds the lte or lte-CatM1 neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_lte_neighbor_beacon() may report the following error conditions in sky_errno
+sky_add_cell_lte_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -438,7 +439,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
  ```
 Adds the cell gsm information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error. 
 
-sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno
+sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -482,7 +483,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell umts information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_umts_beacon() may report the following error conditions in sky_errno
+sky_add_cell_umts_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -520,7 +521,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx,
  ```
 Adds the umts neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_umts_neighbor_beacon() may report the following error conditions in sky_errno
+sky_add_cell_umts_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -562,7 +563,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell cdma information to the request context. Returns NULL and sets sky_error if there is a bad parameter or other error.
 
-sky_add_cell_cdma_beacon() may report the following error conditions in sky_errno
+sky_add_cell_cdma_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -610,7 +611,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell nb-IoT information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_nb_iot_beacon() may report the following error conditions in sky_errno
+sky_add_cell_nb_iot_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -648,7 +649,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx,
  ```
 Adds the nb-IoT neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_nb_iot_neighbor_beacon() may report the following error conditions in sky_errno
+sky_add_cell_nb_iot_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -697,7 +698,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
  ```
 Adds the cell NR information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_nr_beacon() may report the following error conditions in sky_errno
+sky_add_cell_nr_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -735,7 +736,7 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx,
  ```
 Adds the NR neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set if there is a bad parameter or other error.
 
-sky_add_cell_nr_neighbor_beacon() may report the following error conditions in sky_errno
+sky_add_cell_nr_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -783,7 +784,7 @@ time_t timestamp)
  ```
 Adds the GNSS information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`.  In case of failure sky_error is set to error code. 
 
-sky_add_gnss() may report the following error conditions in sky_errno
+sky_add_gnss() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -811,7 +812,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
  ```
 Called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine the size of the request buffer that must be allocated by the user. The size returned includes the length of any uplink application data reported to sky_new_request().
 
-sky_sizeof_request_buf() may report the following error conditions in sky_errno
+sky_sizeof_request_buf() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -846,7 +847,7 @@ Returns `SKY_FINALIZE_ERROR` and sets sky_error if an error occurs. If the resul
 The user may decide to send a request to the ELG server, even though a previously cached location was found. This allows (uplink) application data to be reported to the server, downlink application data to be collected from the server and, when sky_open() is called with debounce = 'true', the set of cached beacons to be sent to the server that produced the previously reported (cached) location. This allows for optional server updates during periods when the device is stationary.
 If the error `SKY_ERROR_SERVICE_DENIED` is returned, the request was submitted too often with repeated Authentication failures. The user may generate a new request after correcting the problem (TBR only).
 
-sky_finalize_request() may report the following error conditions in sky_errno
+sky_finalize_request() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -854,7 +855,7 @@ sky_finalize_request() may report the following error conditions in sky_errno
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 | `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
 | `SKY_ERROR_ENCODE_ERROR`                        | Could not encode the request
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenicate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
 | `SKY_ERROR_NO_BEACONS`                          | Beacons must be added before a request can be finalized
 
 ### sky_decode_response() - decodes a Skyhook server response
@@ -880,15 +881,16 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
 User calls this to process the network response from the Skyhook server. Returns `SKY_ERROR` and sets sky_errno if the response buffer could not be decoded or other error occurred, otherwise `SKY_SUCCESS` is returned. Cache is updated with scan and location information. Note that sky_decode_response() modifies the response buffer (it is written with decrypted bytes). A DEBUG level log message is available to help diagnose any errors that may happen 
 If the server sends downlink application data in the response, it is copied into the workspace and loc is updated with its length and a pointer to the data. Zero length indicates that there was no data. Note that if the user allocated the memory for the workspace, the downlink data is unavailable after this memory has been freed.
 If the request required an authentication registration step, sky_decode_response() returns `SKY_ERROR`, and sets sky_errno to `SKY_RETRY_AUTH`. The user is expected to call sky_finalize_request() again and re-send the request (TBR only).
-If the error `SKY_ERROR_SERVICE_DENIED` is returned, the request was submitted too often with repeated Authentication failures. The user may generate a new request after correcting the problem (TBR only).
 
-sky_decode_response() may report the following error conditions in sky_errno
+If the response message could be decoded (`SKY_ERROR_DECODE_ERROR` was not returned), the location_status field of the Sky_location_t structure will proved more information about the result of the request. If the location_status is `SKY_LOCATION_STATUS_SUCCESS`, the locations_source field provides information about how the location was derived from the scan.
+
+sky_decode_response() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_LOCATION_STATUS_DECODE_ERROR`              | Server reported an error while decoding request
+| `SKY_ERROR_DECODE_ERROR`                        | Libel was unable to decode the response message
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
 | `SKY_AUTH_RETRY`                                | Server indicated that authentication was required and user must retry (TBR only)
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)
@@ -951,7 +953,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno,
 ```
 Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno appropriately. If sky_state was provided (not NULL), it will be set to point to sky_sizeof_state() bytes of state buffer, which should be saved to non-volatile memory, 
 
-sky_close() may report the following error conditions in sky_errno
+sky_close() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -990,7 +992,7 @@ sky_close() may report the following error conditions in sky_errno
 | `SKY_ERROR_LOCATION_UNKNOWN`                    | Server response indicates no location could be determined
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
 | `SKY_ERROR_NO_PLUGIN`                           | At least one plugin must be registered
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenicate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 | `SKY_AUTH_RETRY`                                | Server indicated that authentication was required and user must retry (TBR only)
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)
@@ -999,7 +1001,7 @@ sky_close() may report the following error conditions in sky_errno
 | `SKY_AUTH_RETRY_30DAY`                          | Server indicated that authentication failed. Service is blocked for 30 Days (TBR only)
 
 ### API Location Result
-The library returns location information as `Sky_location_t`:
+The library returns location information as `Sky_location_t` from sky_decode_response():
 
 ```c
 
@@ -1013,15 +1015,25 @@ typedef struct sky_location {
     uint8 dl_data_len;
 } Sky_location_t;
 ```
-The location_source field can have one of the following values:
+The location_status field can have one of the following values if sky_decode_response() does not return `SKY_ERROR_DECODE_ERROR`:
 
-| Location Source                                 | Description
+| Location Status                                 | Description
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_LOCATION_STATUS_SUCCESS`                   | location was determined successfully
 | `SKY_LOCATION_STATUS_UNSPECIFIED_ERROR`         | Server reported an unspecified error
 | `SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR`      | Server reported an error looking up partner ID
 | `SKY_LOCATION_STATUS_DECODE_ERROR`              | Server reported an error while decoding request
 | `SKY_LOCATION_STATUS_API_SERVER_ERROR`          | Server reported an error while processing request
+
+The location_source field can have one of the following values if location_status has the value `SKY_LOCATION_STATUS_SUCCESS`:
+
+| Location Source                                 | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `SKY_LOCATION_SOURCE_HYBRID`                    | A combination of beacon types was used to derive the location
+| `SKY_LOCATION_SOURCE_CELL`                      | Cell beacons were used to derive the location
+| `SKY_LOCATION_SOURCE_WIFI`                      | Wi-Fi beacons were used to derive the location
+| `SKY_LOCATION_SOURCE_GNSS`                      | GNSS info was used to return the location
+| `SKY_LOCATION_SOURCE_UNKNOWN`                   | Location source unknown
 
 ### API sky_finalize_request() result
 sky_finalize_request() returns a result as `Sky_finalize_t`:
