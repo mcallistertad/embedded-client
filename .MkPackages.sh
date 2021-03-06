@@ -1,29 +1,63 @@
 #! /usr/bin/bash
 #
-# MkPackages
+# MkPackages <path/README.pdf>
 #
 # Create Embedded Client deployable archives in packages directory
 #
 # Two packages are created, a compressed tar archive and a zip archive
 #
 # The script aborts if it is not run in an embedded-client directory and
-# if the directory is not a clean git clone.
+# if the directory is not a clean git clone. Also if README.pdf is missing
+#
+# Create pdf by running the following commmand in the directory where README.md resides
+# % grip . 8080
+#
+# Open browser on localhost:8080 and print the pages to pdf file README.pdf
 #
 # The user's tmp directory is used as a workspace
 
 pname=".MkPackages"
 packages="packages"
-scratch="${HOME}tmp/ec_archive_$$"
+scratch=$(mktemp -d ) || { echo "Failed to create temp file"; exit 1; }
 version=`git describe --tags --always | sed -e"s/-.*//" `
 [ -d submodules/embedded-client ] && premium="-premium"
 archive="embedded-client${premium}-${version}"
+
+[ -e "$1" -a "$(file --mime-type "$1" | sed -e"s/.*: //")" == "application/pdf" ] || { echo "${pname} expects README.pdf as argument"; exit 1; }
+pdf="$1"
+
+if [ "${premium}" != "" ]; then
+    libel_dir="submodules/embedded-client/libel/"
+else
+    libel_dir="libel/"
+fi
 
 # log error and exit
 # args message
 err_exit() {
     echo "Error: $1"
-    # rm -rf ${scratch}
+    rm -rf ${scratch}
     exit -1
+}
+
+# error if SW_VERSION conflicts with that used in previous release
+# A conflict is considered to be a version numerically less or equal
+check_sw_versions() {
+    sw_versions=
+
+    cd ${libel_dir}
+    versions=$( git tag -l --sort=-version:refname )
+    sw_version=$( grep "define.*SW_VERSION" libel.c | sed -e"s/.* //" )
+    current_ver=$(git describe --dirty --always --tags)
+
+    echo "Software version info - ${sw_version}"
+    echo "======== ======= ========="
+    for v in ${versions}; do
+        sw_v="$( git show ${v}:libel/libel.c | grep "define.*SW_VERSION" | sed -e"s/.* //" )"
+        [ "$(( $(( ${sw_version} )) <= $(( ${sw_v} )) ))" == "1" -a "${current_ver}" != "${v}" ] && err_exit "SW_VERSION in libel/libel.c conflicts with version ${v}: '$( git show ${v}:libel/libel.c | grep "define.*SW_VERSION" )'"
+        [ "${sw_v}" == "" ] || echo "SW_VERSION: ${sw_v} release ${v}"
+    done
+    cd - >/dev/null
 }
 
 # return true if the repo is either EC basic or EC premium
@@ -35,9 +69,6 @@ is_ec_dir() {
         echo "false"
     elif [ ! -d $1/libel -a ! -d $1/submodules/embedded-client ]; then
         echo "Cant find libel/ or submodules/embedded-client directories" > /dev/tty
-        echo "false"
-    elif [ ! -d plugins ]; then
-        echo "Cant find plugins/ directory" > /dev/tty
         echo "false"
     elif [ ! -e $1/.git ]; then
         echo "Cant find .git/ directory" > /dev/tty
@@ -53,35 +84,51 @@ is_ec_dir() {
 # return true if the repo is clean
 # args current directory
 is_clean_repo() {
+    pushd $1 > /dev/null
+    # remove any tmp or garbage files
+    git clean -dxf > /dev/null || err_exit "Failed to clean tmp copy: $1"
+
     # git status --porcelain is silent if all is clean
-    git status --porcelain > /dev/tty
-    git clean -ndx > /dev/tty
+    echo "git status:" `pwd` > /dev/tty
+    git status --porcelain > /dev/tty || err_exit "git failed to get status for : $1"
+    echo "git clean:"   `pwd`> /dev/tty
+    git clean -ndx > /dev/tty || err_exit "git failed to clean: $1"
     if [ -z "$(git status --porcelain)" -a -z "$(git clean -ndx)" ]; then
         echo "true"
     else
         echo "false"
     fi
+    popd $1 > /dev/null
 }
 
 rm -rf ${packages}
-if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
-   # This is an embedded client directory. Is it clean?
 
-    if [[ $(is_clean_repo ${PWD}) == "true" ]]; then
+if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
+    cp -r . ${scratch}/${archive} || err_exit "Failed to copy package files to ${scratch}"
+
+    # Is the directory a clean copy of the client files?
+    if [[ $(is_clean_repo ${scratch}/${archive}) == "true" ]]; then
        # It is clean so lets archive it
 
         if mkdir -p ${packages}; then
-            if mkdir -p ${scratch}; then
-                tar czf ${scratch}/${archive}.tgz --exclude=${packages} .
-                [ -e ${scratch}/${archive}.tgz ] || err_exit "Failed to create Tar archive ${scratch}/${archive}.tgz"
-                [ -e ${scratch}/${archive}.tgz ] && mv ${scratch}/${archive}.tgz ${packages}
+            cp ${pdf} ${scratch}/${archive}/README.pdf
+            cd ${scratch}
+            tar czf ${scratch}/${archive}.tgz --exclude=${packages} ${archive}
+            [ -e ${scratch}/${archive}.tgz ] || err_exit "Failed to create Tar archive ${scratch}/${archive}.tgz"
 
-                zip -qry ${scratch}/${archive}.zip . -x "${packages}/*"
-                [ -e ${scratch}/${archive}.zip ] || err_exit "Failed to create Zip archive ${scratch}/${archive}.zip"
-                [ -e ${scratch}/${archive}.zip ] && mv ${scratch}/${archive}.zip ${packages}
-                rm -rf ${scratch}
-            else
-                echo "Error: can't make temp directory: ${scratch}"
+            zip -qry ${archive}.zip ${archive} -x "${packages}/*"
+            [ -e ${scratch}/${archive}.zip ] || err_exit "Failed to create Zip archive ${scratch}/${archive}.zip"
+            cd - >/dev/null
+
+            [ -e ${scratch}/${archive}.tgz ] && mv ${scratch}/${archive}.tgz ${packages}
+            [ -e ${scratch}/${archive}.zip ] && mv ${scratch}/${archive}.zip ${packages}
+            rm -rf ${scratch}
+            if [ -e ${packages}/${archive}.tgz -a -e ${packages}/${archive}.zip ]; then
+                check_sw_versions
+                echo ${PWD}/${packages}:
+                ls -l ${PWD}/${packages}
+                echo "Tar Archive packages successfully created." $( tar tzf ${packages}/${archive}.tgz | wc -l ) "files"
+                echo "Zip Archive packages successfully created." $( unzip -l ${packages}/${archive}.zip | tail -1 | sed -e"s/.*  //" )
             fi
         else
             echo "Error: can't make packages directory: ${packages}"
