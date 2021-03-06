@@ -234,7 +234,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             bestratio = ratio;
             bestthresh = threshold;
         }
-        if (ratio * 100 > threshold)
+        if (ratio * 100 >= threshold)
             break;
     }
     if (err) {
@@ -245,7 +245,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (bestratio * 100 > bestthresh) {
+    if (bestratio * 100 >= bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
             bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
         *idx = bestc;
