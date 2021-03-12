@@ -1481,7 +1481,7 @@ static bool validate_sku(char *sku)
     else if ((sku_len = strlen(sku)) > MAX_SKU_LEN)
         return false;
     else {
-        for (; isprint(*p); p++)
+        for (; isprint((int)*p); p++)
             ; /* count contiguous printable chars */
         if (p - sku != sku_len)
             return false;
