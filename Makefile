@@ -4,7 +4,7 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
+CFLAGS = -Wall -Werror -Wextra -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
 else
 CC = armcc
 CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
