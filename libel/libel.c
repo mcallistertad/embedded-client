@@ -180,11 +180,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 #if SKY_DEBUG
     } else {
         if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
-            snprintf(buf, sizeof(buf),
-                "%s:%s() State buffer with CRC 0x%08X, size %d, age %d Sec restored",
+            snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X, size %d restored",
                 sky_basename(__FILE__), __FUNCTION__, sky_crc32(sky_state, sky_state->header.size),
-                sky_state->header.size,
-                (uint32_t)(*sky_time)(NULL)-sky_state->cacheline[sky_state->newest].time);
+                sky_state->header.size);
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
 #endif
@@ -324,10 +322,9 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
     ctx->gettime = sky_time;
     ctx->plugin = sky_plugins;
     ctx->debounce = sky_debounce;
-    ctx->auth_state = !is_tbr_enabled(ctx) ?
-                          STATE_TBR_DISABLED :
-                          ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                                          STATE_TBR_REGISTERED;
+    ctx->auth_state = !is_tbr_enabled(ctx)                          ? STATE_TBR_DISABLED :
+                      ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
+                                                                      STATE_TBR_REGISTERED;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -1003,7 +1000,8 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
         (((*ctx->gettime)(NULL)-ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
         rq_config && ctx->state->config.last_config_time != 0 ? "Timeout" :
-                                                                rq_config ? "Forced" : "No");
+        rq_config                                             ? "Forced" :
+                                                                "No");
 
     if (rq_config)
         ctx->state->config.last_config_time = 0; /* request on next serialize */

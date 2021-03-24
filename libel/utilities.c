@@ -118,13 +118,6 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 #endif
         return false;
     }
-    if (s->newest >= CACHE_SIZE) {
-#if SKY_DEBUG
-        if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: newest too big for CACHE_SIZE");
-#endif
-        return false;
-    }
 
     if (s->header.magic != SKY_MAGIC) {
 #if SKY_DEBUG
@@ -509,10 +502,10 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 cl->ap_len, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
-                ctx->state->newest == i ? "<-newest" : "", (int)cl->loc.lat,
-                (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
-                (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe, cl->len);
+                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
+                (int)cl->loc.lat, (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))),
+                (int)cl->loc.lon, (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))),
+                cl->loc.hpe, cl->len);
             for (j = 0; j < cl->len; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }

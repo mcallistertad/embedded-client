@@ -212,7 +212,6 @@ typedef struct sky_state {
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
-    int newest;
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_state_t;
