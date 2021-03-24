@@ -103,7 +103,7 @@ Sky_status_t sky_plugin_equal(
     p = ctx->plugin;
     while (p) {
         if (p->equal)
-            ret = (*p->equal)(ctx, a, b, prop);
+            ret = p->equal(ctx, a, b, prop);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
@@ -112,7 +112,7 @@ Sky_status_t sky_plugin_equal(
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
         }
-        p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
+        p = p->next; /* move on to next plugin */
     }
     return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
 }
