@@ -56,7 +56,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
         p = table;
         return SKY_SUCCESS;
     }
-    p = *root; /* otherwise pick up pointer to first table */
+    p = *root; /* pick up first entry */
 
     /* find end of list of plugins */
     while (p) {
@@ -71,13 +71,14 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
             p->next = table;
             /* mark new end of linked list */
             table->next = NULL;
-            break;
+            return SKY_SUCCESS;
         }
         /* keep looking for end of linked list */
         p = p->next;
     }
 
-    return SKY_SUCCESS;
+    /* should never get here */
+    return SKY_ERROR;
 }
 
 /*! \brief call the equal operation in the registered plugins
@@ -281,7 +282,6 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t errno = SKY_ERROR_NONE;
     Sky_location_t loc = { 0 };
-    Sky_plugin_table_t *root = NULL;
     int idx = -1;
     Sky_plugin_table_t table1 = {
         .next = NULL,
@@ -305,8 +305,8 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     /* clear registration of standard plugins */
     ctx->plugin = NULL;
     /* add single access table with empty operations */
-    ASSERT(SKY_SUCCESS == sky_plugin_add(&ctx->plugin, &table1));
-    ASSERT(SKY_SUCCESS == sky_plugin_add(&ctx->plugin, &table2));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table1));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table2));
     ASSERT((Sky_plugin_table_t *)ctx->plugin == &table1);
     ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next == &table2);
     ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next->next == NULL);
