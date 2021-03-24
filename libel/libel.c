@@ -59,7 +59,7 @@ static Sky_timefn_t sky_time;
 static bool sky_debounce;
 
 /*! \brief base of plugin chain */
-static Sky_plugin_table_t *sky_plugins;
+static Sky_plugin_table_t *sky_plugins = NULL;
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
