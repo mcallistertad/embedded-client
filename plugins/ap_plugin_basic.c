@@ -366,29 +366,6 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     return false;
 }
 
-/*! \brief note newest cache entry
- *
- *  @param ctx Skyhook request context
- *
- *  @return void
- */
-static void update_newest_cacheline(Sky_ctx_t *ctx)
-{
-    int i;
-    int newest = 0, idx = 0;
-
-    for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time > newest) {
-            newest = ctx->state->cacheline[i].time;
-            idx = i;
-        }
-    }
-    if (newest) {
-        ctx->state->newest = idx;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", idx);
-    }
-}
-
 /*! \brief try to reduce AP by filtering out the oldest one
  *
  *  Workspace AP beacons are stored in decreasing rssi order
@@ -610,7 +587,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
         cl->time = 0; /* clear cacheline */
-        update_newest_cacheline(ctx);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of %d", i, CACHE_SIZE);
         return SKY_ERROR;
     } else if (cl->time == 0)
@@ -622,7 +598,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->ap_len = NUM_APS(ctx);
     cl->loc = *loc;
     cl->time = now;
-    ctx->state->newest = i;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];

@@ -106,7 +106,9 @@ Sky_status_t sky_plugin_equal(
             ret = p->equal(ctx, a, b, prop);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -139,7 +141,9 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
             ret = (*p->remove_worst)(ctx);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -173,7 +177,9 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
             ret = (*p->cache_match)(ctx, idx);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -207,7 +213,9 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
             ret = (*p->add_to_cache)(ctx, loc);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
