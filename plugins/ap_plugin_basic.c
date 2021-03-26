@@ -38,7 +38,8 @@
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
 #define AP_BELOW_RSSI_THRESHOLD(ctx, idx)                                                          \
-    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) < -CONFIG((ctx)->state, cache_neg_rssi_threshold))
+    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) <                                                 \
+        -(int)CONFIG((ctx)->state, cache_neg_rssi_threshold))
 
 /*! \brief compare beacons for equality
  *
@@ -89,7 +90,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
  *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
  *  if macs are similar, and pn is not NULL, *pn is set to nibble index of difference
  */
-static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
+static int mac_similar(uint8_t macA[], uint8_t macB[], int *pn)
 {
     size_t num_diff = 0; // Num hex digits which differ
     size_t idx_diff = 0; // nibble digit which differs
@@ -349,7 +350,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
      */
     for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
-            if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
+            if ((cmp = mac_similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
                 /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
                  *
                  */

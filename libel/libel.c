@@ -301,7 +301,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         *sky_errno = SKY_ERROR_NEVER_OPEN;
         return NULL;
     }
-    if (bufsize != sky_sizeof_workspace() || workspace_buf == NULL) {
+    if (bufsize != (uint32_t)sky_sizeof_workspace() || workspace_buf == NULL) {
         *sky_errno = SKY_ERROR_BAD_PARAMETERS;
         return NULL;
     }
@@ -1443,10 +1443,10 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
  */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len)
 {
-    if (device_id == NULL)
+    if (device_id == NULL || id_len > MAX_DEVICE_ID)
         return false;
     else
-        return true; /* TODO check upper bound? */
+        return true;
 }
 
 /*! \brief sanity check the partner_id

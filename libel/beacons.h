@@ -33,7 +33,7 @@
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((p)->len - (p)->ap_len)
+#define NUM_CELLS(p) ((uint32_t)((p)->len - (p)->ap_len))
 #define NUM_APS(p) ((p)->ap_len)
 #define NUM_BEACONS(p) ((p)->len)
 #define IMPLIES(a, b) (!(a) || (b))
@@ -165,8 +165,8 @@ typedef struct sky_header {
 } Sky_header_t;
 
 typedef struct sky_cacheline {
-    int16_t len; /* number of beacons */
-    int16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t len; /* number of beacons */
+    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
     uint32_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
@@ -223,9 +223,9 @@ typedef struct sky_ctx {
     Sky_log_level_t min_level;
     Sky_timefn_t gettime;
     bool debounce;
-    int16_t len; /* number of beacons in list (0 == none) */
+    uint16_t len; /* number of beacons in list (0 == none) */
+    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
-    int16_t ap_len; /* number of AP beacons in list (0 == none) */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */

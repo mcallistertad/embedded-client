@@ -258,7 +258,7 @@ int logfmt(
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize, int buf_offset)
 {
-    int pb = 0;
+    uint32_t pb = 0;
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
     uint8_t *b = (uint8_t *)buffer;
@@ -1065,6 +1065,7 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
  */
 float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.lat : NAN;
 }
 
@@ -1077,6 +1078,7 @@ float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.lon : NAN;
 }
 
@@ -1089,6 +1091,7 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.hpe : 0;
 }
 
@@ -1101,6 +1104,7 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.alt : NAN;
 }
 
@@ -1113,6 +1117,7 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.vpe : 0;
 }
 
@@ -1125,6 +1130,7 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.speed : NAN;
 }
 
@@ -1137,6 +1143,7 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.bearing : 0;
 }
 
@@ -1149,6 +1156,7 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.nsat : 0;
 }
 
@@ -1161,6 +1169,7 @@ int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.age : 0;
 }
 
@@ -1203,7 +1212,7 @@ int32_t get_num_vaps(Sky_ctx_t *ctx)
  */
 uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
 {
-    int j, nvg = 0;
+    uint32_t j, nvg = 0;
     Beacon_t *w;
 
     if (ctx == NULL) {
@@ -1240,7 +1249,7 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
  */
 uint8_t *select_vap(Sky_ctx_t *ctx)
 {
-    int j, nvap = 0, no_more = false;
+    uint32_t j, nvap = 0, no_more = false;
     Beacon_t *w;
     uint8_t cap_vap[MAX_AP_BEACONS] = {
         0
@@ -1288,7 +1297,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
  */
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 {
-    int i;
+    uint32_t i;
 
     if (!rand_buf)
         return 0;

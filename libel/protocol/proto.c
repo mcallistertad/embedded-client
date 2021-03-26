@@ -334,6 +334,7 @@ static bool encode_submessage(
 
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
+    (void)istream; /* suppress warning unused parameter */
     Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
 
     /* If we are building request which uses TBR auth,
@@ -538,7 +539,8 @@ int32_t serialize_request(
 
 int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
 {
-    int i, v, nap = 0;
+    uint32_t i, v;
+    int nap = 0;
 
     if (!ctx || size > TOTAL_BEACONS * MAX_VAP_PER_AP)
         return -1;
@@ -565,7 +567,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
 
 int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
-    uint8_t hdr_size = *buf;
+    uint32_t hdr_size = *buf;
     struct AES_ctx aes_ctx;
     int32_t ret = -1;
 
@@ -607,10 +609,9 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
-            "STATE_TBR_UNREGISTERED" :
-            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
-                                                        "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
+        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
+                                                      "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
@@ -675,9 +676,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
             break;
-        } else {
-            /* fall through */
         }
+        /* fall through */
     case STATE_TBR_DISABLED:
         if (header.status == RsHeader_Status_AUTH_ERROR) {
             /* failed legacy location request */

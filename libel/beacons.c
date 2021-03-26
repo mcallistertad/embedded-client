@@ -234,7 +234,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
-        (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
+        (NUM_CELLS(ctx) <=
             (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
 #ifdef VERBOSE_DEBUG
         DUMP_WORKSPACE(ctx);
@@ -462,7 +462,7 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     uint32_t oldestc = 0;
-    int oldest = (*ctx->gettime)(NULL);
+    uint32_t oldest = (*ctx->gettime)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
         if (ctx->state->cacheline[i].time == 0)
@@ -501,7 +501,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    if ((NUM_BEACONS(ctx) - NUM_APS(ctx)) == 0 || (NUM_BEACONS(cl) - NUM_APS(cl)) == 0) {
+    if ((NUM_CELLS(ctx) == 0 || NUM_CELLS(cl)) == 0) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
 #endif
