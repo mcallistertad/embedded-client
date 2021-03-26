@@ -227,10 +227,13 @@ int32_t sky_sizeof_state(void *sky_state)
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (!validate_cache(s, NULL))
+    if (s->header.magic != SKY_MAGIC) {
         return 0;
-    else
+    } else if (s->header.crc32 == sky_crc32(&s->header.magic,
+                                      (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return s->header.size;
+    }
+    return 0;
 }
 
 /*! \brief Determines the size of the workspace required to build request

@@ -34,104 +34,192 @@
 #include "send.h"
 #include "config.h"
 
-#define SCAN_LIST_SIZE 5
+typedef enum {
+    TYPE_RESERVED = 0,
+    TYPE_BLE = 2,
+    TYPE_NR = 3,
+    TYPE_LTE = 4,
+    TYPE_UMTS = 5,
+    TYPE_NBIOT = 6,
+    TYPE_CDMA = 7,
+    TYPE_GSM = 8,
+} Type_t;
 
 /* scan list definitions (platform dependant) */
 struct ap_scan {
-    char mac[MAC_SIZE * 2];
+    char mac[MAC_SIZE * 2 + 1];
     uint32_t age;
     uint32_t frequency;
     int16_t rssi;
     bool connected;
 };
 
+struct cell_scan {
+    Type_t type; // TYPE_NR/LTE/UMTS/NBIOT/CDMA/GSM
+    uint32_t age; // age in sec (time since scan was collected)
+    uint16_t ss; // Signal Strength
+    uint16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). SKY_UNKNOWN_ID1 if unknown.
+    uint16_t id2; // mnc (gsm, umts, lte, nr, nb-iot) or sid (cdma). SKY_UNKNOWN_ID2 if unknown.
+    int32_t
+        id3; // lac (gsm, umts) or tac (lte, nr, nb-iot) or nid (cdma). SKY_UNKNOWN_ID3 if unknown.
+    int64_t id4; // cell id (gsm, umts, lte, nb-iot, nr), bsid (cdma). SKY_UNKNOWN_ID4 if unknown.
+    int16_t
+        id5; // bsic (gsm), psc (umts), pci (lte, nr) or ncid (nb-iot). SKY_UNKNOWN_ID5 if unknown.
+    int32_t
+        freq; // arfcn(gsm), uarfcn (umts), earfcn (lte, nb-iot), nrarfcn (nr). SKY_UNKNOWN_ID6 if unknown.
+    int32_t ta; // SKY_UNKNOWN_TA if unknown.
+    bool connected;
+};
+
+struct gnss_scan {
+    uint32_t age;
+    float lat;
+    float lon;
+    uint16_t hpe;
+    float altitude;
+    uint16_t vpe;
+    float speed;
+    float bearing;
+    uint16_t nsat;
+};
+
+/* Multiple sets of scans */
 /* some rssi values intentionally out of range */
-struct ap_scan aps[] = /* clang-format off */ 
-                    { { "283B8264E08B", 300, 3660, -8, 0 },
-                      { "823AB292D699", 30, 3660, -30, 1 },
-                      { "2A32825649F0", 300, 3660, -70, 0 },
-                      { "826AB092DC99", 30, 3660, -130, 0 },
-                      { "283B823629F0", 300, 3660, -90, 0 },
-                      { "283B821C712A", 30, 3660, -77, 0 },
- //                     { "0024D2E08E5D", 300, 3660, -92, 0 },
-                      { "283B821CC232", 30, 3660, -91, 0 },
-                      { "74DADA5E1015", 300, 3660, -88, 0 },
-                      { "B482FEA46221", 30, 3660, -89, 0 },
-                      { "74DAD95E1015", 300, 3660, -88, 0 },
-                      { "B482F1A46221", 30, 3660, -89, 0 },
-                      { "283B821CC232", 300, 3660, -91, 0 },
-                      { "283B822CC232", 30, 3660, -91, 0 },
-                      { "283B823CC232", 300, 3660, -91, 0 },
-                      { "283B824CC232", 300, 3660, -91, 0 },
-                      { "283B825CC232", 30, 3660, -91, 0 },
-                      { "EC22809E00DB", 300, 3660, -90, 0 } };
+
+/* Scan set 1 */
+struct ap_scan aps1[] = /* clang-format off */
+    { { "283B8264E08B", 300, 3660, -8, 0 },
+    { "823AB292D699", 30, 3660, -30, 1 }, { "2A32825649F0", 300, 3660, -70, 0 },
+    { "826AB092DC99", 30, 3660, -130, 0 }, { "283B823629F0", 300, 3660, -90, 0 },
+    { "283B821C712A", 30, 3660, -77, 0 }, { "283B821CC232", 30, 3660, -91, 0 },
+    { "74DADA5E1015", 300, 3660, -88, 0 }, { "B482FEA46221", 30, 3660, -89, 0 },
+    { "74DAD95E1015", 300, 3660, -88, 0 }, { "B482F1A46221", 30, 3660, -89, 0 },
+    { "283B821CC232", 300, 3660, -91, 0 }, { "283B822CC232", 30, 3660, -91, 0 },
+    { "283B823CC232", 300, 3660, -91, 0 }, { "283B824CC232", 300, 3660, -91, 0 },
+    { "283B825CC232", 30, 3660, -91, 0 }, { "EC22809E00DB", 300, 3660, -90, 0 },
+    { .mac = { '\0' }, .age = 0, .frequency = 0, .rssi = 0, .connected = 0 } };
+
+struct cell_scan cells1[] =
+    { { TYPE_UMTS, 45, -100, 603, 1, 16101, 14962, 33, 440, SKY_UNKNOWN_TA, 0},
+      { TYPE_LTE, 45, -86, 311, 480, 25614, 25629196, 114, 66536, SKY_UNKNOWN_TA, 0},
+      { TYPE_LTE, 154, -105, 311, 480, 25614, 25664524, 387, 66536, SKY_UNKNOWN_TA, 1},
+      { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss1 =
+    {15,36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5};
+
+
+/* Scan set 2 */
+struct ap_scan aps2[] =
+    { { "287AEEBA96C0", 0, 2462, -89, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells2[] =
+    { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664524, 387, 66536, SKY_UNKNOWN_TA, 1},
+      { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss2 =
+    {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+
+/* Scan set 3 */
+struct ap_scan aps3[] =
+    { { "287AEEBA96C0", 0, 2462, -89, 0 },
+      { "287AEEBA96C3", 0, 2412, -89, 0 },
+      { "287AEEBA96C7", 0, 2412, -89, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells3[] =
+    { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
+      { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss3 =
+    {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+/* Scan set 4 */
+struct ap_scan aps4[] =
+    { { "287AEEBA96C0", 0, 2412, -89, 0 },
+      { "287AEEBA96C7", 0, 2412, -89, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells4[] =
+    { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss4 =
+    {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* clang-format on */
-
-/*! \brief check for saved cache state
- *
- *  @param nv_space pointer to saved cache state
- *  @param client_id
- *
- *  @returns NULL for failure to restore cache, pointer to cache otherwise
- */
-void *nv_cache(void *nv_space, uint16_t client_id)
-{
-    char cache_name[16];
-    sprintf(cache_name, "nv_cache_%d", client_id);
-
-    struct {
-        uint32_t magic;
-        uint32_t size;
-        uint32_t time;
-        uint32_t crc32;
-    } tmp;
-    FILE *fio;
-
-    if ((fio = fopen(cache_name, "r")) != NULL) {
-        if (fread((void *)&tmp, sizeof(tmp), 1, fio) == 1 &&
-            tmp.crc32 == sky_crc32(&tmp.magic, (uint8_t *)&tmp.crc32 - (uint8_t *)&tmp.magic)) {
-            nv_space = malloc(tmp.size);
-            rewind(fio);
-            if (fread(nv_space, tmp.size, 1, fio) == 1)
-                return nv_space;
-        }
-    }
-    return NULL;
-}
 
 /*! \brief save cache state
  *
  *  @param p - pointer to cache
- *  @param client_id - client id
+ *  @param file_name - name of file to use as non-volatile storage
  *
  *  @returns 0 for success or negative number for error
  */
-Sky_status_t nv_cache_save(void *p, uint16_t client_id)
+static Sky_status_t save_state(void *p, char *file_name)
 {
-    char cache_name[16];
-    sprintf(cache_name, "nv_cache_%d", client_id);
-
     FILE *fio;
-    struct {
-        uint32_t magic;
-        uint32_t size;
-        uint32_t time;
-        uint32_t crc32;
-    } *c = p;
+    uint32_t state_size;
 
-    if (c->crc32 == sky_crc32(&c->magic, (uint8_t *)&c->crc32 - (uint8_t *)&c->magic)) {
-        if ((fio = fopen(cache_name, "w+")) != NULL) {
-            if (fwrite(p, c->size, 1, fio) == 1) {
-                printf("nv_cache_save: cache size %d\n", c->size);
-                return 0;
-            } else
-                printf("fwrite failed\n");
-        } else
-            printf("fopen failed\n");
+    if ((state_size = sky_sizeof_state(p)) == 0)
+        return -1; /* nothing to save */
+    if ((fio = fopen(file_name, "w+")) != NULL) {
+        if (fwrite(p, state_size, 1, fio) == 1) {
+            printf("Saved state: size %d bytes\n", state_size);
+            fclose(fio);
+            return 0;
+        } else {
+            fclose(fio);
+            printf("Error: write to file %s failed\n", file_name);
+        }
     } else
-        printf("nv_cache_save: failed to validate cache\n");
+        printf("Error: could not open file %s\n", file_name);
     return -1;
+}
+
+/*! \brief restore saved cache state
+ *
+ *  @param file_name name of file to read
+ *
+ *  @returns NULL for failure to restore cache state, pointer to c state otherwise
+ */
+static void *restore_state(char *file_name)
+{
+    void *pstate;
+
+    uint8_t tmp[16]; /* room enough for state header bytes */
+    uint32_t state_size = 0;
+    FILE *fio;
+
+    /* Open file and read header */
+    if ((fio = fopen(file_name, "r")) == NULL) {
+        printf("Failed to open state file %s\n", file_name);
+        return NULL;
+    }
+    if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
+        /* query header for actual size */
+        if ((state_size = sky_sizeof_state(tmp)) > 0) {
+            rewind(fio);
+            pstate = malloc(state_size);
+            if (fread(pstate, state_size, 1, fio) == 1) {
+                fclose(fio);
+                printf("Restored state from %s (%d bytes)\n", file_name, state_size);
+                return pstate;
+            }
+            free(pstate);
+        }
+    }
+    fclose(fio);
+    printf("Failed to restore state from %s\n", file_name);
+    return NULL;
 }
 
 /*! \brief generate random byte sequence
@@ -141,7 +229,7 @@ Sky_status_t nv_cache_save(void *p, uint16_t client_id)
  *
  *  @returns 0 for failure, length of rand sequence for success
  */
-int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
+static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 {
     int i;
 
@@ -160,15 +248,14 @@ int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
  *
  *  @returns 0 for success or negative number for error
  */
-int logger(Sky_log_level_t level, char *s)
+static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ?
-            "CRIT" :
-            level == SKY_LOG_LEVEL_ERROR ?
-            "ERRR" :
-            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
-                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
+        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
+        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
+        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
+                                          "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -187,6 +274,188 @@ static time_t mytime(time_t *t)
         return time(NULL);
 }
 
+/*! \brief locate function
+ *
+ *  Add a set of beacon scans to workspace and process the request
+ *  return the location structure
+ *
+ *  @param ctx pointer to the workspace allocated
+ *  @param bufsize size of the the workspace allocated
+ *  @param config pointer to the config structure
+ *  @param ap pointer to array of wifi data
+ *  @param cp pointer to array of cell data
+ *  @param gp pointer to gnss data
+ *  @param ul_data pointer to uplink data buffer
+ *  @param data_len length of uplink data buffer
+ *  @param server_request true to force server_request
+ *  @param loc pointer to location structure for result
+ *
+ *  @returns true if loc was updated, otherwise false
+ */
+static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_scan *ap,
+    struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
+    bool server_request, Sky_location_t *loc)
+{
+    int i;
+    uint32_t request_size;
+    uint32_t response_size;
+    void *prequest, *response;
+    time_t timestamp = mytime(NULL);
+    Sky_status_t ret_status;
+    Sky_errno_t sky_errno;
+
+    /* Start new request */
+    if (sky_new_request(ctx, bufsize, ul_data, data_len, &sky_errno) != ctx) {
+        printf("sky_new_request() ERROR: '%s'\n", sky_perror(sky_errno));
+        return false;
+    }
+
+    /* Add APs to the request */
+    for (i = 0; true; i++, ap++) {
+        uint8_t mac[MAC_SIZE];
+
+        if (ap->mac == NULL)
+            break;
+        if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
+            ret_status = sky_add_ap_beacon(
+                ctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, ap->frequency, ap->connected);
+            if (ret_status != SKY_SUCCESS)
+                printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+        } else if (ap->mac[0] == '\0')
+            break;
+        else
+            printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
+    }
+
+    /* add cells to request */
+    for (i = 0; true; i++, cp++) {
+        if (cp->type == TYPE_RESERVED)
+            break;
+        switch (cp->type) {
+        case TYPE_CDMA:
+            if (sky_add_cell_cdma_beacon(ctx, &sky_errno, cp->id2, cp->id3, cp->id4,
+                    timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_cdma_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        case TYPE_GSM:
+            if (sky_add_cell_gsm_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2, cp->ta,
+                    timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_gsm_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        case TYPE_LTE:
+            if (sky_add_cell_lte_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
+                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, cp->ss,
+                    cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_lte_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        case TYPE_NBIOT:
+            if (sky_add_cell_nb_iot_beacon(ctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
+                    cp->id5, cp->freq, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_nb_iot_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        case TYPE_NR:
+            if (sky_add_cell_nr_beacon(ctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3, cp->id5,
+                    cp->freq, cp->ta, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_nr_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        case TYPE_UMTS:
+            if (sky_add_cell_umts_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
+                    cp->id5, cp->freq, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+                printf("sky_add_cell_umts_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+            break;
+        default:
+            printf("Error: unknown cell type at index %d", i);
+            break;
+        }
+    }
+
+    if (sky_add_gnss(ctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe, gp->speed,
+            gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
+        printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
+    }
+
+retry_after_auth:
+    /* Determine how big the network request buffer must be, and allocate a */
+    /* buffer of that length. This function must be called for each request. */
+    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) != SKY_SUCCESS) {
+        printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
+        return false;
+    }
+    printf("Required buffer size = %d\n", request_size);
+
+    if ((prequest = malloc(request_size)) == NULL) {
+        printf("Error allocating request buffer\n");
+        return false;
+    }
+
+    /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
+    /* which case the loc parameter will contain the location result which was */
+    /* obtained from the cache, or SKY_FINALIZE_REQUEST, which means that the */
+    /* request buffer must be sent to the Skyhook server. */
+    Sky_finalize_t finalize =
+        sky_finalize_request(ctx, &sky_errno, prequest, request_size, loc, &response_size);
+
+    switch (finalize) {
+    case SKY_FINALIZE_ERROR:
+        free(prequest);
+        printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
+        return false;
+        break;
+    case SKY_FINALIZE_LOCATION:
+        /* Location was found in the cache. No need to go to server. */
+        printf("Location found in cache\n");
+        if (!server_request)
+            break;
+        printf("Making server request\n");
+    case SKY_FINALIZE_REQUEST:
+        /* send the request to the server. */
+        response = malloc(response_size);
+        if (response == NULL) {
+            free(prequest);
+            return false;
+        }
+        printf("server=%s, port=%d\n", config->server, config->port);
+        printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
+            request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
+        int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
+            config->server, config->port);
+        free(prequest);
+
+        if (rc > 0)
+            printf("Received response of length %d from server\n", rc);
+        else {
+            free(response);
+            printf("ERROR: No response from server!\n");
+            return false;
+        }
+
+        /* Decode the server response */
+        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
+        free(response);
+
+        if (ret_status == SKY_SUCCESS) {
+            return true;
+        } else {
+            printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
+            if (sky_errno == SKY_AUTH_RETRY)
+                goto retry_after_auth; /* Repeat request if Authentication was required for last message */
+        }
+        break;
+    }
+    return false;
+}
+
+static void report_location(Sky_location_t *loc)
+{
+    char hex_data[200];
+    printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
+        sky_pserver_status(loc->location_status), (int)loc->lat,
+        (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, loc->location_source);
+    bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, loc->dl_app_data_len);
+    printf("Downlink data: %s(%d)\n", hex_data, loc->dl_app_data_len);
+}
+
 /*! \brief validate fundamental functionality of the Embedded Library
  *
  *  @param argc count
@@ -196,20 +465,12 @@ static time_t mytime(time_t *t)
  */
 int main(int argc, char *argv[])
 {
-    int i;
     Sky_errno_t sky_errno = -1;
-    Sky_ctx_t *ctx;
     Sky_status_t ret_status;
-    uint32_t *p;
+    uint32_t *workspace;
     uint32_t bufsize;
     void *pstate;
-    void *prequest;
-    uint8_t *response;
-    uint32_t request_size;
-    uint32_t response_size;
-    uint32_t timestamp;
     Sky_location_t loc;
-    void *nv_space = NULL;
     char *configfile = NULL;
 
     Config_t config;
@@ -226,270 +487,58 @@ int main(int argc, char *argv[])
     print_config(&config);
 
     /* Comment in order to disable cache loading */
-    nv_space = nv_cache(nv_space, 1);
+    pstate = restore_state("nv_state"); /* returns a non-NULL pointer if space allocated */
 
-    timestamp = mytime(NULL); /* time scans were prepared */
     /* Initialize the Skyhook resources */
 
-    if (sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            config.sku, config.cc, nv_space, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
-            config.debounce) == SKY_ERROR) {
+    ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
+        config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
+        config.debounce);
+    if (pstate)
+        free(pstate);
+    if (ret_status != SKY_SUCCESS) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
 
-    /* Get the size of workspace needed */
-    bufsize = sky_sizeof_workspace();
-    if (bufsize == 0 || bufsize > 4096) {
-        printf("sky_sizeof_workspace returned bad value, Can't continue\n");
-        exit(-1);
-    }
-
     /* Allocate and initialize workspace */
-    ctx = (Sky_ctx_t *)(p = malloc(bufsize));
-    memset(p, 0, bufsize);
+    bufsize = sky_sizeof_workspace();
+    workspace = calloc(1, bufsize);
 
-    /* Start new request */
-    if (sky_new_request(ctx, bufsize, (uint8_t *)config.ul_app_data, config.ul_app_data_len,
-            &sky_errno) != ctx) {
-        printf("sky_new_request() returned bad value\n");
-        printf("sky_errno contains '%s'\n", sky_perror(sky_errno));
+    if (locate(workspace, bufsize, &config, aps1, cells1, &gnss1, config.ul_app_data,
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
     }
 
-    /* Add APs to the request */
-    for (i = 0; i < sizeof(aps) / sizeof(struct ap_scan); i++) {
-        uint8_t mac[MAC_SIZE];
-        if (hex2bin(aps[i].mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
-            ret_status = sky_add_ap_beacon(ctx, &sky_errno, mac, timestamp - aps[i].age,
-                aps[i].rssi, aps[i].frequency, aps[i].connected);
-            if (ret_status == SKY_SUCCESS)
-                printf("AP #%d added\n", i);
-            else
-                printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
-        } else
-            printf("Ignoring AP becon with bad MAC Address '%s' index %d\n", aps[i].mac, i + 1);
+    if (locate(workspace, bufsize, &config, aps2, cells2, &gnss2, NULL, 0, false, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
     }
 
-    /* Add UMTS cell */
-    ret_status = sky_add_cell_umts_beacon(ctx, &sky_errno,
-        16101, // lac
-        14962, // ucid
-        603, // mcc
-        1, // mnc
-        33, // pci
-        440, // earfcn
-        timestamp - 315, // timestamp
-        -100, // rscp
-        0); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell UMTS added\n");
-    else
-        printf("Error adding UMTS cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add UMTS neighbor cell */
-    ret_status = sky_add_cell_umts_neighbor_beacon(ctx, &sky_errno,
-        33, // pci
-        440, // earfcn
-        timestamp - 315, // timestamp
-        -100); // rscp
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell neighbor UMTS added\n");
-    else
-        printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add another UMTS neighbor cell */
-    ret_status = sky_add_cell_umts_neighbor_beacon(ctx, &sky_errno,
-        55, // pci
-        660, // earfcn
-        timestamp - 316, // timestamp
-        -101); // rscp
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell neighbor UMTS added\n");
-    else
-        printf("Error adding UMTS neighbor cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add CDMA cell */
-    ret_status = sky_add_cell_cdma_beacon(ctx, &sky_errno,
-        1552, // sid
-        45004, // nid
-        37799, // bsid
-        timestamp - 315, // timestamp
-        -159, // pilot-power
-        0); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell CDMA added\n");
-    else
-        printf("Error adding CDMA cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add NBIOT cell */
-    ret_status = sky_add_cell_nb_iot_beacon(ctx, &sky_errno,
-        311, // mcc
-        480, // mnc
-        209979678, // eucid
-        25187, // tac
-        SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6,
-        timestamp - 315, // timestamp
-        -143, // rssi
-        0); // serving
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell NBIOT added\n");
-    else
-        printf("Error adding NBIOT cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add NR cell */
-    ret_status = sky_add_cell_nr_beacon(ctx, &sky_errno,
-        600, // mcc
-        10, // mnc
-        6871947673, // nci
-        25187, // tac
-        400, // pci
-        4000, // nrarfcn
-        3844, // ta
-        timestamp - 315, // timestamp
-        -50, // rscp
-        1); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell NR added\n");
-    else
-        printf("Error adding NR cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add NR neighbor cell */
-    ret_status = sky_add_cell_nr_neighbor_beacon(ctx, &sky_errno,
-        1006, // pci
-        653333, // earfcn
-        timestamp - 315, // timestamp
-        -49); // rscp
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell neighbor nr added\n");
-    else
-        printf("Error adding nr neighbor cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add LTE cell */
-    ret_status = sky_add_cell_lte_beacon(ctx, &sky_errno,
-        310, // tac
-        268435454, // e_cellid
-        201, // mcc
-        700, // mnc
-        502, // pci
-        45500, // nrarfcn
-        7688, // ta
-        timestamp - 315, // timestamp
-        -50, // rscp
-        1); // serving
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell nr added\n");
-    else
-        printf("Error adding lte cell: '%s'\n", sky_perror(sky_errno));
-
-    /* Add LTE neighbor cell */
-    ret_status = sky_add_cell_lte_neighbor_beacon(ctx, &sky_errno,
-        502, // pci
-        44, // earfcn
-        timestamp - 315, // timestamp
-        -100); // rscp
-
-    if (ret_status == SKY_SUCCESS)
-        printf("Cell neighbor lte added\n");
-    else
-        printf("Error adding lte neighbor cell: '%s'\n", sky_perror(sky_errno));
-
-    sky_add_gnss(
-        ctx, &sky_errno, 36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5, timestamp - 100);
-    if (ret_status == SKY_SUCCESS)
-        printf("GNSS added\n");
-    else
-        printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
-
-retry_after_auth:
-    /* Determine how big the network request buffer must be, and allocate a */
-    /* buffer of that length. This function must be called for each request. */
-    ret_status = sky_sizeof_request_buf(ctx, &request_size, &sky_errno);
-
-    if (ret_status == SKY_ERROR) {
-        printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
-        exit(-1);
-    } else
-        printf("Required buffer size = %d\n", request_size);
-
-    prequest = malloc(request_size * sizeof(uint8_t));
-
-    /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
-    /* which case the loc parameter will contain the location result which was */
-    /* obtained from the cache, or SKY_FINALIZE_REQUEST, which means that the */
-    /* request buffer must be sent to the Skyhook server. */
-    Sky_finalize_t finalize =
-        sky_finalize_request(ctx, &sky_errno, prequest, request_size, &loc, &response_size);
-
-    if (finalize == SKY_FINALIZE_ERROR) {
-        printf("sky_finalize_request sky_errno contains '%s'", sky_perror(sky_errno));
-        if (sky_close(&sky_errno, &pstate))
-            printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
-        exit(-1);
+    if (locate(workspace, bufsize, &config, aps3, cells3, &gnss3, config.ul_app_data,
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
     }
 
-    switch (finalize) {
-    case SKY_FINALIZE_LOCATION:
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
-    //  break;  /* Going to server optional */
-    case SKY_FINALIZE_REQUEST:
-        /* send the request to the server. */
-        response = malloc(response_size * sizeof(uint8_t));
-        printf("server=%s, port=%d\n", config.server, config.port);
-        printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
-            request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
-        if (response == NULL)
-            exit(-1);
-
-        int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
-            config.server, config.port);
-
-        if (rc > 0)
-            printf("Received response of length %d from server\n", rc);
-        else {
-            printf("Bad response from server\n");
-            ret_status = sky_close(&sky_errno, &pstate);
-            if (ret_status != SKY_SUCCESS)
-                printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
-            exit(-1);
-        }
-
-        /* Decode the response from server or cache */
-        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, &loc);
-
-        if (ret_status == SKY_SUCCESS) {
-            printf(
-                "Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
-                sky_pserver_status(loc.location_status), (int)loc.lat,
-                (int)fabs(round(1000000 * (loc.lat - (int)loc.lat))), (int)loc.lon,
-                (int)fabs(round(1000000 * (loc.lon - (int)loc.lon))), loc.hpe, loc.location_source);
-            if (loc.location_status == SKY_LOCATION_STATUS_SUCCESS)
-                printf("Downlink data: %.*s(%d)\n", loc.dl_app_data_len, loc.dl_app_data,
-                    loc.dl_app_data_len);
-        } else {
-            printf("sky_decode_response error: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_AUTH_RETRY)
-                goto retry_after_auth; /* Repeat request if Authentication was required for last message */
-        }
-
-        break;
-    case SKY_FINALIZE_ERROR:
-        printf("Error finalizing request\n");
-        exit(-1);
-        break;
+    if (locate(workspace, bufsize, &config, aps4, cells4, &gnss4, config.ul_app_data,
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
     }
 
-    ret_status = sky_close(&sky_errno, &pstate);
-
-    if (ret_status != SKY_SUCCESS)
+    free(workspace);
+    if (sky_close(&sky_errno, &pstate) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
-    if (pstate != NULL)
-        nv_cache_save(pstate, 1);
+    if (pstate != NULL) {
+        save_state(pstate, "nv_state");
+    }
 
     printf("Done.\n\n");
 }

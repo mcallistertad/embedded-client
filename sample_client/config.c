@@ -56,6 +56,8 @@ uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen
             c = (uint8_t)((c - 'a') + 10);
         else if (c >= 'A' && c <= 'F')
             c = (uint8_t)((c - 'A') + 10);
+        else if (c == '\0')
+            break;
         else
             continue;
 
@@ -91,11 +93,13 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
         return -1;
 
     p = result;
-
     for (i = 0; i < binlen; i++) {
         *p++ = hex[bin[i] >> 4 & 0x0F];
         *p++ = hex[bin[i] & 0x0F];
     }
+    /* add terminating null char if room in result */
+    if (reslen > 2 * binlen)
+        *p = '\0';
 
     return 0;
 }
@@ -108,7 +112,7 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
  *
  *  @return 0 for equality, less or greater than 0 indicating difference
  */
-static int strcasecmp(const char *s1, const char *s2)
+static int strcasecmp_(const char *s1, const char *s2)
 {
     const unsigned char *p1 = (const unsigned char *)s1;
     const unsigned char *p2 = (const unsigned char *)s2;
@@ -186,7 +190,7 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
         if (sscanf(line, "DEBOUNCE %s", str) == 1) {
-            if (strcasecmp(str, "off") == 0 || strcasecmp(str, "false") == 0)
+            if (strcasecmp_(str, "off") == 0 || strcasecmp_(str, "false") == 0)
                 config->debounce = 0;
             continue;
         }
