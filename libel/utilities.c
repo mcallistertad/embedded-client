@@ -66,10 +66,6 @@ int validate_workspace(Sky_ctx_t *ctx)
         fprintf(stderr, "FATAL: NULL ctx\n");
         return false;
     }
-    if (NUM_BEACONS(ctx) < 0 || NUM_APS(ctx) < 0) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon count");
-        return false;
-    }
     if (NUM_BEACONS(ctx) > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
         return false;
@@ -101,20 +97,10 @@ int validate_workspace(Sky_ctx_t *ctx)
  */
 int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 {
-    int i, j;
-
     if (s == NULL) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: NULL pointer");
-#endif
-        return false;
-    }
-
-    if (s->len != CACHE_SIZE) {
-#if SKY_DEBUG
-        if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
 #endif
         return false;
     }
@@ -128,7 +114,18 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
     }
     if (s->header.crc32 ==
         sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
-        for (i = 0; i < CACHE_SIZE; i++) {
+#if CACHE_SIZE
+        if (s->len != CACHE_SIZE) {
+#if SKY_DEBUG
+            if (logf != NULL)
+                (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
+#endif
+            return false;
+        }
+
+        for (int i = 0; i < CACHE_SIZE; i++) {
+            int j;
+
             if (s->cacheline[i].len > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
@@ -155,6 +152,7 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
                 }
             }
         }
+#endif
     } else {
 #if SKY_DEBUG
         if (logf != NULL)
@@ -399,6 +397,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
+#if CACHE_SIZE
     } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
                b < ctx->state->cacheline[CACHE_SIZE - 1].beacon +
                        ctx->state->cacheline[CACHE_SIZE - 1].len) {
@@ -407,6 +406,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_b %= TOTAL_BEACONS;
         snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
+#endif
     } else {
         idx_b = idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %6s", str, b->h.connected ? "*" : " ",
@@ -491,6 +491,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
 {
 #if SKY_DEBUG
+#if CACHE_SIZE
     int i, j;
     Sky_cacheline_t *cl;
 
@@ -511,6 +512,9 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
             }
         }
     }
+#else
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "cache: Disabled");
+#endif /* CACHE_SIZE */
 #endif
 }
 

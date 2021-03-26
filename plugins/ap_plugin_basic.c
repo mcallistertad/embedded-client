@@ -1,5 +1,5 @@
 /*! \file plugins/ap_plugin_basic.c
- *  \brief AP plugin supporting basic APs and cells Only
+     *  \brief AP plugin supporting basic APs and cells Only
  *  Plugin for Skyhook Embedded Library
  *
  * Copyright (c) 2020 Skyhook, Inc.
@@ -257,6 +257,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     return remove_beacon(ctx, reject) == SKY_SUCCESS;
 }
 
+#if CACHE_SIZE
 /*! \brief count number of cached APs in workspace relative to a cacheline
  *
  *  @param ctx Skyhook request context
@@ -281,6 +282,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 #endif
     return num_aps_cached;
 }
+#endif
 
 /*! \brief select between two virtual APs which should be removed,
  *  and then remove it
@@ -437,6 +439,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  */
 static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
+#if CACHE_SIZE
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
@@ -549,6 +552,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
         CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)idx; /* suppress warning unused parameter */
+    return SKY_FAILURE;
+#endif
 }
 
 /*! \brief add location to cache
@@ -563,6 +571,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
  */
 static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
+#if CACHE_SIZE
     int i = ctx->save_to;
     int j;
     uint32_t now = (*ctx->gettime)(NULL);
@@ -608,6 +617,11 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     }
     DUMP_CACHE(ctx);
     return SKY_SUCCESS;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)loc; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif
 }
 
 /* * * * * * Plugin access table * * * * *

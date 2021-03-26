@@ -210,8 +210,10 @@ typedef struct sky_state {
     Sky_errno_t backoff; /* last auth error */
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
+#if CACHE_SIZE
     int len; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
+#endif
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_state_t;

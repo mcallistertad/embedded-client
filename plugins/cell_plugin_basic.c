@@ -154,6 +154,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  */
 static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
+#if CACHE_SIZE
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
@@ -256,6 +257,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
         CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)idx; /* suppress warning unused parameter */
+    return SKY_FAILURE;
+#endif
 }
 
 /* * * * * * Plugin access table * * * * *
