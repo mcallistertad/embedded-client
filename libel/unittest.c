@@ -48,6 +48,7 @@ void _test_print_rs(Test_opts *opts, Test_rs rs)
 
 int _test_log(Sky_log_level_t level, char *s)
 {
+    (void)level; /* suppress warning unused parameter */
     fprintf(stderr, " >>> %s\n", s);
     return 0;
 }
