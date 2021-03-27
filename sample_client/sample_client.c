@@ -222,6 +222,33 @@ static void *restore_state(char *file_name)
     return NULL;
 }
 
+/* From c-faq.com/lib/rand.html
+ * Here is a portable C implementation of the ``minimal standard'' generator proposed by Park and Miller
+ */
+#define a 16807
+#define m 2147483647
+#define q (m / a)
+#define r (m % a)
+
+static long int seed = 1;
+
+static void PMseed(long int new_seed)
+{
+    seed = new_seed;
+}
+
+static long int PMrand()
+{
+    long int hi = seed / q;
+    long int lo = seed % q;
+    long int test = a * lo - r * hi;
+    if (test > 0)
+        seed = test;
+    else
+        seed = test + m;
+    return seed;
+}
+
 /*! \brief generate random byte sequence
  *
  *  @param rand_buf pointer to buffer where rand bytes are put
@@ -237,7 +264,7 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
         return 0;
 
     for (i = 0; i < bufsize; i++)
-        rand_buf[i] = rand() % 256;
+        rand_buf[i] = PMrand() % 256;
     return bufsize;
 }
 
@@ -251,11 +278,12 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
-        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
-        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
-        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
-                                          "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ?
+            "CRIT" :
+            level == SKY_LOG_LEVEL_ERROR ?
+            "ERRR" :
+            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
+                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -472,9 +500,13 @@ int main(int argc, char *argv[])
     void *pstate;
     Sky_location_t loc;
     char *configfile = NULL;
-
     Config_t config;
     int ret_code = 0;
+
+    /* Seed the random number generator
+     */
+    PMseed((long int)time(NULL));
+
     if (argc > 1)
         configfile = argv[1];
     else
@@ -486,11 +518,10 @@ int main(int argc, char *argv[])
         exit(-1);
     print_config(&config);
 
-    /* Comment in order to disable cache loading */
-    pstate = restore_state("nv_state"); /* returns a non-NULL pointer if space allocated */
+    /* Comment the following to disable cache state loading */
+    pstate = restore_state(config.statefile); /* returns a non-NULL pointer if space allocated */
 
-    /* Initialize the Skyhook resources */
-
+    /* Initialize the Skyhook resources and restore any saved state */
     ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
         config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
         config.debounce);
@@ -501,10 +532,11 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    /* Allocate and initialize workspace */
+    /* Allocate workspace */
     bufsize = sky_sizeof_workspace();
-    workspace = calloc(1, bufsize);
+    workspace = malloc(1, bufsize);
 
+    /* process a number of scans */
     if (locate(workspace, bufsize, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -532,12 +564,13 @@ int main(int argc, char *argv[])
         report_location(&loc);
     }
 
+    /* clean up and close libel saving state */
     free(workspace);
     if (sky_close(&sky_errno, &pstate) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
     if (pstate != NULL) {
-        save_state(pstate, "nv_state");
+        save_state(pstate, config.statefile);
     }
 
     printf("Done.\n\n");

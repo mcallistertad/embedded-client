@@ -149,6 +149,7 @@ int load_config(char *filename, Config_t *config)
     }
     memset(config, '\0', sizeof(*config));
     config->debounce = 1;
+    strcpy(config->statefile, "nv_state");
     while (fgets(line, sizeof(line), fp)) {
         if (strlen(line) < 4)
             continue;
@@ -162,6 +163,10 @@ int load_config(char *filename, Config_t *config)
 
         if (sscanf(line, "PORT %d", &val) == 1) {
             config->port = (uint16_t)(val & 0xFFFF);
+            continue;
+        }
+
+        if (sscanf(line, "STATE_FILE %20s", config->statefile) == 1) {
             continue;
         }
 
@@ -229,6 +234,7 @@ void print_config(Config_t *config)
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
     printf("Key: %32s\n", key);
+    printf("State file: %s\n", config->statefile);
     printf("Partner Id: %d\n", config->partner_id);
     printf("Device: %12s\n", device);
     printf("SKU: %s\n", config->sku);

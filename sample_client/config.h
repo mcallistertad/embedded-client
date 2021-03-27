@@ -34,6 +34,7 @@ typedef struct client_config {
 
     char server[80];
 
+    char statefile[20];
     uint8_t device_id[MAX_DEVICE_ID];
     uint8_t device_len;
     uint8_t key[AES_SIZE];
