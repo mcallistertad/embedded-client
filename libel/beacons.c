@@ -333,6 +333,30 @@ bool beacon_in_cacheline(
             return true;
     return false;
 }
+
+/*! \brief find cache entry with oldest entry
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return index of oldest cache entry, or empty
+ */
+int find_oldest(Sky_ctx_t *ctx)
+{
+    int i;
+    uint32_t oldestc = 0;
+    uint32_t oldest = (*ctx->gettime)(NULL);
+
+    for (i = 0; i < CACHE_SIZE; i++) {
+        if (ctx->state->cacheline[i].time == 0)
+            return i;
+        else if (ctx->state->cacheline[i].time < oldest) {
+            oldest = ctx->state->cacheline[i].time;
+            oldestc = i;
+        }
+    }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
+    return oldestc;
+}
 #endif
 
 /*! \brief compare a beacon to one in workspace
@@ -453,32 +477,6 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
 #endif
     return ret;
 }
-
-#if CACHE_SIZE
-/*! \brief find cache entry with oldest entry
- *
- *  @param ctx Skyhook request context
- *
- *  @return index of oldest cache entry, or empty
- */
-int find_oldest(Sky_ctx_t *ctx)
-{
-    int i;
-    uint32_t oldestc = 0;
-    uint32_t oldest = (*ctx->gettime)(NULL);
-
-    for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
-            return i;
-        else if (ctx->state->cacheline[i].time < oldest) {
-            oldest = ctx->state->cacheline[i].time;
-            oldestc = i;
-        }
-    }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
-    return oldestc;
-}
-#endif
 
 /*! \brief test serving cell in workspace has changed from that in cache
  *

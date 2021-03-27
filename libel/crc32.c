@@ -23,8 +23,8 @@
 
 unsigned int sky_crc32(void *msg, unsigned msgsize)
 {
-    unsigned i, j;
-    unsigned int byte, crc, mask;
+    int j;
+    unsigned int i, byte, crc, mask;
     unsigned char *message = msg;
 
     i = 0;
@@ -32,7 +32,7 @@ unsigned int sky_crc32(void *msg, unsigned msgsize)
     while (i < msgsize) {
         byte = message[i]; // Get next byte.
         crc = crc ^ byte;
-        for (j = 7; j < 8; j--) { // Do eight times.
+        for (j = 7; j >= 0; j--) { // Do eight times.
             mask = -(crc & 1);
             crc = (crc >> 1) ^ (0xEDB88320 & mask);
         }
