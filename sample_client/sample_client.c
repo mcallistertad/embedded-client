@@ -405,9 +405,11 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
         }
     }
 
-    if (sky_add_gnss(ctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe, gp->speed,
-            gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
-        printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
+    if (gp->nsat) {
+        if (sky_add_gnss(ctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
+                gp->speed, gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
+            printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
+        }
     }
 
 retry_after_auth:
@@ -473,8 +475,10 @@ retry_after_auth:
             return true;
         } else {
             printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_AUTH_RETRY)
-                goto retry_after_auth; /* Repeat request if Authentication was required for last message */
+            if (sky_errno == SKY_AUTH_RETRY) {
+                /* Repeat request if Authentication was required for last message */
+                goto retry_after_auth;
+            }
         }
         break;
     }
@@ -526,10 +530,18 @@ int main(int argc, char *argv[])
         exit(-1);
     print_config(&config);
 
-    /* Comment the following to disable cache state loading */
+    /* Retrieve saved state, if any. State includes cached scans and
+     * registration information. Failure to restore state will force a
+     * reregistration sequence and will limit stationarity detection,
+     * which will result in needless additional messaging to and from
+     * the Skyhook server.
+     */
     pstate = restore_state(config.statefile); /* returns a non-NULL pointer if space allocated */
 
-    /* Initialize the Skyhook resources and restore any saved state */
+    /* Initialize the Skyhook resources and restore any saved state.
+     * A real device would do this at boot time, or perhaps the first
+     * time a location is to be performed.
+     */
     ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
         config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
         config.debounce);
@@ -544,7 +556,10 @@ int main(int argc, char *argv[])
     bufsize = sky_sizeof_workspace();
     workspace = malloc(bufsize);
 
-    /* process a number of scans */
+    /* Perform several locations using simulated scan data. A real
+     * device would perform locations periodically (perhaps once every
+     * hour) rather than one immediately after another.
+     */
     if (locate(workspace, bufsize, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -572,7 +587,12 @@ int main(int argc, char *argv[])
         report_location(&loc);
     }
 
-    /* clean up and close libel saving state */
+    /* Close Skyhook library and save library state. A real 
+     * device would normally do this at system shutdown time.
+     * Saved state should be restored to the library the next
+     * time skyhook_open() is called (see comments above
+     * immediately preceding the call to sky_open()).
+     */
     free(workspace);
     if (sky_close(&sky_errno, &pstate) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
