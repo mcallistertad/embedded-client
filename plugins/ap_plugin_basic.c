@@ -1,5 +1,5 @@
 /*! \file plugins/ap_plugin_basic.c
- *  \brief AP plugin supporting basic APs and cells Only
+     *  \brief AP plugin supporting basic APs and cells Only
  *  Plugin for Skyhook Embedded Library
  *
  * Copyright (c) 2020 Skyhook, Inc.
@@ -38,7 +38,8 @@
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
 #define AP_BELOW_RSSI_THRESHOLD(ctx, idx)                                                          \
-    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) < -CONFIG((ctx)->state, cache_neg_rssi_threshold))
+    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) <                                                 \
+        -(int)CONFIG((ctx)->state, cache_neg_rssi_threshold))
 
 /*! \brief compare beacons for equality
  *
@@ -89,7 +90,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
  *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
  *  if macs are similar, and pn is not NULL, *pn is set to nibble index of difference
  */
-static int mac_similar(Sky_ctx_t *ctx, uint8_t macA[], uint8_t macB[], int *pn)
+static int mac_similar(uint8_t macA[], uint8_t macB[], int *pn)
 {
     size_t num_diff = 0; // Num hex digits which differ
     size_t idx_diff = 0; // nibble digit which differs
@@ -256,6 +257,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
     return remove_beacon(ctx, reject) == SKY_SUCCESS;
 }
 
+#if CACHE_SIZE
 /*! \brief count number of cached APs in workspace relative to a cacheline
  *
  *  @param ctx Skyhook request context
@@ -280,6 +282,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 #endif
     return num_aps_cached;
 }
+#endif
 
 /*! \brief select between two virtual APs which should be removed,
  *  and then remove it
@@ -349,7 +352,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
      */
     for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
-            if ((cmp = mac_similar(ctx, ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
+            if ((cmp = mac_similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
                 /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
                  *
                  */
@@ -364,29 +367,6 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match");
     return false;
-}
-
-/*! \brief note newest cache entry
- *
- *  @param ctx Skyhook request context
- *
- *  @return void
- */
-static void update_newest_cacheline(Sky_ctx_t *ctx)
-{
-    int i;
-    int newest = 0, idx = 0;
-
-    for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time > newest) {
-            newest = ctx->state->cacheline[i].time;
-            idx = i;
-        }
-    }
-    if (newest) {
-        ctx->state->newest = idx;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d is newest", idx);
-    }
 }
 
 /*! \brief try to reduce AP by filtering out the oldest one
@@ -459,6 +439,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  */
 static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
+#if CACHE_SIZE
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
@@ -571,6 +552,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
         CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)idx; /* suppress warning unused parameter */
+    return SKY_FAILURE;
+#endif
 }
 
 /*! \brief add location to cache
@@ -585,6 +571,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
  */
 static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 {
+#if CACHE_SIZE
     int i = ctx->save_to;
     int j;
     uint32_t now = (*ctx->gettime)(NULL);
@@ -610,7 +597,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
         cl->time = 0; /* clear cacheline */
-        update_newest_cacheline(ctx);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of %d", i, CACHE_SIZE);
         return SKY_ERROR;
     } else if (cl->time == 0)
@@ -622,7 +608,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->ap_len = NUM_APS(ctx);
     cl->loc = *loc;
     cl->time = now;
-    ctx->state->newest = i;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
@@ -632,6 +617,11 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     }
     DUMP_CACHE(ctx);
     return SKY_SUCCESS;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)loc; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif
 }
 
 /* * * * * * Plugin access table * * * * *

@@ -205,7 +205,6 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
     int n, i = -1;
-    Beacon_t *w;
 
     if (is_ap_type(b)) {
         if (!validate_mac(b->ap.mac, ctx))
@@ -223,18 +222,20 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
 
+#if CACHE_SIZE
     /* Update the AP just added to workspace */
-    w = &ctx->beacon[i];
     if (is_ap_type(b)) {
+        Beacon_t *w = &ctx->beacon[i];
         if (!beacon_in_cache(ctx, b, &w->ap.property)) {
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
         }
     }
+#endif
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
-        (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
+        (NUM_CELLS(ctx) <=
             (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
 #ifdef VERBOSE_DEBUG
         DUMP_WORKSPACE(ctx);
@@ -254,6 +255,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     return SKY_SUCCESS;
 }
 
+#if CACHE_SIZE
 /*! \brief check if a beacon is in cache
  *
  *   Scan all cachelines in the cache. 
@@ -271,7 +273,6 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  */
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    int i;
     Sky_beacon_property_t result, best_prop = { false, false };
 
     if (!b || !ctx) {
@@ -279,7 +280,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
         return false;
     }
 
-    for (i = 0; i < CACHE_SIZE; i++) {
+    for (int i = 0; i < CACHE_SIZE; i++) {
         if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
@@ -332,6 +333,31 @@ bool beacon_in_cacheline(
             return true;
     return false;
 }
+
+/*! \brief find cache entry with oldest entry
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return index of oldest cache entry, or empty
+ */
+int find_oldest(Sky_ctx_t *ctx)
+{
+    int i;
+    uint32_t oldestc = 0;
+    uint32_t oldest = (*ctx->gettime)(NULL);
+
+    for (i = 0; i < CACHE_SIZE; i++) {
+        if (ctx->state->cacheline[i].time == 0)
+            return i;
+        else if (ctx->state->cacheline[i].time < oldest) {
+            oldest = ctx->state->cacheline[i].time;
+            oldestc = i;
+        }
+    }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
+    return oldestc;
+}
+#endif
 
 /*! \brief compare a beacon to one in workspace
  *
@@ -400,7 +426,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
@@ -452,30 +478,6 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     return ret;
 }
 
-/*! \brief find cache entry with oldest entry
- *
- *  @param ctx Skyhook request context
- *
- *  @return index of oldest cache entry, or empty
- */
-int find_oldest(Sky_ctx_t *ctx)
-{
-    int i;
-    uint32_t oldestc = 0;
-    int oldest = (*ctx->gettime)(NULL);
-
-    for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
-            return i;
-        else if (ctx->state->cacheline[i].time < oldest) {
-            oldest = ctx->state->cacheline[i].time;
-            oldestc = i;
-        }
-    }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
-    return oldestc;
-}
-
 /*! \brief test serving cell in workspace has changed from that in cache
  *
  *  Cells in workspace are in priority order
@@ -501,7 +503,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    if ((NUM_BEACONS(ctx) - NUM_APS(ctx)) == 0 || (NUM_BEACONS(cl) - NUM_APS(cl)) == 0) {
+    if ((NUM_CELLS(ctx) == 0 || NUM_CELLS(cl)) == 0) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
 #endif
@@ -541,6 +543,7 @@ int get_from_cache(Sky_ctx_t *ctx)
     /* compare current time to Mar 1st 2019 */
     if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
+        ctx->get_from = -1; /* no match to cacheline */
         return SKY_ERROR;
     }
     return (ctx->get_from =

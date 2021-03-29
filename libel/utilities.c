@@ -66,10 +66,6 @@ int validate_workspace(Sky_ctx_t *ctx)
         fprintf(stderr, "FATAL: NULL ctx\n");
         return false;
     }
-    if (NUM_BEACONS(ctx) < 0 || NUM_APS(ctx) < 0) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon count");
-        return false;
-    }
     if (NUM_BEACONS(ctx) > TOTAL_BEACONS + 1) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many beacons");
         return false;
@@ -101,27 +97,10 @@ int validate_workspace(Sky_ctx_t *ctx)
  */
 int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 {
-    int i, j;
-
     if (s == NULL) {
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: NULL pointer");
-#endif
-        return false;
-    }
-
-    if (s->len != CACHE_SIZE) {
-#if SKY_DEBUG
-        if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
-#endif
-        return false;
-    }
-    if (s->newest >= CACHE_SIZE) {
-#if SKY_DEBUG
-        if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: newest too big for CACHE_SIZE");
 #endif
         return false;
     }
@@ -135,7 +114,18 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
     }
     if (s->header.crc32 ==
         sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
-        for (i = 0; i < CACHE_SIZE; i++) {
+#if CACHE_SIZE
+        if (s->len != CACHE_SIZE) {
+#if SKY_DEBUG
+            if (logf != NULL)
+                (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
+#endif
+            return false;
+        }
+
+        for (int i = 0; i < CACHE_SIZE; i++) {
+            int j;
+
             if (s->cacheline[i].len > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
@@ -162,6 +152,7 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
                 }
             }
         }
+#endif
     } else {
 #if SKY_DEBUG
         if (logf != NULL)
@@ -265,7 +256,7 @@ int logfmt(
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize, int buf_offset)
 {
-    int pb = 0;
+    uint32_t pb = 0;
 #if SKY_DEBUG
     char buf[SKY_LOG_LENGTH];
     uint8_t *b = (uint8_t *)buffer;
@@ -406,6 +397,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
+#if CACHE_SIZE
     } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
                b < ctx->state->cacheline[CACHE_SIZE - 1].beacon +
                        ctx->state->cacheline[CACHE_SIZE - 1].len) {
@@ -414,6 +406,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_b %= TOTAL_BEACONS;
         snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
+#endif
     } else {
         idx_b = idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %6s", str, b->h.connected ? "*" : " ",
@@ -498,6 +491,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
 {
 #if SKY_DEBUG
+#if CACHE_SIZE
     int i, j;
     Sky_cacheline_t *cl;
 
@@ -509,15 +503,18 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 cl->ap_len, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d%s GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
-                ctx->state->newest == i ? "<-newest" : "", (int)cl->loc.lat,
-                (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
-                (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe, cl->len);
+                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
+                (int)cl->loc.lat, (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))),
+                (int)cl->loc.lon, (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))),
+                cl->loc.hpe, cl->len);
             for (j = 0; j < cl->len; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
         }
     }
+#else
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "cache: Disabled");
+#endif /* CACHE_SIZE */
 #endif
 }
 
@@ -1072,6 +1069,7 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
  */
 float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.lat : NAN;
 }
 
@@ -1084,6 +1082,7 @@ float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.lon : NAN;
 }
 
@@ -1096,6 +1095,7 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.hpe : 0;
 }
 
@@ -1108,6 +1108,7 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.alt : NAN;
 }
 
@@ -1120,6 +1121,7 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.vpe : 0;
 }
 
@@ -1132,6 +1134,7 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
  */
 float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.speed : NAN;
 }
 
@@ -1144,6 +1147,7 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.bearing : 0;
 }
 
@@ -1156,6 +1160,7 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.nsat : 0;
 }
 
@@ -1168,6 +1173,7 @@ int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
  */
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
 {
+    (void)idx; /* suppress warning of unused parameter */
     return has_gps(ctx) ? ctx->gps.age : 0;
 }
 
@@ -1210,7 +1216,7 @@ int32_t get_num_vaps(Sky_ctx_t *ctx)
  */
 uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
 {
-    int j, nvg = 0;
+    uint32_t j, nvg = 0;
     Beacon_t *w;
 
     if (ctx == NULL) {
@@ -1247,7 +1253,7 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
  */
 uint8_t *select_vap(Sky_ctx_t *ctx)
 {
-    int j, nvap = 0, no_more = false;
+    uint32_t j, nvap = 0, no_more = false;
     Beacon_t *w;
     uint8_t cap_vap[MAX_AP_BEACONS] = {
         0
@@ -1295,7 +1301,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
  */
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 {
-    int i;
+    uint32_t i;
 
     if (!rand_buf)
         return 0;
