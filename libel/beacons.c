@@ -538,14 +538,15 @@ int get_from_cache(Sky_ctx_t *ctx)
     int idx;
 
     if (CACHE_SIZE < 1) {
-        return SKY_ERROR;
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
     }
 
     /* compare current time to Mar 1st 2019 */
     if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
-        ctx->get_from = -1; /* no match to cacheline */
-        return SKY_ERROR;
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
     }
     return (ctx->get_from =
                 sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
