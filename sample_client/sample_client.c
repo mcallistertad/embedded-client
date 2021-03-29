@@ -226,6 +226,8 @@ static void *restore_state(char *file_name)
 
 /* From c-faq.com/lib/rand.html
  * Here is a portable C implementation of the ``minimal standard'' generator proposed by Park and Miller
+ *
+ * WARNING - You should provide a suitably cryptographically secure random number generator for your application
  */
 #define a 16807
 #define m 2147483647
@@ -252,6 +254,10 @@ static long int PMrand()
 }
 
 /*! \brief generate random byte sequence
+ *
+ *  Libel uses the rand_bytes function to create initialization vectors used during encryption of requests using AES 128 CBC.
+ *  This example function uses a pseudo random number generator and is not cryptographically secure. You
+ *  should replace it with one that is sufficiently good to match the security requirement of your application.
  *
  *  @param rand_buf pointer to buffer where rand bytes are put
  *  @param bufsize length of rand bytes
