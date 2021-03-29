@@ -169,7 +169,7 @@ static Sky_status_t save_state(void *p, char *file_name)
     FILE *fio;
     uint32_t state_size;
 
-    if ((state_size = sky_sizeof_state(p)) == 0)
+    if ((state_size = sky_sizeof_state(p)) == 0 || strlen(file_name) == 0)
         return -1; /* nothing to save */
     if ((fio = fopen(file_name, "w+")) != NULL) {
         if (fwrite(p, state_size, 1, fio) == 1) {
@@ -199,6 +199,8 @@ static void *restore_state(char *file_name)
     uint32_t state_size = 0;
     FILE *fio;
 
+    if (strlen(file_name) == 0)
+        return NULL; /* nothing to do */
     /* Open file and read header */
     if ((fio = fopen(file_name, "r")) == NULL) {
         printf("Failed to open state file %s\n", file_name);
@@ -534,7 +536,7 @@ int main(int argc, char *argv[])
 
     /* Allocate workspace */
     bufsize = sky_sizeof_workspace();
-    workspace = malloc(1, bufsize);
+    workspace = malloc(bufsize);
 
     /* process a number of scans */
     if (locate(workspace, bufsize, &config, aps1, cells1, &gnss1, config.ul_app_data,

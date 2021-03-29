@@ -273,7 +273,8 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  */
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    Sky_beacon_property_t result, best_prop = { false, false };
+    Sky_beacon_property_t best_prop = { false, false };
+    Sky_beacon_property_t result = { false, false };
 
     if (!b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -426,7 +427,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);

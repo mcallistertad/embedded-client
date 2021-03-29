@@ -486,9 +486,10 @@ int32_t serialize_request(
             buf_len);
         return -1;
     }
+    /* initialize buffer to avoid use of uninitialized bytes warnings */
+    memset(buf, 0, buf_len);
 
     *buf = (uint8_t)hdr_size;
-
     bytes_written = 1;
 
     ostream = pb_ostream_from_buffer(buf + 1, hdr_size);
