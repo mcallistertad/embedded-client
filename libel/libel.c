@@ -995,7 +995,6 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     int rc, rq_config = false;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
-    int c;
 #endif
 
     if (!validate_workspace(ctx))
@@ -1102,7 +1101,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-        /* check cache match result */
+    /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
