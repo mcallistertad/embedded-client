@@ -59,13 +59,13 @@ static Sky_timefn_t sky_time;
 static bool sky_debounce;
 
 /*! \brief base of plugin chain */
-static Sky_plugin_table_t *sky_plugins;
+static Sky_plugin_table_t *sky_plugins = NULL;
 
 /* Local functions */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
-static bool validate_sku(char *sku);
+static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Copy state buffer
  *
@@ -126,15 +126,13 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     char buf[SKY_LOG_LENGTH];
 #endif
     Sky_state_t *sky_state = state_buf;
-    int i = 0;
-    int j = 0;
     uint32_t sku_len = 0;
 
     memset(&state, 0, sizeof(state));
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? MAX_DEVICE_ID : id_len;
     sku = !sku ? "" : sku;
-    sku_len = strlen(sku);
+    sku_len = strnlen_(sku, MAX_SKU_LEN);
 
     if (sky_state != NULL && !validate_cache(sky_state, logf)) {
         if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
@@ -170,21 +168,21 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         state.header.time = (uint32_t)(*sky_time)(NULL);
         state.header.crc32 = sky_crc32(
             &state.header.magic, (uint8_t *)&state.header.crc32 - (uint8_t *)&state.header.magic);
+#if CACHE_SIZE
         state.len = CACHE_SIZE;
-        for (i = 0; i < CACHE_SIZE; i++) {
-            for (j = 0; j < TOTAL_BEACONS; j++) {
+        for (int i = 0; i < CACHE_SIZE; i++) {
+            for (int j = 0; j < TOTAL_BEACONS; j++) {
                 state.cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
                 state.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
+#endif
 #if SKY_DEBUG
     } else {
         if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
-            snprintf(buf, sizeof(buf),
-                "%s:%s() State buffer with CRC 0x%08X, size %d, age %d Sec restored",
+            snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X, size %d restored",
                 sky_basename(__FILE__), __FUNCTION__, sky_crc32(sky_state, sky_state->header.size),
-                sky_state->header.size,
-                (uint32_t)(*sky_time)(NULL)-sky_state->cacheline[sky_state->newest].time);
+                sky_state->header.size);
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
 #endif
@@ -193,7 +191,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
-        !validate_aes_key(aes_key) || !validate_sku(sku))
+        !validate_aes_key(aes_key))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     state.sky_id_len = id_len;
@@ -201,7 +199,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     state.sky_partner_id = partner_id;
     memcpy(state.sky_aes_key, aes_key, sizeof(state.sky_aes_key));
     if (sku_len) {
-        strcpy(state.sky_sku, sku);
+        strncpy(state.sky_sku, sku, MAX_SKU_LEN); /* Only pass up to maximum characters of sku */
+        state.sky_sku[MAX_SKU_LEN] = '\0'; /* Guarentee sku is null terminated */
         state.sky_cc = cc;
     }
     sky_open_flag = true;
@@ -227,10 +226,13 @@ int32_t sky_sizeof_state(void *sky_state)
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (!validate_cache(s, NULL))
+    if (s->header.magic != SKY_MAGIC) {
         return 0;
-    else
+    } else if (s->header.crc32 == sky_crc32(&s->header.magic,
+                                      (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return s->header.size;
+    }
+    return 0;
 }
 
 /*! \brief Determines the size of the workspace required to build request
@@ -303,7 +305,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         *sky_errno = SKY_ERROR_NEVER_OPEN;
         return NULL;
     }
-    if (bufsize != sky_sizeof_workspace() || workspace_buf == NULL) {
+    if (bufsize != (uint32_t)sky_sizeof_workspace() || workspace_buf == NULL) {
         *sky_errno = SKY_ERROR_BAD_PARAMETERS;
         return NULL;
     }
@@ -339,29 +341,31 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
         return NULL;
     }
 
-    if (state.len) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines present", ctx->state->len);
-        for (i = 0; i < CACHE_SIZE; i++) {
-            if (state.cacheline[i].ap_len > CONFIG(ctx->state, max_ap_beacons) ||
-                state.cacheline[i].len > CONFIG(ctx->state, total_beacons)) {
-                state.cacheline[i].time = 0;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "cache %d of %d cleared due to new Dynamic Parameters. Total beacons %d vs %d, AP %d vs %d",
-                    i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
-                    CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
-            }
-            if (ctx->state->cacheline[i].time &&
-                (now - ctx->state->cacheline[i].time) >
-                    ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
-                ctx->state->cacheline[i].time = 0;
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
-                    CACHE_SIZE, now - ctx->state->cacheline[i].time);
-            }
-            ctx->state->sky_ul_app_data_len = ul_app_data_len;
-            memcpy(ctx->state->sky_ul_app_data, ul_app_data, ul_app_data_len);
+#if CACHE_SIZE
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines present", ctx->state->len);
+    for (i = 0; i < CACHE_SIZE; i++) {
+        if (state.cacheline[i].ap_len > CONFIG(ctx->state, max_ap_beacons) ||
+            state.cacheline[i].len > CONFIG(ctx->state, total_beacons)) {
+            state.cacheline[i].time = 0;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "cache %d of %d cleared due to new Dynamic Parameters. Total beacons %d vs %d, AP %d vs %d",
+                i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
+                CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
         }
-        DUMP_CACHE(ctx);
+        if (ctx->state->cacheline[i].time &&
+            (now - ctx->state->cacheline[i].time) >
+                ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
+            ctx->state->cacheline[i].time = 0;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
+                CACHE_SIZE, now - ctx->state->cacheline[i].time);
+        }
     }
+    DUMP_CACHE(ctx);
+#else
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No cachelines present");
+#endif
+    ctx->state->sky_ul_app_data_len = ul_app_data_len;
+    memcpy(ctx->state->sky_ul_app_data, ul_app_data, ul_app_data_len);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", ctx->state->sky_partner_id,
         ctx->state->sky_sku);
     dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, ctx->state->sky_device_id,
@@ -988,8 +992,10 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
  */
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
+    int rc, rq_config = false;
+#if CACHE_SIZE
     Sky_cacheline_t *cl;
-    int c, j, rc, rq_config = false;
+#endif
 
     if (!validate_workspace(ctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
@@ -1016,9 +1022,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     /* check cache against beacons for match
      * setting from_cache if a matching cacheline is found
      * */
-    c = get_from_cache(ctx);
+#if CACHE_SIZE
+    get_from_cache(ctx);
     if (IS_CACHE_HIT(ctx)) {
-        cl = &ctx->state->cacheline[c];
+        cl = &ctx->state->cacheline[ctx->get_from];
 
         /* cache hit */
         /* count of consecutive cache hits since last cache miss */
@@ -1029,7 +1036,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
                 NUM_BEACONS(ctx) = cl->len;
                 NUM_APS(ctx) = cl->ap_len;
-                for (j = 0; j < NUM_BEACONS(ctx); j++)
+                for (int j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
             }
         } else {
@@ -1037,6 +1044,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
             ctx->state->cache_hits = 0; /* report 0 for cache miss */
         }
     }
+#else
+    ctx->get_from = -1; /* cache miss */
+    ctx->state->cache_hits = 0; /* report 0 for cache miss */
+#endif
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
@@ -1068,8 +1079,10 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size)
 {
     int rc;
-    Sky_cacheline_t *cl;
     Sky_finalize_t ret = SKY_FINALIZE_ERROR;
+#if CACHE_SIZE
+    Sky_cacheline_t *cl;
+#endif
 
     if (!validate_workspace(ctx)) {
         *sky_errno = SKY_ERROR_BAD_WORKSPACE;
@@ -1089,6 +1102,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* check cache match result */
+#if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
         if (loc != NULL) {
@@ -1107,6 +1121,10 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         ret = SKY_FINALIZE_LOCATION;
     } else
         ret = SKY_FINALIZE_REQUEST;
+#else
+    (void)loc; /* suppress warning of unused parameter */
+    ret = SKY_FINALIZE_REQUEST;
+#endif
 
     if (request_buf == NULL) {
         *sky_errno = SKY_ERROR_BAD_PARAMETERS;
@@ -1445,10 +1463,10 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
  */
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len)
 {
-    if (device_id == NULL)
+    if (device_id == NULL || id_len > MAX_DEVICE_ID)
         return false;
     else
-        return true; /* TODO check upper bound? */
+        return true;
 }
 
 /*! \brief sanity check the partner_id
@@ -1465,28 +1483,21 @@ static bool validate_partner_id(uint32_t partner_id)
         return true; /* TODO check upper bound? */
 }
 
-/*! \brief sanity check the sku
+/*! \brief safely return bounded length of string
  *
- *  @param sku this is expected to be ascii text string of no more than SKU_SIZE
+ *  @param pointer to string
+ *  @param maximum number of chars to scan
  *
- *  @return true or false
+ *  @return length of string (up to length provided)
  */
-static bool validate_sku(char *sku)
+static size_t strnlen_(char *s, size_t maxlen)
 {
-    char *p = sku;
-    uint32_t sku_len = 0;
+    char *p = s;
 
-    if (!sku)
-        return true;
-    else if ((sku_len = strlen(sku)) > MAX_SKU_LEN)
-        return false;
-    else {
-        for (; isprint(*p); p++)
-            ; /* count contiguous printable chars */
-        if (p - sku != sku_len)
-            return false;
-    }
-    return true;
+    if ((p = memchr(s, '\0', maxlen)) != NULL) {
+        return p - s;
+    } else
+        return maxlen;
 }
 
 /*! \brief sanity check the aes_key

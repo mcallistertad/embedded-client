@@ -43,6 +43,7 @@
  */
 static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
 {
+    (void)prop; /* suppress warning unused parameter */
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -115,8 +116,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
         CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons));
 
     /* no work to do if workspace not full of max cell */
-    if (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
-        CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)) {
+    if (NUM_CELLS(ctx) <= CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
         return SKY_ERROR;
     }
@@ -154,6 +154,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  */
 static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
+#if CACHE_SIZE
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
@@ -165,6 +166,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     int bestc = -1, bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
+    bool result = false;
 
     DUMP_WORKSPACE(ctx);
     DUMP_CACHE(ctx);
@@ -219,6 +221,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             ratio = (float)score / NUM_BEACONS(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
                 (int)round(ratio * 100), score, NUM_BEACONS(ctx), threshold);
+            result = true;
         }
 
         if (ratio > bestputratio) {
@@ -245,7 +248,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (bestratio * 100 >= bestthresh) {
+    if (result && bestratio * 100 >= bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
             bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
         *idx = bestc;
@@ -256,6 +259,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
         CACHE_SIZE, (int)round(bestputratio * 100));
     return SKY_ERROR;
+#else
+    (void)ctx; /* suppress warning unused parameter */
+    (void)idx; /* suppress warning unused parameter */
+    return SKY_FAILURE;
+#endif
 }
 
 /* * * * * * Plugin access table * * * * *
