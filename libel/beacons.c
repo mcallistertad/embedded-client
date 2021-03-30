@@ -504,9 +504,16 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    if ((NUM_CELLS(ctx) == 0 || NUM_CELLS(cl)) == 0) {
+    if (NUM_CELLS(ctx) == 0) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
+#endif
+        return false;
+    }
+
+    if (NUM_CELLS(cl) == 0) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
     }
