@@ -87,8 +87,8 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_equal(
-    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
+    Sky_beacon_property_t *prop, int *diff)
 {
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
@@ -100,10 +100,12 @@ Sky_status_t sky_plugin_equal(
 
     p = ctx->plugin;
     while (p) {
-        ret = (*p->equal)(ctx, a, b, prop);
+        ret = (*p->equal)(ctx, a, b, prop, diff);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR)
             break;
@@ -133,7 +135,9 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
         ret = (*p->remove_worst)(ctx);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR)
             break;
@@ -164,7 +168,9 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
         ret = (*p->cache_match)(ctx, idx);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR)
             break;
@@ -195,7 +201,9 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
         ret = (*p->add_to_cache)(ctx, loc);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR)
             break;
@@ -214,7 +222,7 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passe
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
 
-    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL));
+    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL, NULL));
 });
 
 TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
@@ -222,9 +230,23 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is tr
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
     Sky_beacon_property_t prop = { false, false };
+    int diff = 9999;
     b.ap.property.in_cache = true;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop)) && prop.in_cache);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
+           prop.in_cache && diff < 0);
+});
+
+TEST("should return SKY_FAILURE with 2 different AP and diff -2334", ctx, {
+    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
+    AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
+    Sky_errno_t sky_errno;
+    Sky_beacon_property_t prop = { false, false };
+    int diff = 9999;
+    b.ap.property.in_cache = true;
+
+    ASSERT((SKY_FAILURE == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
+           !prop.in_cache && diff == -2334);
 });
 
 GROUP("sky_plugin_add");

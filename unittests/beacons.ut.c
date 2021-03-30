@@ -66,17 +66,6 @@ TEST_FUNC(test_compare)
         ASSERT(diff == a.h.rssi - b.h.rssi);
     });
 
-    TEST("should return false and calc vg diff with different APs", ctx, {
-        AP(a, "ABCDEFAACCDD", 10, -108, 4433, true);
-        AP(b, "ABCDEFAACCDE", 10, -108, 4433, true);
-        a.ap.vg_len = 2;
-        b.ap.vg_len = 6;
-
-        int diff;
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == a.ap.vg_len - b.ap.vg_len);
-    });
-
     GROUP("beacon_compare Cells identical");
     TEST("should return true and with 2 identical NR cell beacons", ctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 287, 1040);
@@ -126,9 +115,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -1); // 2nd better
+        ASSERT(diff < 0); // 2nd better
     });
 
     GROUP("beacon_compare NMR Cells");
@@ -138,9 +127,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -1); // 2nd better
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff with two NMR one younger", ctx, {
@@ -149,9 +138,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -2); // 2nd better
+        ASSERT(diff < 0); // 2nd better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == 2); // 1st better
+        ASSERT(diff > 0); // 1st better
     });
 
     TEST("should return false and calc diff with two NMR one stronger", ctx, {
@@ -160,9 +149,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -98); // 2nd better
+        ASSERT(diff < 0); // 2nd better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == 98); // 1st better
+        ASSERT(diff > 0); // 1st better
     });
 
     TEST("should return false and report 1st best with two very similar cells", ctx, {
@@ -171,9 +160,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
     });
 
     TEST("should return false and report 1st best with two NMR very similar", ctx, {
@@ -182,9 +171,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
     });
 
     TEST("should return false and calc diff with one NMR with different cell type", ctx, {
@@ -193,9 +182,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -1); // 2nd better
+        ASSERT(diff < 0); // 2nd better
     });
 
     GROUP("beacon_compare Cells different");
@@ -205,9 +194,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NR - SKY_BEACON_LTE));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_LTE - SKY_BEACON_NR));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NR better than UMTS", ctx, {
@@ -216,9 +205,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NR - SKY_BEACON_UMTS));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_UMTS - SKY_BEACON_NR));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NR better than NBIOT", ctx, {
@@ -227,9 +216,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NR - SKY_BEACON_NBIOT));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_NBIOT - SKY_BEACON_NR));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NR better than CDMA", ctx, {
@@ -238,9 +227,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NR - SKY_BEACON_CDMA));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_CDMA - SKY_BEACON_NR));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NR better than GSM", ctx, {
@@ -249,9 +238,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NR - SKY_BEACON_GSM));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_GSM - SKY_BEACON_NR));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: LTE better than UMTS", ctx, {
@@ -260,9 +249,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_LTE - SKY_BEACON_UMTS));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_UMTS - SKY_BEACON_LTE));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: LTE better than NBIOT", ctx, {
@@ -271,9 +260,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_LTE - SKY_BEACON_NBIOT));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_NBIOT - SKY_BEACON_LTE));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: LTE better than CDMA", ctx, {
@@ -282,9 +271,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_LTE - SKY_BEACON_CDMA));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_CDMA - SKY_BEACON_LTE));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: LTE better than GSM", ctx, {
@@ -293,9 +282,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_LTE - SKY_BEACON_GSM));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_GSM - SKY_BEACON_LTE));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: UMTS better than NBIOT", ctx, {
@@ -304,9 +293,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_UMTS - SKY_BEACON_NBIOT));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_NBIOT - SKY_BEACON_UMTS));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: UMTS better than CDMA", ctx, {
@@ -315,9 +304,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_UMTS - SKY_BEACON_CDMA));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_CDMA - SKY_BEACON_UMTS));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: UMTS better than GSM", ctx, {
@@ -326,9 +315,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_UMTS - SKY_BEACON_GSM));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_GSM - SKY_BEACON_UMTS));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NBIOT better than CDMA", ctx, {
@@ -337,9 +326,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NBIOT - SKY_BEACON_CDMA));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_CDMA - SKY_BEACON_NBIOT));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: NBIOT better than GSM", ctx, {
@@ -348,9 +337,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_NBIOT - SKY_BEACON_GSM));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_GSM - SKY_BEACON_NBIOT));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: CDMA better than GSM", ctx, {
@@ -359,9 +348,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == -(SKY_BEACON_CDMA - SKY_BEACON_GSM));
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -(SKY_BEACON_GSM - SKY_BEACON_CDMA));
+        ASSERT(diff < 0); // 2nd better
     });
 
     GROUP("beacon_compare Cells same type");
@@ -371,9 +360,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -1); // 2nd better
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: one NMR", ctx, {
@@ -382,9 +371,9 @@ TEST_FUNC(test_compare)
         int diff;
 
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == 1); // 1st better
+        ASSERT(diff > 0); // 1st better
         ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
-        ASSERT(diff == -1); // 2nd better
+        ASSERT(diff < 0); // 2nd better
     });
 }
 
@@ -440,8 +429,8 @@ TEST_FUNC(test_insert)
     });
 
     TEST("should insert 2 beacons in ctx->beacon[] and set index", ctx, {
-        AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
-        AP(b, "ABCDEF010201", 1605633264, -108, 2, true);
+        AP(a, "ABCDEF010203", 1605633264, -108, 2, false);
+        AP(b, "ABCDEF010201", 1605633264, -88, 2, false);
         Sky_errno_t sky_errno;
 
         int insert_idx;

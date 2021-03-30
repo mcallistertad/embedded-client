@@ -35,13 +35,54 @@
 // #define VERBOSE_DEBUG
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
+#define ABS(x) ((x) < 0 ? -(x) : (x))
+
+typedef enum {
+    MOST_DESIRABLE = 0xffff,
+    CONNECTED = 0x800,
+    NON_NMR = 0x400,
+    AGE = 0x200,
+    STRENGTH = 0x100,
+    LEAST_DESIRABLE = 0x000
+} Rank_t;
+
+/*! \brief score relative desirability of two cells
+ *
+ * Desirable attributes are connected, nmr, age and strength
+ *
+ *  @param b pointer to cell
+ *
+ *  @return rank
+ */
+static int compare_cells(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
+{
+    int score = 0;
+
+    if (a->h.connected != b->h.connected) {
+        score += a->h.connected ? CONNECTED : -CONNECTED;
+    }
+    if (is_cell_nmr(a) != is_cell_nmr(b)) {
+        score += !is_cell_nmr(a) ? NON_NMR : -NON_NMR;
+    }
+    if (a->h.age != b->h.age) {
+        score += (a->h.age < b->h.age) ? /* a is younger */
+                     AGE :
+                     -AGE;
+    }
+    /* if there is no clear difference choose a */
+    score += ((a->h.rssi >= b->h.rssi) ? /* a is stronger */
+                  STRENGTH :
+                  -STRENGTH);
+    return score;
+}
 
 /*! \brief compare cell beacons fpr equality
  *
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+static Sky_status_t equal(
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, int *diff)
 {
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -52,6 +93,16 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     if (a->h.type != b->h.type || a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
         a->h.type == SKY_BEACON_BLE || b->h.type == SKY_BEACON_BLE)
         return SKY_ERROR;
+
+#ifdef VERBOSE_DEBUG
+    dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
+    dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
+#endif
+    /* calculate difference in desirability */
+    if (diff) {
+        *diff = compare_cells(ctx, a, b);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "desirability score %d", *diff);
+    }
 
     /* test two cells for equivalence */
     switch (a->h.type) {
@@ -75,18 +126,10 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
-#ifdef VERBOSE_DEBUG
-        dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
-#endif
         if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
             (a->cell.id4 == b->cell.id4)) {
             if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
-#endif
                 /* NMR */
                 if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
                     return SKY_SUCCESS;

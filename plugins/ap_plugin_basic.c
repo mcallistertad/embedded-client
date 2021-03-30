@@ -35,18 +35,56 @@
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
 // #define VERBOSE_DEBUG
 
+typedef enum {
+    MOST_DESIRABLE = 0xffff,
+    CONNECTED = 0x800,
+    VAP = 0x400,
+    IN_CACHE = 0x100,
+    LEAST_DESIRABLE = 0x000
+} Rank_t;
+
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
-#define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
+#define ABS(x) ((x) < 0 ? -(x) : (x))
+#define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
 #define AP_BELOW_RSSI_THRESHOLD(ctx, idx)                                                          \
     (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) < -CONFIG((ctx)->state, cache_neg_rssi_threshold))
+
+/*! \brief Assign desirability score to AP based on attributes
+ *
+ * Desirable attributes are connected, virtual groups and cached APs
+ * If the above attributes are the same, use best fit or rssi
+ *
+ *  @param b pointer to AP
+ *
+ *  @return rank
+ */
+static int rank_ap(Beacon_t *b, int fit)
+{
+    int rank = 0;
+
+    if (b->h.connected)
+        rank += CONNECTED;
+    if (NUM_VAPS(b)) /* Virtual group */
+        rank += VAP;
+    if (b->ap.property.in_cache) {
+        rank += IN_CACHE;
+    }
+    return rank + 128 + b->h.rssi;
+}
 
 /*! \brief compare beacons for equality
  *
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
+ *  if beacons are comparable, return difference in desirability
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+static Sky_status_t equal(
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, int *diff)
 {
+    int i, idx_a = 0, idx_b = 0;
+    int16_t weakest_rssi, strongest_rssi, ideal_rssi_a, ideal_rssi_b;
+    float band_range;
+
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -60,18 +98,38 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
         return SKY_ERROR;
 
-    /* test two APs for equivalence */
-    switch (a->h.type) {
-    case SKY_BEACON_AP:
-        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
-            if (prop != NULL && b->ap.property.in_cache)
-                prop->in_cache = true;
-            return SKY_SUCCESS;
+    if (diff) {
+        /* find strongest and weakest APs */
+        weakest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
+        strongest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
+        for (i = 1; i < NUM_APS(ctx); i++) {
+            /* remember index of APs a and b */
+            if (a == &ctx->beacon[i])
+                idx_a = i;
+            else if (b == &ctx->beacon[i])
+                idx_b = i;
+
+            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) < weakest_rssi)
+                weakest_rssi = EFFECTIVE_RSSI(ctx->beacon[i].h.rssi);
+            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) > strongest_rssi)
+                strongest_rssi = EFFECTIVE_RSSI(ctx->beacon[i].h.rssi);
         }
-        break;
-    default:
-        break;
+        /* what share of the range of rssi values does each beacon represent */
+        band_range = (float)(strongest_rssi - weakest_rssi) / (float)(NUM_APS(ctx) - 1);
+        /* calculate ideal rssi value for each AP */
+        ideal_rssi_a = strongest_rssi - (int)((float)idx_a * band_range);
+        ideal_rssi_b = strongest_rssi - (int)((float)idx_b * band_range);
+
+        *diff =
+            rank_ap(a, ABS(a->h.rssi - ideal_rssi_a)) - rank_ap(b, ABS(b->h.rssi - ideal_rssi_b));
     }
+
+    if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
+        if (prop != NULL && b->ap.property.in_cache)
+            prop->in_cache = true;
+        return SKY_SUCCESS;
+    }
+    /* calculate desirability score if a place to save it was provided */
     return SKY_FAILURE;
 }
 
@@ -271,7 +329,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return -1;
     for (j = 0; j < NUM_APS(ctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
-            num_aps_cached += equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL) ? 1 : 0;
+            num_aps_cached += equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL, NULL) ? 1 : 0;
         }
     }
 #ifdef VERBOSE_DEBUG
