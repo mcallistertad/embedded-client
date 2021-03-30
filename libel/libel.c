@@ -65,7 +65,7 @@ static Sky_plugin_table_t *sky_plugins = NULL;
 static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
-static bool validate_sku(char *sku);
+static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Copy state buffer
  *
@@ -132,7 +132,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? MAX_DEVICE_ID : id_len;
     sku = !sku ? "" : sku;
-    sku_len = strlen(sku);
+    sku_len = strnlen_(sku, MAX_SKU_LEN);
 
     if (sky_state != NULL && !validate_cache(sky_state, logf)) {
         if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
@@ -191,7 +191,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
-        !validate_aes_key(aes_key) || !validate_sku(sku))
+        !validate_aes_key(aes_key))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     state.sky_id_len = id_len;
@@ -199,7 +199,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     state.sky_partner_id = partner_id;
     memcpy(state.sky_aes_key, aes_key, sizeof(state.sky_aes_key));
     if (sku_len) {
-        strcpy(state.sky_sku, sku);
+        strncpy(state.sky_sku, sku, MAX_SKU_LEN); /* Only pass up to maximum characters of sku */
+        state.sky_sku[MAX_SKU_LEN] = '\0'; /* Guarentee sku is null terminated */
         state.sky_cc = cc;
     }
     sky_open_flag = true;
@@ -225,10 +226,13 @@ int32_t sky_sizeof_state(void *sky_state)
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (!validate_cache(s, NULL))
+    if (s->header.magic != SKY_MAGIC) {
         return 0;
-    else
+    } else if (s->header.crc32 == sky_crc32(&s->header.magic,
+                                      (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return s->header.size;
+    }
+    return 0;
 }
 
 /*! \brief Determines the size of the workspace required to build request
@@ -1020,9 +1024,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
      * setting from_cache if a matching cacheline is found
      * */
 #if CACHE_SIZE
-    c = get_from_cache(ctx);
+    get_from_cache(ctx);
     if (IS_CACHE_HIT(ctx)) {
-        cl = &ctx->state->cacheline[c];
+        cl = &ctx->state->cacheline[ctx->get_from];
 
         /* cache hit */
         /* count of consecutive cache hits since last cache miss */
@@ -1098,7 +1102,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
@@ -1480,28 +1484,21 @@ static bool validate_partner_id(uint32_t partner_id)
         return true; /* TODO check upper bound? */
 }
 
-/*! \brief sanity check the sku
+/*! \brief safely return bounded length of string
  *
- *  @param sku this is expected to be ascii text string of no more than SKU_SIZE
+ *  @param pointer to string
+ *  @param maximum number of chars to scan
  *
- *  @return true or false
+ *  @return length of string (up to length provided)
  */
-static bool validate_sku(char *sku)
+static size_t strnlen_(char *s, size_t maxlen)
 {
-    char *p = sku;
-    uint32_t sku_len = 0;
+    char *p = s;
 
-    if (!sku)
-        return true;
-    else if ((sku_len = strlen(sku)) > MAX_SKU_LEN)
-        return false;
-    else {
-        for (; isprint((int)*p); p++)
-            ; /* count contiguous printable chars */
-        if (p - sku != sku_len)
-            return false;
-    }
-    return true;
+    if ((p = memchr(s, '\0', maxlen)) != NULL) {
+        return p - s;
+    } else
+        return maxlen;
 }
 
 /*! \brief sanity check the aes_key

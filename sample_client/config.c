@@ -34,6 +34,10 @@
 #include "libel.h"
 #include "config.h"
 
+/* Maximum length of line in config file */
+/* Needs to be large enough to hold 256 byte value and longest key */
+#define MAX_LINE_LENGTH 300
+
 /*! \brief convert ascii hex string to binary
  *
  *  @param hexstr pointer to the hex string
@@ -56,6 +60,8 @@ uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen
             c = (uint8_t)((c - 'a') + 10);
         else if (c >= 'A' && c <= 'F')
             c = (uint8_t)((c - 'A') + 10);
+        else if (c == '\0')
+            break;
         else
             continue;
 
@@ -91,11 +97,13 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
         return -1;
 
     p = result;
-
     for (i = 0; i < binlen; i++) {
         *p++ = hex[bin[i] >> 4 & 0x0F];
         *p++ = hex[bin[i] & 0x0F];
     }
+    /* add terminating null char if room in result */
+    if (reslen > 2 * binlen)
+        *p = '\0';
 
     return 0;
 }
@@ -108,7 +116,7 @@ int32_t bin2hex(char *result, int32_t reslen, uint8_t *bin, int32_t binlen)
  *
  *  @return 0 for equality, less or greater than 0 indicating difference
  */
-static int strcasecmp(const char *s1, const char *s2)
+static int strcasecmp_(const char *s1, const char *s2)
 {
     const unsigned char *p1 = (const unsigned char *)s1;
     const unsigned char *p2 = (const unsigned char *)s2;
@@ -133,8 +141,8 @@ static int strcasecmp(const char *s1, const char *s2)
  */
 int load_config(char *filename, Config_t *config)
 {
-    char line[100];
-    char str[32];
+    char line[MAX_LINE_LENGTH + 1]; /* hold line with terminating null */
+    char str[MAX_LINE_LENGTH]; /* temporary space for value */
     char *p;
     int val;
 
@@ -145,6 +153,8 @@ int load_config(char *filename, Config_t *config)
     }
     memset(config, '\0', sizeof(*config));
     config->debounce = 1;
+    config->statefile[0] = '\0';
+
     while (fgets(line, sizeof(line), fp)) {
         if (strlen(line) < 4)
             continue;
@@ -161,7 +171,11 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
 
-        if (sscanf(line, "KEY %s", str) == 1) {
+        if (sscanf(line, "STATE_FILE %256s", config->statefile) == 1) {
+            continue;
+        }
+
+        if (sscanf(line, "KEY %32s", str) == 1) {
             hex2bin(str, AES_SIZE * 2, config->key, AES_SIZE);
             continue;
         }
@@ -171,13 +185,13 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
 
-        if (sscanf(line, "DEVICE_ID %s", str) == 1) {
+        if (sscanf(line, "DEVICE_ID %32s", str) == 1) {
             config->device_len = strlen(str) / 2;
             hex2bin(str, config->device_len * 2, config->device_id, MAX_DEVICE_ID);
             continue;
         }
 
-        if (sscanf(line, "SKU %s", str) == 1) {
+        if (sscanf(line, "SKU %32s", str) == 1) {
             strncpy(config->sku, str, sizeof(config->sku));
             continue;
         }
@@ -185,8 +199,8 @@ int load_config(char *filename, Config_t *config)
             config->cc = (uint16_t)(val & 0xFFFF);
             continue;
         }
-        if (sscanf(line, "DEBOUNCE %s", str) == 1) {
-            if (strcasecmp(str, "off") == 0 || strcasecmp(str, "false") == 0)
+        if (sscanf(line, "DEBOUNCE %5s", str) == 1) {
+            if (strcasecmp_(str, "off") == 0 || strcasecmp_(str, "false") == 0)
                 config->debounce = 0;
             continue;
         }
@@ -225,6 +239,7 @@ void print_config(Config_t *config)
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
     printf("Key: %32s\n", key);
+    printf("State file: %s\n", config->statefile);
     printf("Partner Id: %d\n", config->partner_id);
     printf("Device: %12s\n", device);
     printf("SKU: %s\n", config->sku);
