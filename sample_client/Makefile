@@ -15,4 +15,4 @@ ${CLIENT_NAME}: ${CLIENT_OBJS} ${LIB_DIR}/libel.a
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:
-	rm -f *.o $(CLIENT_NAME) nv_cache_*
+	rm -f *.o $(CLIENT_NAME) nv_state

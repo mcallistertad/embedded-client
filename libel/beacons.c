@@ -104,7 +104,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
         return false;
     } else if (equal == SKY_SUCCESS) /* beacons are equal */
         return true;
-    /* otherwise plugin equal set diff appropriately */
+    /* otherwise beacons were comparable but not equal and plugin set diff appropriately */
     return false;
 }
 
@@ -219,7 +219,6 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
 Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
     int n, i = -1;
-    Beacon_t *w;
 
     if (is_ap_type(b)) {
         if (!validate_mac(b->ap.mac, ctx))
@@ -237,18 +236,20 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
 
+#if CACHE_SIZE
     /* Update the AP just added to workspace */
-    w = &ctx->beacon[i];
     if (is_ap_type(b)) {
+        Beacon_t *w = &ctx->beacon[i];
         if (!beacon_in_cache(ctx, b, &w->ap.property)) {
             w->ap.property.in_cache = false;
             w->ap.property.used = false;
         }
     }
+#endif
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
-        (NUM_BEACONS(ctx) - NUM_APS(ctx) <=
+        (NUM_CELLS(ctx) <=
             (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
 #ifdef VERBOSE_DEBUG
         DUMP_WORKSPACE(ctx);
@@ -268,6 +269,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     return SKY_SUCCESS;
 }
 
+#if CACHE_SIZE
 /*! \brief check if a beacon is in cache
  *
  *   Scan all cachelines in the cache. 
@@ -285,15 +287,15 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  */
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    int i;
-    Sky_beacon_property_t result, best_prop = { false, false };
+    Sky_beacon_property_t best_prop = { false, false };
+    Sky_beacon_property_t result = { false, false };
 
     if (!b || !ctx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
 
-    for (i = 0; i < CACHE_SIZE; i++) {
+    for (int i = 0; i < CACHE_SIZE; i++) {
         if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
@@ -346,6 +348,7 @@ bool beacon_in_cacheline(
             return true;
     return false;
 }
+
 /*! \brief find cache entry with oldest entry
  *
  *  @param ctx Skyhook request context
@@ -356,7 +359,7 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     uint32_t oldestc = 0;
-    int oldest = (*ctx->gettime)(NULL);
+    uint32_t oldest = (*ctx->gettime)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
         if (ctx->state->cacheline[i].time == 0)
@@ -395,7 +398,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    if ((NUM_BEACONS(ctx) - NUM_APS(ctx)) == 0 || (NUM_BEACONS(cl) - NUM_APS(cl)) == 0) {
+    if ((NUM_CELLS(ctx) == 0 || NUM_CELLS(cl)) == 0) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
 #endif
@@ -425,20 +428,21 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  */
 int get_from_cache(Sky_ctx_t *ctx)
 {
+#if CACHE_SIZE
     uint32_t now = (*ctx->gettime)(NULL);
     int idx;
-
-    if (CACHE_SIZE < 1) {
-        return SKY_ERROR;
-    }
 
     /* compare current time to Mar 1st 2019 */
     if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
-        return SKY_ERROR;
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
     }
     return (ctx->get_from =
                 sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+#else
+    return (ctx->get_from = -1);
+#endif
 }
 
 /*! \brief check if an AP beacon is in a virtual group
