@@ -166,6 +166,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     int bestc = -1, bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
+    bool result = false;
 
     DUMP_WORKSPACE(ctx);
     DUMP_CACHE(ctx);
@@ -220,6 +221,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             ratio = (float)score / NUM_BEACONS(ctx);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
                 (int)round(ratio * 100), score, NUM_BEACONS(ctx), threshold);
+            result = true;
         }
 
         if (ratio > bestputratio) {
@@ -246,7 +248,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (bestratio * 100 >= bestthresh) {
+    if (result && bestratio * 100 >= bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
             bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
         *idx = bestc;
