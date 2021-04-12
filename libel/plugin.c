@@ -32,7 +32,9 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
+// #ifndef VERBOSE_DEBUG
 // #define VERBOSE_DEBUG
+// #endif
 
 /*! \brief add a plugin table to the list of plugins
  *
@@ -194,7 +196,7 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
  *
  *  @param ctx Skyhook request context
  *  @param code the sky_errno_t code to return
- *  @param op the operation index
+ *  @param loc the location being saved to cache
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
@@ -211,6 +213,41 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
     while (p) {
         if (p->add_to_cache)
             ret = (*p->add_to_cache)(ctx, loc);
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
+#endif
+        if (ret != SKY_ERROR) {
+            set_error_status(sky_errno, SKY_ERROR_NONE);
+            return ret;
+        }
+        p = (Sky_plugin_table_t *)p->next; /* move on to next plugin */
+    }
+    return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
+}
+
+/*! \brief call the rank operation in the registered plugins
+ *
+ *  @param ctx Skyhook request context
+ *  @param code the sky_errno_t code to return
+ *
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ */
+Sky_status_t sky_plugin_rank(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_beacon_type_t type)
+{
+    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_status_t ret = SKY_ERROR;
+
+    if (!validate_workspace(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    }
+
+    while (p) {
+        if (p->rank)
+            ret = (*p->rank)(ctx, type);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" :
@@ -255,10 +292,10 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is tr
     b.ap.property.in_cache = true;
 
     ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
-           prop.in_cache && diff < 0);
+           prop.in_cache && diff == 9999);
 });
 
-TEST("should return SKY_FAILURE with 2 different AP and diff -2334", ctx, {
+TEST("should return SKY_FAILURE with 2 different AP and diff negative", ctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
     Sky_errno_t sky_errno;
@@ -267,7 +304,7 @@ TEST("should return SKY_FAILURE with 2 different AP and diff -2334", ctx, {
     b.ap.property.in_cache = true;
 
     ASSERT((SKY_FAILURE == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
-           !prop.in_cache && diff == -2334);
+           !prop.in_cache && diff < 0);
 });
 
 GROUP("sky_plugin_add");
@@ -314,6 +351,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
         0,
     };
     int idx = -1;
+    int diff;
     Sky_plugin_table_t table1 = {
         .next = NULL,
         .magic = SKY_MAGIC,
@@ -344,7 +382,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_equal(ctx, &errno, &a, &b, NULL));
+    ASSERT(SKY_ERROR == sky_plugin_equal(ctx, &errno, &a, &b, NULL, &diff));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
     ASSERT(SKY_ERROR == sky_plugin_remove_worst(ctx, &errno));

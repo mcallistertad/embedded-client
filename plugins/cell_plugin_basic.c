@@ -32,7 +32,9 @@
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
+// #ifndef VERBOSE_DEBUG
 // #define VERBOSE_DEBUG
+// #endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define ABS(x) ((x) < 0 ? -(x) : (x))
@@ -41,40 +43,9 @@ typedef enum {
     MOST_DESIRABLE = 0xffff,
     CONNECTED = 0x800,
     NON_NMR = 0x400,
-    AGE = 0x200,
     STRENGTH = 0x100,
     LEAST_DESIRABLE = 0x000
 } Rank_t;
-
-/*! \brief score relative desirability of two cells
- *
- * Desirable attributes are connected, nmr, age and strength
- *
- *  @param b pointer to cell
- *
- *  @return rank
- */
-static int compare_cells(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
-{
-    int score = 0;
-
-    if (a->h.connected != b->h.connected) {
-        score += a->h.connected ? CONNECTED : -CONNECTED;
-    }
-    if (is_cell_nmr(a) != is_cell_nmr(b)) {
-        score += !is_cell_nmr(a) ? NON_NMR : -NON_NMR;
-    }
-    if (a->h.age != b->h.age) {
-        score += (a->h.age < b->h.age) ? /* a is younger */
-                     AGE :
-                     -AGE;
-    }
-    /* if there is no clear difference choose a */
-    score += ((a->h.rssi >= b->h.rssi) ? /* a is stronger */
-                  STRENGTH :
-                  -STRENGTH);
-    return score;
-}
 
 /*! \brief compare cell beacons fpr equality
  *
@@ -94,16 +65,6 @@ static Sky_status_t equal(
     if (a->h.type != b->h.type || a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
         a->h.type == SKY_BEACON_BLE || b->h.type == SKY_BEACON_BLE)
         return SKY_ERROR;
-
-#ifdef VERBOSE_DEBUG
-    dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
-    dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-#endif
-    /* calculate difference in desirability */
-    if (diff) {
-        *diff = compare_cells(ctx, a, b);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "desirability score %d", *diff);
-    }
 
     /* test two cells for equivalence */
     switch (a->h.type) {
@@ -141,6 +102,16 @@ static Sky_status_t equal(
     default:
         break;
     }
+
+    /* calculate rank score only if a place to save it was provided */
+    if (diff) {
+        if (a->h.age != b->h.age)
+            *diff = b->h.age - a->h.age; /* b - a because lower age is better */
+        else if (a->h.rank != b->h.rank)
+            *diff = a->h.rank - b->h.rank;
+        else
+            *diff = 1; /* a is better, arbitrarily */
+    }
     return SKY_FAILURE;
 }
 
@@ -152,10 +123,7 @@ static Sky_status_t equal(
  */
 static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 {
-    int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
-    Beacon_t *b = &ctx->beacon[i];
-
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_CELLS(ctx),
         CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons));
 
     /* no work to do if workspace not full of max cell */
@@ -164,15 +132,13 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
         return SKY_ERROR;
     }
 
-    DUMP_WORKSPACE(ctx);
-
     /* sanity check last beacon, if we get here, it should be a cell */
-    if (is_cell_type(b)) {
+    if (is_cell_type(&ctx->beacon[NUM_BEACONS(ctx) - 1])) {
         /* cells are priority order
          * remove last beacon
          */
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)", i);
-        return remove_beacon(ctx, i);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: least desirable cell");
+        return remove_beacon(ctx, NUM_BEACONS(ctx) - 1);
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
     return SKY_ERROR;
@@ -250,7 +216,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on cell beacons", i);
             threshold = 100.0; /* 100% match */
             score = 0.0;
-            for (int j = NUM_APS(ctx) - 1; j < NUM_BEACONS(ctx); j++) {
+            for (int j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
                 if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
 #ifdef VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -309,6 +275,47 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #endif
 }
 
+/*! \brief score relative rank of cells
+ *
+ * Desirable attributes are connected, nmr, age and strength
+ *
+ *  @param idx index of cell to be scored
+ *
+ *  @return rank
+ */
+static uint16_t score_cell(Sky_ctx_t *ctx, int idx)
+{
+    Beacon_t *b = &ctx->beacon[idx];
+    int score = 0;
+
+    if (b->h.connected)
+        score |= CONNECTED;
+    if (!is_cell_nmr(b))
+        score |= NON_NMR;
+
+    score |= (128 + b->h.rssi);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "rank %02X:%d", score >> 8, score & 0xFF);
+    return score;
+}
+
+/*! \brief rank the cells - give each cell a desirability rating
+*
+*  @param ctx Skyhook request context
+*
+*  @return SKY_SUCCESS if beacons successfully ranked or SKY_ERROR
+*/
+static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
+{
+    if ((type < SKY_BEACON_FIRST_CELL_TYPE) || (type > SKY_BEACON_LAST_CELL_TYPE))
+        return SKY_ERROR; /* nothing to do, move on to next plugin */
+
+    /* Based on attributes, score each cell beacon
+     */
+    for (uint32_t j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++)
+        ctx->beacon[j].h.rank = score_cell(ctx, j);
+    return SKY_SUCCESS;
+}
+
 /* * * * * * Plugin access table * * * * *
  *
  * Each plugin is registered via the access table
@@ -316,13 +323,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
  *
  * For a given operation, each registered plugin is
  * called for that operation until a plugin returns success.
- *
- * The supported operations are:
- *   name        - get name of plugin
- *   equal       - test two beacons for equivalence
- *   remove_worst - find least desirable beacon and remove it
- *   cache_match  - determine if cache has a good match
- *   add_to_cache - Save workspace in cache
  */
 
 Sky_plugin_table_t cell_plugin_basic_table = {
@@ -333,5 +333,6 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .equal = equal, /*Compare two beacons for equality */
     .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
     .cache_match = match, /* Find best match between workspace and cache lines */
-    .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
+    .add_to_cache = NULL, /* Copy workspace beacons to a cacheline */
+    .rank = rank /* rank the cells, not needed as always in rank order */
 };

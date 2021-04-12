@@ -31,6 +31,7 @@ typedef Sky_status_t (*Sky_plugin_equal_t)(
 typedef Sky_status_t (*Sky_plugin_remove_worst_t)(Sky_ctx_t *ctx);
 typedef Sky_status_t (*Sky_plugin_cache_match_t)(Sky_ctx_t *ctx, int *idx);
 typedef Sky_status_t (*Sky_plugin_add_to_cache_t)(Sky_ctx_t *ctx, Sky_location_t *loc);
+typedef Sky_status_t (*Sky_plugin_rank)(Sky_ctx_t *ctx, Sky_beacon_type_t type);
 
 /* Each plugin has a table which provides entry points for the following operations */
 typedef struct plugin_table {
@@ -42,6 +43,7 @@ typedef struct plugin_table {
     Sky_plugin_remove_worst_t remove_worst; /* Remove least desirable beacon from workspace */
     Sky_plugin_cache_match_t cache_match; /* Find best match between workspace and cache lines */
     Sky_plugin_add_to_cache_t add_to_cache; /* Copy workspace beacons to a cacheline */
+    Sky_plugin_rank rank; /* score the beacons with rank used by sort_beacons */
 } Sky_plugin_table_t;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **root);
@@ -51,5 +53,6 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
 Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
 Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx);
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc);
+Sky_status_t sky_plugin_rank(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_beacon_type_t type);
 
 #endif

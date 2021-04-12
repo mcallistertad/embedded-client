@@ -33,7 +33,7 @@
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((uint32_t)((p)->len - (p)->ap_len))
+#define NUM_CELLS(p) ((uint16_t)((p)->len - (p)->ap_len))
 #define NUM_APS(p) ((p)->ap_len)
 #define NUM_BEACONS(p) ((p)->len)
 #define IMPLIES(a, b) (!(a) || (b))
@@ -87,7 +87,8 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
-    int16_t rssi; // -255 unkonwn - map it to - 128
+    int16_t rssi; /* -255 unkonwn - map it to - 128 */
+    uint16_t rank; /* used to sort beacons by desirability */
     int8_t connected; /* beacon connected */
 };
 
@@ -247,7 +248,6 @@ bool beacon_in_cacheline(
 int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
 int get_from_cache(Sky_ctx_t *ctx);
-Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 
 #endif

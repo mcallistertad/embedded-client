@@ -29,11 +29,14 @@
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdlib.h>
 #define SKY_LIBEL
 #include "libel.h"
 
 /* Uncomment VERBOSE_DEBUG to enable extra logging */
+// #ifndef VERBOSE_DEBUG
 // #define VERBOSE_DEBUG
+// #endif
 
 typedef enum {
     MOST_DESIRABLE = 0xffff,
@@ -46,91 +49,62 @@ typedef enum {
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
-#define AP_BELOW_RSSI_THRESHOLD(ctx, idx)                                                          \
-    (EFFECTIVE_RSSI((ctx)->beacon[(idx)].h.rssi) <                                                 \
-        -(int)CONFIG((ctx)->state, cache_neg_rssi_threshold))
 
-/*! \brief Assign desirability score to AP based on attributes
- *
- * Desirable attributes are connected, virtual groups and cached APs
- * If the above attributes are the same, use best fit or rssi
- *
- *  @param b pointer to AP
- *
- *  @return rank
+/* APs are ordered in the request context in rank order.
+ * Most highly desired are connected APs, Virtual groups, Used and cached,
+ * next APs are ordered based on an ideal uniform distribution of signal strength.
+ * Least desirable AP is at the end of the list of APs
  */
-static int rank_ap(Beacon_t *b, int fit)
-{
-    int rank = 0;
-
-    if (b->h.connected)
-        rank += CONNECTED;
-    if (NUM_VAPS(b)) /* Virtual group */
-        rank += VAP;
-    if (b->ap.property.in_cache) {
-        rank += IN_CACHE;
-    }
-    return rank + 128 + b->h.rssi;
-}
 
 /*! \brief compare beacons for equality
  *
+ *  APs rank includes how well a given AP fits to the ideal
+ *  distribution of signal strengths of all APs. Thus adding
+ *  a new AP may require re-sorting all APs
+ *  @param ctx Skyhook request context
+ *  @param a pointer to an AP
+ *  @param b pointer to an AP
+ *  @param prop pointer to where b's properties are saved if equal
+ *
+ *  @return
  *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
- *  if beacons are comparable, return difference in desirability
+ *  if beacons are comparable, return SKY_FAILURE and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
     Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, int *diff)
 {
-    int i, idx_a = 0, idx_b = 0;
-    int16_t weakest_rssi, strongest_rssi, ideal_rssi_a, ideal_rssi_b;
-    float band_range;
-
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
     }
 
-#ifdef VERBOSE_DEBUG
-    dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
-    dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-#endif
     /* Two APs can be compared but others are ordered by type */
     if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
         return SKY_ERROR;
 
-    if (diff) {
-        /* find strongest and weakest APs */
-        weakest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
-        strongest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
-        for (i = 1; i < NUM_APS(ctx); i++) {
-            /* remember index of APs a and b */
-            if (a == &ctx->beacon[i])
-                idx_a = i;
-            else if (b == &ctx->beacon[i])
-                idx_b = i;
-
-            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) < weakest_rssi)
-                weakest_rssi = EFFECTIVE_RSSI(ctx->beacon[i].h.rssi);
-            if (EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) > strongest_rssi)
-                strongest_rssi = EFFECTIVE_RSSI(ctx->beacon[i].h.rssi);
-        }
-        /* what share of the range of rssi values does each beacon represent */
-        band_range = (float)(strongest_rssi - weakest_rssi) / (float)(NUM_APS(ctx) - 1);
-        /* calculate ideal rssi value for each AP */
-        ideal_rssi_a = strongest_rssi - (int)((float)idx_a * band_range);
-        ideal_rssi_b = strongest_rssi - (int)((float)idx_b * band_range);
-
-        *diff =
-            rank_ap(a, ABS(a->h.rssi - ideal_rssi_a)) - rank_ap(b, ABS(b->h.rssi - ideal_rssi_b));
-    }
-
+    /* if two APs are identical, return SKY_SUCCESS */
     if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
-        if (prop != NULL && b->ap.property.in_cache)
+        if (prop != NULL && b->ap.property.in_cache) {
             prop->in_cache = true;
+            prop->used = false;
+        }
         return SKY_SUCCESS;
     }
-    /* calculate desirability score if a place to save it was provided */
+
+    /* calculate rank score only if a place to save it was provided */
+    if (diff) {
+        if (a->h.age != b->h.age)
+            *diff = (int)(b->h.age - a->h.age); /* b - a because lower age is better */
+        else if (a->h.rank == b->h.rank) {
+            if (a->h.rssi != b->h.rssi)
+                *diff = a->h.rssi - b->h.rssi;
+            else
+                *diff = (memcmp(
+                    b->ap.mac, a->ap.mac, MAC_SIZE)); /* b - a because lower mac is better */
+        } else
+            *diff = a->h.rank - b->h.rank;
+    }
     return SKY_FAILURE;
 }
 
@@ -176,152 +150,13 @@ static int mac_similar(uint8_t macA[], uint8_t macB[], int *pn)
     return result;
 }
 
-/*! \brief try to remove one AP by selecting an AP which leaves best spread of rssi values
- *
- *  Workspace AP beacons are stored in decreasing rssi order
- *  Avoid removing first and last beacons (with highest and lowest rssi) as this likely
- *  would reduce the overall range of rssi values.
- *
- *  @param ctx Skyhook request context
- *
- *  @return boot true if beacon removed or false
- */
-static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
-{
-    int i, reject, jump, up_down;
-    float band_range, worst, difference;
-    float ideal_rssi[MAX_AP_BEACONS + 1];
-    Beacon_t *b;
-
-    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons))
-        return false;
-
-    if (ctx->beacon[0].h.type != SKY_BEACON_AP)
-        return false;
-
-    /* what share of the range of rssi values does each beacon represent */
-    band_range = (EFFECTIVE_RSSI(ctx->beacon[0].h.rssi) -
-                     EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi)) /
-                 ((float)NUM_APS(ctx) - 1);
-
-    /* if the rssi range is small
-     * first, look for and remove an uncached *and* unconnected AP.
-     * If there isn't one, look for and remove an uncached AP.
-     * In either case, search from the middle outward in order to
-     * avoid reducing an already small RSSI value range
-     */
-
-    if (band_range < 0.5) {
-        /* search from middle of range looking for uncached and unconnected beacon */
-        for (jump = 0, up_down = -1, i = NUM_APS(ctx) / 2; i >= 0 && i < NUM_APS(ctx);
-             jump++, i += up_down * jump, up_down = -up_down) {
-            b = &ctx->beacon[i];
-            if (!b->ap.property.in_cache && !b->ap.h.connected) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, %s beacon",
-                    !jump ? "remove middle unconnected uncached" : "remove unconnected uncached");
-                return remove_beacon(ctx, i) == SKY_SUCCESS;
-            }
-        }
-        for (jump = 0, up_down = -1, i = NUM_APS(ctx) / 2; i >= 0 && i < NUM_APS(ctx);
-             jump++, i += up_down * jump, up_down = -up_down) {
-            b = &ctx->beacon[i];
-            if (!b->ap.property.in_cache) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Warning: rssi range is small, %s beacon",
-                    !jump ? "remove middle uncached" : "remove uncached");
-                return remove_beacon(ctx, i) == SKY_SUCCESS;
-            }
-        }
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING,
-            "Warning: rssi range is small, remove cached or connected beacon");
-        return remove_beacon(ctx, NUM_APS(ctx) / 2) == SKY_SUCCESS;
-    }
-
-    /* if beacon with min RSSI is below threshold, */
-    /* throw out a weak one */
-    if (AP_BELOW_RSSI_THRESHOLD(ctx, NUM_APS(ctx) - 1)) {
-        /* find weak ap not connected amd not in cache if possible */
-        for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
-            if (AP_BELOW_RSSI_THRESHOLD(ctx, i) && !ctx->beacon[i].ap.h.connected &&
-                !ctx->beacon[i].ap.property.in_cache)
-                reject = i;
-        }
-        /* Second, if none found, try to find uncached, weak, AP. */
-        for (i = NUM_APS(ctx) - 1, reject = -1; i > 0 && reject == -1; i--) {
-            if (AP_BELOW_RSSI_THRESHOLD(ctx, i) && !ctx->beacon[i].ap.property.in_cache)
-                reject = i;
-        }
-        /* Third, if none found, remove weakest AP. */
-        if (reject == -1)
-            reject = NUM_APS(ctx) - 1;
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Discarding beacon %d with very weak strength", reject);
-        return remove_beacon(ctx, reject) == SKY_SUCCESS;
-    }
-
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "range: %d band range: %d.%02d",
-        (int)(band_range * (NUM_APS(ctx) - 1)), (int)band_range,
-        (int)fabs(round(100 * (band_range - (int)band_range))));
-
-    /* for each beacon, work out it's ideal rssi value to give an even distribution */
-    for (i = 0; i < NUM_APS(ctx); i++)
-        ideal_rssi[i] = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi) - (i * band_range);
-
-    /* find AP with poorest fit to ideal rssi */
-    /* always keep lowest and highest rssi */
-    /* unless all the middle candidates are connected or in the cache */
-    for (i = 1, reject = -1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
-        difference = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
-        if (!ctx->beacon[i].ap.property.in_cache && !ctx->beacon[i].ap.h.connected &&
-            difference >= worst) {
-            worst = difference;
-            reject = i;
-        }
-    }
-    /* haven't found a beacon to remove yet due to matching cached beacons and connected */
-    /* find poorest fit which may be in cache */
-    if (reject == -1) {
-        for (i = 1, worst = 0; i < NUM_APS(ctx) - 1; i++) {
-            difference = fabs(EFFECTIVE_RSSI(ctx->beacon[i].h.rssi) - ideal_rssi[i]);
-            if (!ctx->beacon[i].ap.h.connected && difference >= worst) {
-                worst = difference;
-                reject = i;
-            }
-        }
-    }
-    if (reject == -1) {
-        /* haven't found a beacon to remove yet due to matching cached beacons or connected */
-        /* Throw away either lowest or highest rssi valued beacons if not cached */
-        if (!ctx->beacon[NUM_APS(ctx) - 1].ap.property.in_cache)
-            reject = NUM_APS(ctx) - 1;
-        else if (!ctx->beacon[0].ap.property.in_cache)
-            reject = 0;
-        else
-            reject = NUM_APS(ctx) / 2; /* remove middle beacon (all beacons are in cache) */
-    }
-#if SKY_DEBUG
-    for (i = 0; i < NUM_APS(ctx); i++) {
-        b = &ctx->beacon[i];
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "%-2d %s %s: %-2d, %s ideal %d.%02d fit %2d.%02d MAC %02X:%02X:%02X:%02X:%02X:%02X (%d)",
-            i, b->ap.h.connected ? "*" : " ", (reject == i) ? "remove" : "      ", i,
-            b->ap.property.in_cache ? "Cached" : "      ", (int)ideal_rssi[i],
-            (int)fabs(round(100 * (ideal_rssi[i] - (int)ideal_rssi[i]))),
-            (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]), ideal_rssi[i],
-            (int)fabs(round(100 * (fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i]) -
-                                      (int)fabs(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi[i])))),
-            b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-            b->h.rssi);
-    }
-#endif
-    return remove_beacon(ctx, reject) == SKY_SUCCESS;
-}
-
 #if CACHE_SIZE
 /*! \brief count number of cached APs in workspace relative to a cacheline
  *
  *  @param ctx Skyhook request context
  *  @param cl the cacheline to count in, otherwise count in workspace
  *
- *  @return number of used APs or -1 for fatal error
+ *  @return number of cached APs or -1 for fatal error
  */
 static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
@@ -345,25 +180,23 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 /*! \brief select between two virtual APs which should be removed,
  *  and then remove it
  *
- *  keep beacons with connectedness and then in_cache properties
+ *  keep beacons with more desirable properties
  *
  *  @param ctx Skyhook request context
  *
  *  @return true if beacon removed or false otherwise
  */
+#define RANK_ATTRIBUTES(x) (x & 0xFF00)
 static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
 {
-    /* Assume we'll keep i and discard j. Then, apply following
+    /* Assume we'll keep i and discard j. Then, use rank
      * logic to see if this should be reversed:
-     * If j is connected and i is not, keep j
-     * If i and j have the same connected state and j is in cache and i is not,
-     * keep j.
+     * If upper attribute bits of rank of j are higher
+     * keep j. Otherwise keep i.
      */
     int tmp;
 
-    if ((ctx->beacon[j].ap.h.connected && !ctx->beacon[i].ap.h.connected) ||
-        ((ctx->beacon[j].ap.h.connected == ctx->beacon[i].ap.h.connected) &&
-            (ctx->beacon[j].ap.property.in_cache && !ctx->beacon[i].ap.property.in_cache))) {
+    if (RANK_ATTRIBUTES(ctx->beacon[j].ap.h.rank) > RANK_ATTRIBUTES(ctx->beacon[i].h.rank)) {
         tmp = i;
         i = j;
         j = tmp;
@@ -388,9 +221,6 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     int i, j;
     int cmp;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "ap_len: %d APs of %d beacons", (int)NUM_APS(ctx),
-        (int)NUM_BEACONS(ctx));
-
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons)) {
         return false;
     }
@@ -401,9 +231,6 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-#ifdef VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
-#endif
     /* Compare all beacons, looking for similar macs
      * Try to keep lowest of two beacons with similar macs, unless
      * the lower one is connected or in cache and the other is not
@@ -427,51 +254,12 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     return false;
 }
 
-/*! \brief try to reduce AP by filtering out the oldest one
- *
- *  Workspace AP beacons are stored in decreasing rssi order
- *
- *  @param ctx Skyhook request context
- *
- *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
- */
-static bool remove_worst_ap_by_age(Sky_ctx_t *ctx)
-{
-    int i;
-    int oldest_idx = -1;
-    uint32_t oldest_age = 0, youngest_age = UINT_MAX; /* age is in seconds, larger means older */
-
-    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons))
-        return false;
-
-    /* Find the youngest and oldest APs. Search from weakest remembering oldest and weakest */
-    for (i = NUM_APS(ctx) - 1; i >= 0; i--) {
-        if (ctx->beacon[i].h.age < youngest_age) {
-            youngest_age = ctx->beacon[i].h.age;
-        }
-        if (ctx->beacon[i].h.age > oldest_age) {
-            oldest_age = ctx->beacon[i].h.age;
-            oldest_idx = i;
-        }
-    }
-
-    /* if the oldest and youngest beacons have the same age,
-     * there is nothing to do. Otherwise remove the oldest (and weakest) */
-    if (youngest_age != oldest_age && oldest_idx != -1) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d oldest", oldest_idx);
-        remove_beacon(ctx, oldest_idx);
-        return true;
-    }
-    return false;
-}
-
 static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 {
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age or rssi distribution */
-    if (!remove_virtual_ap(ctx) && !remove_worst_ap_by_age(ctx) && !remove_worst_ap_by_rssi(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to remove worst AP, try next plugin?");
-        return SKY_ERROR;
+    if (!remove_virtual_ap(ctx)) {
+        return remove_beacon(ctx, ctx->ap_len - 1);
     }
     return SKY_SUCCESS;
 }
@@ -640,7 +428,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     }
 
     /* compare current time to Mar 1st 2019 */
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Time (now) %d %d", now, time(NULL));
     if (now <= TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day! %u", now);
         return SKY_ERROR;
@@ -670,7 +457,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
         if (cl->beacon[j].h.type == SKY_BEACON_AP) {
-            cl->beacon[j].ap.property.in_cache = true;
+            cl->beacon[j].ap.property.in_cache = false;
         }
     }
     DUMP_CACHE(ctx);
@@ -680,6 +467,90 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     (void)loc; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif
+}
+
+/*! \brief Assign relative score to AP based on attributes
+ *
+ * Desirable attributes are connected, virtual groups and cached APs
+ * and best fit to rssi uniform distribution
+ *
+ *  @param ctx pointer to request context
+ *  @param b pointer to AP
+ *  @param beacons_by_rssi rssi ordered array of all beacons
+ *  @param idx index of beacon we want to rank
+ *
+ *  @return score
+ */
+static int score_ap(Sky_ctx_t *ctx, Beacon_t *beacons_by_rssi[], int idx)
+{
+    int score = 0;
+    int ideal_rssi, lowest_rssi, highest_rssi;
+    float band;
+
+    Beacon_t *b = beacons_by_rssi[idx];
+    if (b->h.connected)
+        score |= CONNECTED;
+    if (NUM_VAPS(b)) /* Virtual group */
+        score |= VAP;
+    if (b->ap.property.in_cache) {
+        score |= IN_CACHE;
+    }
+    highest_rssi = EFFECTIVE_RSSI(beacons_by_rssi[0]->h.rssi);
+    lowest_rssi = EFFECTIVE_RSSI(beacons_by_rssi[NUM_APS(ctx) - 1]->h.rssi);
+    /* divide the total rssi range equally between all the APs */
+    band = (float)(highest_rssi - lowest_rssi) / (float)(NUM_APS(ctx) - 1);
+    ideal_rssi = highest_rssi - (int)(band * (float)idx);
+
+    /* include beacon strength score in low order bits */
+    score |= (128 - ABS(ideal_rssi - EFFECTIVE_RSSI(beacons_by_rssi[idx]->h.rssi)));
+#ifdef VERBOSE_DEBUG
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d rssi:%d ideal:%d rank:%02X:%d", idx,
+        EFFECTIVE_RSSI(beacons_by_rssi[idx]->h.rssi), ideal_rssi, score >> 8, score & 0xFF);
+#endif
+    return score;
+}
+
+/*! \brief rank the APs - give each AP a desirability rating
+*
+*  @param ctx Skyhook request context
+*
+*  @return SKY_SUCCESS if beacons successfully ranked or SKY_ERROR
+*/
+static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
+{
+    Beacon_t *beacons_by_rssi[MAX_AP_BEACONS + 1]; /* room for all APs in workspace */
+    bool changed = false;
+
+    if (type != SKY_BEACON_AP)
+        return SKY_ERROR; /* nothing to do, move on to next plugin */
+
+    for (int i = 0; i < NUM_APS(ctx); i++)
+        beacons_by_rssi[i] = &ctx->beacon[i];
+
+    /* sort by rssi */
+    do {
+        int i;
+
+        for (i = 0, changed = false; i < NUM_APS(ctx) - 1; i++) {
+            /* compare neighbors and swap if rssi is greater */
+            if (EFFECTIVE_RSSI(beacons_by_rssi[i]->h.rssi) <
+                EFFECTIVE_RSSI(beacons_by_rssi[i + 1]->h.rssi)) {
+                Beacon_t *tmp;
+
+                tmp = beacons_by_rssi[i];
+                beacons_by_rssi[i] = beacons_by_rssi[i + 1];
+                beacons_by_rssi[i + 1] = tmp;
+                changed = true;
+            }
+        }
+    } while (changed);
+
+    /* based of range of rssi values, score each beacon by
+     * it's attributes and deviation from a uniform distribution
+     */
+    for (int j = 0; j < NUM_APS(ctx); j++)
+        beacons_by_rssi[j]->h.rank = score_ap(ctx, beacons_by_rssi, j);
+    return SKY_SUCCESS;
 }
 
 /* * * * * * Plugin access table * * * * *
@@ -699,5 +570,6 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .equal = equal, /*Compare two beacons for equality */
     .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
     .cache_match = match, /* Find best match between workspace and cache lines */
-    .add_to_cache = to_cache /* Copy workspace beacons to a cacheline */
+    .add_to_cache = to_cache, /* Copy workspace beacons to a cacheline */
+    .rank = rank /* update rank value of beacons in workspace */
 };

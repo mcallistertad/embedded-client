@@ -62,8 +62,6 @@ int validate_workspace(Sky_ctx_t *ctx)
 
     if (ctx == NULL) {
         // Can't use LOGFMT if ctx is bad
-        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
-        fprintf(stderr, "FATAL: NULL ctx\n");
         return false;
     }
     if (NUM_BEACONS(ctx) > TOTAL_BEACONS + 1) {
@@ -338,10 +336,11 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             mac[n / 2] = ((mac[n / 2] & 0x0F) | (value << 4));
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d, Age:%d", prefix,
+            "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d rank:%02X:%d",
+            prefix,
             (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-            b->ap.freq, b->h.rssi, b->h.age);
+            b->ap.freq, b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xff);
     }
 #endif
 }
@@ -368,10 +367,12 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d", prefix,
-        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
+        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d rank:%02X:%d", prefix,
+        b->ap.property.used       ? "Used  " :
+        (b->ap.property.in_cache) ? "Cached" :
+                                    "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-        b->ap.freq, b->h.rssi, b->h.age);
+        b->ap.freq, b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xff);
     dump_vap(ctx, prefix, b, file, func);
 #endif
 }
@@ -426,14 +427,15 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     case SKY_BEACON_NR:
         /* if primary key is UNKNOWN, must be NMR */
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s %d, %dMHz rssi:%-4d age:%d",
-                prefixstr, b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
+            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
+                "%9s %d, %dMHz rssi:%-4d age:%d rank:%02X:%d", prefixstr, b->cell.id5, b->cell.freq,
+                b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xFF);
         } else {
             strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %u, %u, %u, %llu, %d, %dMHz rssi:%d age:%-4d ta:%d", prefixstr, b->cell.id1,
-                b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
-                b->h.age, b->cell.ta);
+                "%9s %u, %u, %u, %llu, %d, %d rssi:%d age:%d ta:%d rank:%02X:%d", prefixstr,
+                b->cell.id1, b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq,
+                b->h.rssi, b->h.age, b->cell.ta, b->h.rank >> 8, b->h.rank & 0xFF);
         }
         break;
     default:
@@ -454,7 +456,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 #if SKY_DEBUG
     int i;
 
-    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Dump WorkSpace: Got %d beacons, WiFi %d, %s%s",
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Dump WorkSpace: Got %d beacons, WiFi %d%s%s",
         NUM_BEACONS(ctx), NUM_APS(ctx), is_tbr_enabled(ctx) ? ", TBR" : "",
         ctx->debounce ? ", Debounce" : "");
     for (i = 0; i < NUM_BEACONS(ctx); i++)
@@ -1283,8 +1285,10 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
+#ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
+#endif
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;
         dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
             w->ap.vg[VAP_LENGTH].len, 0);
