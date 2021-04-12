@@ -16,7 +16,7 @@ static Test_rs runtests(void)
 
     /* START TEST LIST */
     RUN_TEST(beacon_test);
-    /*RUN_TEST(ap_plugin_vap_used);*/
+    /* RUN_TEST(ap_plugin_vap_used); */
     RUN_TEST(test_utilities);
     RUN_TEST(plugin_test);
     /*RUN_TEST(new_tests);*/

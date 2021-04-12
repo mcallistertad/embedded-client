@@ -48,7 +48,7 @@ TEST_FUNC(test_compare)
     GROUP("beacon_compare APs");
     TEST("should return true when 2 identical APs are passed", ctx, {
         AP(a, "ABCDEFAACCDD", 10, -108, 4433, true);
-        AP(b, "ABCDEFAACCDD", 10, -108, 4433, true);
+        AP(b, "ABCDEFAACCDD", 10, -108, 4433, true)
         ASSERT(true == beacon_compare(ctx, &a, &b, NULL));
     });
 
@@ -63,7 +63,7 @@ TEST_FUNC(test_compare)
         AP(b, "ABCDEFAACCDE", 10, -78, 4433, true);
         int diff;
         ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff == a.h.rssi - b.h.rssi);
+        ASSERT(diff < 0); /* b better */
     });
 
     GROUP("beacon_compare Cells identical");
@@ -113,10 +113,14 @@ TEST_FUNC(test_compare)
         LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
         LTE(b, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
         int diff;
+        Sky_errno_t sky_errno;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -125,33 +129,44 @@ TEST_FUNC(test_compare)
         LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
         LTE_NMR(b, 10, -108, false, 387, 1000);
         int diff;
+        Sky_errno_t sky_errno;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff with two NMR one younger", ctx, {
-        LTE_NMR(a, 10, -108, false, 387, 1000);
-        LTE_NMR(b, 8, -10, false, 38, 100);
+        LTE_NMR(a, 8, -10, false, 38, 100);
+        LTE_NMR(b, 10, -108, false, 387, 1000);
         int diff;
+        Sky_errno_t sky_errno;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff < 0); // 2nd better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff with two NMR one stronger", ctx, {
-        LTE_NMR(a, 10, -108, false, 387, 1000);
-        LTE_NMR(b, 10, -10, false, 38, 100);
+        LTE_NMR(a, 10, -10, false, 38, 100);
+        LTE_NMR(b, 10, -108, false, 387, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
-        ASSERT(diff < 0); // 2nd better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
+        ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and report 1st best with two very similar cells", ctx, {
@@ -159,9 +174,12 @@ TEST_FUNC(test_compare)
         LTE(b, 10, -108, true, 110, 222, 25614, 25664526, 45, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff > 0); // 1st better
     });
 
@@ -170,9 +188,12 @@ TEST_FUNC(test_compare)
         LTE_NMR(b, 10, -108, false, 38, 100);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff > 0); // 1st better
     });
 
@@ -181,9 +202,12 @@ TEST_FUNC(test_compare)
         LTE_NMR(b, 10, -108, false, 387, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -193,9 +217,12 @@ TEST_FUNC(test_compare)
         LTE(b, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -204,9 +231,12 @@ TEST_FUNC(test_compare)
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -215,9 +245,12 @@ TEST_FUNC(test_compare)
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -226,9 +259,12 @@ TEST_FUNC(test_compare)
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -237,9 +273,12 @@ TEST_FUNC(test_compare)
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -248,9 +287,12 @@ TEST_FUNC(test_compare)
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -259,9 +301,12 @@ TEST_FUNC(test_compare)
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -270,9 +315,12 @@ TEST_FUNC(test_compare)
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -281,9 +329,12 @@ TEST_FUNC(test_compare)
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -292,9 +343,12 @@ TEST_FUNC(test_compare)
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -303,9 +357,12 @@ TEST_FUNC(test_compare)
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -314,9 +371,12 @@ TEST_FUNC(test_compare)
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -325,9 +385,12 @@ TEST_FUNC(test_compare)
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -336,9 +399,12 @@ TEST_FUNC(test_compare)
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -347,9 +413,12 @@ TEST_FUNC(test_compare)
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
@@ -359,20 +428,26 @@ TEST_FUNC(test_compare)
         LTE(b, 123, -94, false, 310, 470, 25613, 25664526, 387, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 
     TEST("should return false and calc diff: one NMR", ctx, {
-        LTE(a, 123, -94, false, 310, 470, 25613, 25664526, 387, 1000);
+        LTE(a, 10, -94, false, 310, 470, 25613, 25664526, 387, 1000);
         LTE_NMR(b, 10, -108, false, 387, 1000);
         int diff;
 
-        ASSERT(false == beacon_compare(ctx, &a, &b, &diff));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
+        ASSERT(CELL_EQ(&a, ctx->beacon));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[0], &ctx->beacon[1], &diff));
         ASSERT(diff > 0); // 1st better
-        ASSERT(false == beacon_compare(ctx, &b, &a, &diff));
+        ASSERT(false == beacon_compare(ctx, &ctx->beacon[1], &ctx->beacon[0], &diff));
         ASSERT(diff < 0); // 2nd better
     });
 }
@@ -385,65 +460,247 @@ TEST_FUNC(test_insert)
             BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
             Sky_errno_t sky_errno;
 
-            ASSERT(SKY_ERROR == insert_beacon(NULL, &sky_errno, &a, 0));
+            ASSERT(SKY_ERROR == insert_beacon(NULL, &sky_errno, &a));
             ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
         });
 
     TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with corrupt ctx",
         ctx, {
-            BEACON(a, SKY_BEACON_MAX, 1605549363, -108, true);
+            BEACON(a, SKY_BEACON_MAX, 5, -108, true);
             Sky_errno_t sky_errno;
 
             ctx->header.magic = 1234;
-            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a, 0));
+            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a));
             ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
         });
 
     TEST("should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with bad beacon",
         ctx, {
-            AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
+            AP(a, "ABCDEF010203", 1, -108, 5745, true);
             Sky_errno_t sky_errno;
 
             a.h.type = SKY_BEACON_MAX;
-            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a, NULL));
+            ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a));
             ASSERT(ctx->len == 0);
             ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
         });
 
-    TEST("should insert beacon in ctx->beacon[] at index 0 with NULL index", ctx, {
-        AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
+    TEST("should insert AP in ctx->beacon[] at index 0", ctx, {
+        AP(a, "ABCDEF010203", 1, -108, 5745, true);
         Sky_errno_t sky_errno;
 
-        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, NULL));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
         ASSERT(AP_EQ(&a, ctx->beacon));
     });
 
-    TEST("should insert beacon in ctx->beacon[] at index 0", ctx, {
-        AP(a, "ABCDEF010203", 1605633264, -108, 2, true);
-        Sky_errno_t sky_errno;
-        int i;
-
-        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, &i));
-        ASSERT(AP_EQ(&a, ctx->beacon));
-        ASSERT(i == 0);
-    });
-
-    TEST("should insert 2 beacons in ctx->beacon[] and set index", ctx, {
-        AP(a, "ABCDEF010203", 1605633264, -108, 2, false);
-        AP(b, "ABCDEF010201", 1605633264, -88, 2, false);
+    TEST("should insert 3 APs A, B, C in ctx in desirablity order B, A, C", ctx, {
+        AP(a, "ABCDEF010203", 1, -108, 2412, false);
+        AP(b, "ABCDEF010201", 1, -48, 2412, false);
+        AP(c, "CBADEF010201", 1, -88, 2412, false);
         Sky_errno_t sky_errno;
 
-        int insert_idx;
-        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a, &insert_idx));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
         ASSERT(AP_EQ(&a, ctx->beacon));
-        ASSERT(insert_idx == 0);
 
-        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b, &insert_idx));
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
         ASSERT(AP_EQ(&b, ctx->beacon));
-        ASSERT(insert_idx == 0);
 
-        ASSERT(NUM_BEACONS(ctx) == 2);
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
         ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs C, A, B in ctx in desirablity order B, A, C", ctx, {
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs A, C, B in ctx in desirablity order B, A, C", ctx, {
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(AP_EQ(&a, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs C, B, A in ctx in desirablity order B, A, C", ctx, {
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, A, C in ctx in desirablity order B, A, C", ctx, {
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, C, A in ctx in desirablity order B, A, C", ctx, {
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon + 1));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&b, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&c, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, C, A, with C connected, in desirablity order C, B, A", ctx, {
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(c, "CBADEF010201", 2, -88, 2412, true);
+        AP(a, "ABCDEF010203", 2, -108, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&c, ctx->beacon));
+        ASSERT(AP_EQ(&b, ctx->beacon + 1));
+        ASSERT(AP_EQ(&a, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, C, A, with C in_cache, in desirability order A, C, B", ctx, {
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(c, "CBADEF010201", 2, -88, 2412, false);
+        AP(a, "ABCDEF010203", 2, -108, 2412, true);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon + 1)); /* sorted after b until in_cache is set */
+        ctx->beacon[1].ap.property.in_cache = true;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&a, ctx->beacon));
+        ASSERT(AP_EQ(&c, ctx->beacon + 1));
+        ASSERT(AP_EQ(&b, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, C, A, with C younger, in desirability order C, A, B", ctx, {
+        AP(b, "ABCDEF010201", 2, -48, 2412, false);
+        AP(c, "CBADEF010201", 1, -88, 2412, false); /* youngest */
+        AP(a, "ABCDEF010203", 2, -108, 2412, true); /* connected */
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&c, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&b, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 APs B, C, A, with only MAC diff, in desirability order C, A, B", ctx, {
+        AP(b, "ABCDEF010F01", 2, -48, 2412, false);
+        AP(c, "ABCDEF010201", 2, -48, 2412, false);
+        AP(a, "ABCDEF010401", 2, -48, 2412, false);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(AP_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(AP_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(AP_EQ(&c, ctx->beacon));
+        ASSERT(AP_EQ(&a, ctx->beacon + 1));
+        ASSERT(AP_EQ(&b, ctx->beacon + 2));
+    });
+
+    TEST("should insert 3 Cells B, C, A, with only age diff, in desirability order C, A, B", ctx, {
+        LTE(b, 12, -94, false, 311, 470, 25613, 25664526, 387, 1000);
+        LTE(c, 10, -94, false, 312, 470, 25613, 25664526, 387, 1000);
+        LTE(a, 11, -94, false, 310, 470, 25613, 25664526, 387, 1000);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &c));
+        ASSERT(CELL_EQ(&c, ctx->beacon));
+
+        ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
+        ASSERT(NUM_BEACONS(ctx) == 3);
+        ASSERT(CELL_EQ(&c, ctx->beacon));
+        ASSERT(CELL_EQ(&a, ctx->beacon + 1));
+        ASSERT(CELL_EQ(&b, ctx->beacon + 2));
     });
 }
 
