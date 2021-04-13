@@ -47,9 +47,17 @@ typedef enum {
     LEAST_DESIRABLE = 0x000
 } Rank_t;
 
-/*! \brief compare cell beacons fpr equality
+/*! \brief compare cell beacons for equality
  *
- *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
+ *  @param ctx Skyhook request context
+ *  @param a pointer to cell
+ *  @param b pointer to cell
+ *  @param prop pointer to where b's properties are saved if equal
+ *  @param diff result of comparison, positive when a is better
+ *
+ *  @return
+ *  if beacons are equivalent, return SKY_SUCCESS
+ *  if beacons are comparable, return SKY_FAILURE and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
@@ -294,7 +302,6 @@ static uint16_t score_cell(Sky_ctx_t *ctx, int idx)
         score |= NON_NMR;
 
     score |= (128 + b->h.rssi);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "rank %02X:%d", score >> 8, score & 0xFF);
     return score;
 }
 

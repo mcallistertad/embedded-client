@@ -49,6 +49,11 @@ typedef enum {
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
+/* when comparing age, lower value is better so invert difference */
+/* comparison must give positive result when a is better */
+#define COMPARE_AGE(a, b) (-((a) - (b)))
+/* when comparing mac, lower value is better so invert difference */
+#define COMPARE_MAC(a, b) (-memcmp((a), (b), MAC_SIZE))
 
 /* APs are ordered in the request context in rank order.
  * Most highly desired are connected APs, Virtual groups, Used and cached,
@@ -56,7 +61,7 @@ typedef enum {
  * Least desirable AP is at the end of the list of APs
  */
 
-/*! \brief compare beacons for equality
+/*! \brief compare APs for equality
  *
  *  APs rank includes how well a given AP fits to the ideal
  *  distribution of signal strengths of all APs. Thus adding
@@ -65,9 +70,10 @@ typedef enum {
  *  @param a pointer to an AP
  *  @param b pointer to an AP
  *  @param prop pointer to where b's properties are saved if equal
+ *  @param diff result of comparison, positive when a is better
  *
  *  @return
- *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
+ *  if beacons are equivalent, return SKY_SUCCESS
  *  if beacons are comparable, return SKY_FAILURE and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
@@ -84,7 +90,7 @@ static Sky_status_t equal(
         return SKY_ERROR;
 
     /* if two APs are identical, return SKY_SUCCESS */
-    if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
+    if (COMPARE_MAC(a->ap.mac, b->ap.mac) == 0) {
         if (prop != NULL && b->ap.property.in_cache) {
             prop->in_cache = true;
             prop->used = false;
@@ -95,13 +101,12 @@ static Sky_status_t equal(
     /* calculate rank score only if a place to save it was provided */
     if (diff) {
         if (a->h.age != b->h.age)
-            *diff = (int)(b->h.age - a->h.age); /* b - a because lower age is better */
+            *diff = (int)COMPARE_AGE(a->h.age, b->h.age);
         else if (a->h.rank == b->h.rank) {
             if (a->h.rssi != b->h.rssi)
                 *diff = a->h.rssi - b->h.rssi;
             else
-                *diff = (memcmp(
-                    b->ap.mac, a->ap.mac, MAC_SIZE)); /* b - a because lower mac is better */
+                *diff = COMPARE_MAC(a->ap.mac, b->ap.mac);
         } else
             *diff = a->h.rank - b->h.rank;
     }
@@ -529,9 +534,8 @@ static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
 
     /* sort by rssi */
     do {
-        int i;
-
-        for (i = 0, changed = false; i < NUM_APS(ctx) - 1; i++) {
+        for (int i = 0; i < NUM_APS(ctx) - 1; i++) {
+            changed = false;
             /* compare neighbors and swap if rssi is greater */
             if (EFFECTIVE_RSSI(beacons_by_rssi[i]->h.rssi) <
                 EFFECTIVE_RSSI(beacons_by_rssi[i + 1]->h.rssi)) {
@@ -567,7 +571,7 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
-    .equal = equal, /*Compare two beacons for equality */
+    .equal = equal, /*Compare two beacons */
     .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
     .cache_match = match, /* Find best match between workspace and cache lines */
     .add_to_cache = to_cache, /* Copy workspace beacons to a cacheline */

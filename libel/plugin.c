@@ -91,7 +91,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
+Sky_status_t sky_plugin_compare(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
     Sky_beacon_property_t *prop, int *diff)
 {
     Sky_plugin_table_t *p;
@@ -273,14 +273,14 @@ static Sky_status_t operation_add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 }
 
 BEGIN_TESTS(plugin_test)
-GROUP("sky_plugin_equal");
+GROUP("sky_plugin_compare");
 
 TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passed", ctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
 
-    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL, NULL));
+    ASSERT(SKY_SUCCESS == sky_plugin_compare(ctx, &sky_errno, &a, &b, NULL, NULL));
 });
 
 TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
@@ -291,7 +291,7 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is tr
     int diff = 9999;
     b.ap.property.in_cache = true;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
+    ASSERT((SKY_SUCCESS == sky_plugin_compare(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
            prop.in_cache && diff == 9999);
 });
 
@@ -303,7 +303,7 @@ TEST("should return SKY_FAILURE with 2 different AP and diff negative", ctx, {
     int diff = 9999;
     b.ap.property.in_cache = true;
 
-    ASSERT((SKY_FAILURE == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
+    ASSERT((SKY_FAILURE == sky_plugin_compare(ctx, &sky_errno, &a, &b, &prop, &diff)) &&
            !prop.in_cache && diff < 0);
 });
 
@@ -382,7 +382,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_equal(ctx, &errno, &a, &b, NULL, &diff));
+    ASSERT(SKY_ERROR == sky_plugin_compare(ctx, &errno, &a, &b, NULL, &diff));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
     ASSERT(SKY_ERROR == sky_plugin_remove_worst(ctx, &errno));
