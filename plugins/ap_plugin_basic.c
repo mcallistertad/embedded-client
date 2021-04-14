@@ -105,8 +105,10 @@ static Sky_status_t equal(
         else if (a->h.rank == b->h.rank) {
             if (a->h.rssi != b->h.rssi)
                 *diff = a->h.rssi - b->h.rssi;
-            else
+            else if (COMPARE_MAC(a->ap.mac, b->ap.mac) != 0)
                 *diff = COMPARE_MAC(a->ap.mac, b->ap.mac);
+            else
+                *diff = 1; /* a is better, arbitrarily */
         } else
             *diff = a->h.rank - b->h.rank;
     }
