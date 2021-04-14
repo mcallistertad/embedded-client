@@ -25,9 +25,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 #include <stdio.h>
-#include <limits.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -36,10 +34,7 @@
 // #define VERBOSE_DEBUG
 // #endif
 
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
-#define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
 /* when comparing type, lower value is better so invert difference */
-/* comparison must give positive result when a is better */
 #define COMPARE_TYPE(a, b) (-((a) - (b)))
 
 /*! \brief shuffle list to remove the beacon at index
@@ -182,37 +177,39 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     if (is_ap_type(b)) { /* If new beacon is AP */
         for (j = 0; j < NUM_APS(ctx); j++) {
             if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, NULL) == SKY_SUCCESS) {
-                /* reject new beacon if it is less desirable */
+                /* Found duplicate - reject new beacon if it is less desirable */
                 if ((ctx->beacon[j].h.connected && !b->h.connected) || (ctx->beacon[j].ap.vg_len) ||
                     (ctx->beacon[j].h.age < b->h.age) || (ctx->beacon[j].h.rssi > b->h.rssi)) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate AP");
-                    break; /* fall through to remove exiting duplicate */
+                    break; /* fall through to remove existing duplicate */
                 }
             }
         }
-        /* if a better duplicate was found, remove existing worse beacon */
-        if (j < NUM_APS(ctx))
+        if (j < NUM_APS(ctx)) {
+            /* a better duplicate was found, remove existing beacon */
             remove_beacon(ctx, j);
+        }
     } else if (is_cell_type(b)) { /* If new beacon is one of the cell types */
         for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
             if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, NULL) == SKY_SUCCESS) {
-                /* reject new beacon if it is less desirable */
+                /* Found duplicate - reject new beacon if it is less desirable */
                 if ((ctx->beacon[j].h.connected && !b->h.connected) ||
                     (ctx->beacon[j].h.age < b->h.age) || (ctx->beacon[j].h.rssi > b->h.rssi)) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate cell");
-                    break; /* fall through to remove exiting duplicate */
+                    break; /* fall through to remove existing duplicate */
                 }
             }
         }
-        /* if a better duplicate was found, remove existing worse beacon */
-        if (j < NUM_BEACONS(ctx))
+        if (j < NUM_BEACONS(ctx)) {
+            /* a better duplicate was found, remove existing beacon */
             remove_beacon(ctx, j);
+        }
     } else {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Unsupported beacon type");
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);

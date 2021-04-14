@@ -28,8 +28,6 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-#include <limits.h>
-#include <stdlib.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -46,11 +44,9 @@ typedef enum {
     LEAST_DESIRABLE = 0x000
 } Rank_t;
 
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
-/* when comparing age, lower value is better so invert difference */
-/* comparison must give positive result when a is better */
+/* when comparing age, lower value (younger) is better so invert difference */
 #define COMPARE_AGE(a, b) (-((a) - (b)))
 /* when comparing mac, lower value is better so invert difference */
 #define COMPARE_MAC(a, b) (-memcmp((a), (b), MAC_SIZE))
@@ -488,7 +484,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  *
  *  @return score
  */
-static int score_ap(Sky_ctx_t *ctx, Beacon_t *beacons_by_rssi[], int idx)
+static int get_desirablility(Sky_ctx_t *ctx, Beacon_t **beacons_by_rssi, int idx)
 {
     int score = 0;
     int ideal_rssi, lowest_rssi, highest_rssi;
@@ -542,7 +538,6 @@ static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
             if (EFFECTIVE_RSSI(beacons_by_rssi[i]->h.rssi) <
                 EFFECTIVE_RSSI(beacons_by_rssi[i + 1]->h.rssi)) {
                 Beacon_t *tmp;
-
                 tmp = beacons_by_rssi[i];
                 beacons_by_rssi[i] = beacons_by_rssi[i + 1];
                 beacons_by_rssi[i + 1] = tmp;
@@ -555,7 +550,7 @@ static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
      * it's attributes and deviation from a uniform distribution
      */
     for (int j = 0; j < NUM_APS(ctx); j++)
-        beacons_by_rssi[j]->h.rank = score_ap(ctx, beacons_by_rssi, j);
+        beacons_by_rssi[j]->h.rank = get_desirablility(ctx, beacons_by_rssi, j);
     return SKY_SUCCESS;
 }
 

@@ -24,7 +24,6 @@
  *
  */
 #include <stdbool.h>
-#include <string.h>
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
@@ -35,9 +34,6 @@
 // #ifndef VERBOSE_DEBUG
 // #define VERBOSE_DEBUG
 // #endif
-
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
-#define ABS(x) ((x) < 0 ? -(x) : (x))
 
 typedef enum {
     MOST_DESIRABLE = 0xffff,
