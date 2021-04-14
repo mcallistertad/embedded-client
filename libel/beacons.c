@@ -26,6 +26,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -63,8 +64,6 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 }
 /*! \brief compare beacons
  *
- *  if beacon is duplicate, return 0
- *
  *  @param ctx Skyhook request context
  *  @param a pointer to beacon A
  *  @param B pointer to beacon B
@@ -75,15 +74,15 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
  */
 static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
-    int better, diff = 1;
-    Sky_status_t equal;
+    int better, diff = 0;
+    bool equal = false;
 
 #ifdef VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", a, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", b, __FILE__, __FUNCTION__);
 #endif
     /* sky_plugin_compare compares beacons of the same class and returns SKY_ERROR when they are different classes */
-    if ((equal = sky_plugin_compare(ctx, NULL, a, b, NULL, &diff)) == SKY_ERROR) {
+    if ((sky_plugin_compare(ctx, NULL, a, b, NULL, &equal, &diff)) == SKY_ERROR) {
         /* order the different classes of beacon by type, and then within cell class, fully qualified first */
         if (is_cell_type(a) && is_cell_type(b) && is_cell_nmr(a) != is_cell_nmr(b))
             /* fully qualified cell is better */
@@ -95,7 +94,7 @@ static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
             better < 0 ? "B is better" : "A is better");
 #endif
         return better;
-    } else if (equal == SKY_SUCCESS) { /* beacons are equal */
+    } else if (equal) { /* beacons are equal */
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons equal");
 #endif
@@ -106,52 +105,55 @@ static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
     if (diff)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
             diff < 0 ? "B is better" : "A is better");
-    else
+    else {
+        /* make sorting deterministic, always choose one or the other
+         * when equal desirability, choose the one earlier in the list
+         */
+        diff = a < b ? 1 : -1;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types but not equal");
+    }
 #endif
     return diff;
 }
 
-/*! \brief walk through all APs in context swapping until all APs are in rank order
- *         (bubble sort)
- *  @param ctx Skyhook request context
- *  @param idx index of beacon just added
+/*! \brief qsort comparison routine for decending order
  *
- *  @return idx index of beacon
+ *  @param  Skyhook request context
+ *  @param pa pointer to beacon a
+ *  @param pb pointer to beacon b
+ *
+ *  @return relative desirability -1 a is better, +1 b is better (non 0)
  */
-static int sort_beacons(Sky_ctx_t *ctx, int idx)
+static Sky_ctx_t *ctx_pointer = NULL;
+static int compare_desirability_qsort(const void *pa, const void *pb)
 {
-    bool changed = false; /* has the order been changed */
-    Beacon_t tmp, *b;
+    /* note that pb and pa are reversed to sort highest first */
+    return beacon_compare(ctx_pointer, (Beacon_t *)pb, (Beacon_t *)pa);
+}
 
-    if (sky_plugin_rank(ctx, NULL, ctx->beacon[idx].h.type) != SKY_SUCCESS) {
+/*! \brief sort beacons by desirability
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return true if beacons were sorted
+ */
+static bool sort_beacons(Sky_ctx_t *ctx)
+{
+    /* calculate desirability score of all beacons */
+    if (sky_plugin_rank(ctx, NULL) != SKY_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to rank beacons");
-        return idx;
+        return false;
     }
 
 #ifdef VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
-    do {
-        for (int i = 0; i < NUM_APS(ctx) - 1; i++) {
-            changed = false;
-            b = &ctx->beacon[i];
-            if (beacon_compare(ctx, b, b + 1) < 0) {
-                tmp = *b;
-                *b = *(b + 1);
-                *(b + 1) = tmp;
-                changed = true;
-                if (idx == i) /* keep track of which is beacon just added */
-                    idx++; /* bumped later in list */
-                else if (idx == i + 1)
-                    idx--; /* bumped earlier in list */
-            }
-        }
-    } while (changed);
+    ctx_pointer = ctx;
+    qsort(&ctx->beacon, NUM_BEACONS(ctx), sizeof(Beacon_t), &compare_desirability_qsort);
 #ifdef VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
-    return idx;
+    return true;
 }
 
 /*! \brief insert beacon in list based on type and AP rssi
@@ -174,35 +176,26 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     }
 
     /* check for duplicate */
-    if (is_ap_type(b)) { /* If new beacon is AP */
-        for (j = 0; j < NUM_APS(ctx); j++) {
-            if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, NULL) == SKY_SUCCESS) {
-                /* Found duplicate - reject new beacon if it is less desirable */
-                if ((ctx->beacon[j].h.connected && !b->h.connected) || (ctx->beacon[j].ap.vg_len) ||
-                    (ctx->beacon[j].h.age < b->h.age) || (ctx->beacon[j].h.rssi > b->h.rssi)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate AP");
+    if (is_ap_type(b) || is_cell_type(b)) {
+        for (j = 0; j < NUM_BEACONS(ctx); j++) {
+            bool equal = false;
+
+            if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, &equal, NULL) ==
+                    SKY_SUCCESS &&
+                equal) {
+                /* Found duplicate - keep new beacon if it is more desirable */
+                if (b->h.age < ctx->beacon[j].h.age || /* Younger */
+                    (b->h.age == ctx->beacon[j].h.age &&
+                        b->h.connected) || /* same age, but connected */
+                    (b->h.age ==
+                            ctx->beacon[j].h.age && /* same age and connectedness, but stronger */
+                        b->h.connected == ctx->beacon[j].h.connected &&
+                        b->h.rssi > ctx->beacon[j].h.rssi)) {
+                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate");
                     break; /* fall through to remove existing duplicate */
-                }
-            }
-        }
-        if (j < NUM_APS(ctx)) {
-            /* a better duplicate was found, remove existing beacon */
-            remove_beacon(ctx, j);
-        }
-    } else if (is_cell_type(b)) { /* If new beacon is one of the cell types */
-        for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-            if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, NULL) == SKY_SUCCESS) {
-                /* Found duplicate - reject new beacon if it is less desirable */
-                if ((ctx->beacon[j].h.connected && !b->h.connected) ||
-                    (ctx->beacon[j].h.age < b->h.age) || (ctx->beacon[j].h.rssi > b->h.rssi)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
                 } else {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate cell");
-                    break; /* fall through to remove existing duplicate */
+                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate");
+                    return set_error_status(sky_errno, SKY_ERROR_NONE);
                 }
             }
         }
@@ -215,9 +208,9 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
 
-    /* find correct position to insert based on desirability */
+    /* find initial position to insert based on type */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
-        if (beacon_compare(ctx, b, &ctx->beacon[j]) > 0)
+        if (b->h.type <= ctx->beacon[j].h.type)
             break;
     }
 
@@ -236,10 +229,25 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         NUM_APS(ctx)++;
     }
 
-    /* re-sort after adding new beacon */
-    j = sort_beacons(ctx, j);
+    /* sort after adding new beacon based on desirability of all beacons */
+    sort_beacons(ctx);
+
+#ifdef SKY_DEBUG
+    for (j = 0; j < NUM_BEACONS(ctx); j++) {
+        /* Find the beacon we just added using type and beacon specific properties */
+        /* NOTE header may be different as rank has been calculated */
+        if (b->h.type == ctx->beacon[j].h.type &&
+            (memcmp(&b->h + 1, &ctx->beacon[j].h + 1, sizeof(Beacon_t) - sizeof(struct header)) ==
+                0))
+            break;
+    }
+    if (j == NUM_BEACONS(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Beacon type %s NOT found after insert");
+        return SKY_ERROR; /* didn't find beacon just added */
+    }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted at idx %d", sky_pbeacon(b), j);
+#endif
 
     return SKY_SUCCESS;
 }
@@ -392,9 +400,13 @@ bool beacon_in_cacheline(
         return false;
     }
 
-    for (j = 0; j < NUM_BEACONS(cl); j++)
-        if (sky_plugin_compare(ctx, NULL, b, &cl->beacon[j], prop, NULL) == 1)
+    for (j = 0; j < NUM_BEACONS(cl); j++) {
+        bool equal = false;
+
+        if (sky_plugin_compare(ctx, NULL, b, &cl->beacon[j], prop, &equal, NULL) == SKY_SUCCESS &&
+            equal)
             return true;
+    }
     return false;
 }
 
@@ -441,6 +453,8 @@ int find_oldest(Sky_ctx_t *ctx)
 int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
+    bool equal = false;
+
     if (!ctx || !cl) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -464,7 +478,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if (sky_plugin_compare(ctx, NULL, w, c, NULL, NULL) == SKY_SUCCESS)
+    if (sky_plugin_compare(ctx, NULL, w, c, NULL, &equal, NULL) == SKY_SUCCESS && equal)
         return false;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;

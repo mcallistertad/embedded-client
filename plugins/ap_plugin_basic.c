@@ -28,6 +28,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -51,6 +52,8 @@ typedef enum {
 /* when comparing mac, lower value is better so invert difference */
 #define COMPARE_MAC(a, b) (-memcmp((a), (b), MAC_SIZE))
 
+static int get_desirablility(Sky_ctx_t *ctx, Beacon_t **beacons_by_rssi, int idx);
+
 /* APs are ordered in the request context in rank order.
  * Most highly desired are connected APs, Virtual groups, Used and cached,
  * next APs are ordered based on an ideal uniform distribution of signal strength.
@@ -69,12 +72,11 @@ typedef enum {
  *  @param diff result of comparison, positive when a is better
  *
  *  @return
- *  if beacons are equivalent, return SKY_SUCCESS
- *  if beacons are comparable, return SKY_FAILURE and difference in rank
+ *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, int *diff)
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal, int *diff)
 {
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -87,14 +89,17 @@ static Sky_status_t equal(
 
     /* if two APs are identical, return SKY_SUCCESS */
     if (COMPARE_MAC(a->ap.mac, b->ap.mac) == 0) {
+        if (equal)
+            *equal = true;
         if (prop != NULL && b->ap.property.in_cache) {
             prop->in_cache = true;
             prop->used = false;
         }
-        return SKY_SUCCESS;
-    }
+    } else if (equal)
+        *equal = false;
 
     /* calculate rank score only if a place to save it was provided */
+
     if (diff) {
         if (a->h.age != b->h.age)
             *diff = (int)COMPARE_AGE(a->h.age, b->h.age);
@@ -108,7 +113,7 @@ static Sky_status_t equal(
         } else
             *diff = a->h.rank - b->h.rank;
     }
-    return SKY_FAILURE;
+    return SKY_SUCCESS;
 }
 
 /*! \brief test two MAC addresses for being members of same virtual Group
@@ -125,7 +130,7 @@ static Sky_status_t equal(
  *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
  *  if macs are similar, and pn is not NULL, *pn is set to nibble index of difference
  */
-static int mac_similar(uint8_t macA[], uint8_t macB[], int *pn)
+static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
 {
     size_t num_diff = 0; // Num hex digits which differ
     size_t idx_diff = 0; // nibble digit which differs
@@ -169,7 +174,9 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return -1;
     for (j = 0; j < NUM_APS(ctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
-            num_aps_cached += equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL, NULL) ? 1 : 0;
+            bool equivalent = false;
+            equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL, &equivalent, NULL);
+            num_aps_cached += equivalent;
         }
     }
 #ifdef VERBOSE_DEBUG
@@ -189,7 +196,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *
  *  @return true if beacon removed or false otherwise
  */
-#define RANK_ATTRIBUTES(x) (x & 0xFF00)
+#define RANK_ATTRIBUTES(x) ((x)&0xFF00)
 static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
 {
     /* Assume we'll keep i and discard j. Then, use rank
@@ -293,12 +300,13 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
                     In typical case this is the intersection(workspace, cache) / union(workspace, cache) */
-    float bestratio = 0.0;
-    float bestputratio = 0.0;
+    float bestratio = 0.0f;
+    float bestputratio = 0.0f;
     int score; /* score is number of APs found in cacheline */
     int threshold; /* the threshold determined that ratio should meet */
     int num_aps_cached = 0;
-    int bestc = -1, bestput = -1;
+    int bestc = -1;
+    int16_t bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
     bool result = false;
@@ -320,8 +328,8 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         /* if line is empty and it is the first one, remember it */
         if (cl->time == 0) {
             if (bestputratio < 1.0) {
-                bestput = i;
-                bestputratio = 1.0;
+                bestput = (int16_t)i;
+                bestputratio = 1.0f;
             }
         }
     }
@@ -337,7 +345,8 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* score each cache line wrt beacon match ratio */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
-        threshold = ratio = score = 0;
+        threshold = score = 0;
+        ratio = 0.0f;
         if (cl->time == 0 || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
@@ -353,27 +362,27 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
                 threshold = CONFIG(ctx->state, cache_match_used_threshold);
-                ratio = (float)score / unionAB;
+                ratio = (float)score / (float)unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
-                    (int)round(ratio * 100), score, unionAB, threshold);
+                    (int)round((double)ratio * 100), score, unionAB, threshold);
                 result = true;
             }
         }
 
         if (ratio > bestputratio) {
-            bestput = i;
+            bestput = (int16_t)i;
             bestputratio = ratio;
         }
         if (ratio > bestratio) {
             if (bestratio > 0.0)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "Found better match in cache %d of %d score %d (vs %d)", i, CACHE_SIZE,
-                    (int)round(ratio * 100), threshold);
+                    (int)round((double)ratio * 100), threshold);
             bestc = i;
             bestratio = ratio;
             bestthresh = threshold;
         }
-        if (ratio * 100 > threshold)
+        if (ratio * 100 > (float)threshold)
             break;
     }
     if (err) {
@@ -384,27 +393,27 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (result && bestratio * 100 > bestthresh) {
+    if (result && (bestratio * 100) > (float)bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
-            bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
+            bestc, CACHE_SIZE, (int)round((double)bestratio * 100), bestthresh);
         *idx = bestc;
         return SKY_SUCCESS;
     }
     if (result) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No Cache match found. Cache %d, best score %d (vs %d)",
-            bestc, (int)round(bestratio * 100), bestthresh);
+            bestc, (int)round((double)bestratio * 100), bestthresh);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
-            bestput, CACHE_SIZE, (int)round(bestputratio * 100));
-        return SKY_FAILURE;
+            bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
+        return SKY_SUCCESS;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using APs. No cache match");
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
-        CACHE_SIZE, (int)round(bestputratio * 100));
+        CACHE_SIZE, (int)round((double)bestputratio * 100));
     return SKY_ERROR;
 #else
     (void)ctx; /* suppress warning unused parameter */
     (void)idx; /* suppress warning unused parameter */
-    return SKY_FAILURE;
+    return SKY_SUCCESS;
 #endif
 }
 
@@ -425,10 +434,6 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     int j;
     uint32_t now = (*ctx->gettime)(NULL);
     Sky_cacheline_t *cl;
-
-    if (CACHE_SIZE < 1) {
-        return SKY_SUCCESS;
-    }
 
     /* compare current time to Mar 1st 2019 */
     if (now <= TIMESTAMP_2019_03_01) {
@@ -513,45 +518,47 @@ static int get_desirablility(Sky_ctx_t *ctx, Beacon_t **beacons_by_rssi, int idx
     return score;
 }
 
+/*! \brief qsort comparison of rssi descending order
+*
+*  @param a element pointer
+*  @param b element pointer
+*
+*  @return -1, 0 or 1 based on relative rssi value
+*/
+static int compare_rssi_qsort(const void *pa, const void *pb)
+{
+    Beacon_t *a = *(Beacon_t **)pa;
+    Beacon_t *b = *(Beacon_t **)pb;
+
+    return EFFECTIVE_RSSI(b->h.rssi) - EFFECTIVE_RSSI(a->h.rssi);
+}
+
 /*! \brief rank the APs - give each AP a desirability rating
 *
 *  @param ctx Skyhook request context
 *
 *  @return SKY_SUCCESS if beacons successfully ranked or SKY_ERROR
 */
-static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
+static Sky_status_t rank(Sky_ctx_t *ctx)
 {
     Beacon_t *beacons_by_rssi[MAX_AP_BEACONS + 1]; /* room for all APs in workspace */
-    bool changed = false;
-
-    if (type != SKY_BEACON_AP)
-        return SKY_ERROR; /* nothing to do, move on to next plugin */
 
     for (int i = 0; i < NUM_APS(ctx); i++)
         beacons_by_rssi[i] = &ctx->beacon[i];
 
     /* sort by rssi */
-    do {
-        for (int i = 0; i < NUM_APS(ctx) - 1; i++) {
-            changed = false;
-            /* compare neighbors and swap if rssi is greater */
-            if (EFFECTIVE_RSSI(beacons_by_rssi[i]->h.rssi) <
-                EFFECTIVE_RSSI(beacons_by_rssi[i + 1]->h.rssi)) {
-                Beacon_t *tmp;
-                tmp = beacons_by_rssi[i];
-                beacons_by_rssi[i] = beacons_by_rssi[i + 1];
-                beacons_by_rssi[i + 1] = tmp;
-                changed = true;
-            }
-        }
-    } while (changed);
+    qsort(beacons_by_rssi, NUM_APS(ctx), sizeof(Beacon_t *), &compare_rssi_qsort);
 
     /* based of range of rssi values, score each beacon by
      * it's attributes and deviation from a uniform distribution
      */
     for (int j = 0; j < NUM_APS(ctx); j++)
         beacons_by_rssi[j]->h.rank = get_desirablility(ctx, beacons_by_rssi, j);
-    return SKY_SUCCESS;
+
+    if (NUM_APS(ctx) == NUM_BEACONS(ctx))
+        return SKY_SUCCESS; /* all beacons ranked */
+    else
+        return SKY_ERROR; /* continue to next plugin */
 }
 
 /* * * * * * Plugin access table * * * * *

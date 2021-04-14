@@ -56,8 +56,7 @@
 /*! \brief API return value
  */
 typedef enum {
-    SKY_SUCCESS = 1,
-    SKY_FAILURE = 0,
+    SKY_SUCCESS = 0,
     SKY_ERROR = -1,
 } Sky_status_t;
 

@@ -52,18 +52,18 @@ typedef enum {
  *  @param diff result of comparison, positive when a is better
  *
  *  @return
- *  if beacons are equivalent, return SKY_SUCCESS
- *  if beacons are comparable, return SKY_FAILURE and difference in rank
+ *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, int *diff)
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal, int *diff)
 {
     (void)prop; /* suppress warning unused parameter */
     if (!ctx || !a || !b) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
     }
+    bool equivalent = false;
 
     /* Two Cells can be compared but others are ordered by type */
     if (a->h.type != b->h.type || a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
@@ -77,7 +77,7 @@ static Sky_status_t equal(
             (a->cell.id4 == b->cell.id4)) {
             if (!(a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
                     a->cell.id4 == SKY_UNKNOWN_ID4))
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     case SKY_BEACON_GSM:
@@ -85,7 +85,7 @@ static Sky_status_t equal(
             a->cell.id3 == b->cell.id3 && (a->cell.id4 == b->cell.id4)) {
             if (!((a->cell.id1 == SKY_UNKNOWN_ID1 || a->cell.id2 == SKY_UNKNOWN_ID2 ||
                     a->cell.id3 == SKY_UNKNOWN_ID3 || a->cell.id4 == SKY_UNKNOWN_ID4)))
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     case SKY_BEACON_LTE:
@@ -98,14 +98,17 @@ static Sky_status_t equal(
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
                 /* NMR */
                 if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
-                    return SKY_SUCCESS;
+                    equivalent = true;
             } else
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     default:
         break;
     }
+
+    if (equal)
+        *equal = equivalent;
 
     /* calculate rank score only if a place to save it was provided */
     if (diff) {
@@ -116,7 +119,7 @@ static Sky_status_t equal(
         else
             *diff = 1; /* a is better, arbitrarily */
     }
-    return SKY_FAILURE;
+    return SKY_SUCCESS;
 }
 
 /*! \brief remove least desirable cell if workspace is full
@@ -275,19 +278,19 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #else
     (void)ctx; /* suppress warning unused parameter */
     (void)idx; /* suppress warning unused parameter */
-    return SKY_FAILURE;
+    return SKY_SUCCESS;
 #endif
 }
 
-/*! \brief score relative rank of cells
+/*! \brief score relative desirability of cells
  *
- * Desirable attributes are connected, nmr, age and strength
+ * Desirable attributes are connected, nmr, and strength
  *
  *  @param idx index of cell to be scored
  *
  *  @return rank
  */
-static uint16_t score_cell(Sky_ctx_t *ctx, int idx)
+static uint16_t get_desirability(Sky_ctx_t *ctx, int idx)
 {
     Beacon_t *b = &ctx->beacon[idx];
     int score = 0;
@@ -307,15 +310,12 @@ static uint16_t score_cell(Sky_ctx_t *ctx, int idx)
 *
 *  @return SKY_SUCCESS if beacons successfully ranked or SKY_ERROR
 */
-static Sky_status_t rank(Sky_ctx_t *ctx, Sky_beacon_type_t type)
+static Sky_status_t rank(Sky_ctx_t *ctx)
 {
-    if ((type < SKY_BEACON_FIRST_CELL_TYPE) || (type > SKY_BEACON_LAST_CELL_TYPE))
-        return SKY_ERROR; /* nothing to do, move on to next plugin */
-
     /* Based on attributes, score each cell beacon
      */
-    for (uint32_t j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++)
-        ctx->beacon[j].h.rank = score_cell(ctx, j);
+    for (int j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++)
+        ctx->beacon[j].h.rank = get_desirability(ctx, j);
     return SKY_SUCCESS;
 }
 
