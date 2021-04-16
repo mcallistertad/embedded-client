@@ -91,12 +91,11 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
  *  @param b the second beacon to compare
  *  @param prop where to store the properties of second beacon if identical to first
  *  @param equal where to save the result of equivalence test
- *  @param diff where to save the result of desirability comparison
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_compare(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
-    Sky_beacon_property_t *prop, bool *equal, int *diff)
+Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
+    Sky_beacon_property_t *prop, bool *equal)
 {
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
@@ -106,14 +105,55 @@ Sky_status_t sky_plugin_compare(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t
         return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
     }
 
-    if ((diff != NULL) && (a->h.rank == 0 || b->h.rank == 0)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "comparing beacons without rank");
-    }
-
     p = ctx->plugin;
     while (p) {
         if (p->equal)
-            ret = p->equal(ctx, a, b, prop, equal, diff);
+            ret = p->equal(ctx, a, b, prop, equal);
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
+#endif
+        if (ret != SKY_ERROR) {
+            set_error_status(sky_errno, SKY_ERROR_NONE);
+            return ret;
+        }
+        p = p->next; /* move on to next plugin */
+    }
+    return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
+}
+
+/*! \brief call the desirable operation in the registered plugins
+ *
+ *  @param ctx Skyhook request context
+ *  @param code the sky_errno_t code to return
+ *  @param a the first beacon to compare
+ *  @param b the second beacon to compare
+ *  @param prop where to store the properties of second beacon if identical to first
+ *  @param diff where to save the result of desirability comparison
+ *
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ */
+Sky_status_t sky_plugin_desirable(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, int *diff)
+{
+    Sky_plugin_table_t *p;
+    Sky_status_t ret = SKY_ERROR;
+
+    if (!validate_workspace(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    }
+
+#if SKY_DEBUG
+    if (a->h.rank == 0 || b->h.rank == 0) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "comparing beacons without rank");
+    }
+#endif
+
+    p = ctx->plugin;
+    while (p) {
+        if (p->desirable)
+            ret = p->desirable(ctx, a, b, diff);
 #ifdef VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
@@ -279,7 +319,7 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passe
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT(SKY_SUCCESS == sky_plugin_compare(ctx, &sky_errno, &a, &b, NULL, &equal, NULL) && equal);
+    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL, &equal) && equal);
 });
 
 TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
@@ -287,12 +327,11 @@ TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is tr
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
     Sky_beacon_property_t prop = { false, false };
-    int diff = 0;
     b.ap.property.in_cache = true;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_compare(ctx, &sky_errno, &a, &b, &prop, &equal, &diff)) &&
-           equal && prop.in_cache && diff != 0);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &equal)) && equal &&
+           prop.in_cache);
 });
 
 TEST("should return SKY_SUCCESS with 2 different AP and diff negative", ctx, {
@@ -300,13 +339,11 @@ TEST("should return SKY_SUCCESS with 2 different AP and diff negative", ctx, {
     AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
     Sky_errno_t sky_errno;
     Sky_beacon_property_t prop = { false, false };
-    int diff = 9999;
     b.ap.property.in_cache = true;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_compare(ctx, &sky_errno, &a, &b, &prop, &equal, &diff) &&
-               !equal) &&
-           !prop.in_cache && diff < 0);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop, &equal) && !equal) &&
+           !prop.in_cache);
 });
 
 GROUP("sky_plugin_add");
@@ -353,7 +390,6 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
         0,
     };
     int idx = -1;
-    int diff;
     Sky_plugin_table_t table1 = {
         .next = NULL,
         .magic = SKY_MAGIC,
@@ -384,7 +420,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_compare(ctx, &errno, &a, &b, NULL, NULL, &diff));
+    ASSERT(SKY_ERROR == sky_plugin_equal(ctx, &errno, &a, &b, NULL, NULL));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
     ASSERT(SKY_ERROR == sky_plugin_remove_worst(ctx, &errno));

@@ -49,17 +49,17 @@ typedef enum {
  *  @param a pointer to cell
  *  @param b pointer to cell
  *  @param prop pointer to where b's properties are saved if equal
- *  @param diff result of comparison, positive when a is better
+ *  @param equal result of test, true when equal
  *
  *  @return
  *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal, int *diff)
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
 {
     (void)prop; /* suppress warning unused parameter */
-    if (!ctx || !a || !b) {
+    if (!ctx || !a || !b || !equal) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
     }
@@ -107,18 +107,34 @@ static Sky_status_t equal(
         break;
     }
 
-    if (equal)
-        *equal = equivalent;
+    *equal = equivalent;
+
+    return SKY_SUCCESS;
+}
+
+/*! \brief compare cell beacons for desirability
+ *
+ *  @param ctx Skyhook request context
+ *  @param a pointer to cell
+ *  @param b pointer to cell
+ *  @param diff result of comparison, positive when a is better
+ *
+ *  @return
+ *  if beacons are comparable, return SKY_SUCCESS, difference in rank
+ *  if an error occurs during comparison. return SKY_ERROR
+ */
+static Sky_status_t desirable(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
+{
+    if (!ctx || !a || !b || !diff) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return SKY_ERROR;
+    }
 
     /* calculate rank score only if a place to save it was provided */
-    if (diff) {
-        if (a->h.age != b->h.age)
-            *diff = b->h.age - a->h.age; /* b - a because lower age is better */
-        else if (a->h.rank != b->h.rank)
-            *diff = a->h.rank - b->h.rank;
-        else
-            *diff = 1; /* a is better, arbitrarily */
-    }
+    if (a->h.age != b->h.age)
+        *diff = b->h.age - a->h.age; /* b - a because lower age is better */
+    else
+        *diff = a->h.rank - b->h.rank;
     return SKY_SUCCESS;
 }
 
@@ -334,6 +350,7 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .name = __FILE__,
     /* Entry points */
     .equal = equal, /*Compare two beacons for equality */
+    .desirable = desirable, /*Compare two beacons for equality */
     .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
     .cache_match = match, /* Find best match between workspace and cache lines */
     .add_to_cache = NULL, /* Copy workspace beacons to a cacheline */

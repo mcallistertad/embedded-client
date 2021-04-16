@@ -24,7 +24,6 @@
  */
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define SKY_LIBEL
@@ -62,29 +61,28 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
 #endif
     return SKY_SUCCESS;
 }
+
 /*! \brief compare beacons
  *
  *  @param ctx Skyhook request context
  *  @param a pointer to beacon A
  *  @param B pointer to beacon B
  *
- *  @return 0 if beacons are equal
- *           +ve if beacon A is better
- *           -ve if beacon B is better
+ *  @return  >0 if beacon A is better
+ *           <0 if beacon B is better
  */
-static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
+static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
     int better, diff = 0;
-    bool equal = false;
 
 #ifdef VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", a, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", b, __FILE__, __FUNCTION__);
 #endif
     /* sky_plugin_compare compares beacons of the same class and returns SKY_ERROR when they are different classes */
-    if ((sky_plugin_compare(ctx, NULL, a, b, NULL, &equal, &diff)) == SKY_ERROR) {
+    if ((sky_plugin_desirable(ctx, NULL, a, b, &diff)) == SKY_ERROR) {
         /* order the different classes of beacon by type, and then within cell class, fully qualified first */
-        if (is_cell_type(a) && is_cell_type(b) && is_cell_nmr(a) != is_cell_nmr(b))
+        if (is_cell_nmr(a) != is_cell_nmr(b))
             /* fully qualified cell is better */
             better = (!is_cell_nmr(a) ? 1 : -1);
         else
@@ -94,13 +92,8 @@ static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
             better < 0 ? "B is better" : "A is better");
 #endif
         return better;
-    } else if (equal) { /* beacons are equal */
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons equal");
-#endif
-        return 0;
     }
-    /* otherwise beacons were comparable but not equal and plugin set diff appropriately */
+    /* otherwise beacons were comparable and plugin set diff appropriately */
 #ifdef VERBOSE_DEBUG
     if (diff)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
@@ -116,7 +109,7 @@ static int beacon_compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
     return diff;
 }
 
-/*! \brief qsort comparison routine for decending order
+/*! \brief qsort comparison routine for descending order
  *
  *  @param  Skyhook request context
  *  @param pa pointer to beacon a
@@ -128,7 +121,7 @@ static Sky_ctx_t *ctx_pointer = NULL;
 static int compare_desirability_qsort(const void *pa, const void *pb)
 {
     /* note that pb and pa are reversed to sort highest first */
-    return beacon_compare(ctx_pointer, (Beacon_t *)pb, (Beacon_t *)pa);
+    return is_beacon_better(ctx_pointer, (Beacon_t *)pb, (Beacon_t *)pa);
 }
 
 /*! \brief sort beacons by desirability
@@ -180,8 +173,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         for (j = 0; j < NUM_BEACONS(ctx); j++) {
             bool equal = false;
 
-            if (sky_plugin_compare(ctx, sky_errno, b, &ctx->beacon[j], NULL, &equal, NULL) ==
-                    SKY_SUCCESS &&
+            if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL, &equal) == SKY_SUCCESS &&
                 equal) {
                 /* Found duplicate - keep new beacon if it is more desirable */
                 if (b->h.age < ctx->beacon[j].h.age || /* Younger */
@@ -403,8 +395,7 @@ bool beacon_in_cacheline(
     for (j = 0; j < NUM_BEACONS(cl); j++) {
         bool equal = false;
 
-        if (sky_plugin_compare(ctx, NULL, b, &cl->beacon[j], prop, &equal, NULL) == SKY_SUCCESS &&
-            equal)
+        if (sky_plugin_equal(ctx, NULL, b, &cl->beacon[j], prop, &equal) == SKY_SUCCESS && equal)
             return true;
     }
     return false;
@@ -478,7 +469,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if (sky_plugin_compare(ctx, NULL, w, c, NULL, &equal, NULL) == SKY_SUCCESS && equal)
+    if (sky_plugin_equal(ctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
         return false;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
@@ -502,8 +493,10 @@ int get_from_cache(Sky_ctx_t *ctx)
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
-    return (ctx->get_from =
-                sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+    return (
+        ctx->get_from =
+            (int16_t)((sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx :
+                                                                                            -1));
 #else
     return (ctx->get_from = -1);
 #endif

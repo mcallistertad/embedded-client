@@ -62,9 +62,45 @@ static int get_desirablility(Sky_ctx_t *ctx, Beacon_t **beacons_by_rssi, int idx
 
 /*! \brief compare APs for equality
  *
+ *  @param ctx Skyhook request context
+ *  @param a pointer to an AP
+ *  @param b pointer to an AP
+ *  @param prop pointer to where b's properties are saved if equal
+ *  @param diff result of comparison, positive when a is better
+ *
+ *  @return
+ *  if beacons are comparable, return SKY_SUCCESS, and set equivalence
+ *  if an error occurs during comparison. return SKY_ERROR
+ */
+static Sky_status_t equal(
+    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
+{
+    if (!ctx || !a || !b || !equal) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return SKY_ERROR;
+    }
+
+    /* Two APs can be compared but others are ordered by type */
+    if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
+        return SKY_ERROR;
+
+    if (COMPARE_MAC(a->ap.mac, b->ap.mac) == 0) {
+        *equal = true;
+        if (prop != NULL && b->ap.property.in_cache) {
+            prop->in_cache = true;
+            prop->used = false;
+        }
+    } else
+        *equal = false;
+    return SKY_SUCCESS;
+}
+
+/*! \brief compare APs for desirability
+ *
  *  APs rank includes how well a given AP fits to the ideal
  *  distribution of signal strengths of all APs. Thus adding
  *  a new AP may require re-sorting all APs
+ *
  *  @param ctx Skyhook request context
  *  @param a pointer to an AP
  *  @param b pointer to an AP
@@ -75,10 +111,9 @@ static int get_desirablility(Sky_ctx_t *ctx, Beacon_t **beacons_by_rssi, int idx
  *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in rank
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal, int *diff)
+static Sky_status_t desirable(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
 {
-    if (!ctx || !a || !b) {
+    if (!ctx || !a || !b || !diff) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
     }
@@ -87,32 +122,15 @@ static Sky_status_t equal(
     if (a->h.type != SKY_BEACON_AP || b->h.type != SKY_BEACON_AP)
         return SKY_ERROR;
 
-    /* if two APs are identical, return SKY_SUCCESS */
-    if (COMPARE_MAC(a->ap.mac, b->ap.mac) == 0) {
-        if (equal)
-            *equal = true;
-        if (prop != NULL && b->ap.property.in_cache) {
-            prop->in_cache = true;
-            prop->used = false;
-        }
-    } else if (equal)
-        *equal = false;
-
-    /* calculate rank score only if a place to save it was provided */
-
-    if (diff) {
-        if (a->h.age != b->h.age)
-            *diff = (int)COMPARE_AGE(a->h.age, b->h.age);
-        else if (a->h.rank == b->h.rank) {
-            if (a->h.rssi != b->h.rssi)
-                *diff = a->h.rssi - b->h.rssi;
-            else if (COMPARE_MAC(a->ap.mac, b->ap.mac) != 0)
-                *diff = COMPARE_MAC(a->ap.mac, b->ap.mac);
-            else
-                *diff = 1; /* a is better, arbitrarily */
-        } else
-            *diff = a->h.rank - b->h.rank;
-    }
+    if (a->h.age != b->h.age)
+        *diff = (int)COMPARE_AGE(a->h.age, b->h.age);
+    else if (a->h.rank == b->h.rank) {
+        if (a->h.rssi != b->h.rssi)
+            *diff = a->h.rssi - b->h.rssi;
+        else
+            *diff = COMPARE_MAC(a->ap.mac, b->ap.mac);
+    } else
+        *diff = a->h.rank - b->h.rank;
     return SKY_SUCCESS;
 }
 
@@ -175,7 +193,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     for (j = 0; j < NUM_APS(ctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
             bool equivalent = false;
-            equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL, &equivalent, NULL);
+            equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL, &equivalent);
             num_aps_cached += equivalent;
         }
     }
@@ -575,7 +593,8 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
-    .equal = equal, /*Compare two beacons */
+    .equal = equal, /* Compare two beacons for equality*/
+    .desirable = desirable, /*Compare two beacons for desirability */
     .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
     .cache_match = match, /* Find best match between workspace and cache lines */
     .add_to_cache = to_cache, /* Copy workspace beacons to a cacheline */
