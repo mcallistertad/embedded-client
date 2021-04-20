@@ -16,7 +16,23 @@
 #
 # The user's tmp directory is used as a workspace
 
+if [ '$1' == '--help' ]; then
+    echo 'usage: $0 [--force] <README.pdf>'
+    echo ''
+    echo 'force      continue even if SW_VERSION conflicts with previous tags'
+    echo 'README.pdf must reference a pdf file which should be the current'
+    echo '           formatted version of README.md'
+    exit 0
+fi
+
+force=false
+if [ "$1" == "-f" -o "$1" == "--force" ]; then
+    force=true
+    shift
+fi
+
 pname=".MkPackages"
+branch=`git status | grep "^On branch " | sed -e"s/On branch //"`
 packages="packages"
 scratch=$(mktemp -d ) || { echo "Failed to create temp file"; exit 1; }
 version=`git describe --tags --always | sed -e"s/-.*//" `
@@ -32,18 +48,21 @@ else
     libel_dir="libel/"
 fi
 
+echo "On branch ${branch}"
+
 # log error and exit
-# args message
+# args message and force to continue
 err_exit() {
     echo "Error: $1"
     rm -rf ${scratch}
-    exit -1
+    [ "$2" != "true" ] && exit -1
 }
 
 # error if SW_VERSION conflicts with that used in previous release
 # A conflict is considered to be a version numerically less or equal
 check_sw_versions() {
     sw_versions=
+    version_bad=
 
     cd ${libel_dir}
     versions=$( git tag -l --sort=-version:refname )
@@ -54,9 +73,10 @@ check_sw_versions() {
     echo "======== ======= ========="
     for v in ${versions}; do
         sw_v="$( git show ${v}:libel/libel.c | grep "define.*SW_VERSION" | sed -e"s/.* //" )"
-        [ "$(( $(( ${sw_version} )) <= $(( ${sw_v} )) ))" == "1" -a "${current_ver}" != "${v}" ] && err_exit "SW_VERSION in libel/libel.c conflicts with version ${v}: '$( git show ${v}:libel/libel.c | grep "define.*SW_VERSION" )'"
+        [ "$(( $(( ${sw_version} )) <= $(( ${sw_v} )) ))" == "1" -a "${current_ver}" != "${v}" ] && version_bad="${v}: ${sw_v}"
         [ "${sw_v}" == "" ] || echo "SW_VERSION: ${sw_v} release ${v}"
     done
+    [ "${version_bad}" != "" ] && err_exit "SW_VERSION in libel/libel.c conflicts with release ${version_bad}" ${force}
     cd - >/dev/null
 }
 
@@ -98,8 +118,16 @@ is_clean_repo() {
     else
         echo "false"
     fi
-    popd $1 > /dev/null
+    popd > /dev/null
 }
+
+check_sw_versions
+
+# check if this is a shallow repo
+if [ $(git rev-parse --is-shallow-repository) == "false" ]; then
+    echo "Error: git reports this is not a shallow repo"
+    err_exit "Use: git clone --depth 1 --shallow-submodules --branch master --recursive git@github.com:..."
+fi
 
 rm -rf ${packages}
 
@@ -124,7 +152,6 @@ if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
             [ -e ${scratch}/${archive}.zip ] && mv ${scratch}/${archive}.zip ${packages}
             rm -rf ${scratch}
             if [ -e ${packages}/${archive}.tgz -a -e ${packages}/${archive}.zip ]; then
-                check_sw_versions
                 echo ${PWD}/${packages}:
                 ls -l ${PWD}/${packages}
                 echo "Tar Archive packages successfully created." $( tar tzf ${packages}/${archive}.tgz | wc -l ) "files"
