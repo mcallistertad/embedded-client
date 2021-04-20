@@ -23,8 +23,8 @@
 
 unsigned int sky_crc32(void *msg, unsigned msgsize)
 {
-    int i, j;
-    unsigned int byte, crc, mask;
+    int j;
+    unsigned int i, byte, crc, mask;
     unsigned char *message = msg;
 
     i = 0;

@@ -1,7 +1,7 @@
 /*! \file libel/libel.h
  *  \brief Top level header file for Skyhook Embedded Library
  *
- * Copyright (c) 2019 Skyhook, Inc.
+ * Copyright (c) 2020 Skyhook, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -28,11 +28,16 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
 #include <time.h>
+#include "aes.h"
+#include "crc32.h"
 
 #define AES_SIZE 16
 
 #define MAX_DEVICE_ID 16
+#define MAX_SKU_LEN 32 // excluding terminating NULL
+#define TBR_TOKEN_UNKNOWN 0
 
 /* March 1st 2019 */
 #define TIMESTAMP_2019_03_01 1551398400
@@ -46,11 +51,13 @@
 #define SKY_UNKNOWN_ID4 ((int64_t)-1)
 #define SKY_UNKNOWN_ID5 ((int16_t)-1)
 #define SKY_UNKNOWN_ID6 ((int32_t)-1)
+#define SKY_UNKNOWN_TA ((int32_t)-1)
 
 /*! \brief API return value
  */
 typedef enum {
-    SKY_SUCCESS = 0,
+    SKY_SUCCESS = 1,
+    SKY_FAILURE = 0,
     SKY_ERROR = -1,
 } Sky_status_t;
 
@@ -77,10 +84,12 @@ typedef enum {
  */
 typedef enum {
     SKY_LOCATION_STATUS_SUCCESS = 0,
-    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR,
-    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR,
-    SKY_LOCATION_STATUS_DECODE_ERROR,
-    SKY_LOCATION_STATUS_API_SERVER_ERROR,
+    SKY_LOCATION_STATUS_UNSPECIFIED_ERROR = 1,
+    SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR = 2,
+    SKY_LOCATION_STATUS_DECODE_ERROR = 3,
+    SKY_LOCATION_STATUS_API_SERVER_ERROR = 4,
+    SKY_LOCATION_STATUS_AUTH_ERROR = 5,
+    SKY_LOCATION_STATUS_UNABLE_TO_LOCATE = 6,
 } Sky_loc_status_t;
 
 /*! \brief Skyhook location information
@@ -91,29 +100,35 @@ typedef struct sky_location {
     uint32_t time;
     Sky_loc_source_t location_source;
     Sky_loc_status_t location_status;
+    uint8_t *dl_app_data;
+    uint32_t dl_app_data_len;
 } Sky_location_t;
 
 /*! \brief sky_errno Error Codes
  */
 typedef enum {
     SKY_ERROR_NONE = 0,
-    SKY_ERROR_NEVER_OPEN,
-    SKY_ERROR_ALREADY_OPEN,
-    SKY_ERROR_BAD_PARAMETERS,
-    SKY_ERROR_TOO_MANY,
-    SKY_ERROR_BAD_WORKSPACE,
-    SKY_ERROR_BAD_STATE,
-    SKY_ERROR_DECODE_ERROR,
-    SKY_ERROR_ENCODE_ERROR,
-    SKY_ERROR_RESOURCE_UNAVAILABLE,
-    SKY_ERROR_CLOSE,
-    SKY_ERROR_BAD_KEY,
-    SKY_ERROR_NO_BEACONS,
-    SKY_ERROR_ADD_CACHE,
-    SKY_ERROR_GET_CACHE,
-    SKY_ERROR_LOCATION_UNKNOWN,
-    SKY_ERROR_SERVER_ERROR,
-    SKY_ERROR_MAX
+    SKY_ERROR_NEVER_OPEN, // Operation failed because sky_open has not been completed
+    SKY_ERROR_ALREADY_OPEN, // Operation failed because sky_open has already been called
+    SKY_ERROR_BAD_PARAMETERS, // Operation failed because a parameter is invalid
+    SKY_ERROR_BAD_WORKSPACE, // Operation failed because workspace failed sanity checks
+    SKY_ERROR_BAD_STATE, // Operation failed because libel state failed sanity checks
+    SKY_ERROR_DECODE_ERROR, // Network message could not be decoded
+    SKY_ERROR_ENCODE_ERROR, // Network message could not be encoded
+    SKY_ERROR_RESOURCE_UNAVAILABLE, // Operation failed because resourse could not be assigned
+    SKY_ERROR_NO_BEACONS, // Operation failed because no beacons were added
+    SKY_ERROR_LOCATION_UNKNOWN, // Operation failed because server failed to determine location
+    SKY_ERROR_SERVER_ERROR, // Operation failed because server reported an error
+    SKY_ERROR_NO_PLUGIN, // Operation failed because required plugin was not found
+    SKY_ERROR_INTERNAL, // Operation failed due to unexpected behavior
+    SKY_ERROR_SERVICE_DENIED, // Service blocked due to repeated errors
+    SKY_AUTH_RETRY, // Retry operation now to complete authentication
+    SKY_AUTH_RETRY_8H, // Retry operation in 8hr to query authentication,
+    SKY_AUTH_RETRY_16H, // Retry operation in 16hr to query authentication,
+    SKY_AUTH_RETRY_1D, // Retry operation in 1 day to query authentication,
+    SKY_AUTH_RETRY_30D, // Retry operation in 30 days to query authentication,
+    SKY_ERROR_AUTH, // Operation failed because server reported authentication error
+    SKY_ERROR_MAX,
 } Sky_errno_t;
 
 /*! \brief sky_log_level logging levels
@@ -147,33 +162,35 @@ typedef void Sky_ctx_t;
 #include "aes.h"
 #include "config.h"
 #include "beacons.h"
-#include "crc32.h"
-#include "workspace.h"
+#include "plugin.h"
 #include "utilities.h"
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], void *state_buf, Sky_log_level_t min_level,
-    Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *state_buf,
+    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime,
+    bool debounce);
 
 int32_t sky_sizeof_state(void *sky_state);
 
 int32_t sky_sizeof_workspace(void);
 
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, Sky_errno_t *sky_errno);
+Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
+    uint32_t ul_app_data_len, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t mac[MAC_SIZE],
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);
 
 Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t tac,
-    int64_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, time_t timestamp,
-    int16_t rsrp, bool is_connected);
+    int64_t e_cellid, uint16_t mcc, uint16_t mnc, int16_t pci, int32_t earfcn, int32_t ta,
+    time_t timestamp, int16_t rsrp, bool is_connected);
 
 Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t earfcn, time_t timestamp, int16_t rsrp);
 
 Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
-    int64_t ci, uint16_t mcc, uint16_t mnc, time_t timestamp, int16_t rssi, bool is_connected);
+    int64_t ci, uint16_t mcc, uint16_t mnc, int32_t ta, time_t timestamp, int16_t rssi,
+    bool is_connected);
 
 Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp,
@@ -193,8 +210,8 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sk
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp);
 
 Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint16_t mcc,
-    uint16_t mnc, int64_t nci, int32_t tac, int16_t pci, int32_t nrarfcn, time_t timestamp,
-    int16_t csi_rsrp, bool is_connected);
+    uint16_t mnc, int64_t nci, int32_t tac, int16_t pci, int32_t nrarfcn, int32_t ta,
+    time_t timestamp, int16_t csi_rsrp, bool is_connected);
 
 Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int16_t pci,
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp);
@@ -203,10 +220,10 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp);
 
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
-
 Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size);
+
+Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc);

@@ -20,6 +20,9 @@ PB_BIND(CryptoInfo, CryptoInfo, AUTO)
 PB_BIND(Rq, Rq, 2)
 
 
+PB_BIND(TbrRegistration, TbrRegistration, AUTO)
+
+
 PB_BIND(Aps, Aps, AUTO)
 
 

@@ -1,6 +1,6 @@
 CFLAGS = -Wall -Werror -Os -std=c99
 LIB_DIR = ../bin
-AES_DIR = ../.submodules/tiny-AES128-C
+AES_DIR = ../submodules/tiny-AES128-C
 
 INCLUDES = -I. -I../libel -I${AES_DIR}
 CLIENT_NAME = sample_client
@@ -15,4 +15,4 @@ ${CLIENT_NAME}: ${CLIENT_OBJS} ${LIB_DIR}/libel.a
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 clean:
-	rm -f *.o $(CLIENT_NAME) nv_cache_*
+	rm -f *.o $(CLIENT_NAME) nv_state
