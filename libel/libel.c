@@ -1101,7 +1101,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-        /* check cache match result */
+    /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
