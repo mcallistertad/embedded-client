@@ -63,29 +63,23 @@ Instructions for cloning and building the library are below.
 
 ### Release 3.0.1
 
-* Added support for Token Based Registration and up/down link data
-* Uplink data can be passed to sky_new_request(). Application can include arbitrary information to Skyhook which can be
-  forwarded along with location information to Customer's endpoint.
+* Added support for Token Based Registration and authentication.
+* Added support for Uplink and downlink data. Downlink data can be configured through a new web service/API.
 * Added 'debounce' parameter to sky_open() which allows the option, in the case of a cache match, to report the cached
-  information in a subsequent server request, rather than the current scan.
+  information in a subsequent server request.
 * Added plugin modules infrastructure, allowing basic or premium algorithms for filtering scans and interpreting server
   responses, and ability to expand Libel's capabilities in the future.
-* Downlink data, sent by the server, will be reported to the application via the sky_location_t structure. This allows
-  configuration information to be sent to individual devices.
-* Downlink data can be configured through a web service/API.
 * Cellular beacons now allow Timing Advance values to be added.
-* Updated the sample_client application. It is corresponds to the expected application structure when using the library
-  in production. It makes multiple server requests, incorporates random number generator useful when no rand() function
-  is provided natively on the specific platform version.
+* Updated the sample_client application.
 * Renamed .submodules to submodules.
 * Additional bug fixes and improvements.
 
 ### Release 2.1.3
 
-* General update to allow ID3 to be -1 SKY_UNKNOWN_ID3
+* Change default configuration to 20 total beacons, 15 APs
+* Update to allow ID3 to be -1 SKY_UNKNOWN_ID3
 * Bug fix - cache match fails if serving cell has changed
 * Bug fix - copy actual number of beacons in workspace to cache
-* Change default configuration to 20 total beacons, 15 APs
 * Bug fix - sky_add_cell_lte_beacon(), tac must be signed and wider for SKY_UNKNOWN_ID3
 
 ### Release 2.0.0
@@ -101,11 +95,12 @@ Instructions for cloning and building the library are below.
 
 ### Release 1.1.3
 
-* Fix to avoid ignoring server results in case no local clock is available, plus logging and other minor cleanups
+* Update to avoid ignoring server results in case no local clock is available, plus logging and other minor cleanups
 
 ### Release 1.1.1
 
 * Initial public release
+
 ## Building
 
 ### Dependencies
