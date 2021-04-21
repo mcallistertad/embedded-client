@@ -314,7 +314,9 @@ Reports the number of bytes of work space buffer required to handle encoding the
 ```c
 Sky_ctx_t* sky_new_request(void *workspace_buf,
     uint32_t bufsize,
-    Sky_errno_t *sky_errno
+    uint8_t *ul_app_data;
+    uint32_t ul_app_data_len;
+    Sky_errno_t *sky_errno;
 )
 
 /* Parameters
