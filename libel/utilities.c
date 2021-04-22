@@ -157,6 +157,8 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: crc mismatch!");
+#else
+        (void)logf;
 #endif
         return false;
     }
@@ -180,6 +182,9 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
         }
     }
 
+#if SKY_DEBUG == false
+    (void)ctx;
+#endif
     return true;
 }
 
@@ -278,6 +283,14 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
             break;
     }
     (*ctx->logf)(level, buf);
+#else
+    (void)file;
+    (void)function;
+    (void)ctx;
+    (void)level;
+    (void)buffer;
+    (void)bufsize;
+    (void)buf_offset;
 #endif
     return pb;
 }
@@ -305,6 +318,13 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
         n -= i;
         buf_offset += i;
     }
+#else
+    (void)file;
+    (void)function;
+    (void)ctx;
+    (void)level;
+    (void)buffer;
+    (void)bufsize;
 #endif
     return buf_offset;
 }
@@ -343,6 +363,12 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
             b->ap.freq, b->h.rssi, b->h.age);
     }
+#else
+    (void)ctx;
+    (void)prefix;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -373,6 +399,12 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age);
     dump_vap(ctx, prefix, b, file, func);
+#else
+    (void)ctx;
+    (void)prefix;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -440,6 +472,12 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %s: Type: Unknown", prefixstr);
         break;
     }
+#else
+    (void)ctx;
+    (void)str;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -477,6 +515,10 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
         CONFIG(ctx->state, cache_match_used_threshold),
         CONFIG(ctx->state, cache_match_all_threshold), CONFIG(ctx->state, cache_age_threshold),
         CONFIG(ctx->state, cache_beacon_threshold), -CONFIG(ctx->state, cache_neg_rssi_threshold));
+#else
+    (void)ctx;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -513,8 +555,13 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
         }
     }
 #else
+    (void)ctx;
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "cache: Disabled");
 #endif /* CACHE_SIZE */
+#else /* SKY_DEBUG */
+    (void)ctx;
+    (void)file;
+    (void)func;
 #endif
 }
 

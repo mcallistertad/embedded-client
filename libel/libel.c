@@ -258,6 +258,7 @@ int32_t sky_sizeof_workspace(void)
  */
 static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
 {
+    (void)ctx;
     /* Enforce backoff period, check that enough time has passed since last request was received */
     if (state.backoff != SKY_ERROR_NONE) { /* Retry backoff in progress */
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
