@@ -62,16 +62,10 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
         return SKY_ERROR;
 
     /* test two APs for equivalence */
-    switch (a->h.type) {
-    case SKY_BEACON_AP:
-        if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
-            if (prop != NULL && b->ap.property.in_cache)
-                prop->in_cache = true;
-            return SKY_SUCCESS;
-        }
-        break;
-    default:
-        break;
+    if (memcmp(a->ap.mac, b->ap.mac, MAC_SIZE) == 0) {
+        if (prop != NULL && b->ap.property.in_cache)
+            prop->in_cache = true;
+        return SKY_SUCCESS;
     }
     return SKY_FAILURE;
 }
@@ -503,7 +497,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
-                threshold = CONFIG(ctx->state, cache_match_used_threshold);
+                threshold = CONFIG(ctx->state, cache_match_all_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);
