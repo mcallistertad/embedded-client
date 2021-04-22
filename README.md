@@ -61,6 +61,10 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### Release 3.0.2
+
+* BUG fix - server side tuning of cache match thresholds was being ignored by client
+
 ### Release 3.0.1
 
 * Added support for Token Based Registration and authentication.
