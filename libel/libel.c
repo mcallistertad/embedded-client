@@ -51,7 +51,7 @@ static Sky_state_t state;
 /*! \brief keep track of when the user has opened the library */
 static uint32_t sky_open_flag = 0;
 
-/*! \brief keep track of logging function */
+/*! \brief keep track of user handler functions */
 static Sky_randfn_t sky_rand_bytes;
 static Sky_loggerfn_t sky_logf;
 static Sky_log_level_t sky_min_level;
@@ -66,6 +66,7 @@ static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 static size_t strnlen_(char *s, size_t maxlen);
+static char *sky_psource(struct sky_location *l);
 
 /*! \brief Copy state buffer
  *
@@ -1114,9 +1115,10 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         }
 #if SKY_DEBUG
         time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Location from cache: %d.%06d,%d.%06d, hpe %d, age %d Sec",
-            (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
+            (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
             (ctx->header.time - cached_time));
 #endif
         ret = SKY_FINALIZE_LOCATION;
@@ -1207,9 +1209,9 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
 
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Location from server %d.%06d,%d.%06d hpe: %d, %d dl_app_data_len", (int)loc->lat,
+                "Location from server %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d", (int)loc->lat,
                 (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-                (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+                (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
                 loc->dl_app_data_len);
 
             return set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -1417,6 +1419,31 @@ char *sky_pbeacon(Beacon_t *b)
             return "\?\?\?";
         }
     }
+}
+
+/*! \brief returns a string which describes the source of a location
+ *
+ *  @param l pointer to location structure
+ *
+ *  @return pointer to string or NULL if the code is invalid
+ */
+static char *sky_psource(struct sky_location *l)
+{
+    if (l != NULL) {
+        switch (l->location_source) {
+        case SKY_LOCATION_SOURCE_CELL:
+            return "Cell";
+        case SKY_LOCATION_SOURCE_GNSS:
+            return "GNSS";
+        case SKY_LOCATION_SOURCE_HYBRID:
+            return "Hybrid";
+        case SKY_LOCATION_SOURCE_WIFI:
+            return "Wi-Fi";
+        default:
+            return "\?\?\?";
+        }
+    }
+    return NULL;
 }
 
 /*! \brief clean up library resourses
