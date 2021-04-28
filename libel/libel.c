@@ -954,13 +954,12 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     if (isnan(lat) || isnan(lon)) /* don't fail for empty gnss */
         return set_error_status(sky_errno, SKY_ERROR_NONE);
 
-    if ((!isnan(altitude) && (altitude < -1200 || /* Lake Baikal */
-                                 altitude > 8900)) || /* Everest */
+    if ((!isnan(altitude) && (altitude < -1200 || /* Lake Baikal meters above sea level */
+                                 altitude > 8900)) || /* Everest meters above sea level */
         hpe < 0.0 ||
         hpe > 100000.0 || /* max range of cell tower */
-        speed < 0.0 || speed > 343.0 || /* speed of sound */
-        nsat < 4 || nsat > 100) /* 4 minimum to get fix, */
-        /* 100 is conservative max gnss sat count */
+        speed < 0.0 || speed > 343.0 || /* speed of sound in meters per second */
+        nsat > 100) /* 100 is conservative max gnss sat count */
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     if (!validate_workspace(ctx))
