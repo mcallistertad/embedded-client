@@ -61,9 +61,13 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### Release 3.0.3
+
+* Remove client validation to allow GNSS fix with NSAT value of 0 to be added.
+
 ### Release 3.0.2
 
-* BUG fix - server side tuning of cache match thresholds was being ignored by client
+* Bug fix - server side tuning of cache match thresholds was being ignored by client
 
 ### Release 3.0.1
 
