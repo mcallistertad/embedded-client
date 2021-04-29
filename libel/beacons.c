@@ -427,7 +427,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
@@ -582,7 +582,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", va, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", vb, __FILE__, __FUNCTION__);
 #endif
@@ -618,7 +618,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                 p = (c == -1) ? vb->ap.property : vb->ap.vg_prop[c];
                 if (prop)
                     *prop = p;
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s, match %d %s",
@@ -629,7 +629,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                     num_aps, p.used ? "Used" : "Unused");
 #endif
             } else {
-#if VERBOSE_DEBUG
+#ifdef VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s",

@@ -358,7 +358,7 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             mac[n / 2] = ((mac[n / 2] & 0x0F) | (value << 4));
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d, Age:%d", prefix,
+            "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
             (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
             b->ap.freq, b->h.rssi, b->h.age);
@@ -394,7 +394,7 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d", prefix,
+        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age);
@@ -427,7 +427,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     if (b >= ctx->beacon && b < ctx->beacon + TOTAL_BEACONS + 1) {
         idx_b = b - ctx->beacon;
         idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
     } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
@@ -436,12 +436,12 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_b = b - ctx->state->cacheline[0].beacon;
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
-        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #endif
     } else {
         idx_b = idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %6s", str, b->h.connected ? "*" : " ",
+        snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %7s", str, b->h.connected ? "*" : " ",
             sky_pbeacon(b));
     }
 
@@ -457,15 +457,15 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_NR:
         /* if primary key is UNKNOWN, must be NMR */
+        strcat(prefixstr, "    ");
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s %d, %dMHz rssi:%-4d age:%d",
-                prefixstr, b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
+            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s %d %dMHz rssi:%d age:%d", prefixstr,
+                b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
         } else {
-            strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %u, %u, %u, %llu, %d, %dMHz rssi:%d age:%-4d ta:%d", prefixstr, b->cell.id1,
+                "%9s %u,%u,%u,%llu,%d %dMHz rssi:%d ta:%d age:%d", prefixstr, b->cell.id1,
                 b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
-                b->h.age, b->cell.ta);
+                b->cell.ta, b->h.age);
         }
         break;
     default:
