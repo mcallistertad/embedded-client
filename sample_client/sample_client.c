@@ -256,7 +256,7 @@ static long int PMrand()
  */
 static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 {
-    int i;
+    uint32_t i;
 
     if (!rand_buf)
         return 0;
