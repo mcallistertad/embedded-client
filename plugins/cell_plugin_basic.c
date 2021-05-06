@@ -31,8 +31,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
@@ -76,7 +78,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
@@ -85,7 +87,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
             (a->cell.id4 == b->cell.id4)) {
             if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
 #endif
                 /* NMR */
@@ -209,7 +211,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             score = 0.0;
             for (int j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
                 if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
                         sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);

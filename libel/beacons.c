@@ -31,8 +31,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
@@ -60,7 +62,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
         sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "idx:%d", index);
     NUM_BEACONS(ctx) -= 1;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
     return SKY_SUCCESS;
@@ -237,7 +239,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
         (NUM_CELLS(ctx) <=
             (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         DUMP_WORKSPACE(ctx);
 #endif
         return SKY_SUCCESS;
@@ -405,7 +407,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
             /* then type which increase in value as they become lower priority */
             /* so we have to invert the sign of the comparison value */
             better = -(new->h.type - wb->h.type);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
         dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different types %d (%s)", better,
@@ -419,7 +421,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
             /* Compare APs by rssi */
             if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
                 better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WiFi rssi score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
@@ -427,41 +429,41 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
-#ifdef VERBOSE_DEBUG
+        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+#if VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell connected score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (is_cell_nmr(new) != is_cell_nmr(wb)) {
                 /* fully qualified is best */
                 better = (!is_cell_nmr(new) ? 1 : -1);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell nmr score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (new->h.age != wb->h.age) {
                 /* youngest is best */
                 better = -(new->h.age - wb->h.age);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
                 /* highest signal strength is best */
                 better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell signal strength score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
 #endif
             } else {
                 better = 1;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell similar, pick one (%s)",
                     better < 0 ? "B is better" : "A is better");
 #endif
@@ -472,7 +474,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     if (!ret && diff)
         *diff = better;
 
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     if (ret)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons match");
 #endif
@@ -498,21 +500,21 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
     if (!ctx || !cl) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
 #endif
         return true;
     }
 
     if (NUM_CELLS(ctx) == 0) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
 #endif
         return false;
     }
 
     if (NUM_CELLS(cl) == 0) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
@@ -521,7 +523,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     w = &ctx->beacon[NUM_APS(ctx)];
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
 #endif
         return false;
@@ -582,7 +584,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", va, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", vb, __FILE__, __FUNCTION__);
 #endif
@@ -618,7 +620,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                 p = (c == -1) ? vb->ap.property : vb->ap.vg_prop[c];
                 if (prop)
                     *prop = p;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s, match %d %s",
@@ -629,7 +631,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                     num_aps, p.used ? "Used" : "Unused");
 #endif
             } else {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s",
