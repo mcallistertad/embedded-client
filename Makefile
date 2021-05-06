@@ -4,7 +4,7 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Werror -Wextra -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
+CFLAGS = -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
 else
 CC = armcc
 CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
@@ -46,7 +46,10 @@ LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
 
 .PHONY: all
 
-all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests
+all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client
+
+sample_client/sample_client: sample_client/sample_client.c ${BIN_DIR}/libel.a
+	make -C sample_client ${DEBUG}
 
 submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
@@ -93,4 +96,5 @@ ${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h
 	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
 
 clean:
+	make -C sample_client clean
 	rm -rf ${BIN_DIR} ${BUILD_DIR} ${TEST_BUILD_DIR}

@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Werror -Os -std=c99
+CFLAGS = -Os -std=c99 ${DEBUG}
 LIB_DIR = ../bin
 AES_DIR = ../submodules/tiny-AES128-C
 
