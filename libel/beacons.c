@@ -453,9 +453,16 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    if ((NUM_CELLS(ctx) == 0 || NUM_CELLS(cl)) == 0) {
+    if (NUM_CELLS(ctx) == 0) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache or workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
+#endif
+        return false;
+    }
+
+    if (NUM_CELLS(cl) == 0) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
     }
@@ -493,10 +500,8 @@ int get_from_cache(Sky_ctx_t *ctx)
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
-    return (
-        ctx->get_from =
-            (int16_t)((sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx :
-                                                                                            -1));
+    return (ctx->get_from = (int16_t)(
+                (sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx : -1));
 #else
     return (ctx->get_from = -1);
 #endif

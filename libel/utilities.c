@@ -155,6 +155,8 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
 #if SKY_DEBUG
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: crc mismatch!");
+#else
+        (void)logf;
 #endif
         return false;
     }
@@ -178,6 +180,9 @@ int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
         }
     }
 
+#if SKY_DEBUG == false
+    (void)ctx;
+#endif
     return true;
 }
 
@@ -276,6 +281,14 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
             break;
     }
     (*ctx->logf)(level, buf);
+#else
+    (void)file;
+    (void)function;
+    (void)ctx;
+    (void)level;
+    (void)buffer;
+    (void)bufsize;
+    (void)buf_offset;
 #endif
     return pb;
 }
@@ -303,6 +316,13 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
         n -= i;
         buf_offset += i;
     }
+#else
+    (void)file;
+    (void)function;
+    (void)ctx;
+    (void)level;
+    (void)buffer;
+    (void)bufsize;
 #endif
     return buf_offset;
 }
@@ -336,12 +356,17 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             mac[n / 2] = ((mac[n / 2] & 0x0F) | (value << 4));
 
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d rank:%02X:%d",
-            prefix,
+            "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
             (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
             b->ap.freq, b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xff);
     }
+#else
+    (void)ctx;
+    (void)prefix;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -367,13 +392,17 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X, %-4dMHz rssi:%-4d Age:%d rank:%02X:%d", prefix,
-        b->ap.property.used       ? "Used  " :
-        (b->ap.property.in_cache) ? "Cached" :
-                                    "      ",
+        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
+        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xff);
     dump_vap(ctx, prefix, b, file, func);
+#else
+    (void)ctx;
+    (void)prefix;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -396,7 +425,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     if (b >= ctx->beacon && b < ctx->beacon + TOTAL_BEACONS + 1) {
         idx_b = b - ctx->beacon;
         idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %6s", str, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
     } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
@@ -405,12 +434,12 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
         idx_b = b - ctx->state->cacheline[0].beacon;
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
-        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %6s", str, idx_c, idx_b,
+        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #endif
     } else {
         idx_b = idx_c = 0;
-        snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %6s", str, b->h.connected ? "*" : " ",
+        snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %7s", str, b->h.connected ? "*" : " ",
             sky_pbeacon(b));
     }
 
@@ -426,22 +455,27 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_NR:
         /* if primary key is UNKNOWN, must be NMR */
+        strcat(prefixstr, "    ");
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %d, %dMHz rssi:%-4d age:%d rank:%02X:%d", prefixstr, b->cell.id5, b->cell.freq,
-                b->h.rssi, b->h.age, b->h.rank >> 8, b->h.rank & 0xFF);
+            logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "%9s %d %dMHz rssi:%d age:%d", prefixstr,
+                b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
         } else {
-            strcat(prefixstr, "    ");
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %u, %u, %u, %llu, %d, %d rssi:%d age:%d ta:%d rank:%02X:%d", prefixstr,
-                b->cell.id1, b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq,
-                b->h.rssi, b->h.age, b->cell.ta, b->h.rank >> 8, b->h.rank & 0xFF);
+                "%9s %u,%u,%u,%llu,%d %dMHz rssi:%d ta:%d age:%d", prefixstr, b->cell.id1,
+                b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
+                b->cell.ta, b->h.age);
         }
         break;
     default:
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Beacon %s: Type: Unknown", prefixstr);
         break;
     }
+#else
+    (void)ctx;
+    (void)str;
+    (void)b;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -479,6 +513,10 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
         CONFIG(ctx->state, cache_match_used_threshold),
         CONFIG(ctx->state, cache_match_all_threshold), CONFIG(ctx->state, cache_age_threshold),
         CONFIG(ctx->state, cache_beacon_threshold), -CONFIG(ctx->state, cache_neg_rssi_threshold));
+#else
+    (void)ctx;
+    (void)file;
+    (void)func;
 #endif
 }
 
@@ -515,8 +553,13 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
         }
     }
 #else
+    (void)ctx;
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "cache: Disabled");
 #endif /* CACHE_SIZE */
+#else /* SKY_DEBUG */
+    (void)ctx;
+    (void)file;
+    (void)func;
 #endif
 }
 

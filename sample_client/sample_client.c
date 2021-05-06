@@ -121,10 +121,6 @@ struct cell_scan cells2[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-struct gnss_scan gnss2 =
-    {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-
 /* Scan set 3 */
 struct ap_scan aps3[] =
     { { "287AEEBA96C0", 0, 2462, -89, 0 },
@@ -138,9 +134,6 @@ struct cell_scan cells3[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-struct gnss_scan gnss3 =
-    {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 /* Scan set 4 */
 struct ap_scan aps4[] =
     { { "287AEEBA96C0", 0, 2412, -89, 0 },
@@ -151,9 +144,6 @@ struct ap_scan aps4[] =
 struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-
-struct gnss_scan gnss4 =
-    {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* clang-format on */
 
@@ -266,7 +256,7 @@ static long int PMrand()
  */
 static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 {
-    int i;
+    uint32_t i;
 
     if (!rand_buf)
         return 0;
@@ -332,7 +322,7 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
     bool server_request, Sky_location_t *loc)
 {
-    int i;
+    uint32_t i;
     uint32_t request_size;
     uint32_t response_size;
     void *prequest, *response;
@@ -347,11 +337,9 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
     }
 
     /* Add APs to the request */
-    for (i = 0; true; i++, ap++) {
+    for (i = 0; ap; i++, ap++) {
         uint8_t mac[MAC_SIZE];
 
-        if (ap->mac == NULL)
-            break;
         if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
             ret_status = sky_add_ap_beacon(
                 ctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, ap->frequency, ap->connected);
@@ -364,7 +352,7 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
     }
 
     /* add cells to request */
-    for (i = 0; true; i++, cp++) {
+    for (i = 0; cp; i++, cp++) {
         if (cp->type == TYPE_RESERVED)
             break;
         switch (cp->type) {
@@ -405,7 +393,7 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
         }
     }
 
-    if (gp->nsat) {
+    if (gp) {
         if (sky_add_gnss(ctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
                 gp->speed, gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
@@ -443,8 +431,9 @@ retry_after_auth:
         /* Location was found in the cache. No need to go to server. */
         printf("Location found in cache\n");
         if (!server_request)
-            break;
+            return true;
         printf("Making server request\n");
+        /* fall through */
     case SKY_FINALIZE_REQUEST:
         /* send the request to the server. */
         response = malloc(response_size);
@@ -567,20 +556,20 @@ int main(int argc, char *argv[])
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps2, cells2, &gnss2, NULL, 0, false, &loc) == false) {
+    if (locate(workspace, bufsize, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps3, cells3, &gnss3, config.ul_app_data,
+    if (locate(workspace, bufsize, &config, aps3, cells3, NULL, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps4, cells4, &gnss4, config.ul_app_data,
+    if (locate(workspace, bufsize, &config, aps4, cells4, NULL, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
