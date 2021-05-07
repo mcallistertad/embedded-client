@@ -63,7 +63,6 @@ int validate_workspace(Sky_ctx_t *ctx)
     if (ctx == NULL) {
         // Can't use LOGFMT if ctx is bad
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
-        fprintf(stderr, "FATAL: NULL ctx\n");
         return false;
     }
     if (NUM_BEACONS(ctx) > TOTAL_BEACONS + 1) {
