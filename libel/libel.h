@@ -233,6 +233,7 @@ char *sky_perror(Sky_errno_t sky_errno);
 char *sky_pserver_status(Sky_loc_status_t status);
 #ifdef SKY_LIBEL
 char *sky_pbeacon(Beacon_t *b);
+char *sky_psource(struct sky_location *l);
 #endif
 
 Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state);
