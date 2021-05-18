@@ -27,7 +27,7 @@
 
 /* Change to false to remove all calls to logging */
 #ifndef SKY_DEBUG
-#define SKY_DEBUG true
+#define SKY_DEBUG false
 #endif
 
 #ifndef SKY_LOG_LENGTH
@@ -91,7 +91,7 @@
 /*! \brief The number of entries in the scan/response cache
  */
 #ifndef CACHE_SIZE
-#define CACHE_SIZE 1
+#define CACHE_SIZE 0
 #endif
 
 /*! \brief The maximum space the dynamic configuration parameters may take up in bytes

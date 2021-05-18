@@ -66,7 +66,6 @@ static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 static size_t strnlen_(char *s, size_t maxlen);
-static char *sky_psource(struct sky_location *l);
 
 /*! \brief Copy state buffer
  *
@@ -1426,7 +1425,7 @@ char *sky_pbeacon(Beacon_t *b)
  *
  *  @return pointer to string or NULL if the code is invalid
  */
-static char *sky_psource(struct sky_location *l)
+char *sky_psource(struct sky_location *l)
 {
     if (l != NULL) {
         switch (l->location_source) {

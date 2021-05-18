@@ -34,9 +34,6 @@
 // #define VERBOSE_DEBUG
 // #endif
 
-/* when comparing type, lower value is better so invert difference */
-#define COMPARE_TYPE(a, b) (-((a) - (b)))
-
 /*! \brief shuffle list to remove the beacon at index
  *
  *  @param ctx Skyhook request context
@@ -62,7 +59,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
     return SKY_SUCCESS;
 }
 
-/*! \brief compare beacons
+/*! \brief compare beacons for positioning in workspace
  *
  *  @param ctx Skyhook request context
  *  @param a pointer to beacon A
@@ -73,80 +70,42 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
  */
 static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
-    int better, diff = 0;
+    int diff = 0;
 
 #ifdef VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", a, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", b, __FILE__, __FUNCTION__);
 #endif
     /* sky_plugin_compare compares beacons of the same class and returns SKY_ERROR when they are different classes */
-    if ((sky_plugin_desirable(ctx, NULL, a, b, &diff)) == SKY_ERROR) {
-        /* order the different classes of beacon by type, and then within cell class, fully qualified first */
-        if (is_cell_nmr(a) != is_cell_nmr(b))
+    if ((sky_plugin_compare(ctx, NULL, a, b, &diff)) == SKY_ERROR) {
+        /* Beacons are different classes, so compare like this */
+        /* If either beacon is not cell, order by type */
+        /* If one beacon is nmr cell, order fully qualified first */
+        /* If one cell is connected, order connected first */
+        /* otherwise order by type */
+        if (!is_cell_type(a) || !is_cell_type(b))
+            diff = COMPARE_TYPE(a, b) >= 0 ? 1 : -1;
+        else if (is_cell_nmr(a) != is_cell_nmr(b))
             /* fully qualified cell is better */
-            better = (!is_cell_nmr(a) ? 1 : -1);
+            diff = (!is_cell_nmr(a) ? 1 : -1);
+        else if (a->h.connected != b->h.connected)
+            diff = COMPARE_CONNECTED(a, b);
         else
-            better = COMPARE_TYPE(a->h.type, b->h.type) >= 0 ? 1 : -1;
+            diff = COMPARE_TYPE(a, b);
 #ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different classes %d (%s)", better,
-            better < 0 ? "B is better" : "A is better");
-#endif
-        return better;
-    }
-    /* otherwise beacons were comparable and plugin set diff appropriately */
-#ifdef VERBOSE_DEBUG
-    if (diff)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different classes %d (%s)", diff,
             diff < 0 ? "B is better" : "A is better");
-    else {
-        /* make sorting deterministic, always choose one or the other
-         * when equal desirability, choose the one earlier in the list
-         */
-        diff = a < b ? 1 : -1;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types but not equal");
-    }
 #endif
+    } else {
+        /* otherwise beacons were comparable and plugin set diff appropriately */
+        diff = (diff != 0) ? diff : 1; /* choose A if plugin returns 0 */
+#ifdef VERBOSE_DEBUG
+        if (diff)
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
+                diff < 0 ? "B is better" : "A is better");
+#endif
+    }
     return diff;
-}
-
-/*! \brief qsort comparison routine for descending order
- *
- *  @param  Skyhook request context
- *  @param pa pointer to beacon a
- *  @param pb pointer to beacon b
- *
- *  @return relative desirability -1 a is better, +1 b is better (non 0)
- */
-static Sky_ctx_t *ctx_pointer = NULL;
-static int compare_desirability_qsort(const void *pa, const void *pb)
-{
-    /* note that pb and pa are reversed to sort highest first */
-    return is_beacon_better(ctx_pointer, (Beacon_t *)pb, (Beacon_t *)pa);
-}
-
-/*! \brief sort beacons by desirability
- *
- *  @param ctx Skyhook request context
- *
- *  @return true if beacons were sorted
- */
-static bool sort_beacons(Sky_ctx_t *ctx)
-{
-    /* calculate desirability score of all beacons */
-    if (sky_plugin_rank(ctx, NULL) != SKY_SUCCESS) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to rank beacons");
-        return false;
-    }
-
-#ifdef VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
-#endif
-    ctx_pointer = ctx;
-    qsort(&ctx->beacon, NUM_BEACONS(ctx), sizeof(Beacon_t), &compare_desirability_qsort);
-#ifdef VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
-#endif
-    return true;
 }
 
 /*! \brief insert beacon in list based on type and AP rssi
@@ -202,7 +161,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
     /* find initial position to insert based on type */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
-        if (b->h.type <= ctx->beacon[j].h.type)
+        if (is_beacon_better(ctx, b, &ctx->beacon[j]) > 0)
             break;
     }
 
@@ -221,13 +180,10 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         NUM_APS(ctx)++;
     }
 
-    /* sort after adding new beacon based on desirability of all beacons */
-    sort_beacons(ctx);
-
 #ifdef SKY_DEBUG
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         /* Find the beacon we just added using type and beacon specific properties */
-        /* NOTE header may be different as rank has been calculated */
+        /* NOTE header may be different as priority has been calculated */
         if (b->h.type == ctx->beacon[j].h.type &&
             (memcmp(&b->h + 1, &ctx->beacon[j].h + 1, sizeof(Beacon_t) - sizeof(struct header)) ==
                 0))
@@ -410,7 +366,7 @@ bool beacon_in_cacheline(
 int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
-    uint32_t oldestc = 0;
+    int oldestc = 0;
     uint32_t oldest = (*ctx->gettime)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
@@ -428,10 +384,10 @@ int find_oldest(Sky_ctx_t *ctx)
 
 /*! \brief test serving cell in workspace has changed from that in cache
  *
- *  Cells in workspace are in priority order
+ *  Cells in workspace are in desirability order
  *
  *  false if either workspace or cache has no cells
- *  false if highest priority workspace cell (which is
+ *  false if highest desirability workspace cell (which is
  *  assumed to be the serving cell, regardless of whether or
  *  not the user has marked it "connected") matches cache
  *  true otherwise

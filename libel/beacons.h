@@ -60,7 +60,21 @@
 #define IS_CACHE_HIT(c) ((c)->get_from != -1)
 #define IS_CACHE_MISS(c) ((c)->get_from == -1)
 
-/*! \brief Types of beacon in priority order
+#define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
+/* when comparing type, lower value is better so invert difference */
+#define COMPARE_TYPE(a, b) (-((a->h.type) - (b->h.type)))
+/* when comparing age, lower value (younger) is better so invert difference */
+#define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
+/* when comparing rssi, higher value (stronger) is better */
+#define COMPARE_RSSI(a, b) (((a->h.rssi) - (b->h.rssi)))
+/* when comparing mac, lower value is better so invert difference */
+#define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
+/* when comparing connected, higher (1) value is better */
+#define COMPARE_CONNECTED(a, b) ((a->h.connected) - (b->h.connected))
+/* when comparing priority, higher value is better */
+#define COMPARE_PRIORITY(a, b) ((a->h.priority) - (b->h.priority))
+
+/*! \brief Types of beacon in compare order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
@@ -88,7 +102,7 @@ struct header {
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
     int16_t rssi; /* -255 unkonwn - map it to - 128 */
-    uint16_t rank; /* used to sort beacons by desirability */
+    uint16_t priority; /* used to remove worst beacon */
     int8_t connected; /* beacon connected */
 };
 
