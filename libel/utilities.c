@@ -265,7 +265,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     uint8_t *b = (uint8_t *)buffer;
     int n, N;
     if (ctx == NULL || ctx->logf == NULL || level > ctx->min_level || function == NULL ||
-        buffer == NULL || bufsize <= 0)
+        buffer == NULL || bufsize == 0)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name> <buf offset>:")
@@ -308,7 +308,8 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 {
     uint32_t buf_offset = 0;
 #if SKY_DEBUG
-    uint32_t i, n = bufsize;
+    int i;
+    uint32_t n = bufsize;
     uint8_t *p = buffer;
     /* try to print 16 bytes per line till all dumped */
     while ((i = dump_hex16(
