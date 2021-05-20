@@ -32,8 +32,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
@@ -53,7 +55,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
         return SKY_ERROR;
     }
 
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
 #endif
@@ -270,7 +272,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
             num_aps_cached += equal(ctx, &ctx->beacon[j], &cl->beacon[i], NULL) ? 1 : 0;
         }
     }
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "%d APs in cache %d", num_aps_cached, cl - ctx->state->cacheline);
 #endif
@@ -337,7 +339,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
     /* Compare all beacons, looking for similar macs
