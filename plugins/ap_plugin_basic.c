@@ -276,6 +276,12 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     int idx_of_worst;
     idx_of_worst = set_priorities(ctx);
 
+    /* no work to do if workspace not full of max APs */
+    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove AP");
+        return SKY_ERROR;
+    }
+
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age or rssi distribution */
     if (!remove_virtual_ap(ctx)) {
@@ -403,17 +409,20 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (result && (bestratio * 100) > (float)bestthresh) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
-            bestc, CACHE_SIZE, (int)round((double)bestratio * 100), bestthresh);
-        *idx = bestc;
-        return SKY_SUCCESS;
-    }
     if (result) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No Cache match found. Cache %d, best score %d (vs %d)",
-            bestc, (int)round((double)bestratio * 100), bestthresh);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
-            bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
+        if ((bestratio * 100) > (float)bestthresh) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "location in cache, pick cache %d of %d score %d (vs %d)", bestc, CACHE_SIZE,
+                (int)round((double)bestratio * 100), bestthresh);
+            *idx = bestc;
+        } else {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "No Cache match found. Cache %d, best score %d (vs %d)", bestc,
+                (int)round((double)bestratio * 100), bestthresh);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
+                bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
+            *idx = -1;
+        }
         return SKY_SUCCESS;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using APs. No cache match");
@@ -421,8 +430,8 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         CACHE_SIZE, (int)round((double)bestputratio * 100));
     return SKY_ERROR;
 #else
+    *idx = -1;
     (void)ctx; /* suppress warning unused parameter */
-    (void)idx; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif
 }
