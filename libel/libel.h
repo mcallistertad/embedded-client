@@ -41,7 +41,7 @@
 
 /* March 1st 2019 */
 #define TIMESTAMP_2019_03_01 1551398400
-
+#define TIME_UNAVAILABLE ((time_t)0)
 #define SECONDS_IN_HOUR (60 * 60)
 
 /* Definitions for use when adding cell beacons with unknown parameters */
@@ -97,7 +97,7 @@ typedef enum {
 typedef struct sky_location {
     float lat, lon; /* GNSS info */
     uint16_t hpe;
-    uint32_t time;
+    time_t time;
     Sky_loc_source_t location_source;
     Sky_loc_status_t location_status;
     uint8_t *dl_app_data;
@@ -128,6 +128,7 @@ typedef enum {
     SKY_AUTH_RETRY_1D, // Retry operation in 1 day to query authentication,
     SKY_AUTH_RETRY_30D, // Retry operation in 30 days to query authentication,
     SKY_ERROR_AUTH, // Operation failed because server reported authentication error
+    SKY_ERROR_BAD_TIME, // Operation failed because a timestamp was out of range
     SKY_ERROR_MAX,
 } Sky_errno_t;
 

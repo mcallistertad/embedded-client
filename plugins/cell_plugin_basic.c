@@ -182,13 +182,14 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
+        if (cl->time != TIME_UNAVAILABLE &&
+            (ctx->header.time - cl->time) >
+                (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
-            cl->time = 0;
+            cl->time = TIME_UNAVAILABLE;
         }
         /* if line is empty and it is the first one, remember it */
-        if (cl->time == 0) {
+        if (cl->time == TIME_UNAVAILABLE) {
             if (bestputratio < 1.0) {
                 bestput = i;
                 bestputratio = 1.0;
@@ -200,7 +201,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         threshold = ratio = score = 0;
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
+        if (cl->time == TIME_UNAVAILABLE || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
