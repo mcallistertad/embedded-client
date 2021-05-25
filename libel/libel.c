@@ -280,6 +280,11 @@ static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
             if (now - state.header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
+        case SKY_AUTH_NEEDS_TIME:
+            /* Waiting for time to be available */
+            if (now == TIME_UNAVAILABLE)
+                return true;
+            break;
         default:
             break;
         }
@@ -346,7 +351,7 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
     }
 
 #if CACHE_SIZE
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines present", ctx->state->len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines configured", ctx->state->len);
     for (i = 0; i < CACHE_SIZE; i++) {
         if (state.cacheline[i].ap_len > CONFIG(ctx->state, max_ap_beacons) ||
             state.cacheline[i].len > CONFIG(ctx->state, total_beacons)) {
@@ -356,18 +361,20 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
                 i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
                 CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
         }
-        if (ctx->state->cacheline[i].time &&
-            (now - ctx->state->cacheline[i].time) >
-                ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
+        if (ctx->state->cacheline[i].time && now != TIME_UNAVAILABLE) {
+            ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to time being unavailable",
+                i, CACHE_SIZE);
+        } else if (ctx->state->cacheline[i].time &&
+                   (now - ctx->state->cacheline[i].time) >
+                       ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
             ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
                 CACHE_SIZE, now - ctx->state->cacheline[i].time);
         }
     }
-    DUMP_CACHE(ctx);
-#else
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No cachelines present");
 #endif
+    DUMP_CACHE(ctx);
     ctx->state->sky_ul_app_data_len = ul_app_data_len;
     memcpy(ctx->state->sky_ul_app_data, ul_app_data, ul_app_data_len);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", ctx->state->sky_partner_id,
@@ -1270,7 +1277,11 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 return set_error_status(sky_errno, SKY_AUTH_RETRY);
             } else if (ctx->state->backoff ==
                        SKY_ERROR_NONE) /* Registration request failed auth, retry */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY));
+                /* if time is unknown, set back off immediately to one time */
+                if (ctx->header.time == TIME_UNAVAILABLE)
+                    return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_NEEDS_TIME));
+                else
+                    return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY));
             else if (ctx->state->backoff ==
                      SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_8H));
@@ -1365,6 +1376,9 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     case SKY_AUTH_RETRY_30D:
         str = "Operation unauthorized, retry in a month";
+        break;
+    case SKY_AUTH_NEEDS_TIME:
+        str = "Operation needs good time of day";
         break;
     case SKY_ERROR_AUTH:
         str = "Operation failed due to authentication error";
