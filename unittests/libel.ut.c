@@ -1,3 +1,5 @@
+#include <alloca.h>
+
 time_t bad_time(time_t *t)
 {
     (void)t;
@@ -8,6 +10,70 @@ time_t good_time(time_t *t)
 {
     (void)t;
     return time(NULL);
+}
+
+TEST_FUNC(test_sky_open)
+{
+    TEST("sky_open succeeds the first time it is called and fails the second", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_state_t *pstate, nv_state;
+
+        ASSERT(SKY_SUCCESS == sky_close(&sky_errno, (void **)&pstate));
+        ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
+                                  (uint8_t *)"0123456789012345", "sku", 0, NULL,
+                                  SKY_LOG_LEVEL_DEBUG, sky_logf, sky_rand_bytes, good_time, true));
+        ASSERT(sky_errno == SKY_ERROR_NONE);
+
+        ASSERT(SKY_SUCCESS == sky_close(&sky_errno, (void **)&pstate));
+        ASSERT(sky_sizeof_state(pstate) == sizeof(nv_state));
+        memmove(&nv_state, pstate, sizeof(nv_state));
+        ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
+                                  (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
+                                  SKY_LOG_LEVEL_DEBUG, sky_logf, sky_rand_bytes, good_time, true));
+        ASSERT(sky_errno == SKY_ERROR_NONE);
+        ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
+                                  (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
+                                  SKY_LOG_LEVEL_DEBUG, sky_logf, sky_rand_bytes, good_time, true));
+        ASSERT(sky_errno == SKY_ERROR_NONE);
+
+        ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
+                                (uint8_t *)"01234567890123", "sk", 0, &nv_state,
+                                SKY_LOG_LEVEL_DEBUG, sky_logf, sky_rand_bytes, good_time, true));
+        ASSERT(sky_errno == SKY_ERROR_ALREADY_OPEN);
+
+#ifdef SHOULD_BE_ERROR
+        ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
+                                (uint8_t *)"01234567890123", "sk", 0, NULL, SKY_LOG_LEVEL_DEBUG,
+                                sky_logf, sky_rand_bytes, good_time, true));
+        ASSERT(sky_errno == SKY_ERROR_ALREADY_OPEN);
+#endif
+    });
+}
+
+TEST_FUNC(test_sky_new_request)
+{
+    TEST(
+        "sky_new_request set errno to SKY_ERROR_SERVICE_DENIED after first failed registration with bad time",
+        ctx, {
+            Sky_errno_t sky_errno;
+
+            sky_time = bad_time;
+            ctx->state->sky_sku[0] = 's';
+            ctx->state->sky_sku[1] = '\0';
+            ctx->state->backoff = SKY_AUTH_NEEDS_TIME;
+            ASSERT(NULL == sky_new_request(ctx, sizeof(Sky_ctx_t), NULL, 0, &sky_errno));
+            ASSERT(sky_errno == SKY_ERROR_SERVICE_DENIED);
+        });
+    TEST("sky_new_request succeeds after first failed registration with good time", ctx, {
+        Sky_errno_t sky_errno;
+
+        sky_time = good_time;
+        ctx->state->sky_sku[0] = 's';
+        ctx->state->sky_sku[1] = '\0';
+        ctx->state->backoff = SKY_AUTH_NEEDS_TIME;
+        ASSERT(ctx == sky_new_request(ctx, sizeof(Sky_ctx_t), NULL, 0, &sky_errno));
+        ASSERT(sky_errno == SKY_ERROR_NONE);
+    });
 }
 
 TEST_FUNC(test_sky_add)
@@ -86,32 +152,12 @@ TEST_FUNC(test_sky_add)
         ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno));
         ASSERT(ctx->state->config.last_config_time == TIME_UNAVAILABLE);
     });
-    TEST(
-        "sky_new_request set errno to SKY_ERROR_SERVICE_DENIED after first failed registration with bad time",
-        ctx, {
-            Sky_errno_t sky_errno;
-
-            sky_time = bad_time;
-            ctx->state->sky_sku[0] = 's';
-            ctx->state->sky_sku[1] = '\0';
-            ctx->state->backoff = SKY_AUTH_NEEDS_TIME;
-            ASSERT(NULL == sky_new_request(ctx, sizeof(Sky_ctx_t), NULL, 0, &sky_errno));
-            ASSERT(sky_errno == SKY_ERROR_SERVICE_DENIED);
-        });
-    TEST("sky_new_request succeeds after first failed registration with goot time", ctx, {
-        Sky_errno_t sky_errno;
-
-        sky_time = good_time;
-        ctx->state->sky_sku[0] = 's';
-        ctx->state->sky_sku[1] = '\0';
-        ctx->state->backoff = SKY_AUTH_NEEDS_TIME;
-        ASSERT(ctx == sky_new_request(ctx, sizeof(Sky_ctx_t), NULL, 0, &sky_errno));
-        ASSERT(sky_errno == SKY_ERROR_NONE);
-    });
 }
 
 BEGIN_TESTS(libel_test)
 
+GROUP_CALL("sky open", test_sky_open);
+GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
 
 END_TESTS();
