@@ -37,9 +37,8 @@
 
 typedef enum {
     MOST_DESIRABLE = 0xffff,
-    CONNECTED = 0x800,
-    NON_NMR = 0x400,
-    STRENGTH = 0x100,
+    CONNECTED = 0x200,
+    NON_NMR = 0x100,
     LEAST_DESIRABLE = 0x000
 } Priority_t;
 
@@ -114,7 +113,7 @@ static Sky_status_t equal(
     return SKY_SUCCESS;
 }
 
-/*! \brief compare cell beacons to position
+/*! \brief compare cell beacons for order when adding to request context
  *
  *  @param ctx Skyhook request context
  *  @param a pointer to cell
@@ -122,7 +121,8 @@ static Sky_status_t equal(
  *  @param diff result of comparison, positive when a is better
  *
  *  @return
- *  if beacons are comparable, return SKY_SUCCESS, difference in priority
+ *  if beacons are comparable, return SKY_SUCCESS and difference
+ *  (greater than zero if a should be before b)
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
@@ -149,7 +149,7 @@ static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
     return SKY_SUCCESS;
 }
 
-/*! \brief remove least compare cell if workspace is full
+/*! \brief remove lowest priority cell if workspace is full
  *
  *  @param ctx Skyhook request context
  *
@@ -168,10 +168,10 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
 
     /* sanity check last beacon, if we get here, it should be a cell */
     if (is_cell_type(&ctx->beacon[NUM_BEACONS(ctx) - 1])) {
-        /* cells are in desirability order
+        /* cells are in priority order
          * remove last beacon
          */
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: least desirable cell");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: lowest priority cell");
         return remove_beacon(ctx, NUM_BEACONS(ctx) - 1);
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
@@ -240,7 +240,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* score each cache line wrt beacon match ratio */
     for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
+        if (cl->time == 0 || serving_cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
@@ -314,11 +314,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #endif
 }
 
-/*! \brief score relative desirability of cells
+/*! \brief Assign relative priority value to AP based on attributes
  *
  * Desirable attributes are connected, nmr, and strength
  *
- *  @param idx index of cell to be scored
+ *  @param idx index of beacon we want to prioritize
  *
  *  @return priority
  */

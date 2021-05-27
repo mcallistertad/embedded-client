@@ -181,22 +181,18 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     }
 
 #ifdef SKY_DEBUG
+    /* Verify that the beacon we just added now appears in our beacon set. */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
-        /* Find the beacon we just added using type and beacon specific properties */
-        /* NOTE header may be different as priority has been calculated */
-        if (b->h.type == ctx->beacon[j].h.type &&
-            (memcmp(&b->h + 1, &ctx->beacon[j].h + 1, sizeof(Beacon_t) - sizeof(struct header)) ==
-                0))
+        bool equal;
+        if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL, &equal) == SKY_SUCCESS &&
+            equal)
             break;
     }
-    if (j == NUM_BEACONS(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Beacon type %s NOT found after insert");
-        return SKY_ERROR; /* didn't find beacon just added */
-    }
-
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted at idx %d", sky_pbeacon(b), j);
+    if (j < NUM_BEACONS(ctx))
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted at idx %d", sky_pbeacon(b), j);
+    else
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Beacon NOT found after insert");
 #endif
-
     return SKY_SUCCESS;
 }
 
@@ -397,7 +393,7 @@ int find_oldest(Sky_ctx_t *ctx)
  *
  *  @return true or false
  */
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
     bool equal = false;

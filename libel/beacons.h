@@ -66,7 +66,7 @@
 /* when comparing age, lower value (younger) is better so invert difference */
 #define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
 /* when comparing rssi, higher value (stronger) is better */
-#define COMPARE_RSSI(a, b) (((a->h.rssi) - (b->h.rssi)))
+#define COMPARE_RSSI(a, b) ((EFFECTIVE_RSSI(a->h.rssi) - EFFECTIVE_RSSI(b->h.rssi)))
 /* when comparing mac, lower value is better so invert difference */
 #define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
 /* when comparing connected, higher (1) value is better */
@@ -259,7 +259,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
+int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
 int get_from_cache(Sky_ctx_t *ctx);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
