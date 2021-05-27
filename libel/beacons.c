@@ -248,14 +248,14 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_ERROR;
     if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
+#ifdef VERBOSE_DEBUG
+    DUMP_WORKSPACE(ctx);
+#endif
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
         (NUM_CELLS(ctx) <=
             (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
-#ifdef VERBOSE_DEBUG
-        DUMP_WORKSPACE(ctx);
-#endif
         return SKY_SUCCESS;
     }
 

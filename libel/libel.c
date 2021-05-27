@@ -448,7 +448,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, e_cellid, pci, earfcn, ta, rsrp, is_connected ? "serve, " : "",
             (int)(ctx->header.time - timestamp));
@@ -608,7 +608,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && ucid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || ucid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
@@ -749,7 +749,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
             mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
@@ -1101,7 +1101,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];

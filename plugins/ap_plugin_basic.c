@@ -204,18 +204,21 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *
  *  @return true if beacon removed or false otherwise
  */
+#define CONNECTED_AND_IN_CACHE_ONLY(priority) (priority & (CONNECTED | IN_CACHE))
 static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
 {
     /* Assume we'll keep i and discard j. Then, use priority
      * logic to see if this should be reversed */
     int tmp;
 
-    if (ctx->beacon[j].h.priority > ctx->beacon[i].h.priority) {
+    /* keep lowest MAC unless j has difference in Connectivity or cache */
+    if (CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[j].h.priority) >
+        CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[i].h.priority)) {
         tmp = i;
         i = j;
         j = tmp;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s%s", j, i,
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", j, i,
         ctx->beacon[i].h.connected ? " (connected)" : "",
         ctx->beacon[i].ap.property.in_cache ? " (cached)" : "");
     return (remove_beacon(ctx, j) == SKY_SUCCESS);
