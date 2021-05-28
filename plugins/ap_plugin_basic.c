@@ -43,10 +43,10 @@
  *   11       |   beacon is connected (e.g. serving cell)
  */
 typedef enum {
-    MOST_DESIRABLE = 0xffff,
+    HIGHEST_PRIORITY = 0xffff,
     CONNECTED = 0x200,
     IN_CACHE = 0x100,
-    LEAST_DESIRABLE = 0x000
+    LOWEST_PRIORITY = 0x000
 } Priority_t;
 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
@@ -498,7 +498,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
 /*! \brief Assign relative priority value to AP based on attributes
  *
- * Desirable attributes are connected, virtual groups and cached APs
+ * Priority is based on the attributes connected, virtual groups and cached APs
  * and best fit to rssi uniform distribution
  *
  *  @param ctx pointer to request context
@@ -546,7 +546,7 @@ static Priority_t get_priority(Sky_ctx_t *ctx, Beacon_t *b)
 static int set_priorities(Sky_ctx_t *ctx)
 {
     int idx_of_worst = 0;
-    uint16_t priority_of_worst = (int16_t)MOST_DESIRABLE;
+    uint16_t priority_of_worst = (int16_t)HIGHEST_PRIORITY;
 
     for (int j = 0; j < NUM_APS(ctx); j++) {
         ctx->beacon[j].h.priority = (uint16_t)get_priority(ctx, &ctx->beacon[j]);

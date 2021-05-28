@@ -41,7 +41,7 @@ typedef struct plugin_table {
     /* Entry points */
     Sky_plugin_equal_t equal; /* Compare two beacons for equality */
     Sky_plugin_compare_t compare; /* Compare two beacons used to position */
-    Sky_plugin_remove_worst_t remove_worst; /* Remove least desirable beacon from workspace */
+    Sky_plugin_remove_worst_t remove_worst; /* Remove lowest priority beacon from workspace */
     Sky_plugin_cache_match_t cache_match; /* Find best match between workspace and cache lines */
     Sky_plugin_add_to_cache_t add_to_cache; /* Copy workspace beacons to a cacheline */
 } Sky_plugin_table_t;

@@ -613,7 +613,7 @@ TEST_FUNC(test_insert)
         ASSERT(AP_EQ(&b, ctx->beacon + 2));
     });
 
-    TEST("should insert 3 Cells B, C, A, with only age diff, in desirability order C, A, B", ctx, {
+    TEST("should insert 3 Cells B, C, A, with only age diff, in priority order C, A, B", ctx, {
         LTE(b, 12, -94, false, 311, 470, 25613, 25664526, 387, 1000);
         LTE(c, 10, -94, false, 312, 470, 25613, 25664526, 387, 1000);
         LTE(a, 11, -94, false, 310, 470, 25613, 25664526, 387, 1000);

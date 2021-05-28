@@ -61,7 +61,9 @@
 #define IS_CACHE_MISS(c) ((c)->get_from == -1)
 
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
-/* when comparing type, lower value is better so invert difference */
+
+/* Comparisons result in positive difference when beacon a is higher priority */
+/* when comparing type, lower type enum is better so invert difference */
 #define COMPARE_TYPE(a, b) (-((a->h.type) - (b->h.type)))
 /* when comparing age, lower value (younger) is better so invert difference */
 #define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
@@ -69,7 +71,7 @@
 #define COMPARE_RSSI(a, b) ((EFFECTIVE_RSSI(a->h.rssi) - EFFECTIVE_RSSI(b->h.rssi)))
 /* when comparing mac, lower value is better so invert difference */
 #define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
-/* when comparing connected, higher (1) value is better */
+/* when comparing connected, higher (true) value is better */
 #define COMPARE_CONNECTED(a, b) ((a->h.connected) - (b->h.connected))
 /* when comparing priority, higher value is better */
 #define COMPARE_PRIORITY(a, b) ((a->h.priority) - (b->h.priority))

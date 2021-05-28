@@ -131,7 +131,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
  *  @param code the sky_errno_t code to return
  *  @param a the first beacon to compare
  *  @param b the second beacon to compare
- *  @param diff where to save the result of desirability comparison
+ *  @param diff where to save the result of comparison
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */

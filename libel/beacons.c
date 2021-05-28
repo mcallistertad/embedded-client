@@ -134,7 +134,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 
             if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL, &equal) == SKY_SUCCESS &&
                 equal) {
-                /* Found duplicate - keep new beacon if it is more desirable */
+                /* Found duplicate - keep new beacon if it is better */
                 if (b->h.age < ctx->beacon[j].h.age || /* Younger */
                     (b->h.age == ctx->beacon[j].h.age &&
                         b->h.connected) || /* same age, but connected */
@@ -378,20 +378,20 @@ int find_oldest(Sky_ctx_t *ctx)
 }
 #endif
 
-/*! \brief test serving cell in workspace has changed from that in cache
+/*! \brief test serving cell in request context has changed from that in cache
  *
- *  Cells in workspace are in desirability order
- *
- *  false if either workspace or cache has no cells
- *  false if highest desirability workspace cell (which is
- *  assumed to be the serving cell, regardless of whether or
- *  not the user has marked it "connected") matches cache
- *  true otherwise
+ *  Cells are in priority order
  *
  *  @param ctx Skyhook request context
  *  @param cl the cacheline to count in
  *
  *  @return true or false
+ *
+ *  false if either request context or cache has no cells
+ *  false if highest priority cell (which is
+ *  assumed to be the serving cell, regardless of whether or
+ *  not the user has marked it "connected") matches cache
+ *  true otherwise
  */
 int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {

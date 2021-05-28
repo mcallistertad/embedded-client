@@ -36,10 +36,10 @@
 // #endif
 
 typedef enum {
-    MOST_DESIRABLE = 0xffff,
+    HIGHEST_PRIORITY = 0xffff,
     CONNECTED = 0x200,
     NON_NMR = 0x100,
-    LEAST_DESIRABLE = 0x000
+    LOWEST_PRIORITY = 0x000
 } Priority_t;
 
 static uint16_t get_priority(Beacon_t *b);
@@ -316,7 +316,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 
 /*! \brief Assign relative priority value to AP based on attributes
  *
- * Desirable attributes are connected, nmr, and strength
+ * Priority is based on the attributes connected, nmr, and strength
  *
  *  @param idx index of beacon we want to prioritize
  *
