@@ -185,7 +185,7 @@
 
 #define CLOSE_SKY_CTX(C)                                                                           \
     Sky_errno_t err;                                                                               \
-    if (sky_close(&err, NULL) != SKY_SUCCESS) {                                                    \
+    if (sky_close(ctx, &err) != SKY_SUCCESS) {                                                     \
         fprintf(stderr, "error closing mock sky context\n");                                       \
         exit(-1);                                                                                  \
     }                                                                                              \

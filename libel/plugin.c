@@ -32,9 +32,9 @@
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
-#ifndef VERBOSE_DEBUG
-#define VERBOSE_DEBUG false
-#endif
+// #ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG true
+// #endif
 
 /*! \brief add a plugin table to the list of plugins
  *
@@ -97,18 +97,20 @@ Sky_status_t sky_plugin_equal(
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
-    p = ctx->plugin;
+    p = ctx->session->sky_plugins;
     while (p) {
         if (p->equal)
             ret = p->equal(ctx, a, b, prop);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -128,12 +130,12 @@ Sky_status_t sky_plugin_equal(
  */
 Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = ctx->session->sky_plugins;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
     while (p) {
@@ -141,7 +143,9 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
             ret = (*p->remove_worst)(ctx);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -162,12 +166,12 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  */
 Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = ctx->session->sky_plugins;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
     while (p) {
@@ -175,7 +179,9 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
             ret = (*p->cache_match)(ctx, idx);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -196,12 +202,12 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
  */
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = ctx->session->sky_plugins;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx)) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
     while (p) {
@@ -209,7 +215,9 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
             ret = (*p->add_to_cache)(ctx, loc);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            (ret == SKY_SUCCESS) ? "Success" :
+            (ret == SKY_FAILURE) ? "Failure" :
+                                   "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -314,13 +322,13 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     };
 
     /* clear registration of standard plugins */
-    ctx->plugin = NULL;
+    ctx->session->sky_plugins = NULL;
     /* add single access table with empty operations */
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table1));
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table2));
-    ASSERT((Sky_plugin_table_t *)ctx->plugin == &table1);
-    ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next == &table2);
-    ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next->next == NULL);
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table1));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table2));
+    ASSERT((Sky_plugin_table_t *)ctx->session->sky_plugins == &table1);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next == &table2);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next->next == NULL);
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;

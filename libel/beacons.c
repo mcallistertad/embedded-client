@@ -25,9 +25,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 #include <stdio.h>
-#include <limits.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -63,7 +61,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "idx:%d", index);
     NUM_BEACONS(ctx) -= 1;
 #if VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 #endif
     return SKY_SUCCESS;
 }
@@ -82,7 +80,7 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     int j, diff = 0;
 
     /* sanity checks */
-    if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
+    if (!validate_request_ctx(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid params. Beacon type %s", sky_pbeacon(b));
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
@@ -181,21 +179,21 @@ Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, 
     return SKY_SUCCESS;
 }
 
-/*! \brief add beacon to list in workspace context
+/*! \brief add beacon to list in request ctx
  *
- *   if beacon is not AP and workspace is full (of non-AP), pick best one
+ *   if beacon is not AP and request ctx is full (of non-AP), pick best one
  *   if beacon is AP,
  *    . reject a duplicate
  *    . for duplicates, keep newest and strongest
  *
- *   Insert new beacon in workspace
+ *   Insert new beacon in request ctx
  *    . Add APs in order based on lowest to highest rssi value
  *    . Add cells after APs
  *
  *   If AP just added is known in cache,
  *    . set cached and copy Used property from cache
  *
- *   If AP just added fills workspace, remove one AP,
+ *   If AP just added fills request ctx, remove one AP,
  *    . Remove one virtual AP if there is a match
  *    . If haven't removed one AP, remove one based on rssi distribution
  *
@@ -225,7 +223,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_SUCCESS;
 
 #if CACHE_SIZE
-    /* Update the AP just added to workspace */
+    /* Update the AP just added to request ctx */
     if (is_ap_type(b)) {
         Beacon_t *w = &ctx->beacon[i];
         if (!beacon_in_cache(ctx, b, &w->ap.property)) {
@@ -236,11 +234,11 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 #endif
 
     /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
+    if (NUM_APS(ctx) <= CONFIG(ctx->session, max_ap_beacons) &&
         (NUM_CELLS(ctx) <=
-            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
+            (CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons)))) {
 #if VERBOSE_DEBUG
-        DUMP_WORKSPACE(ctx);
+        DUMP_REQUEST_CTX(ctx);
 #endif
         return SKY_SUCCESS;
     }
@@ -248,11 +246,11 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates of remove one based on rssi distribution */
     if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
-        if (NUM_BEACONS(ctx) > CONFIG(ctx->state, total_beacons))
+        if (NUM_BEACONS(ctx) > CONFIG(ctx->session, total_beacons))
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 
     return SKY_SUCCESS;
 }
@@ -284,7 +282,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
     }
 
     for (int i = 0; i < CACHE_SIZE; i++) {
-        if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
+        if (beacon_in_cacheline(ctx, b, &ctx->session->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
             best_prop.in_cache = true;
@@ -347,13 +345,13 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     uint32_t oldestc = 0;
-    uint32_t oldest = (*ctx->gettime)(NULL);
+    uint32_t oldest = (*ctx->session->sky_time)(NULL);
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
+        if (ctx->session->cacheline[i].time == 0)
             return i;
-        else if (ctx->state->cacheline[i].time < oldest) {
-            oldest = ctx->state->cacheline[i].time;
+        else if (ctx->session->cacheline[i].time < oldest) {
+            oldest = ctx->session->cacheline[i].time;
             oldestc = i;
         }
     }
@@ -362,7 +360,7 @@ int find_oldest(Sky_ctx_t *ctx)
 }
 #endif
 
-/*! \brief compare a beacon to one in workspace
+/*! \brief compare a beacon to one in request ctx
  *
  *  if beacon is duplicate, return true
  *
@@ -429,7 +427,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #if VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
@@ -481,12 +479,12 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     return ret;
 }
 
-/*! \brief test serving cell in workspace has changed from that in cache
+/*! \brief test serving cell in request ctx has changed from that in cache
  *
- *  Cells in workspace are in priority order
+ *  Cells in request ctx are in priority order
  *
- *  false if either workspace or cache has no cells
- *  false if highest priority workspace cell (which is
+ *  false if either request ctx or cache has no cells
+ *  false if highest priority request ctx cell (which is
  *  assumed to be the serving cell, regardless of whether or
  *  not the user has marked it "connected") matches cache
  *  true otherwise
@@ -508,7 +506,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 
     if (NUM_CELLS(ctx) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request ctx");
 #endif
         return false;
     }
@@ -524,7 +522,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request ctx");
 #endif
         return false;
     }
@@ -543,7 +541,7 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  */
 int get_from_cache(Sky_ctx_t *ctx)
 {
-    uint32_t now = (*ctx->gettime)(NULL);
+    uint32_t now = (*ctx->session->sky_time)(NULL);
     int idx;
 
     if (CACHE_SIZE < 1) {
@@ -563,7 +561,7 @@ int get_from_cache(Sky_ctx_t *ctx)
 
 /*! \brief check if an AP beacon is in a virtual group
  *
- *  Both the b (in workspace) and vg in cache may be virtual groups
+ *  Both the b (in request ctx) and vg in cache may be virtual groups
  *  if the two macs are similar and difference is same nibble as child, then
  *  if any of the children have matching macs, then match
  *

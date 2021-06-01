@@ -25,13 +25,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
 #include <time.h>
-#include <math.h>
-
 #include "libel.h"
-
 #include "send.h"
+#include "math.h"
 #include "config.h"
 
 typedef enum {
@@ -154,17 +151,20 @@ struct cell_scan cells4[] =
  *
  *  @returns 0 for success or negative number for error
  */
-static Sky_status_t save_state(void *p, char *file_name)
+static int save_state(void *p, char *file_name)
 {
     FILE *fio;
     uint32_t state_size;
 
-    if ((state_size = sky_sizeof_state(p)) == 0 || strlen(file_name) == 0)
+    if ((state_size = sky_sizeof_session_ctx(p)) == 0 || strlen(file_name) == 0) {
+        free(p);
         return -1; /* nothing to save */
+    }
     if ((fio = fopen(file_name, "w+")) != NULL) {
         if (fwrite(p, state_size, 1, fio) == 1) {
             printf("Saved state: size %d bytes\n", state_size);
             fclose(fio);
+            free(p);
             return 0;
         } else {
             fclose(fio);
@@ -172,6 +172,7 @@ static Sky_status_t save_state(void *p, char *file_name)
         }
     } else
         printf("Error: could not open file %s\n", file_name);
+    free(p);
     return -1;
 }
 
@@ -185,33 +186,32 @@ static void *restore_state(char *file_name)
 {
     void *pstate;
 
-    uint8_t tmp[16]; /* room enough for state header bytes */
-    uint32_t state_size = 0;
+    uint8_t tmp[SKY_SIZEOF_SESSION_HEADER];
+    uint32_t state_size;
     FILE *fio;
 
-    if (strlen(file_name) == 0)
-        return NULL; /* nothing to do */
-    /* Open file and read header */
-    if ((fio = fopen(file_name, "r")) == NULL) {
-        printf("Failed to open state file %s\n", file_name);
-        return NULL;
-    }
-    if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
-        /* query header for actual size */
-        if ((state_size = sky_sizeof_state(tmp)) > 0) {
-            rewind(fio);
-            pstate = malloc(state_size);
-            if (fread(pstate, state_size, 1, fio) == 1) {
-                fclose(fio);
-                printf("Restored state from %s (%d bytes)\n", file_name, state_size);
-                return pstate;
+    if (strlen(file_name) != 0) {
+        /* Open file and read header */
+        if ((fio = fopen(file_name, "r")) != NULL) {
+            if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
+                /* query header for actual size */
+                if ((state_size = sky_sizeof_session_ctx(tmp)) > 0) {
+                    rewind(fio);
+                    pstate = malloc(state_size);
+                    if (fread(pstate, state_size, 1, fio) == 1) {
+                        fclose(fio);
+                        printf("Restored state from %s (%d bytes)\n", file_name, state_size);
+                        return pstate;
+                    }
+                }
             }
-            free(pstate);
+            fclose(fio);
         }
     }
-    fclose(fio);
-    printf("Failed to restore state from %s\n", file_name);
-    return NULL;
+    state_size = sky_sizeof_session_ctx(tmp);
+    pstate = malloc(state_size);
+    memset(pstate, 0, state_size);
+    return pstate;
 }
 
 /* From c-faq.com/lib/rand.html
@@ -276,12 +276,11 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ?
-            "CRIT" :
-            level == SKY_LOG_LEVEL_ERROR ?
-            "ERRR" :
-            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
-                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
+        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
+        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
+        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
+                                          "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -302,11 +301,12 @@ static time_t mytime(time_t *t)
 
 /*! \brief locate function
  *
- *  Add a set of beacon scans to workspace and process the request
+ *  Add a set of beacon scans process the request
  *  return the location structure
  *
- *  @param ctx pointer to the workspace allocated
- *  @param bufsize size of the the workspace allocated
+ *  @param request ctx pointer to the buffer allocated
+ *  @param bufsize size of the the request ctx buffer allocated
+ *  @param session ctx pointer to the buffer allocated
  *  @param config pointer to the config structure
  *  @param ap pointer to array of wifi data
  *  @param cp pointer to array of cell data
@@ -318,7 +318,7 @@ static time_t mytime(time_t *t)
  *
  *  @returns true if loc was updated, otherwise false
  */
-static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_scan *ap,
+static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
     bool server_request, Sky_location_t *loc)
 {
@@ -331,7 +331,7 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
     Sky_errno_t sky_errno;
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, ul_data, data_len, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, session, ul_data, data_len, &sky_errno) != ctx) {
         printf("sky_new_request() ERROR: '%s'\n", sky_perror(sky_errno));
         return false;
     }
@@ -496,7 +496,7 @@ int main(int argc, char *argv[])
 {
     Sky_errno_t sky_errno = -1;
     Sky_status_t ret_status;
-    uint32_t *workspace;
+    uint32_t *ctx;
     uint32_t bufsize;
     void *pstate;
     Sky_location_t loc;
@@ -521,11 +521,11 @@ int main(int argc, char *argv[])
 
     /* Retrieve saved state, if any. State includes cached scans and
      * registration information. Failure to restore state will force a
-     * reregistration sequence and will limit stationarity detection,
+     * reregistration sequence and will limit stationary detection,
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    pstate = restore_state(config.statefile); /* returns a non-NULL pointer if space allocated */
+    pstate = restore_state(config.statefile); /* may return an empty buffer */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
@@ -534,56 +534,55 @@ int main(int argc, char *argv[])
     ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
         config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
         config.debounce);
-    if (pstate)
-        free(pstate);
     if (ret_status != SKY_SUCCESS) {
         printf("sky_open returned bad value, Can't continue\n");
         exit(-1);
     }
 
-    /* Allocate workspace */
-    bufsize = sky_sizeof_workspace();
-    workspace = malloc(bufsize);
+    /* Allocate request ctx */
+    bufsize = sky_sizeof_request_ctx();
+    ctx = malloc(bufsize);
 
     /* Perform several locations using simulated scan data. A real
      * device would perform locations periodically (perhaps once every
      * hour) rather than one immediately after another.
      */
-    if (locate(workspace, bufsize, &config, aps1, cells1, &gnss1, config.ul_app_data,
+    if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps3, cells3, NULL, config.ul_app_data,
+    if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(workspace, bufsize, &config, aps4, cells4, NULL, config.ul_app_data,
+    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    /* Close Skyhook library and save library state. A real 
+    /* Close Skyhook library and save library state. A real
      * device would normally do this at system shutdown time.
      * Saved state should be restored to the library the next
      * time skyhook_open() is called (see comments above
      * immediately preceding the call to sky_open()).
      */
-    free(workspace);
-    if (sky_close(&sky_errno, &pstate) != SKY_SUCCESS)
+    free(ctx);
+    free(pstate);
+    if (sky_close(ctx, &sky_errno) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
     if (pstate != NULL) {

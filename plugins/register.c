@@ -42,9 +42,9 @@
  * Each plugin handles operations for a particular beacon type
  * Each table has entry points to handle the following operations
  *  EQUAL        - Test if two beacons are equal
- *  REMOVE_WORST - Find the least desirable beacon and remove it from the workspace
- *  MATCH_CACHE  - Find the best cache line that matches the beacons in the workspace
- *  ADD_TO_CACHE - Copy workspace beacons to appropriate cache line
+ *  REMOVE_WORST - Find the least desirable beacon and remove it from the request ctx
+ *  MATCH_CACHE  - Find the best cache line that matches the beacons in the request ctx
+ *  ADD_TO_CACHE - Copy request ctx beacons to appropriate cache line
  */
 extern Sky_plugin_table_t ap_plugin_basic_table;
 extern Sky_plugin_table_t cell_plugin_basic_table;

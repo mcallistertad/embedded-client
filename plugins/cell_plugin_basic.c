@@ -103,7 +103,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
     return SKY_FAILURE;
 }
 
-/*! \brief remove least desirable cell if workspace is full
+/*! \brief remove least desirable cell if request ctx is full
  *
  *  @param ctx Skyhook request context
  *
@@ -115,15 +115,16 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     Beacon_t *b = &ctx->beacon[i];
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
-        CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons));
+        CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons));
 
-    /* no work to do if workspace not full of max cell */
-    if (NUM_CELLS(ctx) <= CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)) {
+    /* no work to do if request ctx not full of max cell */
+    if (NUM_CELLS(ctx) <=
+        CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
         return SKY_ERROR;
     }
 
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 
     /* sanity check last beacon, if we get here, it should be a cell */
     if (is_cell_type(b)) {
@@ -137,17 +138,17 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     return SKY_ERROR;
 }
 
-/*! \brief find cache entry with a match to workspace
+/*! \brief find cache entry with a match to request ctx
  *
  *   Expire any old cachelines
- *   Compare each cacheline with the workspace cell beacons:
+ *   Compare each cacheline with the request ctx cell beacons:
  *    . compare cells for match using cells and NMR
  *
  *   If any cacheline score meets threshold, accept it.
  *   While searching, keep track of best cacheline to
  *   save a new server response. An empty cacheline is
  *   best, a good match is next, oldest is the fall back.
- *   Best cacheline to 'save_to' is set in the workspace for later use.
+ *   Best cacheline to 'save_to' is set in the request ctx for later use.
  *
  *  @param ctx Skyhook request context
  *  @param idx cacheline index of best match or empty cacheline or -1
@@ -159,8 +160,8 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
     int err; /* err breaks the seach due to bad value */
-    float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
-                    In typical case this is the intersection(workspace, cache) / union(workspace, cache) */
+    float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request ctx matches cacheline
+                    In typical case this is the intersection(request ctx, cache) / union(request ctx, cache) */
     float bestratio = 0.0;
     float bestputratio = 0.0;
     int score; /* score is number of APs found in cacheline */
@@ -170,7 +171,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     Sky_cacheline_t *cl;
     bool result = false;
 
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
     DUMP_CACHE(ctx);
 
     if (!idx) {
@@ -180,10 +181,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 
     /* expire old cachelines and note first empty cacheline as best line to save to */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->state->cacheline[i];
+        cl = &ctx->session->cacheline[i];
         /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
+        if (cl->time != 0 && ((uint32_t)(*ctx->session->sky_time)(NULL)-cl->time) >
+                                 (CONFIG(ctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
             cl->time = 0;
         }
@@ -198,7 +199,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 
     /* score each cache line wrt beacon match ratio */
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->state->cacheline[i];
+        cl = &ctx->session->cacheline[i];
         threshold = ratio = score = 0;
         if (cl->time == 0 || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -207,10 +208,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         } else {
             /* count number of matching cells */
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on cell beacons", i);
-            threshold = CONFIG(ctx->state, cache_match_all_threshold);
+            threshold = CONFIG(ctx->session, cache_match_all_threshold);
             score = 0.0;
             for (int j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-                if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
+                if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->session->cacheline[i], NULL)) {
 #if VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
@@ -283,7 +284,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
  *   equal       - test two beacons for equivalence
  *   remove_worst - find least desirable beacon and remove it
  *   cache_match  - determine if cache has a good match
- *   add_to_cache - Save workspace in cache
+ *   add_to_cache - Save request ctx in cache
  */
 
 Sky_plugin_table_t cell_plugin_basic_table = {
@@ -292,7 +293,7 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .name = __FILE__,
     /* Entry points */
     .equal = equal, /*Compare two beacons for equality */
-    .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
-    .cache_match = match, /* Find best match between workspace and cache lines */
-    .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
+    .remove_worst = remove_worst, /* Remove least desirable beacon from request ctx */
+    .cache_match = match, /* Find best match between request ctx and cache lines */
+    .add_to_cache = NULL /* Copy request ctx beacons to a cacheline */
 };

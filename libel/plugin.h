@@ -38,10 +38,10 @@ typedef struct plugin_table {
     uint32_t magic; /* Mark table so it can be validated */
     char *name;
     /* Entry points */
-    Sky_plugin_equal_t equal; /*Compare two beacons for equality */
-    Sky_plugin_remove_worst_t remove_worst; /* Remove least desirable beacon from workspace */
-    Sky_plugin_cache_match_t cache_match; /* Find best match between workspace and cache lines */
-    Sky_plugin_add_to_cache_t add_to_cache; /* Copy workspace beacons to a cacheline */
+    Sky_plugin_equal_t equal; /* Compare two beacons for equality */
+    Sky_plugin_remove_worst_t remove_worst; /* Remove least desirable beacon from request ctx */
+    Sky_plugin_cache_match_t cache_match; /* Find best match between request ctx and cache lines */
+    Sky_plugin_add_to_cache_t add_to_cache; /* Copy request ctx beacons to a cacheline */
 } Sky_plugin_table_t;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **root);

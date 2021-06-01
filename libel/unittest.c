@@ -110,28 +110,38 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
 Sky_ctx_t *_test_sky_ctx()
 {
     Sky_ctx_t *ctx;
+    void *session;
     Sky_errno_t _ctx_errno;
     uint8_t _aes_key[AES_KEYLEN] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
         0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
     uint32_t bufsize;
 
+    bufsize = sky_sizeof_session_ctx(NULL);
+    if (bufsize == 0 || bufsize > 4096) {
+        fprintf(stderr, "sky_sizeof_session_ctx returned bad value, Can't continue\n");
+        exit(-1);
+    }
+
+    session = malloc(bufsize);
+    memset(session, '\0', bufsize);
+
     if (sky_open(&_ctx_errno, (uint8_t *)TEST_DEVICE_ID, 6, TEST_PARTNER_ID, _aes_key, TEST_SKU,
-            200, NULL, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL, false) == SKY_ERROR) {
+            200, session, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, &time, false) == SKY_ERROR) {
         fprintf(stderr, "Failure setting up mock context, aborting!\n");
         exit(-1);
     }
 
-    bufsize = sky_sizeof_workspace();
+    bufsize = sky_sizeof_request_ctx();
     if (bufsize == 0 || bufsize > 4096) {
-        fprintf(stderr, "sky_sizeof_workspace returned bad value, Can't continue\n");
+        fprintf(stderr, "sky_sizeof_request_ctx returned bad value, Can't continue\n");
         exit(-1);
     }
 
     ctx = malloc(bufsize);
-    //memset(ctx, 0, bufsize);
 
     Sky_errno_t sky_errno = -1;
-    if (sky_new_request(ctx, bufsize, (uint8_t *)"uplink app data", 16, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, session, (uint8_t *)"uplink app data", 16, &sky_errno) !=
+        ctx) {
         fprintf(stderr, "sky_new_request() returned bad value\n");
         fprintf(stderr, "sky_errno contains '%s'\n", sky_perror(sky_errno));
         exit(-1);

@@ -179,7 +179,7 @@ typedef enum sky_tbr_state {
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
-#define CONFIG(state, param) (state->config.param)
+#define CONFIG(session, param) (session->config.param)
 
 typedef struct sky_config_pad {
     uint32_t last_config_time; /* time when the last new config was received */
@@ -196,8 +196,15 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-typedef struct sky_state {
+typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
+    uint32_t sky_open_flag; /* keep track of open and closes */
+    Sky_randfn_t sky_rand_bytes; /* User rand_bytes fn */
+    Sky_loggerfn_t sky_logf; /* User logging fn */
+    Sky_log_level_t sky_min_level; /* User log level */
+    Sky_timefn_t sky_time; /* User time fn */
+    bool sky_debounce; /* send cached or request beacons */
+    void *sky_plugins; /* root of registered plugin list */
     uint32_t sky_id_len; /* device ID len */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
     uint32_t sky_token_id; /* TBR token ID */
@@ -216,15 +223,10 @@ typedef struct sky_state {
 #endif
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
-} Sky_state_t;
+} Sky_session_t;
 
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    Sky_loggerfn_t logf;
-    Sky_randfn_t rand_bytes;
-    Sky_log_level_t min_level;
-    Sky_timefn_t gettime;
-    bool debounce;
     uint16_t len; /* number of beacons in list (0 == none) */
     uint16_t ap_len; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
@@ -232,8 +234,7 @@ typedef struct sky_ctx {
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
-    Sky_state_t *state;
-    void *plugin;
+    Sky_session_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */

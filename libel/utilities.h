@@ -1,5 +1,5 @@
 /*! \file libel/utilities.h
- *  \brief Skyhook Embedded Library workspace structures
+ *  \brief Skyhook Embedded Library request context structures
  *
  * Copyright (c) 2020 Skyhook, Inc.
  *
@@ -26,12 +26,12 @@
 #define SKY_UTILITIES_H
 
 #if SKY_DEBUG
-#define DUMP_WORKSPACE(...) dump_workspace(__VA_ARGS__, __FILE__, __FUNCTION__)
+#define DUMP_REQUEST_CTX(...) dump_request_ctx(__VA_ARGS__, __FILE__, __FUNCTION__)
 #define DUMP_CACHE(...) dump_cache(__VA_ARGS__, __FILE__, __FUNCTION__)
 #define LOGFMT(...) logfmt(__FILE__, __FUNCTION__, __VA_ARGS__)
 #define LOG_BUFFER(c, l, b, s) log_buffer(__FILE__, __FUNCTION__, c, l, b, s);
 #else
-#define DUMP_WORKSPACE(...)                                                                        \
+#define DUMP_REQUEST_CTX(...)                                                                      \
     do {                                                                                           \
     } while (0)
 #define DUMP_CACHE(...)                                                                            \
@@ -44,8 +44,8 @@
 #endif
 
 Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
-int validate_workspace(Sky_ctx_t *ctx);
-int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf);
+int validate_request_ctx(Sky_ctx_t *ctx);
+int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);
 bool is_tbr_enabled(Sky_ctx_t *ctx);
 #if SKY_DEBUG
@@ -58,11 +58,11 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
 void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const char *func);
 void dump_ap(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const char *func);
-void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func);
+void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func);
 void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func);
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize, int buf_offset);
-void config_defaults(Sky_state_t *s);
+void config_defaults(Sky_session_t *s);
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
 int32_t get_num_cells(Sky_ctx_t *ctx);
 int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t);
