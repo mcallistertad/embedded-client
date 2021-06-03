@@ -32,9 +32,9 @@
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
-// #ifndef VERBOSE_DEBUG
-#define VERBOSE_DEBUG true
-// #endif
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 /*! \brief add a plugin table to the list of plugins
  *
@@ -108,9 +108,7 @@ Sky_status_t sky_plugin_equal(
             ret = p->equal(ctx, a, b, prop);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" :
-            (ret == SKY_FAILURE) ? "Failure" :
-                                   "Error");
+            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -143,9 +141,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
             ret = (*p->remove_worst)(ctx);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" :
-            (ret == SKY_FAILURE) ? "Failure" :
-                                   "Error");
+            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -179,9 +175,7 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
             ret = (*p->cache_match)(ctx, idx);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" :
-            (ret == SKY_FAILURE) ? "Failure" :
-                                   "Error");
+            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -215,9 +209,7 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
             ret = (*p->add_to_cache)(ctx, loc);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" :
-            (ret == SKY_FAILURE) ? "Failure" :
-                                   "Error");
+            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);

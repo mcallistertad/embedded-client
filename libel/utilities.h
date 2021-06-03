@@ -45,7 +45,7 @@
 
 Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
 int validate_request_ctx(Sky_ctx_t *ctx);
-int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf);
+int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf);
 int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx);
 bool is_tbr_enabled(Sky_ctx_t *ctx);
 #if SKY_DEBUG

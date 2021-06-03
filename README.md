@@ -18,8 +18,8 @@
          * [General Sequence of Operations](#general-sequence-of-operations)
          * [API Reference](#api-reference)
             * [sky_open() - Initialize Skyhook library and verify access to resources](#sky_open---initialize-skyhook-library-and-verify-access-to-resources)
-            * [sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.](#sky_sizeof_state---get-the-size-of-the-non-volatile-memory-required-to-save-and-restore-the-library-state)
-            * [sky_sizeof_workspace() - Determines the size of the work space required to process the request](#sky_sizeof_workspace---determines-the-size-of-the-work-space-required-to-process-the-request)
+            * [sky_sizeof_session_ctx() - Get the size of the non-volatile memory required to save and restore the library state.](#sky_sizeof_session_ctx---get-the-size-of-the-non-volatile-memory-required-to-save-and-restore-the-library-state)
+            * [sky_sizeof_request_ctx() - Determines the size of the work space required to process the request](#sky_sizeof_request_ctx---determines-the-size-of-the-work-space-required-to-process-the-request)
             * [sky_new_request() - Initializes work space for a new request](#sky_new_request---initializes-work-space-for-a-new-request)
             * [sky_add_ap_beacon() - Add a Wi-Fi beacon to request context](#sky_add_ap_beacon---add-a-wi-fi-beacon-to-request-context)
             * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
@@ -54,12 +54,25 @@ The Skyhook Embedded Client is a small library written in C. It is intended to b
 included in embedded targets (e.g., IoT devices) to allow those devices to use
 the Skyhook Precision Location service in order to obtain an estimate of the
 geolocation of the device on which it runs. It is known as the 'embedded library',
-sometimes referenced as libel. This repo also includes a sample client application
+sometimes referenced as LibEL. This repo also includes a sample client application
 which illustrates how the library can be used by your application (see below).
 
 Instructions for cloning and building the library are below.
 
 ## Change Log
+
+### Release 4.0.0
+
+* API simplifications.
+ * LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
+ * LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer
+ and session context buffer.
+ * User may call new API call, sky_get_cache_hit(), to determine whether the current request has a match in the cache.
+ * User may tune some configuration parameters at runtime.
+* Code size optimizations.
+ * Build time options allow inclusion/exclusion of non-essential consistency checks.
+ * Common code sequences have been factored out.
+ * Some of the largest functions have been re-written.
 
 ### Release 3.0.3
 
@@ -76,7 +89,7 @@ Instructions for cloning and building the library are below.
 * Added 'debounce' parameter to sky_open() which allows the option, in the case of a cache match, to report the cached
   information in a subsequent server request.
 * Added plugin modules infrastructure, allowing basic or premium algorithms for filtering scans and interpreting server
-  responses, and ability to expand Libel's capabilities in the future.
+  responses, and ability to expand LibEL's capabilities in the future.
 * Cellular beacons now allow Timing Advance values to be added.
 * Updated the sample_client application.
 * Renamed .submodules to submodules.
@@ -248,16 +261,15 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     uint8_t *device_id,
     uint32_t id_len,
     uint32_t partner_id,
-    uint8_t aes_key[16],
+    uint8_t aes_key[AES_KEYLEN],
     char *sku,
     uint32_t cc,
-    void *state_buf,
+    void *session_buf,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
     Sky_timefn_t gettime,
-    bool debounce
-)
+    bool debounce)
 
 /* Parameters
  * sky_errno    if sky_open() returns failure, sky_errno is set to the error code
@@ -267,7 +279,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * aes_key      Skyhook assigned encryption key
  * sku          Skyhook assigned model number / product identifier
  * cc           Country Code (optional) country in which the device was registered. 0 if undefined
- * state_buf    pointer to a state buffer (provided by sky_close()) or NULL
+ * session_buf  pointer to a session buffer, either empty, or a restored buffer from previous session
  * min_level    logging function is called for msg with equal or greater level
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
@@ -277,7 +289,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
  ```
-Called once to set up any resources needed by the library (e.g. cache space). Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (`SKY_ERROR_BAD_STATE`). If sku is a non-zero length string, libel will attempt to use TBR authentication otherwise a simple key based authentication is used. cc is the Mobile Country Code of the country in which the device was registered to operate. If logf() is not NULL, the log messages will be generated if they were turned on during compilation (`SKY_DEBUG`). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to `SKY_LOG_LEVEL_ERROR`, only log messages with level `SKY_LOG_LEVEL_CRITICAL` and `SKY_LOG_LEVEL_ERROR` will be generated. If gettime is not NULL, this function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time) , otherwise the library calls time(). When debounce is false, the generated request always reports the workspace beacons to the server. When true, and a previously cached location is a match, the cached beacons are reported to the server.
+Called once to set up any resources needed by the library (e.g. cache space). Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno. If state_buf is not NULL and points to a valid state buffer, it is restored and populates the cache. If sky_state is not NULL and points to a invalid state buffer it is considered an error (`SKY_ERROR_BAD_SESSION_CTX`). If sku is a non-zero length string, LibEL will attempt to use TBR authentication otherwise a simple key based authentication is used. cc is the Mobile Country Code of the country in which the device was registered to operate. If logf() is not NULL, the log messages will be generated if they were turned on during compilation (`SKY_DEBUG`). If rand_bytes is not NULL, this function pointer is used to generate random sequences of bytes, otherwise the library calls rand(). If min_level can be set to block less severe log messages, e.g. if min_level is set to `SKY_LOG_LEVEL_ERROR`, only log messages with level `SKY_LOG_LEVEL_CRITICAL` and `SKY_LOG_LEVEL_ERROR` will be generated. gettime is required. This function pointer is used to request the current time (Unix time aka POSIX time aka UNIX **Epoch** time). If the system may use LibEL before time has been synchronized, gettime must return 0 to indicate time is not known. When debounce is false, the generated request always reports the beacons from the request context to the server. When true, and a previously cached location is a match, the cached beacons are reported to the server. While a device is stationary, and using the cached location, any server requests will resolve to a stable location.
 
 `sky_open()` may report the following error conditions in sky_errno:
 
@@ -289,23 +301,23 @@ Called once to set up any resources needed by the library (e.g. cache space). Re
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 
 
-### sky_sizeof_state() - Get the size of the non-volatile memory required to save and restore the library state.
+### sky_sizeof_session_ctx() - Get the size of the non-volatile memory required to save and restore the library state.
 
 ```c
-int32_t sky_sizeof_state(void *sky_state)
+int32_t sky_sizeof_session_ctx(void *session)
 
 /* Parameters
- * sky_state        Pointer to state buffer
+ * session          Pointer to session buffer, or NULL to request the size of a new empty session buffer.
 
- * Returns          Size of state buffer or 0 to indicate that the buffer was invalid
+ * Returns          Size of session buffer or 0 to indicate that the buffer was invalid
  */
  ```
-Determines the size of the non-volatile memory that will be required to save and restore the library state. This will preserve any cached scan data with associated location information. It may be called at any time to determine either the space used by a state buffer that has been copied to non-volatile memory, or the size of the buffer returned by sky_close().
+Can be used to determine the size of a session buffer that is being restored from a pervious LibEL session, or the size of a new empty buffer that the User is allocating for an initial session. When LibEL is opened, a session buffer must be provided, in RAM, either initialized with the contents from a previous, saved, buffer, or an empty buffer. The session buffer contains the cache and other library state. Copying the session buffer to non-volatile memory after closing the library and copying from non-volatile memory to RAM before opening the library allows the state of the library to be preserved during periods where RAM contents may be lost e.g. low power modes.
 
-### sky_sizeof_workspace() - Determines the size of the work space required to process the request
+### sky_sizeof_request_ctx() - Determines the size of the work space required to process the request
 
 ```c
-int32_t sky_sizeof_workspace(void)
+int32_t sky_sizeof_request_ctx(void)
 
 /* Returns          Size of workspace buffer required
  */
@@ -315,16 +327,18 @@ Reports the number of bytes of work space buffer required to handle encoding the
 ### sky_new_request() - Initializes work space for a new request
 
 ```c
-Sky_ctx_t* sky_new_request(void *workspace_buf,
+Sky_ctx_t* sky_new_request(void *ctx,
     uint32_t bufsize,
-    uint8_t *ul_app_data;
-    uint32_t ul_app_data_len;
-    Sky_errno_t *sky_errno;
+    void *session,
+    uint8_t *ul_app_data,
+    uint32_t ul_app_data_len,
+    Sky_errno_t *sky_errno
 )
 
 /* Parameters
- * workspace_buf        Pointer to workspace provided by user
- * bufsize              Workspace buffer size (from sky_sizeof_workspace)
+ * ctx                  Pointer to request context buffer provided by user
+ * bufsize              Buffer size (from sky_sizeof_request_ctx)
+ * session              Pointer to session context buffer provided to sky_open
  * ul_app_data          Pointer to uplink data buffer
  * ul_app_data_len      Length of uplink data buffer
  * sky_errno            Pointer to error code
@@ -332,7 +346,7 @@ Sky_ctx_t* sky_new_request(void *workspace_buf,
  * Returns              Pointer to the initialized workspace context buffer or NULL
  */
 ```
-Initializes work space for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers, sets downlink app data buffer to empty and saves uplink app data.
+Initializes context buffer for a new request. Returns request context (pointer to the work space) or NULL in case of failure. In case of failure sky_errno is set to indicate the error. User can decode the error using sky_perror(). Initializes request context with Magic numbers, sets downlink app data buffer to empty and saves uplink app data.
 
 sky_new_request() may report the following error conditions in sky_errno:
 
@@ -341,7 +355,7 @@ sky_new_request() may report the following error conditions in sky_errno:
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | LibEL temporarily blocked this service after repeated fails to authenticate (TBR only)
 
 ### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
@@ -421,7 +435,7 @@ sky_add_cell_lte_beacon() may report the following error conditions in sky_errno
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context
@@ -456,7 +470,7 @@ sky_add_cell_lte_neighbor_beacon() may report the following error conditions in 
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context
@@ -498,7 +512,7 @@ sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context
@@ -542,7 +556,7 @@ sky_add_cell_umts_beacon() may report the following error conditions in sky_errn
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context
@@ -576,7 +590,7 @@ sky_add_cell_umts_neighbor_beacon() may report the following error conditions in
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context
@@ -614,7 +628,7 @@ sky_add_cell_cdma_beacon() may report the following error conditions in sky_errn
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context
@@ -658,7 +672,7 @@ sky_add_cell_nb_iot_beacon() may report the following error conditions in sky_er
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context
@@ -692,7 +706,7 @@ sky_add_cell_nb_iot_neighbor_beacon() may report the following error conditions 
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_nr_beacon() - Adds a NR cell beacon to the request context
@@ -737,7 +751,7 @@ sky_add_cell_nr_beacon() may report the following error conditions in sky_errno:
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_cell_nr_neighbor_beacon() - Adds a neighbor NR cell beacon to the request context
@@ -771,7 +785,7 @@ sky_add_cell_nr_neighbor_beacon() may report the following error conditions in s
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
 
 ### sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context
@@ -814,7 +828,7 @@ sky_add_gnss() may report the following error conditions in sky_errno:
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 
 ### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
 
@@ -842,7 +856,7 @@ sky_sizeof_request_buf() may report the following error conditions in sky_errno:
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_ENCODE_ERROR`                        | Could not encode the request
 
 ### sky_finalize_request() - generate a Skyhook request from the request context
@@ -877,9 +891,9 @@ sky_finalize_request() may report the following error conditions in sky_errno:
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace context structure is corrupt
 | `SKY_ERROR_ENCODE_ERROR`                        | Could not encode the request
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | LibEL temporarily blocked this service after repeated fails to authenticate (TBR only)
 | `SKY_ERROR_NO_BEACONS`                          | Beacons must be added before a request can be finalized
 
 ### sky_decode_response() - decodes a Skyhook server response
@@ -913,7 +927,7 @@ sky_decode_response() may report the following error conditions in sky_errno:
 | ----------------------------------------------- | --------------------------------------------------------------
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_DECODE_ERROR`                        | Libel was unable to decode the response message
+| `SKY_ERROR_DECODE_ERROR`                        | LibEL was unable to decode the response message
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
 | `SKY_ERROR_LOCATION_UNKNOWN`                    | Server failed to determine a location
 | `SKY_ERROR_AUTH`                                | Server failed to authenticate the request
@@ -962,21 +976,43 @@ char* sky_pserver_status(sky_server_status_t status)
 ```
 Return a static string which describes the meaning of the value passed in status, or "Unknown server status" if status has an unexpected value. status is available in the location_status field of the Sky_location_t structure when sky_decode_response() returns `SKY_SUCCESS`.
 
+### sky_psource() - returns a string which describes the source of the location
+
+```c
+char *sky_psource(struct sky_location *loc)
+
+/* Parameter
+ * loc              location for which to provide descriptive string for the source
+
+ * Returns          pointer to string or NULL if the status is invalid
+ */
+```
+Return a static string which describes the source of the location passed in loc. Source is available in the location_source field of the Sky_location_t structure when sky_decode_response() returns `SKY_SUCCESS`. 
+
+The string descriptions are:
+| Location Source                | Description
+| -------------------------------| ------------
+| `SKY_LOCATION_SOURCE_HYBRID`   | "Hybrid"
+| `SKY_LOCATION_SOURCE_CELL`     | "Cell"
+| `SKY_LOCATION_SOURCE_WIFI`     | "Wi-Fi"
+| `SKY_LOCATION_SOURCE_GNSS`     | "GNSS"
+| `SKY_LOCATION_SOURCE_UNKNOWN`  | "????"
+
 ### sky_close() - frees any resources in use by the Skyhook library
 
 ```c
-Sky_status_t sky_close(Sky_errno_t *sky_errno,
-    void **sky_state
+Sky_status_t sky_close(Sky_ctx_t *ctx,
+    Sky_errno_t *sky_errno
 )
 
 /* Parameters
+ * ctx              Skyhook request context
  * sky_errno        sky_errno is set to the error code
- * sky_state        pointer to where the state buffer reference should be stored
 
  * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
 ```
-Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno appropriately. If sky_state was provided (not NULL), it will be set to point to sky_sizeof_state() bytes of state buffer, which should be saved to non-volatile memory,
+Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno appropriately. After a successful close, the session context buffer may be copied to non-volatile storage. The size of the buffer may be deterined by a call to sky_sizeof_session_ctx().
 
 sky_close() may report the following error conditions in sky_errno:
 
@@ -1003,8 +1039,8 @@ sky_close() may report the following error conditions in sky_errno:
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_ALREADY_OPEN`                        | sky_open() called more than once with different parameters. Call sky_close()
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
-| `SKY_ERROR_BAD_WORKSPACE`                       | The workspace ctx structure is corrupt
-| `SKY_ERROR_BAD_STATE`                           | The cache state buffer is corrupt
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The workspace ctx structure is corrupt
+| `SKY_ERROR_BAD_SESSION_CTX`                     | The cache state buffer is corrupt
 | `SKY_ERROR_DECODE_ERROR`                        | Could not decode the the response buffer
 | `SKY_ERROR_ENCODE_ERROR`                        | Could not encode the request
 | `SKY_ERROR_RESOURCE_UNAVAILABLE`                | Could not acquire the necessary resourses
@@ -1013,7 +1049,7 @@ sky_close() may report the following error conditions in sky_errno:
 | `SKY_ERROR_SERVER_ERROR`                        | Server sent a response which indicated an error processing the request
 | `SKY_ERROR_NO_PLUGIN`                           | At least one plugin must be registered
 | `SKY_ERROR_INTERNAL`                            | An unexpected error occured
-| `SKY_ERROR_SERVICE_DENIED`                      | Libel temporarily blocked this service after repeated fails to authenticate (TBR only)
+| `SKY_ERROR_SERVICE_DENIED`                      | LibEL temporarily blocked this service after repeated fails to authenticate (TBR only)
 | `SKY_ERROR_AUTH`                                | server reported authentication error
 | `SKY_AUTH_RETRY`                                | Server indicated that authentication was required and user must retry (TBR only)
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)

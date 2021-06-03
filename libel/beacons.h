@@ -114,7 +114,8 @@ struct ap {
     Sky_beacon_property_t vg_prop[MAX_VAP_PER_AP]; /* Virtual AP properties */
 };
 
-// http://wiki.opencellid.org/wiki/API
+/*! \brief http://wiki.opencellid.org/wiki/API
+ */
 struct cell {
     struct header h;
     uint16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). SKY_UNKNOWN_ID1 if unknown.
@@ -129,7 +130,8 @@ struct cell {
     int32_t ta; // SKY_UNKNOWN_TA if unknown.
 };
 
-// blue tooth
+/*! \brief blue tooth
+ */
 struct ble {
     struct header h;
     uint16_t major;
@@ -138,6 +140,8 @@ struct ble {
     uint8_t uuid[16];
 };
 
+/*! \brief universal beacon structure
+ */
 typedef union beacon {
     struct header h;
     struct ap ap;
@@ -145,6 +149,8 @@ typedef union beacon {
     struct cell cell;
 } Beacon_t;
 
+/*! \brief gps/gnss
+ */
 typedef struct gps {
     double lat;
     double lon;
@@ -157,13 +163,8 @@ typedef struct gps {
     uint32_t age;
 } Gps_t;
 
-typedef struct sky_header {
-    uint32_t magic; /* SKY_MAGIC */
-    uint32_t size; /* total number of bytes in structure */
-    uint32_t time; /* timestamp when structure was allocated */
-    uint32_t crc32; /* crc32 over header */
-} Sky_header_t;
-
+/*! \brief each cacheline holds a copy of a scan and the server response
+ */
 typedef struct sky_cacheline {
     uint16_t len; /* number of beacons */
     uint16_t ap_len; /* number of AP beacons in list (0 == none) */
@@ -172,6 +173,8 @@ typedef struct sky_cacheline {
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
+/*! \brief TBR states, 1) Disabled (not in use), 2) Unregistered, 3) Registered
+ */
 typedef enum sky_tbr_state {
     STATE_TBR_DISABLED, /* not configured for TBR */
     STATE_TBR_UNREGISTERED, /* need to register */
@@ -181,6 +184,8 @@ typedef enum sky_tbr_state {
 /* Access the cache config parameters */
 #define CONFIG(session, param) (session->config.param)
 
+/*! \brief Server tunable config parameters
+ */
 typedef struct sky_config_pad {
     uint32_t last_config_time; /* time when the last new config was received */
     uint32_t total_beacons;
@@ -196,6 +201,8 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
+/*! \brief Session Context - holds parameters defined when Libel is opened and cache
+ */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint32_t sky_open_flag; /* keep track of open and closes */
@@ -225,6 +232,8 @@ typedef struct sky_session {
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_session_t;
 
+/*! \brief Request Context - workspace for new request
+ */
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint16_t len; /* number of beacons in list (0 == none) */

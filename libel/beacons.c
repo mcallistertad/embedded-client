@@ -36,8 +36,6 @@
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
-#define PUT_IN_CACHE true
-#define GET_FROM_CACHE false
 
 static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff);
 
@@ -281,7 +279,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
         return false;
     }
 
-    for (int i = 0; i < CACHE_SIZE; i++) {
+    for (int i = 0; i < ctx->session->len; i++) {
         if (beacon_in_cacheline(ctx, b, &ctx->session->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
@@ -344,10 +342,10 @@ bool beacon_in_cacheline(
 int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
-    uint32_t oldestc = 0;
+    int oldestc = 0;
     uint32_t oldest = (*ctx->session->sky_time)(NULL);
 
-    for (i = 0; i < CACHE_SIZE; i++) {
+    for (i = 0; i < ctx->session->len; i++) {
         if (ctx->session->cacheline[i].time == 0)
             return i;
         else if (ctx->session->cacheline[i].time < oldest) {
@@ -382,9 +380,9 @@ int find_oldest(Sky_ctx_t *ctx)
  */
 static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
 {
-    Sky_status_t equality = SKY_ERROR;
+    Sky_status_t equality;
     bool ret = false;
-    int better = 1; // beacon B is better (-ve), or A is better (+ve)
+    int better = 1; /* default a is better */
 
     if (!ctx || !new || !wb) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -398,7 +396,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
         if (new->h.connected != wb->h.connected)
             /* connected is best */
             better = new->h.connected ? 1 : -1;
-        if (is_cell_nmr(new) != is_cell_nmr(wb))
+        else if (is_cell_nmr(new) != is_cell_nmr(wb))
             /* fully qualified is next */
             better = (!is_cell_nmr(new) ? 1 : -1);
         else
@@ -427,11 +425,11 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #if VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
 #if VERBOSE_DEBUG
@@ -447,7 +445,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
 #endif
             } else if (new->h.age != wb->h.age) {
                 /* youngest is best */
-                better = -(new->h.age - wb->h.age);
+                better = -(int)(new->h.age - wb->h.age);
 #if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
                     better < 0 ? "B is better" : "A is better");
@@ -544,7 +542,7 @@ int get_from_cache(Sky_ctx_t *ctx)
     uint32_t now = (*ctx->session->sky_time)(NULL);
     int idx;
 
-    if (CACHE_SIZE < 1) {
+    if (ctx->session->len < 1) {
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
@@ -555,8 +553,8 @@ int get_from_cache(Sky_ctx_t *ctx)
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
-    return (ctx->get_from =
-                sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+    ctx->get_from = (sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx : -1;
+    return ctx->get_from;
 }
 
 /*! \brief check if an AP beacon is in a virtual group

@@ -88,18 +88,18 @@ int validate_request_ctx(Sky_ctx_t *ctx)
     return true;
 }
 
-/*! \brief validate the cache buffer - Cant use LOGFMT here
+/*! \brief validate the session context buffer - Cant use LOGFMT here
  *
- *  @param c pointer to cache buffer
+ *  @param c pointer to csession context buffer
  *
- *  @return true if cache is valid, else false
+ *  @return true if session context is valid, else false
  */
-int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf)
+int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
 {
     if (s == NULL) {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: NULL pointer");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: NULL pointer");
 #endif
         return false;
     }
@@ -107,29 +107,30 @@ int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf)
     if (s->header.magic != SKY_MAGIC) {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: bad magic in header");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: bad magic in header");
 #endif
         return false;
     }
     if (s->header.crc32 ==
         sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
 #if CACHE_SIZE
-        if (s->len != CACHE_SIZE) {
+        if (s->header.size != sizeof(Sky_session_t)) {
 #if SKY_DEBUG
             if (logf != NULL)
-                (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
+                (*logf)(SKY_LOG_LEVEL_ERROR,
+                    "Session ctx validation failed: restored session does not match CACHE_SIZE");
 #endif
             return false;
         }
 
-        for (int i = 0; i < CACHE_SIZE; i++) {
+        for (int i = 0; i < s->len; i++) {
             int j;
 
             if (s->cacheline[i].len > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
                     (*logf)(SKY_LOG_LEVEL_ERROR,
-                        "Cache validation failed: too many beacons for TOTAL_BEACONS");
+                        "Session ctx validation failed: too many beacons for TOTAL_BEACONS");
 #endif
                 return false;
             }
@@ -138,14 +139,16 @@ int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf)
                 if (s->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
 #if SKY_DEBUG
                     if (logf != NULL)
-                        (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon info");
+                        (*logf)(
+                            SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: Bad beacon info");
 #endif
                     return false;
                 }
                 if (s->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
 #if SKY_DEBUG
                     if (logf != NULL)
-                        (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon type");
+                        (*logf)(
+                            SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: Bad beacon type");
 #endif
                     return false;
                 }
@@ -155,7 +158,7 @@ int validate_cache(Sky_session_t *s, Sky_loggerfn_t logf)
     } else {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: crc mismatch!");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: crc mismatch!");
 #else
         (void)logf;
 #endif
@@ -538,7 +541,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
     int i, j;
     Sky_cacheline_t *cl;
 
-    for (i = 0; i < CACHE_SIZE; i++) {
+    for (i = 0; i < ctx->session->len; i++) {
         cl = &ctx->session->cacheline[i];
         if (cl->len == 0 || cl->time == 0) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,

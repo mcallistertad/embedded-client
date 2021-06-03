@@ -153,6 +153,16 @@ typedef int (*Sky_randfn_t)(uint8_t *rand_buf, uint32_t bufsize);
  */
 typedef time_t (*Sky_timefn_t)(time_t *t);
 
+/*! \brief session context header
+ */
+typedef struct sky_header {
+    uint32_t magic; /* SKY_MAGIC */
+    uint32_t size; /* total number of bytes in structure */
+    uint32_t time; /* timestamp when structure was allocated */
+    uint32_t crc32; /* crc32 over header */
+} Sky_header_t;
+#define SKY_SIZEOF_SESSION_HEADER (sizeof(Sky_header_t))
+
 #ifndef SKY_LIBEL
 #include "aes.h"
 #include "crc32.h"
@@ -165,9 +175,6 @@ typedef void Sky_ctx_t;
 #include "utilities.h"
 #include "plugin.h"
 #endif
-
-/* Header is made up of 4 uint32_t values */
-#define SKY_SIZEOF_SESSION_HEADER (sizeof(uint32_t) * 4)
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
     uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *session_buf,

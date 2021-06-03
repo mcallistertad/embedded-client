@@ -95,7 +95,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         }
     session = (Sky_session_t *)session_buf;
 
-    if (session->header.magic != 0 && !validate_cache(session, logf)) {
+    if (session->header.magic != 0 && !validate_session_ctx(session, logf)) {
         if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
             (*logf)(SKY_LOG_LEVEL_WARNING, "Invalid session buffer was ignored!");
         session->header.magic = 0;
@@ -165,6 +165,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     session->sky_rand_bytes = rand_bytes;
     session->sky_time = gettime;
     session->sky_debounce = debounce;
+    session->sky_plugins = NULL; /* re-register plugins */
 
     if (sky_register_plugins((Sky_plugin_table_t **)&session->sky_plugins) != SKY_SUCCESS)
         return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
@@ -200,7 +201,7 @@ int32_t sky_sizeof_session_ctx(void *session)
                                (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return 0;
     }
-    return s->header.size;
+    return (s->header.size == sizeof(Sky_session_t)) ? s->header.size : 0;
 }
 
 /*! \brief Determines the size of the request ctx required to build request
@@ -293,9 +294,10 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->session = s;
-    ctx->auth_state = !is_tbr_enabled(ctx)                 ? STATE_TBR_DISABLED :
-                      s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                             STATE_TBR_REGISTERED;
+    ctx->auth_state =
+        !is_tbr_enabled(ctx) ?
+            STATE_TBR_DISABLED :
+            s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -309,8 +311,14 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
     }
 
 #if CACHE_SIZE
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines present", s->len);
-    for (i = 0; i < CACHE_SIZE; i++) {
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LibEL built for %d cachelines. Using %d", CACHE_SIZE, s->len);
+    /* adjusting any existing extra cache for current config */
+    if (s->len < CACHE_SIZE) {
+        for (i = s->len; i < CACHE_SIZE; i++) {
+            s->cacheline[i].time = 0;
+        }
+    }
+    for (i = 0; i < s->len; i++) {
         if (s->cacheline[i].ap_len > CONFIG(s, max_ap_beacons) ||
             s->cacheline[i].len > CONFIG(s, total_beacons)) {
             s->cacheline[i].time = 0;
@@ -971,8 +979,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                     CONFIG_REQUEST_INTERVAL);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
         rq_config && ctx->session->config.last_config_time != 0 ? "Timeout" :
-        rq_config                                               ? "Forced" :
-                                                                  "No");
+                                                                  rq_config ? "Forced" : "No");
 
     if (rq_config)
         ctx->session->config.last_config_time = 0; /* request on next serialize */
@@ -1064,7 +1071,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->session->cacheline[ctx->get_from];

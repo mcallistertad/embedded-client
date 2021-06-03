@@ -208,9 +208,10 @@ static void *restore_state(char *file_name)
             fclose(fio);
         }
     }
-    state_size = sky_sizeof_session_ctx(tmp);
+    state_size = sky_sizeof_session_ctx(NULL); /* size of new buffere */
     pstate = malloc(state_size);
     memset(pstate, 0, state_size);
+    printf("Allocating new state buffer %d bytes\n", state_size);
     return pstate;
 }
 
@@ -276,11 +277,12 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
-        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
-        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
-        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
-                                          "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ?
+            "CRIT" :
+            level == SKY_LOG_LEVEL_ERROR ?
+            "ERRR" :
+            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
+                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -535,7 +537,7 @@ int main(int argc, char *argv[])
         config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
         config.debounce);
     if (ret_status != SKY_SUCCESS) {
-        printf("sky_open returned bad value, Can't continue\n");
+        printf("sky_open returned error (%s), Can't continue\n", sky_perror(sky_errno));
         exit(-1);
     }
 
@@ -580,13 +582,12 @@ int main(int argc, char *argv[])
      * time skyhook_open() is called (see comments above
      * immediately preceding the call to sky_open()).
      */
-    free(ctx);
-    free(pstate);
     if (sky_close(ctx, &sky_errno) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
     if (pstate != NULL) {
         save_state(pstate, config.statefile);
+        free(ctx);
     }
 
     printf("Done.\n\n");
