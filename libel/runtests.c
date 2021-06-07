@@ -15,6 +15,7 @@ static Test_rs runtests(void)
     Test_rs rs = { 0, 0 };
 
     /* START TEST LIST */
+    RUN_TEST(libel_test);
     RUN_TEST(beacon_test);
     /*RUN_TEST(ap_plugin_vap_used);*/
     RUN_TEST(test_utilities);

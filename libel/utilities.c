@@ -497,7 +497,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
-    if (CONFIG(ctx->state, last_config_time) == 0) {
+    if (CONFIG(ctx->state, last_config_time) == TIME_UNAVAILABLE) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
             "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->state, total_beacons),
             CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
@@ -507,7 +507,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
             "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->state, total_beacons),
             CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
             CONFIG(ctx->state, max_vap_per_rq),
-            (int)((*ctx->gettime)(NULL)-CONFIG(ctx->state, last_config_time)));
+            ctx->header.time - CONFIG(ctx->state, last_config_time));
     }
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Config: Threshold:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI)",
@@ -538,7 +538,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
 
     for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
-        if (cl->len == 0 || cl->time == 0) {
+        if (cl->len == 0 || cl->time == TIME_UNAVAILABLE) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
                 "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->state->len, cl->len,
                 cl->ap_len, cl->time);

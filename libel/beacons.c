@@ -327,7 +327,7 @@ bool beacon_in_cacheline(
         return false;
     }
 
-    if (cl->time == 0) {
+    if (cl->time == TIME_UNAVAILABLE) {
         return false;
     }
 
@@ -346,11 +346,17 @@ bool beacon_in_cacheline(
 int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
-    uint32_t oldestc = 0;
-    uint32_t oldest = (*ctx->gettime)(NULL);
+    int oldestc = 0;
+    time_t oldest = ctx->header.time;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
+        /* if there is only one cache line or
+         * if time is unavailable or
+         * cacheline is empty,
+         * then return index of current cache line 
+         */
+        if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
+            ctx->state->cacheline[i].time == TIME_UNAVAILABLE)
             return i;
         else if (ctx->state->cacheline[i].time < oldest) {
             oldest = ctx->state->cacheline[i].time;
@@ -429,7 +435,7 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #if VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
@@ -543,22 +549,21 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  */
 int get_from_cache(Sky_ctx_t *ctx)
 {
-    uint32_t now = (*ctx->gettime)(NULL);
+#if CACHE_SIZE == 0
+    /* no match to cacheline */
+    return (ctx->get_from = -1);
+#else
     int idx;
 
-    if (CACHE_SIZE < 1) {
-        /* no match to cacheline */
-        return (ctx->get_from = -1);
-    }
-
-    /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
+    /* Avoid using the cache if we have good reason */
+    /* to believe that system time is bad */
+    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
     return (ctx->get_from =
                 sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+#endif
 }
 
 /*! \brief check if an AP beacon is in a virtual group

@@ -610,9 +610,10 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
-        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
-                                                      "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
+            "STATE_TBR_UNREGISTERED" :
+            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
+                                                        "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
@@ -647,8 +648,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
                 (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->state, last_config_time) == 0)
-            CONFIG(ctx->state, last_config_time) = (*ctx->gettime)(NULL);
+        if (CONFIG(ctx->state, last_config_time) == TIME_UNAVAILABLE)
+            CONFIG(ctx->state, last_config_time) = ctx->state->header.time;
     }
     ret = 0;
     switch (ctx->auth_state) {
