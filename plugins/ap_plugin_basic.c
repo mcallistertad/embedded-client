@@ -571,11 +571,10 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 #if CACHE_SIZE
     int i = ctx->save_to;
     int j;
-    time_t now = loc->time;
     Sky_cacheline_t *cl;
 
     /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
+    if (loc->time <= TIMESTAMP_2019_03_01) {
         return SKY_ERROR;
     }
 
@@ -598,7 +597,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->len = NUM_BEACONS(ctx);
     cl->ap_len = NUM_APS(ctx);
     cl->loc = *loc;
-    cl->time = now;
+    cl->time = loc->time;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];

@@ -67,11 +67,15 @@ static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 static size_t strnlen_(char *s, size_t maxlen);
 
-/*! \brief Copy state buffer
+/*! \brief Copy state buffer from src to dest
  *
- *  Note: Old state may have less dynamic configuration parameters
+ *  Note: dynamic parameters are updated after copying from src
+ *  to internal state buffer. If src state is too large for
+ *  current configuration (in config.h), src state is ignored.
  *
- *  @param sky_state Pointer to the old state buffer
+ *  @param sky_errno Pointer to error code
+ *  @param src Pointer to the src state buffer
+ *  @param dest Pointer to the dest state buffer
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  */
@@ -81,6 +85,8 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_state_t *dest, Sky_st
 
     if (src != NULL) {
         if (src->header.size < sizeof(Sky_state_t)) {
+            /* if src state is smaller than current configuration, pad uninitialized
+             * buffer with zeros */
             memset((uint8_t *)dest + src->header.size, 0, dest->header.size - src->header.size);
             update = true;
         } else if (src->header.size > sizeof(Sky_state_t))
@@ -361,11 +367,11 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
                 i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
                 CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
         }
-        if (ctx->state->cacheline[i].time && now != TIME_UNAVAILABLE) {
+        if (ctx->state->cacheline[i].time != TIME_UNAVAILABLE && now != TIME_UNAVAILABLE) {
             ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to time being unavailable",
                 i, CACHE_SIZE);
-        } else if (ctx->state->cacheline[i].time &&
+        } else if (ctx->state->cacheline[i].time != TIME_UNAVAILABLE &&
                    (now - ctx->state->cacheline[i].time) >
                        ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
             ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
@@ -500,8 +506,9 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
         rsrp = -1;
     b.h.rssi = rsrp;
     /* If beacon has meaningful timestamp */
+    /* If time is not available, pass all beacons with age 0 */
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == 0 || timestamp == 0)
+    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
     else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
@@ -1146,7 +1153,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-        /* check cache match result */
+    /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
@@ -1276,14 +1283,14 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
                 ctx->state->backoff = SKY_ERROR_NONE;
                 return set_error_status(sky_errno, SKY_AUTH_RETRY);
             } else if (ctx->state->backoff ==
-                       SKY_ERROR_NONE) /* Registration request failed auth, retry */
-                /* if time is unknown, set back off immediately to one time */
+                       SKY_ERROR_NONE) { /* Registration request failed auth, retry */
+                /* if time is unknown, set back off immediately to limit client to one request */
                 if (ctx->header.time == TIME_UNAVAILABLE)
                     return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_NEEDS_TIME));
                 else
                     return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY));
-            else if (ctx->state->backoff ==
-                     SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
+            } else if (ctx->state->backoff ==
+                       SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
                 return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_8H));
             else if (ctx->state->backoff ==
                      SKY_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
