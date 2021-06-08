@@ -57,6 +57,8 @@
 
 #define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
 
+#define CACHE_EMPTY ((time_t)0)
+#define CONFIG_UPDATE_DUE ((time_t)0)
 #define IS_CACHE_HIT(c) ((c)->get_from != -1)
 #define IS_CACHE_MISS(c) ((c)->get_from == -1)
 

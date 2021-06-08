@@ -498,7 +498,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
-    if (CONFIG(ctx->state, last_config_time) == TIME_UNAVAILABLE) {
+    if (CONFIG(ctx->state, last_config_time) == CONFIG_UPDATE_DUE) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
             "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->state, total_beacons),
             CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
@@ -539,7 +539,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
 
     for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
-        if (cl->len == 0 || cl->time == TIME_UNAVAILABLE) {
+        if (cl->len == 0 || cl->time == CACHE_EMPTY) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
                 "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->state->len, cl->len,
                 cl->ap_len, cl->time);
@@ -1339,7 +1339,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
 #endif

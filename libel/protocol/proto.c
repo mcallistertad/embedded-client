@@ -648,7 +648,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
                 (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->state, last_config_time) == TIME_UNAVAILABLE)
+        if (CONFIG(ctx->state, last_config_time) == CONFIG_UPDATE_DUE)
             CONFIG(ctx->state, last_config_time) = ctx->state->header.time;
     }
     ret = 0;
@@ -686,6 +686,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
         } else {
             /* Legacy or tbr location request */
+            loc->time = ctx->state->header.time;
             loc->lat = rs.lat;
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;

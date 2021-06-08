@@ -94,7 +94,7 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_state_t *dest, Sky_st
         memmove(dest, src, src->header.size);
         config_defaults(dest);
         if (update)
-            dest->config.last_config_time = TIME_UNAVAILABLE; /* force an update */
+            dest->config.last_config_time = CONFIG_UPDATE_DUE; /* force an update */
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
     return set_error_status(sky_errno, SKY_ERROR_BAD_STATE);
@@ -367,14 +367,14 @@ Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_ap
                 i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
                 CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
         }
-        if (ctx->state->cacheline[i].time != TIME_UNAVAILABLE && now != TIME_UNAVAILABLE) {
-            ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
+        if (ctx->state->cacheline[i].time != CACHE_EMPTY && now == TIME_UNAVAILABLE) {
+            ctx->state->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to time being unavailable",
                 i, CACHE_SIZE);
-        } else if (ctx->state->cacheline[i].time != TIME_UNAVAILABLE &&
+        } else if (ctx->state->cacheline[i].time != CACHE_EMPTY &&
                    (now - ctx->state->cacheline[i].time) >
                        ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
-            ctx->state->cacheline[i].time = TIME_UNAVAILABLE;
+            ctx->state->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
                 CACHE_SIZE, now - ctx->state->cacheline[i].time);
         }
@@ -1055,16 +1055,16 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* determine whether request_client_conf should be true in request message */
-    rq_config = ctx->state->config.last_config_time == TIME_UNAVAILABLE ||
+    rq_config = ctx->state->config.last_config_time == CONFIG_UPDATE_DUE ||
                 ctx->header.time == TIME_UNAVAILABLE ||
                 (ctx->header.time - ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && ctx->state->config.last_config_time != TIME_UNAVAILABLE ?
+        rq_config && ctx->state->config.last_config_time != CONFIG_UPDATE_DUE ?
             "Timeout" :
             rq_config ? "Forced" : "No");
 
     if (rq_config)
-        ctx->state->config.last_config_time = TIME_UNAVAILABLE; /* request on next serialize */
+        ctx->state->config.last_config_time = CONFIG_UPDATE_DUE; /* request on next serialize */
 
     /* Trim any excess vap from workspace i.e. total number of vap
      * in workspace cannot exceed max that a request can carry
@@ -1153,7 +1153,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
@@ -1189,7 +1189,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         NUM_BEACONS(ctx), bufsize);
 
 #if SKY_DEBUG
-    if (ctx->state->config.last_config_time == TIME_UNAVAILABLE)
+    if (ctx->state->config.last_config_time == CONFIG_UPDATE_DUE)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Requesting new dynamic configuration parameters");
     else
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
@@ -1198,7 +1198,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 
     /* encode request */
     rc = serialize_request(ctx, request_buf, bufsize, SW_VERSION,
-        ctx->state->config.last_config_time == TIME_UNAVAILABLE);
+        ctx->state->config.last_config_time == CONFIG_UPDATE_DUE);
 
     if (rc > 0) {
         *response_size = get_maximum_response_size();
