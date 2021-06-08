@@ -177,14 +177,14 @@ typedef struct gps {
 typedef struct sky_header {
     uint32_t magic; /* SKY_MAGIC */
     uint32_t size; /* total number of bytes in structure */
-    uint32_t time; /* timestamp when structure was allocated */
+    time_t time; /* timestamp when structure was allocated */
     uint32_t crc32; /* crc32 over header */
 } Sky_header_t;
 
 typedef struct sky_cacheline {
     uint16_t len; /* number of beacons */
     uint16_t ap_len; /* number of AP beacons in list (0 == none) */
-    uint32_t time;
+    time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
@@ -199,7 +199,7 @@ typedef enum sky_tbr_state {
 #define CONFIG(state, param) (state->config.param)
 
 typedef struct sky_config_pad {
-    uint32_t last_config_time; /* time when the last new config was received */
+    time_t last_config_time; /* time when the last new config was received */
     uint32_t total_beacons;
     uint32_t max_ap_beacons;
     uint32_t cache_match_threshold;

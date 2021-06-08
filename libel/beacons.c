@@ -29,10 +29,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #ifndef VERBOSE_DEBUG
-// #define VERBOSE_DEBUG
-// #endif
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 /*! \brief shuffle list to remove the beacon at index
  *
@@ -47,19 +47,20 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
         return SKY_ERROR;
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "type:%s idx:%d", sky_pbeacon(&ctx->beacon[index]), index);
-    if (is_ap_type(&ctx->beacon[index]))
-        NUM_APS(ctx) -= 1;
-
     memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
         sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
+    if (is_ap_type(&ctx->beacon[index]))
+        NUM_APS(ctx) -= 1;
     NUM_BEACONS(ctx) -= 1;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
     return SKY_SUCCESS;
 }
 
 /*! \brief compare beacons for positioning in workspace
+ *
+ * better beacons are inserted before worse.
  *
  *  @param ctx Skyhook request context
  *  @param a pointer to beacon A
@@ -72,7 +73,7 @@ static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
     int diff = 0;
 
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", a, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", b, __FILE__, __FUNCTION__);
 #endif
@@ -92,14 +93,14 @@ static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
             diff = COMPARE_CONNECTED(a, b);
         else
             diff = COMPARE_TYPE(a, b);
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different classes %d (%s)", diff,
             diff < 0 ? "B is better" : "A is better");
 #endif
     } else {
         /* otherwise beacons were comparable and plugin set diff appropriately */
         diff = (diff != 0) ? diff : 1; /* choose A if plugin returns 0 */
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         if (diff)
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
                 diff < 0 ? "B is better" : "A is better");
@@ -248,7 +249,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_ERROR;
     if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     DUMP_WORKSPACE(ctx);
 #endif
 
@@ -340,7 +341,7 @@ bool beacon_in_cacheline(
         return false;
     }
 
-    if (cl->time == 0) {
+    if (cl->time == CACHE_EMPTY) {
         return false;
     }
 
@@ -363,10 +364,16 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     int oldestc = 0;
-    uint32_t oldest = (*ctx->gettime)(NULL);
+    time_t oldest = ctx->header.time;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
+        /* if there is only one cache line or
+         * if time is unavailable or
+         * cacheline is empty,
+         * then return index of current cache line 
+         */
+        if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
+            ctx->state->cacheline[i].time == CACHE_EMPTY)
             return i;
         else if (ctx->state->cacheline[i].time < oldest) {
             oldest = ctx->state->cacheline[i].time;
@@ -399,21 +406,21 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     bool equal = false;
 
     if (!ctx || !cl) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
 #endif
         return true;
     }
 
     if (NUM_CELLS(ctx) == 0) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
 #endif
         return false;
     }
 
     if (NUM_CELLS(cl) == 0) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
@@ -422,7 +429,7 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     w = &ctx->beacon[NUM_APS(ctx)];
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
 #endif
         return false;
@@ -442,20 +449,21 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  */
 int get_from_cache(Sky_ctx_t *ctx)
 {
-#if CACHE_SIZE
-    uint32_t now = (*ctx->gettime)(NULL);
+#if CACHE_SIZE == 0
+    /* no match to cacheline */
+    return (ctx->get_from = -1);
+#else
     int idx;
 
-    /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
+    /* Avoid using the cache if we have good reason */
+    /* to believe that system time is bad */
+    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
-    return (ctx->get_from = (int16_t)(
-                (sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx : -1));
-#else
-    return (ctx->get_from = -1);
+    return (ctx->get_from =
+                (int16_t)(sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx :
+                                                                                               -1);
 #endif
 }
 
@@ -482,7 +490,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     dump_beacon(ctx, "A: ", va, __FILE__, __FUNCTION__);
     dump_beacon(ctx, "B: ", vb, __FILE__, __FUNCTION__);
 #endif
@@ -518,7 +526,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                 p = (c == -1) ? vb->ap.property : vb->ap.vg_prop[c];
                 if (prop)
                     *prop = p;
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s, match %d %s",
@@ -529,7 +537,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                     num_aps, p.used ? "Used" : "Unused");
 #endif
             } else {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s",

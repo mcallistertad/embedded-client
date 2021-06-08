@@ -31,10 +31,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #ifndef VERBOSE_DEBUG
-// #define VERBOSE_DEBUG
-// #endif
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 /* Attribute priorities held as 16-bit value
  *   bits     |   description
@@ -187,7 +187,7 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
             num_aps_cached += equivalent;
         }
     }
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     LOGFMT(
         ctx, SKY_LOG_LEVEL_DEBUG, "%d APs in cache %d", num_aps_cached, cl - ctx->state->cacheline);
 #endif
@@ -336,13 +336,14 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
+        if (cl->time != CACHE_EMPTY &&
+            (ctx->header.time - cl->time) >
+                (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
-            cl->time = 0;
+            cl->time = CACHE_EMPTY;
         }
         /* if line is empty and it is the first one, remember it */
-        if (cl->time == 0) {
+        if (cl->time == CACHE_EMPTY) {
             if (bestputratio < 1.0) {
                 bestput = (int16_t)i;
                 bestputratio = 1.0f;
@@ -363,7 +364,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         cl = &ctx->state->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
-        if (cl->time == 0 || serving_cell_changed(ctx, cl) == true) {
+        if (cl->time == CACHE_EMPTY || serving_cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
@@ -451,12 +452,10 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 #if CACHE_SIZE
     int i = ctx->save_to;
     int j;
-    uint32_t now = (*ctx->gettime)(NULL);
     Sky_cacheline_t *cl;
 
     /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day! %u", now);
+    if (loc->time <= TIMESTAMP_2019_03_01) {
         return SKY_ERROR;
     }
 
@@ -468,10 +467,10 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl = &ctx->state->cacheline[i];
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
-        cl->time = 0; /* clear cacheline */
+        cl->time = CACHE_EMPTY; /* clear cacheline */
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of %d", i, CACHE_SIZE);
         return SKY_ERROR;
-    } else if (cl->time == 0)
+    } else if (cl->time == CACHE_EMPTY)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to empty cache %d of %d", i, CACHE_SIZE);
     else
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Saving to cache %d of %d", i, CACHE_SIZE);
@@ -479,7 +478,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->len = NUM_BEACONS(ctx);
     cl->ap_len = NUM_APS(ctx);
     cl->loc = *loc;
-    cl->time = now;
+    cl->time = loc->time;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
@@ -528,7 +527,7 @@ static Priority_t get_priority(Sky_ctx_t *ctx, Beacon_t *b)
 
     /* deviation from idea strength is stored in low order 8-bits */
     priority |= (128 - ABS(ideal_rssi - EFFECTIVE_RSSI(b->h.rssi)));
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d rssi:%d ideal:%d priority:%02X:%d", b - ctx->beacon,
         EFFECTIVE_RSSI(b->h.rssi), ideal_rssi, priority >> 8, priority & 0xFF);
 #endif

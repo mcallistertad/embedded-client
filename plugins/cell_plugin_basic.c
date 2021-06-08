@@ -30,10 +30,10 @@
 #define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #ifndef VERBOSE_DEBUG
-// #define VERBOSE_DEBUG
-// #endif
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 typedef enum {
     HIGHEST_PRIORITY = 0xffff,
@@ -223,13 +223,13 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
+        if (cl->time != 0 && (ctx->header.time - cl->time) >
                                  (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
-            cl->time = 0;
+            cl->time = CACHE_EMPTY;
         }
         /* if line is empty and it is the first one, remember it */
-        if (cl->time == 0) {
+        if (cl->time == CACHE_EMPTY) {
             if (bestputratio < 1.0) {
                 bestput = (int16_t)i;
                 bestputratio = 1.0f;
@@ -240,7 +240,9 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* score each cache line wrt beacon match ratio */
     for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
-        if (cl->time == 0 || serving_cell_changed(ctx, cl) == true) {
+        threshold = score = 0;
+        ratio = 0.0f;
+        if (cl->time == CACHE_EMPTY || serving_cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
@@ -251,7 +253,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
             score = 0;
             for (int j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
                 if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
                         sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);

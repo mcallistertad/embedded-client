@@ -93,7 +93,7 @@ runtests: unittest
 
 ${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h
 	mkdir -p $(dir $@)
-	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
+	$(CC) -include unittest.h -DVERBOSE_DEBUG=true $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
 
 clean:
 	make -C sample_client clean
