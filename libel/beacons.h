@@ -33,7 +33,7 @@
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((uint32_t)((p)->len - (p)->ap_len))
+#define NUM_CELLS(p) ((uint16_t)((p)->len - (p)->ap_len))
 #define NUM_APS(p) ((p)->ap_len)
 #define NUM_BEACONS(p) ((p)->len)
 #define IMPLIES(a, b) (!(a) || (b))
@@ -57,10 +57,28 @@
 
 #define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
 
+#define CACHE_EMPTY ((time_t)0)
+#define CONFIG_UPDATE_DUE ((time_t)0)
 #define IS_CACHE_HIT(c) ((c)->get_from != -1)
 #define IS_CACHE_MISS(c) ((c)->get_from == -1)
 
-/*! \brief Types of beacon in priority order
+#define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
+
+/* Comparisons result in positive difference when beacon a is higher priority */
+/* when comparing type, lower type enum is better so invert difference */
+#define COMPARE_TYPE(a, b) (-((a->h.type) - (b->h.type)))
+/* when comparing age, lower value (younger) is better so invert difference */
+#define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
+/* when comparing rssi, higher value (stronger) is better */
+#define COMPARE_RSSI(a, b) ((EFFECTIVE_RSSI(a->h.rssi) - EFFECTIVE_RSSI(b->h.rssi)))
+/* when comparing mac, lower value is better so invert difference */
+#define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
+/* when comparing connected, higher (true) value is better */
+#define COMPARE_CONNECTED(a, b) ((a->h.connected) - (b->h.connected))
+/* when comparing priority, higher value is better */
+#define COMPARE_PRIORITY(a, b) ((a->h.priority) - (b->h.priority))
+
+/*! \brief Types of beacon in compare order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
@@ -87,7 +105,8 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
-    int16_t rssi; // -255 unkonwn - map it to - 128
+    int16_t rssi; /* -255 unkonwn - map it to - 128 */
+    uint16_t priority; /* used to remove worst beacon */
     int8_t connected; /* beacon connected */
 };
 
@@ -244,10 +263,9 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
+int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
 int get_from_cache(Sky_ctx_t *ctx);
-Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 
 #endif

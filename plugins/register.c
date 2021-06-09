@@ -42,7 +42,7 @@
  * Each plugin handles operations for a particular beacon type
  * Each table has entry points to handle the following operations
  *  EQUAL        - Test if two beacons are equal
- *  REMOVE_WORST - Find the least desirable beacon and remove it from the workspace
+ *  REMOVE_WORST - Find the lowest priority beacon and remove it from the workspace
  *  MATCH_CACHE  - Find the best cache line that matches the beacons in the workspace
  *  ADD_TO_CACHE - Copy workspace beacons to appropriate cache line
  */

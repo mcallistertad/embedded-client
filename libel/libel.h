@@ -56,8 +56,7 @@
 /*! \brief API return value
  */
 typedef enum {
-    SKY_SUCCESS = 1,
-    SKY_FAILURE = 0,
+    SKY_SUCCESS = 0,
     SKY_ERROR = -1,
 } Sky_status_t;
 
@@ -237,7 +236,6 @@ char *sky_pserver_status(Sky_loc_status_t status);
 char *sky_psource(struct sky_location *l);
 #ifdef SKY_LIBEL
 char *sky_pbeacon(Beacon_t *b);
-char *sky_psource(struct sky_location *l);
 #endif
 
 Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state);

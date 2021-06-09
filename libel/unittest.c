@@ -142,12 +142,20 @@ Sky_ctx_t *_test_sky_ctx()
 
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b)
 {
-    return a->h.magic == b->h.magic && a->h.type == b->h.type;
+    return a->h.magic == b->h.magic && a->h.type == b->h.type && a->h.connected == b->h.connected &&
+           a->h.age == b->h.age && a->h.rssi == b->h.rssi;
 }
 
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b)
 {
     return _test_beacon_eq(a, b) &&
-           0 == strncmp((const char *)a->ap.mac, (const char *)b->ap.mac, MAC_SIZE) &&
+           0 == memcmp((const char *)a->ap.mac, (const char *)b->ap.mac, MAC_SIZE) &&
            a->ap.freq == b->ap.freq;
+}
+
+bool _test_cell_eq(const Beacon_t *a, const Beacon_t *b)
+{
+    return _test_beacon_eq(a, b) && a->cell.id1 == b->cell.id1 && a->cell.id2 == b->cell.id2 &&
+           a->cell.id3 == b->cell.id3 && a->cell.id4 == b->cell.id4 && a->cell.id5 == b->cell.id5 &&
+           a->cell.freq == b->cell.freq;
 }
