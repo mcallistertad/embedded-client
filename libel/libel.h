@@ -250,6 +250,6 @@ char *sky_psource(struct sky_location *l);
 char *sky_pbeacon(Beacon_t *b);
 #endif
 
-Sky_status_t sky_close(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
+Sky_status_t sky_close(void *session, Sky_errno_t *sky_errno);
 
 #endif

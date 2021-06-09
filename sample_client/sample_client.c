@@ -582,13 +582,10 @@ int main(int argc, char *argv[])
      * time skyhook_open() is called (see comments above
      * immediately preceding the call to sky_open()).
      */
-    if (sky_close(ctx, &sky_errno) != SKY_SUCCESS)
+    if (sky_close(pstate, &sky_errno) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
-    if (pstate != NULL) {
-        save_state(pstate, config.statefile);
-        free(ctx);
-    }
-
+    save_state(pstate, config.statefile);
+    free(ctx);
     printf("Done.\n\n");
 }
