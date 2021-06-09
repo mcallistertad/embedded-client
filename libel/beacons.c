@@ -323,7 +323,7 @@ bool beacon_in_cacheline(
         return false;
     }
 
-    if (cl->time == 0) {
+    if (cl->time == TIME_UNAVAILABLE) {
         return false;
     }
 
@@ -343,10 +343,16 @@ int find_oldest(Sky_ctx_t *ctx)
 {
     int i;
     int oldestc = 0;
-    uint32_t oldest = (*ctx->session->sky_time)(NULL);
+    time_t oldest = ctx->header.time;
 
-    for (i = 0; i < ctx->session->len; i++) {
-        if (ctx->session->cacheline[i].time == 0)
+    for (i = 0; i < CACHE_SIZE; i++) {
+        /* if there is only one cache line or
+         * if time is unavailable or
+         * cacheline is empty,
+         * then return index of current cache line 
+         */
+        if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
+            ctx->session->cacheline[i].time == TIME_UNAVAILABLE)
             return i;
         else if (ctx->session->cacheline[i].time < oldest) {
             oldest = ctx->session->cacheline[i].time;
@@ -539,7 +545,10 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  */
 int get_from_cache(Sky_ctx_t *ctx)
 {
-    uint32_t now = (*ctx->session->sky_time)(NULL);
+#if CACHE_SIZE == 0
+    /* no match to cacheline */
+    return (ctx->get_from = -1);
+#else
     int idx;
 
     if (ctx->session->len < 1) {
@@ -547,14 +556,15 @@ int get_from_cache(Sky_ctx_t *ctx)
         return (ctx->get_from = -1);
     }
 
-    /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
+    /* Avoid using the cache if we have good reason */
+    /* to believe that system time is bad */
+    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }
-    ctx->get_from = (sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx : -1;
-    return ctx->get_from;
+    return (ctx->get_from =
+                sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+#endif
 }
 
 /*! \brief check if an AP beacon is in a virtual group
@@ -573,6 +583,11 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 {
     int w, c, num_aps = 0;
     uint8_t mac_va[MAC_SIZE] = { 0 };
+    return ctx->get_from;
+    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
+    }
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 

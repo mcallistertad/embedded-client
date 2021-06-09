@@ -648,8 +648,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
                 (*ctx->session->sky_logf)(
                     SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->session, last_config_time) == 0)
-            CONFIG(ctx->session, last_config_time) = (*ctx->session->sky_time)(NULL);
+        if (CONFIG(ctx->session, last_config_time) == TIME_UNAVAILABLE)
+            CONFIG(ctx->session, last_config_time) = ctx->session->header.time;
     }
     ret = 0;
     switch (ctx->auth_state) {

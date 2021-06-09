@@ -459,13 +459,14 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < ctx->session->len; i++) {
         cl = &ctx->session->cacheline[i];
         /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->session->sky_time)(NULL)-cl->time) >
-                                 (CONFIG(ctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
+        if (cl->time != TIME_UNAVAILABLE &&
+            (ctx->header.time - cl->time) >
+                (CONFIG(ctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
-            cl->time = 0;
+            cl->time = TIME_UNAVAILABLE;
         }
         /* if line is empty and it is the first one, remember it */
-        if (cl->time == 0) {
+        if (cl->time == TIME_UNAVAILABLE) {
             if (bestputratio < 1.0) {
                 bestput = i;
                 bestputratio = 1.0;
@@ -485,7 +486,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < ctx->session->len; i++) {
         cl = &ctx->session->cacheline[i];
         threshold = ratio = score = 0;
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
+        if (cl->time == TIME_UNAVAILABLE || cell_changed(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cell change", i);
             continue;
@@ -570,17 +571,10 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 #if CACHE_SIZE
     int i = ctx->save_to;
     int j;
-    uint32_t now = (*ctx->session->sky_time)(NULL);
     Sky_cacheline_t *cl;
 
-    if (ctx->session->len < 1) {
-        return SKY_SUCCESS;
-    }
-
     /* compare current time to Mar 1st 2019 */
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Time (now) %d %d", now, time(NULL));
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day! %u", now);
+    if (loc->time <= TIMESTAMP_2019_03_01) {
         return SKY_ERROR;
     }
 
@@ -592,7 +586,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl = &ctx->session->cacheline[i];
     if (loc->location_status != SKY_LOCATION_STATUS_SUCCESS) {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Won't add unknown location to cache");
-        cl->time = 0; /* clear cacheline */
+        cl->time = TIME_UNAVAILABLE; /* clear cacheline */
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "clearing cache %d of %d", i, ctx->session->len);
         return SKY_ERROR;
     } else if (cl->time == 0)
@@ -603,7 +597,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
     cl->len = NUM_BEACONS(ctx);
     cl->ap_len = NUM_APS(ctx);
     cl->loc = *loc;
-    cl->time = now;
+    cl->time = loc->time;
 
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         cl->beacon[j] = ctx->beacon[j];
