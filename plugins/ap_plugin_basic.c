@@ -313,7 +313,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 {
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
-    int err; /* err breaks the seach due to bad value */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
                     In typical case this is the intersection(workspace, cache) / union(workspace, cache) */
     float bestratio = 0.0f;
@@ -325,7 +324,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     int16_t bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
-    bool result = false;
 
     if (!idx) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameter");
@@ -333,7 +331,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     }
 
     /* expire old cachelines and note first empty cacheline as best line to save to */
-    for (i = 0, err = false; i < CACHE_SIZE; i++) {
+    for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         /* if cacheline is old, mark it empty */
         if (cl->time != CACHE_EMPTY &&
@@ -352,7 +350,9 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     }
 
     if (NUM_APS(ctx) == 0) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No APs");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using APs. No cache match");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
+            bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
         return SKY_ERROR;
     }
 
@@ -360,19 +360,22 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     DUMP_CACHE(ctx);
 
     /* score each cache line wrt beacon match ratio */
-    for (i = 0, err = false; i < CACHE_SIZE; i++) {
+    for (i = 0; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
-        if (cl->time == CACHE_EMPTY || serving_cell_changed(ctx, cl) == true) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cell change", i);
+        if (cl->time == CACHE_EMPTY) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
+            continue;
+        } else if (serving_cell_changed(ctx, cl) == true) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for serving cell change", i);
             continue;
         } else {
             /* count number of matching APs in workspace and cache */
             if ((num_aps_cached = count_cached_aps_in_workspace(ctx, cl)) < 0) {
-                err = true;
-                break;
+                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters counting APs");
+                *idx = -1;
+                return SKY_SUCCESS;
             } else if (NUM_APS(ctx) && NUM_APS(cl)) {
                 /* Score based on ALL APs */
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
@@ -382,7 +385,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round((double)ratio * 100), score, unionAB, threshold);
-                result = true;
             }
         }
 
@@ -402,34 +404,22 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         if (ratio * 100 > (float)threshold)
             break;
     }
-    if (err) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters counting APs");
-        return SKY_ERROR;
-    }
 
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
-    if (result) {
-        if ((bestratio * 100) > (float)bestthresh) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "location in cache, pick cache %d of %d score %d (vs %d)", bestc, CACHE_SIZE,
-                (int)round((double)bestratio * 100), bestthresh);
-            *idx = bestc;
-        } else {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "No Cache match found. Cache %d, best score %d (vs %d)", bestc,
-                (int)round((double)bestratio * 100), bestthresh);
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
-                bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
-            *idx = -1;
-        }
-        return SKY_SUCCESS;
+    if ((bestratio * 100) > (float)bestthresh) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
+            bestc, CACHE_SIZE, (int)round((double)bestratio * 100), bestthresh);
+        *idx = bestc;
+    } else {
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No Cache match found. Cache %d, best score %d (vs %d)",
+            bestc, (int)round((double)bestratio * 100), bestthresh);
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
+            bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
+        *idx = -1;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using APs. No cache match");
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
-        CACHE_SIZE, (int)round((double)bestputratio * 100));
-    return SKY_ERROR;
+    return SKY_SUCCESS;
 #else
     *idx = -1;
     (void)ctx; /* suppress warning unused parameter */
