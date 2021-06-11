@@ -290,7 +290,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     /* no work to do if workspace not full of max APs */
     if (NUM_APS(ctx) <= CONFIG(ctx->session, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove AP");
-        return false;
+        return SKY_ERROR;
     }
 
     /* beacon is AP and is subject to filtering */

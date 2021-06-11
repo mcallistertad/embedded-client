@@ -469,7 +469,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -562,7 +562,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -636,7 +636,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -713,7 +713,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -786,7 +786,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -883,7 +883,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -958,7 +958,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         ctx->gps.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         ctx->gps.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -1113,7 +1113,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &s->cacheline[ctx->get_from];
