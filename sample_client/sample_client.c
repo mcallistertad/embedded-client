@@ -590,7 +590,7 @@ int main(int argc, char *argv[])
     if (sky_close(pstate, &sky_errno) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
-    save_state(pstate, config.statefile);
+    save_session_context(pstate, config.statefile);
     free(ctx);
     printf("Done.\n\n");
 }

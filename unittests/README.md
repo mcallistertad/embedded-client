@@ -121,7 +121,7 @@ BEGIN_TESTS(new_tests)
     });
 
     TEST("show test failure", ctx, {
-        ctx->len = TOTAL_BEACONS + 2;
+        ctx->num_beacons = TOTAL_BEACONS + 2;
         ASSERT( validate_request_ctx(ctx) );
     });
 
@@ -142,19 +142,19 @@ make unittest
 $ ./bin/tests
  >>> Skyhook Embedded Library (Version: 2.0.0-129-g96b426a-dirty)
  >>> libel.c:sky_new_request() 1 cachelines present
- >>> libel.c:sky_new_request() cache: 0 of 1 - empty len:0 ap_len:0 time:0
+ >>> libel.c:sky_new_request() cache: 0 of 1 - empty num_beacons:0 ap_len:0 time:0
  >>> libel.c:sky_new_request() Dump WorkSpace: Got 0 beacons, WiFi 0, connected -1
  >>> libel.c:sky_new_request() Config: Total:20 AP:15 VAP:4(12) Thresholds:50(All) 65(Used) 24(Age) 3(Beacon) -90(RSSI) Update:Pending
 Running ASSERT() in utilities.c:1274
  >>> Skyhook Embedded Library (Version: 2.0.0-129-g96b426a-dirty)
  >>> libel.c:sky_new_request() 1 cachelines present
- >>> libel.c:sky_new_request() cache: 0 of 1 - empty len:0 ap_len:0 time:0
+ >>> libel.c:sky_new_request() cache: 0 of 1 - empty num_beacons:0 ap_len:0 time:0
  >>> libel.c:sky_new_request() Dump WorkSpace: Got 0 beacons, WiFi 0, connected -1
  >>> libel.c:sky_new_request() Config: Total:20 AP:15 VAP:4(12) Thresholds:50(All) 65(Used) 24(Age) 3(Beacon) -90(RSSI) Update:Pending
 Running ASSERT() in utilities.c:1283
  >>> Skyhook Embedded Library (Version: 2.0.0-129-g96b426a-dirty)
  >>> libel.c:sky_new_request() 1 cachelines present
- >>> libel.c:sky_new_request() cache: 0 of 1 - empty len:0 ap_len:0 time:0
+ >>> libel.c:sky_new_request() cache: 0 of 1 - empty num_beacons:0 ap_len:0 time:0
  >>> libel.c:sky_new_request() Dump WorkSpace: Got 0 beacons, WiFi 0, connected -1
  >>> libel.c:sky_new_request() Config: Total:20 AP:15 VAP:4(12) Thresholds:50(All) 65(Used) 24(Age) 3(Beacon) -90(RSSI) Update:Pending
 Running ASSERT() in utilities.c:1288

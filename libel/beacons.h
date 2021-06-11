@@ -33,9 +33,9 @@
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((uint16_t)((p)->len - (p)->ap_len))
-#define NUM_APS(p) ((p)->ap_len)
-#define NUM_BEACONS(p) ((p)->len)
+#define NUM_CELLS(p) ((uint16_t)((p)->num_beacons - (p)->num_ap))
+#define NUM_APS(p) ((p)->num_ap)
+#define NUM_BEACONS(p) ((p)->num_beacons)
 #define IMPLIES(a, b) (!(a) || (b))
 #define NUM_VAPS(b) ((b)->ap.vg_len)
 
@@ -185,8 +185,8 @@ typedef struct gps {
 /*! \brief each cacheline holds a copy of a scan and the server response
  */
 typedef struct sky_cacheline {
-    uint16_t len; /* number of beacons */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t num_beacons; /* number of beacons */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
@@ -231,7 +231,7 @@ typedef struct sky_session {
     Sky_timefn_t sky_time; /* User time fn */
     bool sky_debounce; /* send cached or request beacons */
     void *sky_plugins; /* root of registered plugin list */
-    uint32_t sky_id_len; /* device ID len */
+    uint32_t sky_id_len; /* device ID num_beacons */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
     uint32_t sky_token_id; /* TBR token ID */
     uint32_t sky_ul_app_data_len; /* uplink app data length */
@@ -244,7 +244,7 @@ typedef struct sky_session {
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
-    int len; /* number of cache lines */
+    int num_cachelines; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 #endif
     Sky_config_t config; /* dynamic config parameters */
@@ -255,8 +255,8 @@ typedef struct sky_session {
  */
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    uint16_t len; /* number of beacons in list (0 == none) */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t num_beacons; /* number of beacons in list (0 == none) */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */

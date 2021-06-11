@@ -122,10 +122,10 @@ int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
             return false;
         }
 
-        for (int i = 0; i < s->len; i++) {
+        for (int i = 0; i < s->num_cachelines; i++) {
             int j;
 
-            if (s->cacheline[i].len > TOTAL_BEACONS) {
+            if (s->cacheline[i].num_beacons > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
                     (*logf)(SKY_LOG_LEVEL_ERROR,
@@ -437,7 +437,7 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
 #if CACHE_SIZE
     } else if (ctx->session && b >= ctx->session->cacheline[0].beacon &&
                b < ctx->session->cacheline[CACHE_SIZE - 1].beacon +
-                       ctx->session->cacheline[CACHE_SIZE - 1].len) {
+                       ctx->session->cacheline[CACHE_SIZE - 1].num_beacons) {
         idx_b = (int)(b - ctx->session->cacheline[0].beacon);
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
@@ -542,19 +542,20 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
     int i, j;
     Sky_cacheline_t *cl;
 
-    for (i = 0; i < ctx->session->len; i++) {
+    for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
-        if (cl->len == 0 || cl->time == CACHE_EMPTY) {
+        if (cl->num_beacons == 0 || cl->time == CACHE_EMPTY) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->session->len, cl->len,
-                cl->ap_len, cl->time);
+                "cache: %d of %d - empty num_beacons:%d num_ap:%d time:%u", i,
+                ctx->session->num_cachelines, cl->num_beacons, cl->num_ap, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->session->len,
-                (int)cl->loc.lat, (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))),
-                (int)cl->loc.lon, (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))),
-                cl->loc.hpe, cl->len);
-            for (j = 0; j < cl->len; j++) {
+                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i,
+                ctx->session->num_cachelines, (int)cl->loc.lat,
+                (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
+                (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
+                cl->num_beacons);
+            for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
         }
@@ -1271,7 +1272,7 @@ int32_t get_num_vaps(Sky_ctx_t *ctx)
  *  @param ctx request ctx buffer
  *  @param idx index into Virtual Groups
  *
- *  @return vaps data i.e len, AP, patch1, patch2...
+ *  @return vaps data i.e num_beacons, AP, patch1, patch2...
  */
 uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -1286,12 +1287,12 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
     /* return the Virtual AP data */
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
-        // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d len: %d nvg: %d", j, idx, w->ap.vg_len, nvg);
+        // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d num_beacons: %d nvg: %d", j, idx, w->ap.vg_len, nvg);
         if (w->ap.vg[VAP_LENGTH].len && nvg == idx) {
-            // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d len: %d ap: %d", idx, j, idx,
-            //     w->ap.vg[VAP_LENGTH].len, w->ap.vg[VAP_PARENT].ap);
+            // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d num_beacons: %d ap: %d", idx, j, idx,
+            //     w->ap.vg[VAP_LENGTH].num_beacons, w->ap.vg[VAP_PARENT].ap);
             // dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
-            //     w->ap.vg[VAP_LENGTH].len, 0);
+            //     w->ap.vg[VAP_LENGTH].num_beacons, 0);
             return (uint8_t *)w->ap.vg;
         } else {
             nvg += (w->ap.vg[VAP_LENGTH].len ? 1 : 0);
@@ -1308,7 +1309,7 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @param ctx request ctx buffer
  *
- *  @return vaps data i.e len, AP, patch1, patch2...
+ *  @return vaps data i.e num_beacons, AP, patch1, patch2...
  */
 uint8_t *select_vap(Sky_ctx_t *ctx)
 {
@@ -1343,7 +1344,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d num_beacons: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
 #endif
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;

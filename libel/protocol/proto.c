@@ -152,7 +152,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(&substream, data + 1, *data))
             return false;
     }
@@ -164,7 +164,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(ostream, data + 1, *data))
             return false;
     }
@@ -610,10 +610,9 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
-            "STATE_TBR_UNREGISTERED" :
-            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
-                                                        "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
+        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
+                                                      "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */

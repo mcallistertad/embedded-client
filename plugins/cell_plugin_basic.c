@@ -223,7 +223,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     }
 
     /* expire old cachelines and note first empty cacheline as best line to save to */
-    for (i = 0; i < ctx->session->len; i++) {
+    for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
         /* if cacheline is old, mark it empty */
         if (cl->time != TIME_UNAVAILABLE &&
@@ -242,7 +242,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     }
 
     /* score each cache line wrt beacon match ratio */
-    for (i = 0; i < ctx->session->len; i++) {
+    for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
@@ -260,7 +260,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #if VERBOSE_DEBUG
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
-                        sky_pbeacon(&ctx->beacon[j]), i, ctx->session->len, (int)score);
+                        sky_pbeacon(&ctx->beacon[j]), i, ctx->session->num_cachelines, (int)score);
 #endif
                     score = score + 1;
                 }
@@ -281,8 +281,8 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         if (ratio > bestratio) {
             if (bestratio > 0.0)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Found better match in cache %d of %d score %d (vs %d)", i, ctx->session->len,
-                    (int)round((double)ratio * 100), threshold);
+                    "Found better match in cache %d of %d score %d (vs %d)", i,
+                    ctx->session->num_cachelines, (int)round((double)ratio * 100), threshold);
             bestc = i;
             bestratio = ratio;
             bestthresh = threshold;
@@ -297,21 +297,21 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     if (result) {
         if (bestratio * 100 > (float)bestthresh) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "location in cache, pick cache %d of %d score %d (vs %d)", bestc, ctx->session->len,
-                (int)round((double)bestratio * 100), bestthresh);
+                "location in cache, pick cache %d of %d score %d (vs %d)", bestc,
+                ctx->session->num_cachelines, (int)round((double)bestratio * 100), bestthresh);
             *idx = bestc;
         } else {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)",
                 bestc, (int)round((double)bestratio * 100), bestthresh);
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
-                bestput, ctx->session->len, (int)round((double)bestputratio * 100));
+                bestput, ctx->session->num_cachelines, (int)round((double)bestputratio * 100));
             *idx = -1;
         }
         return SKY_SUCCESS;
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using Cells. No cache match");
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
-        ctx->session->len, (int)round((double)bestputratio * 100));
+        ctx->session->num_cachelines, (int)round((double)bestputratio * 100));
     return SKY_ERROR;
 #else
     *idx = -1;

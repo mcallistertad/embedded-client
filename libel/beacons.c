@@ -299,7 +299,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
         return false;
     }
 
-    for (int i = 0; i < ctx->session->len; i++) {
+    for (int i = 0; i < ctx->session->num_cachelines; i++) {
         if (beacon_in_cacheline(ctx, b, &ctx->session->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
@@ -457,7 +457,7 @@ int get_from_cache(Sky_ctx_t *ctx)
 #else
     int idx;
 
-    if (ctx->session->len < 1) {
+    if (ctx->session->num_cachelines < 1) {
         /* no match to cacheline */
         return (ctx->get_from = -1);
     }

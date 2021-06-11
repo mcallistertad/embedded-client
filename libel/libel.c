@@ -126,7 +126,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         session->header.crc32 = sky_crc32(&session->header.magic,
             (uint8_t *)&session->header.crc32 - (uint8_t *)&session->header.magic);
 #if CACHE_SIZE
-        session->len = CACHE_SIZE;
+        session->num_cachelines = CACHE_SIZE;
         for (int i = 0; i < CACHE_SIZE; i++) {
             for (int j = 0; j < TOTAL_BEACONS; j++) {
                 session->cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
@@ -302,10 +302,9 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->session = s;
-    ctx->auth_state =
-        !is_tbr_enabled(ctx) ?
-            STATE_TBR_DISABLED :
-            s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
+    ctx->auth_state = !is_tbr_enabled(ctx)                 ? STATE_TBR_DISABLED :
+                      s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
+                                                             STATE_TBR_REGISTERED;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -319,15 +318,15 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
     }
 
 #if CACHE_SIZE
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines configured", s->len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines configured", s->num_cachelines);
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (s->cacheline[i].ap_len > CONFIG(s, max_ap_beacons) ||
-            s->cacheline[i].len > CONFIG(s, total_beacons)) {
+        if (s->cacheline[i].num_ap > CONFIG(s, max_ap_beacons) ||
+            s->cacheline[i].num_beacons > CONFIG(s, total_beacons)) {
             s->cacheline[i].time = TIME_UNAVAILABLE;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "cache %d of %d cleared due to new Dynamic Parameters. Total beacons %d vs %d, AP %d vs %d",
-                i, CACHE_SIZE, CONFIG(s, total_beacons), s->cacheline[i].len,
-                CONFIG(s, max_ap_beacons), s->cacheline[i].ap_len);
+                i, CACHE_SIZE, CONFIG(s, total_beacons), s->cacheline[i].num_beacons,
+                CONFIG(s, max_ap_beacons), s->cacheline[i].num_ap);
         }
         if (s->cacheline[i].time != CACHE_EMPTY && now == TIME_UNAVAILABLE) {
             s->cacheline[i].time = CACHE_EMPTY;
@@ -1018,9 +1017,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 ctx->header.time == TIME_UNAVAILABLE ||
                 (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
-            "Timeout" :
-            rq_config ? "Forced" : "No");
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
+        rq_config                                                     ? "Forced" :
+                                                                        "No");
 
     if (rq_config)
         CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
@@ -1045,8 +1044,8 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
             if (ctx->session->sky_debounce) {
                 /* overwrite beacons in request ctx with cached beacons */
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate request ctx with cached beacons");
-                NUM_BEACONS(ctx) = cl->len;
-                NUM_APS(ctx) = cl->ap_len;
+                NUM_BEACONS(ctx) = cl->num_beacons;
+                NUM_APS(ctx) = cl->num_ap;
                 for (int j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
             }
@@ -1113,7 +1112,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-        /* check cache match result */
+    /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &s->cacheline[ctx->get_from];
