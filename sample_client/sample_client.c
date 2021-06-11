@@ -151,7 +151,7 @@ struct cell_scan cells4[] =
  *
  *  @returns 0 for success or negative number for error
  */
-static int save_state(void *p, char *file_name)
+static int save_session_context(void *p, char *file_name)
 {
     FILE *fio;
     uint32_t state_size;
@@ -182,7 +182,7 @@ static int save_state(void *p, char *file_name)
  *
  *  @returns NULL for failure to restore cache state, pointer to c state otherwise
  */
-static void *restore_state(char *file_name)
+static void *retrieve_session_context(char *file_name)
 {
     void *pstate;
 
@@ -208,10 +208,11 @@ static void *restore_state(char *file_name)
             fclose(fio);
         }
     }
+    printf("Failed to retrieve state from %s.\n", file_name);
     state_size = sky_sizeof_session_ctx(NULL); /* size of new buffere */
     pstate = malloc(state_size);
     memset(pstate, 0, state_size);
-    printf("Allocating new state buffer %d bytes\n", state_size);
+    printf("Allocated empty state buffer %d bytes\n", state_size);
     return pstate;
 }
 
@@ -289,15 +290,19 @@ static int logger(Sky_log_level_t level, char *s)
 
 /*! \brief time function
  *
+ *  Must return TIME_UNAVAILABLE if the system clock is not synchronized to real time of day
+ *
  *  @param t where to save the time
  *
  *  @returns the time in seconds since the epoc (linux time)
  */
 static time_t mytime(time_t *t)
 {
-    if (t != NULL) {
-        return time(t);
-    } else
+    time_t tod = time(t); /* get the system time as Unix timestamp */
+
+    if (tod < TIMESTAMP_2019_03_01) /* If time of day is not synchronized, report that it is bad */
+        return TIME_UNAVAILABLE;
+    else
         return time(NULL);
 }
 
@@ -306,9 +311,9 @@ static time_t mytime(time_t *t)
  *  Add a set of beacon scans process the request
  *  return the location structure
  *
- *  @param request ctx pointer to the buffer allocated
- *  @param bufsize size of the the request ctx buffer allocated
- *  @param session ctx pointer to the buffer allocated
+ *  @param request context pointer to the buffer allocated
+ *  @param bufsize size of the the request context buffer allocated
+ *  @param session context pointer to the buffer allocated
  *  @param config pointer to the config structure
  *  @param ap pointer to array of wifi data
  *  @param cp pointer to array of cell data
@@ -522,12 +527,12 @@ int main(int argc, char *argv[])
     print_config(&config);
 
     /* Retrieve saved state, if any. State includes cached scans and
-     * registration information. Failure to restore state will force a
+     * registration information. Failure to retrieve state will force a
      * reregistration sequence and will limit stationary detection,
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    pstate = restore_state(config.statefile); /* may return an empty buffer */
+    pstate = retrieve_session_context(config.statefile); /* may return an empty buffer */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
@@ -541,7 +546,7 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    /* Allocate request ctx */
+    /* Allocate request context */
     bufsize = sky_sizeof_request_ctx();
     ctx = malloc(bufsize);
 

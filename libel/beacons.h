@@ -66,17 +66,17 @@
 
 /* Comparisons result in positive difference when beacon a is higher priority */
 /* when comparing type, lower type enum is better so invert difference */
-#define COMPARE_TYPE(a, b) (-((a->h.type) - (b->h.type)))
+#define COMPARE_TYPE(a, b) ((b)->h.type - (a)->h.type)
 /* when comparing age, lower value (younger) is better so invert difference */
-#define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
+#define COMPARE_AGE(a, b) ((b)->h.age - (a)->h.age)
 /* when comparing rssi, higher value (stronger) is better */
-#define COMPARE_RSSI(a, b) ((EFFECTIVE_RSSI(a->h.rssi) - EFFECTIVE_RSSI(b->h.rssi)))
+#define COMPARE_RSSI(a, b) (EFFECTIVE_RSSI((a)->h.rssi) - EFFECTIVE_RSSI((b)->h.rssi))
 /* when comparing mac, lower value is better so invert difference */
-#define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
+#define COMPARE_MAC(a, b) (memcmp((b)->ap.mac, (a)->ap.mac, MAC_SIZE))
 /* when comparing connected, higher (true) value is better */
-#define COMPARE_CONNECTED(a, b) ((a->h.connected) - (b->h.connected))
+#define COMPARE_CONNECTED(a, b) ((a)->h.connected - (b)->h.connected)
 /* when comparing priority, higher value is better */
-#define COMPARE_PRIORITY(a, b) ((a->h.priority) - (b->h.priority))
+#define COMPARE_PRIORITY(a, b) ((a)->h.priority - (b)->h.priority)
 
 /*! \brief Types of beacon in compare order
  */
@@ -220,11 +220,11 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-/*! \brief Session Context - holds parameters defined when Libel is opened and cache
+/*! \brief Session Context - holds parameters defined when Libel is opened and the cache lines
  */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    uint32_t sky_open_flag; /* keep track of open and closes */
+    bool sky_open_flag; /* true if sky_open() has been called by user */
     Sky_randfn_t sky_rand_bytes; /* User rand_bytes fn */
     Sky_loggerfn_t sky_logf; /* User logging fn */
     Sky_log_level_t sky_min_level; /* User log level */

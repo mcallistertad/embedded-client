@@ -320,11 +320,14 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 #endif
 }
 
-/*! \brief Assign relative priority value to AP based on attributes
+/*! \brief Assign relative priority value to cell based on attributes
  *
- * Priority is based on the attributes connected, nmr, and strength
+ * Priority is based on the attributes
+ *  1. connected
+ *  2. nmr
+ *  3. strength
  *
- *  @param idx index of beacon we want to prioritize
+ *  @param b pointer to beacon we want to prioritize
  *
  *  @return priority
  */

@@ -508,8 +508,11 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
 /*! \brief Assign relative priority value to AP based on attributes
  *
- * Priority is based on the attributes connected, virtual groups and cached APs
- * and best fit to rssi uniform distribution
+ * Priority is based on the attributes
+ *  1. connected
+ *  2. virtual groups
+ *  2. cached APs
+ *  3. deviation from rssi uniform distribution (less is better)
  *
  *  @param ctx pointer to request context
  *  @param b pointer to AP

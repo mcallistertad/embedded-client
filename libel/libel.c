@@ -97,7 +97,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
 
     if (session->header.magic != 0 && !validate_session_ctx(session, logf)) {
         if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
-            (*logf)(SKY_LOG_LEVEL_WARNING, "Invalid session buffer was ignored!");
+            (*logf)(SKY_LOG_LEVEL_WARNING, "Ignoring invalid session buffer!");
         session->header.magic = 0;
     } else {
         if (session->sky_open_flag) {
