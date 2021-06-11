@@ -249,6 +249,7 @@
 
 #define BEACON_EQ(A, B) _test_beacon_eq((A), (B))
 #define AP_EQ(A, B) _test_ap_eq((A), (B))
+#define CELL_EQ(A, B) _test_cell_eq((A), (B))
 
 typedef struct {
     int verbose;
@@ -286,6 +287,6 @@ int _test_cell(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rs
     int32_t freq);
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b);
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b);
-//int _test_cell(Beacon_t *b, time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
+bool _test_cell_eq(const Beacon_t *a, const Beacon_t *b);
 
 #endif

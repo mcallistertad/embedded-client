@@ -62,7 +62,6 @@ int validate_request_ctx(Sky_ctx_t *ctx)
 
     if (ctx == NULL) {
         // Can't use LOGFMT if ctx is bad
-        // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "NULL ctx");
         return false;
     }
     if (NUM_BEACONS(ctx) > TOTAL_BEACONS + 1) {
@@ -174,7 +173,7 @@ int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
  *
  *  @return true if mac address not all zeros or ones
  */
-int validate_mac(uint8_t mac[6], Sky_ctx_t *ctx)
+int validate_mac(const uint8_t mac[6], Sky_ctx_t *ctx)
 {
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
@@ -262,7 +261,7 @@ int logfmt(
  *  @returns number of bytes dumped, or negitive number on error
  */
 int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
-    void *buffer, uint32_t bufsize, int buf_offset)
+    void *buffer, uint32_t bufsize, uint32_t buf_offset)
 {
     uint32_t pb = 0;
 #if SKY_DEBUG
@@ -270,7 +269,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     uint8_t *b = (uint8_t *)buffer;
     int n, N;
     if (ctx == NULL || ctx->session->sky_logf == NULL || level > ctx->session->sky_min_level ||
-        function == NULL || buffer == NULL || bufsize <= 0)
+        function == NULL || buffer == NULL || bufsize == 0)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name> <buf offset>:")
@@ -279,7 +278,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     // Calculate number of characters required to print 16 bytes
     N = n + (16 * 3); /* 16 bytes per line, 3 bytes per byte (' XX') */
     // if width of log line (SKY_LOG_LENGTH) too short 16 bytes, just print those that fit
-    for (pb = 0; n < MIN(SKY_LOG_LENGTH - 4, N);) {
+    for (; n < MIN(SKY_LOG_LENGTH - 4, N);) {
         if (pb < bufsize)
             n += sprintf(&buf[n], " %02X", b[pb++]);
         else
@@ -311,9 +310,10 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level,
     void *buffer, uint32_t bufsize)
 {
-    int buf_offset = 0;
+    uint32_t buf_offset = 0;
 #if SKY_DEBUG
-    int i, n = bufsize;
+    int i;
+    uint32_t n = bufsize;
     uint8_t *p = buffer;
     /* try to print 16 bytes per line till all dumped */
     while ((i = dump_hex16(
@@ -329,7 +329,7 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     (void)buffer;
     (void)bufsize;
 #endif
-    return buf_offset;
+    return (int)buf_offset;
 }
 
 /*! \brief dump Virtual APs in group (children not parent)
@@ -364,7 +364,7 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
             "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
             (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
             j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-            b->ap.freq, b->h.rssi, b->h.age);
+            b->ap.freq, b->h.rssi, b->h.age, b->h.priority >> 8, b->h.priority & 0xff);
     }
 #else
     (void)ctx;
@@ -400,7 +400,7 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-        b->ap.freq, b->h.rssi, b->h.age);
+        b->ap.freq, b->h.rssi, b->h.age, b->h.priority >> 8, b->h.priority & 0xff);
     dump_vap(ctx, prefix, b, file, func);
 #else
     (void)ctx;
@@ -424,26 +424,27 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
 {
 #if SKY_DEBUG
     char prefixstr[50] = { '\0' };
-    int idx_b, idx_c;
+    int idx_b;
+#if CACHE_SIZE
+    int idx_c;
+#endif
 
     /* Test whether beacon is in cache or request ctx */
     if (b >= ctx->beacon && b < ctx->beacon + TOTAL_BEACONS + 1) {
-        idx_b = b - ctx->beacon;
-        idx_c = 0;
+        idx_b = (int)(b - ctx->beacon);
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
     } else if (ctx->session && b >= ctx->session->cacheline[0].beacon &&
                b < ctx->session->cacheline[CACHE_SIZE - 1].beacon +
                        ctx->session->cacheline[CACHE_SIZE - 1].len) {
-        idx_b = b - ctx->session->cacheline[0].beacon;
+        idx_b = (int)(b - ctx->session->cacheline[0].beacon);
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
         snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #endif
     } else {
-        idx_b = idx_c = 0;
         snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %7s", str, b->h.connected ? "*" : " ",
             sky_pbeacon(b));
     }
@@ -496,12 +497,12 @@ void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func)
     int i;
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "Dump Request Context: Got %d beacons, WiFi %d, %s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
+        "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
         is_tbr_enabled(ctx) ? ", TBR" : "", ctx->session->sky_debounce ? ", Debounce" : "");
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
-    if (CONFIG(ctx->session, last_config_time) == TIME_UNAVAILABLE) {
+    if (CONFIG(ctx->session, last_config_time) == CONFIG_UPDATE_DUE) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
             "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->session, total_beacons),
             CONFIG(ctx->session, max_ap_beacons), CONFIG(ctx->session, max_vap_per_ap),
@@ -543,7 +544,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
 
     for (i = 0; i < ctx->session->len; i++) {
         cl = &ctx->session->cacheline[i];
-        if (cl->len == 0 || cl->time == TIME_UNAVAILABLE) {
+        if (cl->len == 0 || cl->time == CACHE_EMPTY) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
                 "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->session->len, cl->len,
                 cl->ap_len, cl->time);
@@ -728,7 +729,7 @@ Sky_randfn_t get_ctx_rand_bytes(Sky_ctx_t *ctx)
  */
 int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 {
-    int i, b = 0;
+    int i, b;
 
     if (ctx == NULL || t > SKY_BEACON_MAX) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param");
@@ -755,7 +756,7 @@ int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
  */
 int32_t get_num_cells(Sky_ctx_t *ctx)
 {
-    int i, b = 0;
+    int i, b;
 
     if (ctx == NULL) {
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param")
@@ -920,7 +921,7 @@ int16_t get_cell_type(Beacon_t *cell)
     if (!cell || !is_cell_type(cell))
         return SKY_BEACON_MAX;
     else
-        return cell->h.type;
+        return (int16_t)cell->h.type;
 }
 
 /*! \brief Get cell id1
@@ -936,12 +937,15 @@ int64_t get_cell_id1(Beacon_t *cell)
     switch (type) {
     case SKY_BEACON_CDMA:
         return SKY_UNKNOWN_ID1; // ID1 irrelevant for CDMA.
+
     case SKY_BEACON_GSM:
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
         return cell->cell.id1;
+    default:
+        break;
     }
 
     return 0;
@@ -998,14 +1002,16 @@ int64_t get_cell_id5(Beacon_t *cell)
 
     switch (type) {
     case SKY_BEACON_CDMA:
-        return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for CDMA
     case SKY_BEACON_GSM:
         return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for GSM
+
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
         return cell->cell.id5;
+    default:
+        break;
     }
 
     return 0;
@@ -1023,14 +1029,16 @@ int64_t get_cell_id6(Beacon_t *cell)
 
     switch (type) {
     case SKY_BEACON_CDMA:
-        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for CDMA
     case SKY_BEACON_GSM:
         return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
+
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
         return cell->cell.freq;
+    default:
+        break;
     }
 
     return 0;
@@ -1334,8 +1342,10 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
+#endif
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;
         dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
             w->ap.vg[VAP_LENGTH].len, 0);
@@ -1359,7 +1369,7 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
 
     for (i = 0; i < bufsize; i++)
         rand_buf[i] = rand() % 256;
-    return bufsize;
+    return (int)bufsize;
 }
 
 #ifdef UNITTESTS

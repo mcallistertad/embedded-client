@@ -42,7 +42,7 @@
  * Each plugin handles operations for a particular beacon type
  * Each table has entry points to handle the following operations
  *  EQUAL        - Test if two beacons are equal
- *  REMOVE_WORST - Find the least desirable beacon and remove it from the request ctx
+ *  REMOVE_WORST - Find the lowest priority beacon and remove it from the request ctx
  *  MATCH_CACHE  - Find the best cache line that matches the beacons in the request ctx
  *  ADD_TO_CACHE - Copy request ctx beacons to appropriate cache line
  */

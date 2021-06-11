@@ -329,9 +329,14 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
                 i, CACHE_SIZE, CONFIG(s, total_beacons), s->cacheline[i].len,
                 CONFIG(s, max_ap_beacons), s->cacheline[i].ap_len);
         }
-        if (s->cacheline[i].time &&
-            (now - s->cacheline[i].time) > s->config.cache_age_threshold * SECONDS_IN_HOUR) {
-            s->cacheline[i].time = TIME_UNAVAILABLE;
+        if (s->cacheline[i].time != CACHE_EMPTY && now == TIME_UNAVAILABLE) {
+            s->cacheline[i].time = CACHE_EMPTY;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to time being unavailable",
+                i, CACHE_SIZE);
+        } else if (s->cacheline[i].time != CACHE_EMPTY &&
+                   (now - s->cacheline[i].time) >
+                       CONFIG(s, cache_age_threshold) * SECONDS_IN_HOUR) {
+            s->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
                 CACHE_SIZE, now - s->cacheline[i].time);
         }
@@ -423,7 +428,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, e_cellid, pci, earfcn, ta, rsrp, is_connected ? "serve, " : "",
             (int)(ctx->header.time - timestamp));
@@ -592,7 +597,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && ucid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || ucid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
@@ -741,7 +746,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 {
     Beacon_t b;
 
-    if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && e_cellid != SKY_UNKNOWN_ID4)
+    if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
             mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
@@ -997,6 +1002,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
     int rc, rq_config = false;
+    Sky_session_t *s = ctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
 #endif
@@ -1008,17 +1014,16 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* determine whether request_client_conf should be true in request message */
-    rq_config =
-        ctx->session->config.last_config_time == TIME_UNAVAILABLE ||
-        ctx->header.time == TIME_UNAVAILABLE ||
-        (ctx->header.time - ctx->session->config.last_config_time) > CONFIG_REQUEST_INTERVAL;
+    rq_config = CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE ||
+                ctx->header.time == TIME_UNAVAILABLE ||
+                (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && ctx->session->config.last_config_time != TIME_UNAVAILABLE ?
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
             "Timeout" :
             rq_config ? "Forced" : "No");
 
     if (rq_config)
-        ctx->session->config.last_config_time = TIME_UNAVAILABLE; /* request on next serialize */
+        CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
 
     /* Trim any excess vap from request ctx i.e. total number of vap
      * in request ctx cannot exceed max that a request can carry
@@ -1086,6 +1091,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 {
     int rc;
     Sky_finalize_t ret = SKY_FINALIZE_ERROR;
+    Sky_session_t *s = ctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
 #endif
@@ -1110,7 +1116,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
-        cl = &ctx->session->cacheline[ctx->get_from];
+        cl = &s->cacheline[ctx->get_from];
         if (loc != NULL) {
             *loc = cl->loc;
             /* no downlink data to report to user */
@@ -1143,16 +1149,16 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         NUM_BEACONS(ctx), bufsize);
 
 #if SKY_DEBUG
-    if (ctx->session->config.last_config_time == TIME_UNAVAILABLE)
+    if (CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Requesting new dynamic configuration parameters");
     else
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
-            ctx->session->config.last_config_time);
+        LOGFMT(
+            ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d", CONFIG(s, last_config_time));
 #endif
 
     /* encode request */
-    rc = serialize_request(ctx, request_buf, bufsize, SW_VERSION,
-        ctx->session->config.last_config_time == TIME_UNAVAILABLE);
+    rc = serialize_request(
+        ctx, request_buf, bufsize, SW_VERSION, CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE);
 
     if (rc > 0) {
         *response_size = get_maximum_response_size();
@@ -1160,8 +1166,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request buffer of %d bytes prepared %s", rc,
-            (ctx->session->sky_debounce && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
-                                                                           "from request ctx");
+            (s->sky_debounce && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
+                                                                "from request ctx");
         LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, request_buf, rc);
         return ret;
     } else {
