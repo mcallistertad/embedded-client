@@ -1,5 +1,5 @@
 /*! \file plugins/ap_plugin_basic.c
-     *  \brief AP plugin supporting basic APs and cells Only
+ *  \brief AP plugin supporting basic APs and cells Only
  *  Plugin for Skyhook Embedded Library
  *
  * Copyright (c) 2020 Skyhook, Inc.
@@ -36,20 +36,28 @@
 #define VERBOSE_DEBUG false
 #endif
 
-/* Attribute priorities held as 16-bit value
- *   bits     |   description
- *   0-7      |   deviation from ideal strength
- *   8        |   beacon is in cache
- *   11       |   beacon is connected (e.g. serving cell)
+/* Attribute priorities are prioritized as follows
+ *  highest 1) : Connected
+ *          2) : Cached
+ *          3) : deviation from ideal distribution
+ *
+ * Each priority is assigned a value, highest priority has highest value
+ * Overall priority value is the sum of the three priorities which allows
+ * priority values (priority of beacons) to be compared numerically
+ *
+ * Connected - value 512
+ * Cached - value 255
+ * Deviation from ideal rssi is fractional but in the range of 0 through 128.
+ * The priority is held as 128 - deviation, making the priority higher when better.
+ *
+ * Below are the definitions for the property priorities
  */
 typedef enum {
     HIGHEST_PRIORITY = 0xffff,
     CONNECTED = 0x200,
     IN_CACHE = 0x100,
     LOWEST_PRIORITY = 0x000
-} Priority_t;
-
-#define ABS(x) ((x) < 0 ? -(x) : (x))
+} Property_priority_t;
 
 static Sky_status_t set_priorities(Sky_ctx_t *ctx);
 
@@ -132,7 +140,7 @@ static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
  *
  *  @param macA pointer to the first MAC
  *  @param macB pointer to the second MAC
- *  @param pn pointer to nibble index of where they differ if similar (0-11)
+ *  @param pn pointer to nibble index of where they differ if similar (0-11) (needed for premium)
  *
  *  @return negative, 0 or positive
  *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
@@ -195,39 +203,30 @@ static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 }
 #endif
 
-/*! \brief select between two virtual APs which should be removed,
- *  and then remove it
+/*! \brief select between two APs which should be removed,
  *
- *  keep beacons with higher priority properties
+ *  return negative if j has better properties than i
+ *  otherwise return positive
  *
  *  @param ctx Skyhook request context
  *
- *  @return true if beacon removed or false otherwise
  */
-#define CONNECTED_AND_IN_CACHE_ONLY(priority) (priority & (CONNECTED | IN_CACHE))
-static bool remove_poorest_of_pair(Sky_ctx_t *ctx, int i, int j)
+#define CONNECTED_AND_IN_CACHE_ONLY(priority) ((int16_t)(priority) & (CONNECTED | IN_CACHE))
+static int cmp_properties(Sky_ctx_t *ctx, int i, int j)
 {
-    /* Assume we'll keep i and discard j. Then, use priority
-     * logic to see if this should be reversed */
-    int tmp;
-
-    /* keep lowest MAC unless j has difference in Connectivity or cache */
+    /* Assume i is better than j (positive) unless priority
+     * logic dictates this should be reversed */
     if (CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[j].h.priority) >
-        CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[i].h.priority)) {
-        tmp = i;
-        i = j;
-        j = tmp;
-    }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d similar to %d%s%s", j, i,
-        ctx->beacon[i].h.connected ? " (connected)" : "",
-        ctx->beacon[i].ap.property.in_cache ? " (cached)" : "");
-    return (remove_beacon(ctx, j) == SKY_SUCCESS);
+        CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[i].h.priority))
+        return -1;
+    return 1;
 }
 
 /*! \brief try to reduce AP by filtering out virtual AP
  *
- *  When similar, remove beacon with highesr mac address
- *  unless it is in cache, then choose to remove the uncached beacon
+ *  When similar, select beacon with highest mac address
+ *  unless it better properties, then choose to select the other beacon
+ *  Remove the selected beacon with worst properties
  *
  *  @param ctx Skyhook request context
  *
@@ -237,6 +236,9 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
 {
     int i, j;
     int cmp;
+    Beacon_t *vap_a = NULL;
+    Beacon_t *vap_b = NULL;
+    Beacon_t *best_candidate = NULL;
 
     if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons)) {
         return false;
@@ -249,24 +251,47 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     }
 
     /* Compare all beacons, looking for similar macs
-     * Try to keep lowest of two beacons with similar macs, unless
-     * the lower one is connected or in cache and the other is not
+     * find the lowest of two beacons with similar macs, with
+     * the lowest priority
      */
     for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
             if ((cmp = mac_similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
-                /* j has higher mac so we will remove it unless connected or in cache indicate otherwise
-                 *
+                /* beacons are similar and i has lower mac */
+                /* j has higher mac so we will remove it unless properties indicate otherwise
                  */
-                return remove_poorest_of_pair(ctx, i, j);
+                if (cmp_properties(ctx, i, j) < 0) {
+                    vap_a = &ctx->beacon[i];
+                    vap_b = &ctx->beacon[j];
+                } else {
+                    vap_a = &ctx->beacon[j];
+                    vap_b = &ctx->beacon[i];
+                }
             } else if (cmp > 0) {
+                /* beacons are similar and j has lower mac */
                 /* situation is exactly reversed (i has higher mac) but logic is otherwise
                  * identical
                  */
-                return remove_poorest_of_pair(ctx, j, i);
+                if (cmp_properties(ctx, i, j) < 0) {
+                    vap_a = &ctx->beacon[j];
+                    vap_b = &ctx->beacon[i];
+                } else {
+                    vap_a = &ctx->beacon[i];
+                    vap_b = &ctx->beacon[j];
+                }
+            } else
+                continue;
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar to %d%s%s", vap_a - ctx->beacon,
+                vap_b - ctx->beacon, vap_b->h.connected ? " (connected)" : "",
+                vap_b->ap.property.in_cache ? " (cached)" : "");
+            if (best_candidate == NULL || (vap_a->h.priority < best_candidate->h.priority)) {
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "better than %d", best_candidate - ctx->beacon);
+                best_candidate = vap_a;
             }
         }
     }
+    if (best_candidate != NULL)
+        return (remove_beacon(ctx, best_candidate - ctx->beacon) == SKY_SUCCESS);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no match");
     return false;
 }
@@ -379,7 +404,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
                 threshold = CONFIG(ctx->state, cache_match_all_threshold);
-                ratio = (float)score / unionAB;
+                ratio = (float)score / (float)unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round((double)ratio * 100), score, unionAB, threshold);
                 result = true;
@@ -507,29 +532,29 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  *
  *  @return priority
  */
-static Priority_t get_priority(Sky_ctx_t *ctx, Beacon_t *b)
+static float get_priority(Sky_ctx_t *ctx, Beacon_t *b)
 {
-    Priority_t priority = 0;
-    int ideal_rssi, lowest_rssi, highest_rssi;
-    float band;
+    float priority = 0;
+    int lowest_rssi, highest_rssi;
+    float band, ideal_rssi;
 
     if (b->h.connected)
-        priority |= CONNECTED;
+        priority += (float)CONNECTED;
     if (b->ap.property.in_cache) {
-        priority |= IN_CACHE;
+        priority += (float)IN_CACHE;
     }
     /* Note that APs are in rssi order so index 0 is strongest beacon */
     highest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
     lowest_rssi = EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi);
     /* divide the total rssi range equally between all the APs */
     band = (float)(highest_rssi - lowest_rssi) / (float)(NUM_APS(ctx) - 1);
-    ideal_rssi = highest_rssi - (int)(band * (float)(b - ctx->beacon));
+    ideal_rssi = (float)highest_rssi - band * (float)(b - ctx->beacon);
 
     /* deviation from idea strength is stored in low order 8-bits */
-    priority |= (128 - ABS(ideal_rssi - EFFECTIVE_RSSI(b->h.rssi)));
+    priority += (128 - (ideal_rssi - EFFECTIVE_RSSI(b->h.rssi)));
 #if VERBOSE_DEBUG
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d rssi:%d ideal:%d priority:%02X:%d", b - ctx->beacon,
-        EFFECTIVE_RSSI(b->h.rssi), ideal_rssi, priority >> 8, priority & 0xFF);
+        EFFECTIVE_RSSI(b->h.rssi), ideal_rssi, (int)priority >> 8, (int)priority & 0xFF);
 #endif
     return priority;
 }
@@ -545,10 +570,10 @@ static Priority_t get_priority(Sky_ctx_t *ctx, Beacon_t *b)
 static int set_priorities(Sky_ctx_t *ctx)
 {
     int idx_of_worst = 0;
-    uint16_t priority_of_worst = (int16_t)HIGHEST_PRIORITY;
+    float priority_of_worst = (int16_t)HIGHEST_PRIORITY;
 
     for (int j = 0; j < NUM_APS(ctx); j++) {
-        ctx->beacon[j].h.priority = (uint16_t)get_priority(ctx, &ctx->beacon[j]);
+        ctx->beacon[j].h.priority = get_priority(ctx, &ctx->beacon[j]);
         if (ctx->beacon[j].h.priority < priority_of_worst) {
             idx_of_worst = j;
             priority_of_worst = ctx->beacon[j].h.priority;

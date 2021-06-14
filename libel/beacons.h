@@ -105,8 +105,8 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
-    int16_t rssi; /* -255 unkonwn - map it to - 128 */
-    uint16_t priority; /* used to remove worst beacon */
+    int16_t rssi; /* -128 through -10, Uknownn = -1 */
+    float priority; /* used to remove worst beacon. Higher values are better, always positive */
     int8_t connected; /* beacon connected */
 };
 
