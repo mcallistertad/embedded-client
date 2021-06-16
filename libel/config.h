@@ -73,10 +73,10 @@
 #define CACHE_AGE_THRESHOLD 24
 #endif
 
-/*! \brief If there are CACHE_BEACON_THRESHOLD or more beacons in workspace
+/*! \brief If there are CACHE_BEACON_THRESHOLD or more beacons in request ctx
  *   after filtering, then the cache match score is compared to
  *   CACHE_MATCH_THRESHOLD, otherwise 100% match is required to return the cached
- *   location (i.e. all beacons must match when only few beacons are in workspace).
+ *   location (i.e. all beacons must match when only few beacons are in request ctx).
  */
 #ifndef CACHE_BEACON_THRESHOLD
 #define CACHE_BEACON_THRESHOLD 3

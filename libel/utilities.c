@@ -50,13 +50,13 @@ Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code)
     return (code == SKY_ERROR_NONE) ? SKY_SUCCESS : SKY_ERROR;
 }
 
-/*! \brief validate the workspace buffer
+/*! \brief validate the request ctx buffer
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
- *  @return true if workspace is valid, else false
+ *  @return true if request ctx is valid, else false
  */
-int validate_workspace(Sky_ctx_t *ctx)
+int validate_request_ctx(Sky_ctx_t *ctx)
 {
     int i;
 
@@ -87,18 +87,18 @@ int validate_workspace(Sky_ctx_t *ctx)
     return true;
 }
 
-/*! \brief validate the cache buffer - Cant use LOGFMT here
+/*! \brief validate the session context buffer - Cant use LOGFMT here
  *
- *  @param c pointer to cache buffer
+ *  @param c pointer to csession context buffer
  *
- *  @return true if cache is valid, else false
+ *  @return true if session context is valid, else false
  */
-int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
+int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
 {
     if (s == NULL) {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: NULL pointer");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: NULL pointer");
 #endif
         return false;
     }
@@ -106,29 +106,30 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
     if (s->header.magic != SKY_MAGIC) {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: bad magic in header");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: bad magic in header");
 #endif
         return false;
     }
     if (s->header.crc32 ==
         sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
 #if CACHE_SIZE
-        if (s->len != CACHE_SIZE) {
+        if (s->header.size != sizeof(Sky_session_t)) {
 #if SKY_DEBUG
             if (logf != NULL)
-                (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: too big for CACHE_SIZE");
+                (*logf)(SKY_LOG_LEVEL_ERROR,
+                    "Session ctx validation failed: restored session does not match CACHE_SIZE");
 #endif
             return false;
         }
 
-        for (int i = 0; i < CACHE_SIZE; i++) {
+        for (int i = 0; i < s->num_cachelines; i++) {
             int j;
 
-            if (s->cacheline[i].len > TOTAL_BEACONS) {
+            if (s->cacheline[i].num_beacons > TOTAL_BEACONS) {
 #if SKY_DEBUG
                 if (logf != NULL)
                     (*logf)(SKY_LOG_LEVEL_ERROR,
-                        "Cache validation failed: too many beacons for TOTAL_BEACONS");
+                        "Session ctx validation failed: too many beacons for TOTAL_BEACONS");
 #endif
                 return false;
             }
@@ -137,14 +138,16 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
                 if (s->cacheline[i].beacon[j].h.magic != BEACON_MAGIC) {
 #if SKY_DEBUG
                     if (logf != NULL)
-                        (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon info");
+                        (*logf)(
+                            SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: Bad beacon info");
 #endif
                     return false;
                 }
                 if (s->cacheline[i].beacon[j].h.type > SKY_BEACON_MAX) {
 #if SKY_DEBUG
                     if (logf != NULL)
-                        (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: Bad beacon type");
+                        (*logf)(
+                            SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: Bad beacon type");
 #endif
                     return false;
                 }
@@ -154,7 +157,7 @@ int validate_cache(Sky_state_t *s, Sky_loggerfn_t logf)
     } else {
 #if SKY_DEBUG
         if (logf != NULL)
-            (*logf)(SKY_LOG_LEVEL_ERROR, "Cache validation failed: crc mismatch!");
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: crc mismatch!");
 #else
         (void)logf;
 #endif
@@ -188,13 +191,13 @@ int validate_mac(const uint8_t mac[6], Sky_ctx_t *ctx)
 
 /*! \brief return true if library is configured for tbr authentication
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return is tbr enabled
  */
 bool is_tbr_enabled(Sky_ctx_t *ctx)
 {
-    return (ctx->state->sky_sku[0] != '\0');
+    return (ctx->session->sky_sku[0] != '\0');
 }
 
 #if SKY_DEBUG
@@ -216,7 +219,7 @@ const char *sky_basename(const char *path)
 
 /*! \brief formatted logging to user provided function
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param level the log level of this msg
  *  @param fmt the msg
  *  @param ... variable arguments
@@ -230,7 +233,8 @@ int logfmt(
     va_list ap;
     char buf[SKY_LOG_LENGTH];
     int ret, n;
-    if (ctx == NULL || ctx->logf == NULL || level > ctx->min_level || function == NULL)
+    if (ctx == NULL || ctx->session->sky_logf == NULL || level > ctx->session->sky_min_level ||
+        function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
@@ -238,7 +242,7 @@ int logfmt(
 
     va_start(ap, fmt);
     ret = vsnprintf(buf + n, sizeof(buf) - n, fmt, ap);
-    (*ctx->logf)(level, buf);
+    (*ctx->session->sky_logf)(level, buf);
     va_end(ap);
     return ret;
 }
@@ -248,7 +252,7 @@ int logfmt(
  *
  *  @param file the file name where LOG_BUFFER was invoked
  *  @param function the function name where LOG_BUFFER was invoked
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param level the log level of this msg
  *  @param buffer where to start dumping the next line
  *  @param bufsize remaining size of the buffer in bytes
@@ -264,8 +268,8 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
     char buf[SKY_LOG_LENGTH];
     uint8_t *b = (uint8_t *)buffer;
     int n, N;
-    if (ctx == NULL || ctx->logf == NULL || level > ctx->min_level || function == NULL ||
-        buffer == NULL || bufsize == 0)
+    if (ctx == NULL || ctx->session->sky_logf == NULL || level > ctx->session->sky_min_level ||
+        function == NULL || buffer == NULL || bufsize == 0)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name> <buf offset>:")
@@ -280,7 +284,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
         else
             break;
     }
-    (*ctx->logf)(level, buf);
+    (*ctx->session->sky_logf)(level, buf);
 #else
     (void)file;
     (void)function;
@@ -297,7 +301,7 @@ int dump_hex16(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
  *
  *  @param file the file name where LOG_BUFFER was invoked
  *  @param function the function name where LOG_BUFFER was invoked
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *  @param buf pointer to the buffer
  *  @param bufsize size of the buffer in bytes
  *
@@ -330,7 +334,7 @@ int log_buffer(const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_l
 
 /*! \brief dump Virtual APs in group (children not parent)
  *
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *  @param b parent of Virtual Group AP
  *  @param file the file name where LOG_BUFFER was invoked
  *  @param function the function name where LOG_BUFFER was invoked
@@ -373,7 +377,7 @@ void dump_vap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const
 
 /*! \brief dump AP including any VAP
  *
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *  @param str comment
  *  @param b pointer to Beacon_t structure
  *  @param file the file name where LOG_BUFFER was invoked
@@ -409,7 +413,7 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
 
 /*! \brief dump a beacon
  *
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *  @param b the beacon to dump
  *  @param file the file name where LOG_BUFFER was invoked
  *  @param function the function name where LOG_BUFFER was invoked
@@ -425,16 +429,16 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
     int idx_c;
 #endif
 
-    /* Test whether beacon is in cache or workspace */
+    /* Test whether beacon is in cache or request ctx */
     if (b >= ctx->beacon && b < ctx->beacon + TOTAL_BEACONS + 1) {
         idx_b = (int)(b - ctx->beacon);
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
-    } else if (ctx->state && b >= ctx->state->cacheline[0].beacon &&
-               b < ctx->state->cacheline[CACHE_SIZE - 1].beacon +
-                       ctx->state->cacheline[CACHE_SIZE - 1].len) {
-        idx_b = (int)(b - ctx->state->cacheline[0].beacon);
+    } else if (ctx->session && b >= ctx->session->cacheline[0].beacon &&
+               b < ctx->session->cacheline[CACHE_SIZE - 1].beacon +
+                       ctx->session->cacheline[CACHE_SIZE - 1].num_beacons) {
+        idx_b = (int)(b - ctx->session->cacheline[0].beacon);
         idx_c = idx_b / TOTAL_BEACONS;
         idx_b %= TOTAL_BEACONS;
         snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
@@ -481,40 +485,41 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
 #endif
 }
 
-/*! \brief dump the beacons in the workspace
+/*! \brief dump the beacons in the request ctx
  *
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *
  *  @returns 0 for success or negative number for error
  */
-void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
+void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func)
 {
 #if SKY_DEBUG
     int i;
 
-    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Dump WorkSpace: Got %d beacons, WiFi %d%s%s",
-        NUM_BEACONS(ctx), NUM_APS(ctx), is_tbr_enabled(ctx) ? ", TBR" : "",
-        ctx->debounce ? ", Debounce" : "");
+    logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
+        "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
+        is_tbr_enabled(ctx) ? ", TBR" : "", ctx->session->sky_debounce ? ", Debounce" : "");
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
-    if (CONFIG(ctx->state, last_config_time) == CONFIG_UPDATE_DUE) {
+    if (CONFIG(ctx->session, last_config_time) == CONFIG_UPDATE_DUE) {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->state, total_beacons),
-            CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
-            CONFIG(ctx->state, max_vap_per_rq));
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:Pending", CONFIG(ctx->session, total_beacons),
+            CONFIG(ctx->session, max_ap_beacons), CONFIG(ctx->session, max_vap_per_ap),
+            CONFIG(ctx->session, max_vap_per_rq));
     } else {
         logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-            "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->state, total_beacons),
-            CONFIG(ctx->state, max_ap_beacons), CONFIG(ctx->state, max_vap_per_ap),
-            CONFIG(ctx->state, max_vap_per_rq),
-            ctx->header.time - CONFIG(ctx->state, last_config_time));
+            "Config: Total:%d AP:%d VAP:%d(%d) Update:%d Sec", CONFIG(ctx->session, total_beacons),
+            CONFIG(ctx->session, max_ap_beacons), CONFIG(ctx->session, max_vap_per_ap),
+            CONFIG(ctx->session, max_vap_per_rq),
+            ctx->header.time - CONFIG(ctx->session, last_config_time));
     }
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Config: Threshold:%d(Used) %d(All) %d(Age) %d(Beacon) %d(RSSI)",
-        CONFIG(ctx->state, cache_match_used_threshold),
-        CONFIG(ctx->state, cache_match_all_threshold), CONFIG(ctx->state, cache_age_threshold),
-        CONFIG(ctx->state, cache_beacon_threshold), -CONFIG(ctx->state, cache_neg_rssi_threshold));
+        CONFIG(ctx->session, cache_match_used_threshold),
+        CONFIG(ctx->session, cache_match_all_threshold), CONFIG(ctx->session, cache_age_threshold),
+        CONFIG(ctx->session, cache_beacon_threshold),
+        -CONFIG(ctx->session, cache_neg_rssi_threshold));
 #else
     (void)ctx;
     (void)file;
@@ -524,7 +529,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
 
 /*! \brief dump the beacons in the cache
  *
- *  @param ctx workspace pointer
+ *  @param ctx request ctx pointer
  *  @param file the file name where LOG_BUFFER was invoked
  *  @param function the function name where LOG_BUFFER was invoked
  *
@@ -537,21 +542,20 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
     int i, j;
     Sky_cacheline_t *cl;
 
-    for (i = 0; i < CACHE_SIZE; i++) {
-        cl = &ctx->state->cacheline[i];
-        if (cl->len == 0 || cl->time == CACHE_EMPTY) {
+    for (i = 0; i < ctx->session->num_cachelines; i++) {
+        cl = &ctx->session->cacheline[i];
+        if (cl->num_beacons == 0 || cl->time == CACHE_EMPTY) {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d - empty len:%d ap_len:%d time:%u", i, ctx->state->len, cl->len,
-                cl->ap_len, cl->time);
+                "cache: %d of %d - empty num_beacons:%d num_ap:%d time:%u", i,
+                ctx->session->num_cachelines, cl->num_beacons, cl->num_ap, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i, ctx->state->len,
-                (int)cl->loc.lat,
-                (int)fabs(round(1000000 * (cl->loc.lat - trunc((double)cl->loc.lat)))),
-                (int)cl->loc.lon,
-                (int)fabs(round(1000000 * (cl->loc.lon - trunc((double)cl->loc.lon)))), cl->loc.hpe,
-                cl->len);
-            for (j = 0; j < cl->len; j++) {
+                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i,
+                ctx->session->num_cachelines, (int)cl->loc.lat,
+                (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
+                (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
+                cl->num_beacons);
+            for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
         }
@@ -573,7 +577,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
  *
  *  @return void
  */
-void config_defaults(Sky_state_t *s)
+void config_defaults(Sky_session_t *s)
 {
     if (CONFIG(s, total_beacons) == 0)
         CONFIG(s, total_beacons) = TOTAL_BEACONS;
@@ -598,128 +602,128 @@ void config_defaults(Sky_state_t *s)
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx partner_id)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return partner_id
  */
 uint32_t get_ctx_partner_id(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_partner_id;
+    return ctx->session->sky_partner_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_aes_key)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_aes_key
  */
 uint8_t *get_ctx_aes_key(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_aes_key;
+    return ctx->session->sky_aes_key;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_device_id
  */
 uint8_t *get_ctx_device_id(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_device_id;
+    return ctx->session->sky_device_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_id_len
  */
 uint32_t get_ctx_id_length(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_id_len;
+    return ctx->session->sky_id_len;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_device_id)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_device_id
  */
 uint8_t *get_ctx_ul_app_data(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_ul_app_data;
+    return ctx->session->sky_ul_app_data;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_id_len
  */
 uint32_t get_ctx_ul_app_data_length(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_ul_app_data_len;
+    return ctx->session->sky_ul_app_data_len;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_token_id
  */
 uint32_t get_ctx_token_id(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_token_id;
+    return ctx->session->sky_token_id;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_sku)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_sku
  */
 char *get_ctx_sku(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_sku;
+    return ctx->session->sky_sku;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_cc)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_cc
  */
 uint32_t get_ctx_cc(Sky_ctx_t *ctx)
 {
-    return ctx->state->sky_cc;
+    return ctx->session->sky_cc;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx logf)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return logf
  */
 Sky_loggerfn_t get_ctx_logf(Sky_ctx_t *ctx)
 {
-    return ctx->logf;
+    return ctx->session->sky_logf;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (ctx sky_id_len)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return sky_id_len
  */
 Sky_randfn_t get_ctx_rand_bytes(Sky_ctx_t *ctx)
 {
-    return ctx->rand_bytes;
+    return ctx->session->sky_rand_bytes;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (count beacons)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param t type of beacon to count
  *
  *  @return number of beacons of the specified type
@@ -747,7 +751,7 @@ int32_t get_num_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 
 /*! \brief Return the total number of scanned cells (serving, neighbor, or otherwise)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return number of cells
  */
@@ -770,7 +774,7 @@ int32_t get_num_cells(Sky_ctx_t *ctx)
 
 /*! \brief field extraction for dynamic use of Nanopb (base of beacon type)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param t type of beacon to find
  *
  *  @return first beacon of the specified type
@@ -797,7 +801,7 @@ int get_base_beacons(Sky_ctx_t *ctx, Sky_beacon_type_t t)
 
 /*! \brief field extraction for dynamic use of Nanopb (num AP)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return number of AP beacons
  */
@@ -812,7 +816,7 @@ int32_t get_num_aps(Sky_ctx_t *ctx)
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/MAC)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return beacon mac info
@@ -828,7 +832,7 @@ uint8_t *get_ap_mac(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/freq)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return beacon channel info
@@ -844,7 +848,7 @@ int64_t get_ap_freq(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/rssi)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return beacon rssi info
@@ -860,7 +864,7 @@ int64_t get_ap_rssi(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/is_connected)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return beacon is_connected info
@@ -876,7 +880,7 @@ bool get_ap_is_connected(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (AP/timestamp)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return beacon timestamp info
@@ -892,7 +896,7 @@ int64_t get_ap_age(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief Get a cell
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into cells
  *
  *  @return Pointer to cell
@@ -1107,7 +1111,7 @@ int64_t get_cell_ta(Beacon_t *cell)
 
 /*! \brief field extraction for dynamic use of Nanopb (num gnss)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return number of gnss
  */
@@ -1118,7 +1122,7 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lat)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps lat info
@@ -1131,7 +1135,7 @@ float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lon)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps lon info
@@ -1144,7 +1148,7 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/hpe)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps hpe info
@@ -1157,7 +1161,7 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/alt)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps alt info
@@ -1170,7 +1174,7 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/vpe)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps vpe info
@@ -1183,7 +1187,7 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/speed)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps gps speed info
@@ -1196,7 +1200,7 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/bearing)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps bearing info
@@ -1209,7 +1213,7 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/nsat)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
  *  @return gps nsat info
@@ -1222,7 +1226,7 @@ int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/timestamp)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
  *  @return gps timestamp info
@@ -1235,7 +1239,7 @@ int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
 
 /*! \brief field extraction for dynamic use of Nanopb (num vaps)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
  *  @return number of Virtual AP groups
  */
@@ -1265,10 +1269,10 @@ int32_t get_num_vaps(Sky_ctx_t *ctx)
 
 /*! \brief field extraction for dynamic use of Nanopb (vap_data)
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *  @param idx index into Virtual Groups
  *
- *  @return vaps data i.e len, AP, patch1, patch2...
+ *  @return vaps data i.e num_beacons, AP, patch1, patch2...
  */
 uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
 {
@@ -1283,12 +1287,12 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
     /* return the Virtual AP data */
     for (j = 0; j < NUM_APS(ctx); j++) {
         w = &ctx->beacon[j];
-        // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d len: %d nvg: %d", j, idx, w->ap.vg_len, nvg);
+        // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d Group #: %d num_beacons: %d nvg: %d", j, idx, w->ap.vg_len, nvg);
         if (w->ap.vg[VAP_LENGTH].len && nvg == idx) {
-            // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d len: %d ap: %d", idx, j, idx,
-            //     w->ap.vg[VAP_LENGTH].len, w->ap.vg[VAP_PARENT].ap);
+            // LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Group: %d AP: %d idx: %d num_beacons: %d ap: %d", idx, j, idx,
+            //     w->ap.vg[VAP_LENGTH].num_beacons, w->ap.vg[VAP_PARENT].ap);
             // dump_hex16(__FILE__, __FUNCTION__, ctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
-            //     w->ap.vg[VAP_LENGTH].len, 0);
+            //     w->ap.vg[VAP_LENGTH].num_beacons, 0);
             return (uint8_t *)w->ap.vg;
         } else {
             nvg += (w->ap.vg[VAP_LENGTH].len ? 1 : 0);
@@ -1303,9 +1307,9 @@ uint8_t *get_vap_data(Sky_ctx_t *ctx, uint32_t idx)
  *  the number of children in a virtual group so that as many groups
  *  as possible are retained, but the max_vap_per_rq is not exceeded
  *
- *  @param ctx workspace buffer
+ *  @param ctx request ctx buffer
  *
- *  @return vaps data i.e len, AP, patch1, patch2...
+ *  @return vaps data i.e num_beacons, AP, patch1, patch2...
  */
 uint8_t *select_vap(Sky_ctx_t *ctx)
 {
@@ -1319,7 +1323,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         // LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad param");
         return 0;
     }
-    for (; !no_more && nvap < CONFIG(ctx->state, max_vap_per_rq);) {
+    for (; !no_more && nvap < CONFIG(ctx->session, max_vap_per_rq);) {
         /* Walk through APs counting vap, when max_vap_per_rq is reached */
         /* then walk through again, truncating the compressed bytes */
         no_more = true;
@@ -1328,7 +1332,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
             if (w->ap.vg_len > cap_vap[j]) {
                 cap_vap[j]++;
                 nvap++;
-                if (nvap == CONFIG(ctx->state, max_vap_per_rq))
+                if (nvap == CONFIG(ctx->session, max_vap_per_rq))
                     break;
                 if (w->ap.vg_len > cap_vap[j])
                     no_more = false;
@@ -1340,7 +1344,7 @@ uint8_t *select_vap(Sky_ctx_t *ctx)
         w = &ctx->beacon[j];
         w->ap.vg[VAP_PARENT].ap = j;
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d len: %d -> %d", w->ap.vg[VAP_PARENT].ap,
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "AP: %d num_beacons: %d -> %d", w->ap.vg[VAP_PARENT].ap,
             w->ap.vg[VAP_LENGTH].len, cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0);
 #endif
         w->ap.vg[VAP_LENGTH].len = cap_vap[j] ? cap_vap[j] + VAP_PARENT : 0;

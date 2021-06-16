@@ -33,9 +33,9 @@
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((uint16_t)((p)->len - (p)->ap_len))
-#define NUM_APS(p) ((p)->ap_len)
-#define NUM_BEACONS(p) ((p)->len)
+#define NUM_CELLS(p) ((uint16_t)((p)->num_beacons - (p)->num_ap))
+#define NUM_APS(p) ((p)->num_ap)
+#define NUM_BEACONS(p) ((p)->num_beacons)
 #define IMPLIES(a, b) (!(a) || (b))
 #define NUM_VAPS(b) ((b)->ap.vg_len)
 
@@ -66,17 +66,17 @@
 
 /* Comparisons result in positive difference when beacon a is higher priority */
 /* when comparing type, lower type enum is better so invert difference */
-#define COMPARE_TYPE(a, b) (-((a->h.type) - (b->h.type)))
+#define COMPARE_TYPE(a, b) ((b)->h.type - (a)->h.type)
 /* when comparing age, lower value (younger) is better so invert difference */
-#define COMPARE_AGE(a, b) (-((a->h.age) - (b->h.age)))
+#define COMPARE_AGE(a, b) ((b)->h.age - (a)->h.age)
 /* when comparing rssi, higher value (stronger) is better */
-#define COMPARE_RSSI(a, b) ((EFFECTIVE_RSSI(a->h.rssi) - EFFECTIVE_RSSI(b->h.rssi)))
+#define COMPARE_RSSI(a, b) (EFFECTIVE_RSSI((a)->h.rssi) - EFFECTIVE_RSSI((b)->h.rssi))
 /* when comparing mac, lower value is better so invert difference */
-#define COMPARE_MAC(a, b) (-memcmp((a->ap.mac), (b->ap.mac), MAC_SIZE))
+#define COMPARE_MAC(a, b) (memcmp((b)->ap.mac, (a)->ap.mac, MAC_SIZE))
 /* when comparing connected, higher (true) value is better */
-#define COMPARE_CONNECTED(a, b) ((a->h.connected) - (b->h.connected))
+#define COMPARE_CONNECTED(a, b) ((a)->h.connected - (b)->h.connected)
 /* when comparing priority, higher value is better */
-#define COMPARE_PRIORITY(a, b) ((a->h.priority) - (b->h.priority))
+#define COMPARE_PRIORITY(a, b) ((a)->h.priority - (b)->h.priority)
 
 /*! \brief Types of beacon in compare order
  */
@@ -133,7 +133,8 @@ struct ap {
     Sky_beacon_property_t vg_prop[MAX_VAP_PER_AP]; /* Virtual AP properties */
 };
 
-// http://wiki.opencellid.org/wiki/API
+/*! \brief http://wiki.opencellid.org/wiki/API
+ */
 struct cell {
     struct header h;
     uint16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). SKY_UNKNOWN_ID1 if unknown.
@@ -148,7 +149,8 @@ struct cell {
     int32_t ta; // SKY_UNKNOWN_TA if unknown.
 };
 
-// blue tooth
+/*! \brief blue tooth
+ */
 struct ble {
     struct header h;
     uint16_t major;
@@ -157,6 +159,8 @@ struct ble {
     uint8_t uuid[16];
 };
 
+/*! \brief universal beacon structure
+ */
 typedef union beacon {
     struct header h;
     struct ap ap;
@@ -164,6 +168,8 @@ typedef union beacon {
     struct cell cell;
 } Beacon_t;
 
+/*! \brief gps/gnss
+ */
 typedef struct gps {
     double lat;
     double lon;
@@ -176,21 +182,18 @@ typedef struct gps {
     uint32_t age;
 } Gps_t;
 
-typedef struct sky_header {
-    uint32_t magic; /* SKY_MAGIC */
-    uint32_t size; /* total number of bytes in structure */
-    time_t time; /* timestamp when structure was allocated */
-    uint32_t crc32; /* crc32 over header */
-} Sky_header_t;
-
+/*! \brief each cacheline holds a copy of a scan and the server response
+ */
 typedef struct sky_cacheline {
-    uint16_t len; /* number of beacons */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t num_beacons; /* number of beacons */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
+/*! \brief TBR states, 1) Disabled (not in use), 2) Unregistered, 3) Registered
+ */
 typedef enum sky_tbr_state {
     STATE_TBR_DISABLED, /* not configured for TBR */
     STATE_TBR_UNREGISTERED, /* need to register */
@@ -198,8 +201,10 @@ typedef enum sky_tbr_state {
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
-#define CONFIG(state, param) (state->config.param)
+#define CONFIG(session, param) (session->config.param)
 
+/*! \brief Server tunable config parameters
+ */
 typedef struct sky_config_pad {
     time_t last_config_time; /* time when the last new config was received */
     uint32_t total_beacons;
@@ -215,9 +220,18 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-typedef struct sky_state {
+/*! \brief Session Context - holds parameters defined when Libel is opened and the cache lines
+ */
+typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    uint32_t sky_id_len; /* device ID len */
+    bool sky_open_flag; /* true if sky_open() has been called by user */
+    Sky_randfn_t sky_rand_bytes; /* User rand_bytes fn */
+    Sky_loggerfn_t sky_logf; /* User logging fn */
+    Sky_log_level_t sky_min_level; /* User log level */
+    Sky_timefn_t sky_time; /* User time fn */
+    bool sky_debounce; /* send cached or request beacons */
+    void *sky_plugins; /* root of registered plugin list */
+    uint32_t sky_id_len; /* device ID num_beacons */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
     uint32_t sky_token_id; /* TBR token ID */
     uint32_t sky_ul_app_data_len; /* uplink app data length */
@@ -230,29 +244,25 @@ typedef struct sky_state {
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
-    int len; /* number of cache lines */
+    int num_cachelines; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 #endif
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
-} Sky_state_t;
+} Sky_session_t;
 
+/*! \brief Request Context - workspace for new request
+ */
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    Sky_loggerfn_t logf;
-    Sky_randfn_t rand_bytes;
-    Sky_log_level_t min_level;
-    Sky_timefn_t gettime;
-    bool debounce;
-    uint16_t len; /* number of beacons in list (0 == none) */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t num_beacons; /* number of beacons in list (0 == none) */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     Gps_t gps; /* GNSS info */
     /* Assume worst case is that beacons and gps info takes twice the bare structure size */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
-    Sky_state_t *state;
-    void *plugin;
+    Sky_session_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */

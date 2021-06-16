@@ -146,11 +146,12 @@
  * @param identifier Context variable
  * @param block Test code
  */
-#define TEST(S, N, ...)                                                                            \
+#define TEST(S, C, ...)                                                                            \
     TEST_DEF((S), {                                                                                \
-        MOCK_SKY_CTX(N);                                                                           \
+        MOCK_SKY_CTX(C);                                                                           \
         EXE(__VA_ARGS__);                                                                          \
-        CLOSE_SKY_CTX(N);                                                                          \
+        CLOSE_SKY_SESSION(C->session);                                                             \
+        free(C);                                                                                   \
     });
 
 /* \brief Evaluate expression and tally results
@@ -183,13 +184,13 @@
 
 #define MOCK_SKY_CTX(N) Sky_ctx_t *N = _test_sky_ctx()
 
-#define CLOSE_SKY_CTX(C)                                                                           \
+#define CLOSE_SKY_SESSION(S)                                                                       \
     Sky_errno_t err;                                                                               \
-    if (sky_close(&err, NULL) != SKY_SUCCESS) {                                                    \
+    if (sky_close(S, &err) != SKY_SUCCESS) {                                                       \
         fprintf(stderr, "error closing mock sky context\n");                                       \
         exit(-1);                                                                                  \
     }                                                                                              \
-    free(C);
+    free(S);
 
 /* Beacon macros */
 #define BEACON(N, TYPE, TIME, RSSI, CON)                                                           \

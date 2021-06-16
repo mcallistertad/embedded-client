@@ -110,8 +110,8 @@ typedef enum {
     SKY_ERROR_NEVER_OPEN, // Operation failed because sky_open has not been completed
     SKY_ERROR_ALREADY_OPEN, // Operation failed because sky_open has already been called
     SKY_ERROR_BAD_PARAMETERS, // Operation failed because a parameter is invalid
-    SKY_ERROR_BAD_WORKSPACE, // Operation failed because workspace failed sanity checks
-    SKY_ERROR_BAD_STATE, // Operation failed because libel state failed sanity checks
+    SKY_ERROR_BAD_REQUEST_CTX, // Operation failed because request context buffer failed sanity checks
+    SKY_ERROR_BAD_SESSION_CTX, // Operation failed because libel session context buffer failed sanity checks
     SKY_ERROR_DECODE_ERROR, // Network message could not be decoded
     SKY_ERROR_ENCODE_ERROR, // Network message could not be encoded
     SKY_ERROR_RESOURCE_UNAVAILABLE, // Operation failed because resourse could not be assigned
@@ -154,6 +154,16 @@ typedef int (*Sky_randfn_t)(uint8_t *rand_buf, uint32_t bufsize);
  */
 typedef time_t (*Sky_timefn_t)(time_t *t);
 
+/*! \brief session context header
+ */
+typedef struct sky_header {
+    uint32_t magic; /* SKY_MAGIC */
+    uint32_t size; /* total number of bytes in structure */
+    uint32_t time; /* timestamp when structure was allocated */
+    uint32_t crc32; /* crc32 over header */
+} Sky_header_t;
+#define SKY_SIZEOF_SESSION_HEADER (sizeof(Sky_header_t))
+
 #ifndef SKY_LIBEL
 #include "aes.h"
 #include "crc32.h"
@@ -163,21 +173,21 @@ typedef void Sky_ctx_t;
 #include "aes.h"
 #include "config.h"
 #include "beacons.h"
-#include "plugin.h"
 #include "utilities.h"
+#include "plugin.h"
 #endif
 
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *state_buf,
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *session_buf,
     Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime,
     bool debounce);
 
-int32_t sky_sizeof_state(void *sky_state);
+int32_t sky_sizeof_session_ctx(void *session);
 
-int32_t sky_sizeof_workspace(void);
+int32_t sky_sizeof_request_ctx(void);
 
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
-    uint32_t ul_app_data_len, Sky_errno_t *sky_errno);
+Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_buf,
+    uint8_t *ul_app_data, uint32_t ul_app_data_len, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t mac[MAC_SIZE],
     time_t timestamp, int16_t rssi, int32_t freq, bool is_connected);
@@ -234,10 +244,11 @@ char *sky_perror(Sky_errno_t sky_errno);
 char *sky_pserver_status(Sky_loc_status_t status);
 
 char *sky_psource(struct sky_location *l);
+
 #ifdef SKY_LIBEL
 char *sky_pbeacon(Beacon_t *b);
 #endif
 
-Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state);
+Sky_status_t sky_close(void *session, Sky_errno_t *sky_errno);
 
 #endif
