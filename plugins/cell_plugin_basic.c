@@ -166,6 +166,8 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
         return SKY_ERROR;
     }
 
+    DUMP_WORKSPACE(ctx);
+
     /* sanity check last beacon, if we get here, it should be a cell */
     if (is_cell_type(&ctx->beacon[NUM_BEACONS(ctx) - 1])) {
         /* cells are in priority order

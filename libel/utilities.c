@@ -393,10 +393,11 @@ void dump_ap(Sky_ctx_t *ctx, char *prefix, Beacon_t *b, const char *file, const 
         prefix = "AP:";
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
+        "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d pri:%d.%d", prefix,
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-        b->ap.freq, b->h.rssi, b->h.age);
+        b->ap.freq, b->h.rssi, b->h.age, (int)b->h.priority,
+        (int)((b->h.priority - (int)b->h.priority) * 10));
     dump_vap(ctx, prefix, b, file, func);
 #else
     (void)ctx;
