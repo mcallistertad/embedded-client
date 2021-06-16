@@ -1,45 +1,47 @@
-TEST_FUNC(test_validate_workspace)
+TEST_FUNC(test_validate_request_ctx)
 {
     /* check the following:
         ctx == NULL
-        ctx->len < 0 || ctx->ap_len < 0
-        ctx->len > TOTAL_BEACONS + 1
-        ctx->ap_len > MAX_AP_BEACONS + 1
+        ctx->num_beacons < 0 || ctx->num_ap < 0
+        ctx->num_beacons > TOTAL_BEACONS + 1
+        ctx->num_ap > MAX_AP_BEACONS + 1
         ctx->header.crc32 == sky_crc32(...)
         ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX
         */
-    TEST("should return false with NULL ctx", ctx, { ASSERT(false == validate_workspace(NULL)); });
+    TEST(
+        "should return false with NULL ctx", ctx, { ASSERT(false == validate_request_ctx(NULL)); });
 
-    TEST("should return true with default ctx", ctx, { ASSERT(true == validate_workspace(ctx)); });
+    TEST(
+        "should return true with default ctx", ctx, { ASSERT(true == validate_request_ctx(ctx)); });
 
     TEST("should return false with too small length in ctx", ctx, {
-        ctx->len = -34;
-        ASSERT(false == validate_workspace(ctx));
+        ctx->num_beacons = -34;
+        ASSERT(false == validate_request_ctx(ctx));
     });
 
     TEST("should return false with too big length in ctx", ctx, {
-        ctx->len = 1234;
-        ASSERT(false == validate_workspace(ctx));
+        ctx->num_beacons = 1234;
+        ASSERT(false == validate_request_ctx(ctx));
     });
 
     TEST("should return false with too small AP length in ctx", ctx, {
-        ctx->ap_len = -3;
-        ASSERT(false == validate_workspace(ctx));
+        ctx->num_ap = -3;
+        ASSERT(false == validate_request_ctx(ctx));
     });
 
     TEST("should return false with bad crc in ctx", ctx, {
         ctx->header.crc32 = 1234;
-        ASSERT(false == validate_workspace(ctx));
+        ASSERT(false == validate_request_ctx(ctx));
     });
 
     TEST("should return false with corrupt beacon in ctx (magic)", ctx, {
         ctx->beacon[0].h.magic = 1234;
-        ASSERT(false == validate_workspace(ctx));
+        ASSERT(false == validate_request_ctx(ctx));
     });
 
     TEST("should return false with corrupt beacon in ctx (type)", ctx, {
         ctx->beacon[0].h.type = 1234;
-        ASSERT(false == validate_workspace(ctx));
+        ASSERT(false == validate_request_ctx(ctx));
     });
 }
 
@@ -409,7 +411,7 @@ TEST_FUNC(test_insert)
 
             a.h.type = SKY_BEACON_MAX;
             ASSERT(SKY_ERROR == insert_beacon(ctx, &sky_errno, &a));
-            ASSERT(ctx->len == 0);
+            ASSERT(ctx->num_beacons == 0);
             ASSERT(SKY_ERROR_BAD_PARAMETERS == sky_errno);
         });
 
@@ -715,7 +717,7 @@ TEST_FUNC(test_insert)
 
 BEGIN_TESTS(beacon_test)
 
-GROUP_CALL("validate_workspace", test_validate_workspace);
+GROUP_CALL("validate_request_ctx", test_validate_request_ctx);
 GROUP_CALL("is_beacon_better", test_compare);
 GROUP_CALL("beacon_insert", test_insert);
 
