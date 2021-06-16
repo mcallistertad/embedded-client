@@ -327,7 +327,7 @@ static time_t mytime(time_t *t)
  */
 static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
-    bool server_request, Sky_location_t *loc)
+    bool server_request, Sky_location_t *loc, bool debounce)
 {
     uint32_t i;
     uint32_t request_size;
@@ -410,7 +410,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
 retry_after_auth:
     /* Determine how big the network request buffer must be, and allocate a */
     /* buffer of that length. This function must be called for each request. */
-    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) != SKY_SUCCESS) {
+    if (sky_sizeof_request(ctx, &request_size, &sky_errno) != SKY_SUCCESS) {
         printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
         return false;
     }
@@ -421,63 +421,57 @@ retry_after_auth:
         return false;
     }
 
-    /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
-    /* which case the loc parameter will contain the location result which was */
-    /* obtained from the cache, or SKY_FINALIZE_REQUEST, which means that the */
-    /* request buffer must be sent to the Skyhook server. */
-    Sky_finalize_t finalize =
-        sky_finalize_request(ctx, &sky_errno, prequest, request_size, loc, &response_size);
+    if (debounce)
+        sky_report_cache(ctx, &sky_errno);
 
-    switch (finalize) {
-    case SKY_FINALIZE_ERROR:
-        free(prequest);
-        printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
-        return false;
-        break;
-    case SKY_FINALIZE_LOCATION:
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
-        if (!server_request)
-            return true;
-        printf("Making server request\n");
-        /* fall through */
-    case SKY_FINALIZE_REQUEST:
-        /* send the request to the server. */
-        response = malloc(response_size);
-        if (response == NULL) {
+    /* check for a cache match */
+    if ((sky_get_cache_hit(ctx, &sky_errno, loc) == SKY_SUCCESS &&
+            loc->location_status == SKY_LOCATION_STATUS_UNABLE_TO_LOCATE) ||
+        server_request) {
+        if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
+            SKY_ERROR) {
             free(prequest);
+            printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
             return false;
-        }
-        printf("server=%s, port=%d\n", config->server, config->port);
-        printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
-            request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
-        int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
-            config->server, config->port);
-        free(prequest);
-
-        if (rc > 0)
-            printf("Received response of length %d from server\n", rc);
-        else {
-            free(response);
-            printf("ERROR: No response from server!\n");
-            return false;
-        }
-
-        /* Decode the server response */
-        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
-        free(response);
-
-        if (ret_status == SKY_SUCCESS) {
-            return true;
         } else {
-            printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_AUTH_RETRY) {
-                /* Repeat request if Authentication was required for last message */
-                goto retry_after_auth;
+            /* send the request to the server. */
+            response = malloc(response_size);
+            if (response == NULL) {
+                free(prequest);
+                return false;
+            }
+            printf("server=%s, port=%d\n", config->server, config->port);
+            printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
+                request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
+            int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
+                config->server, config->port);
+            free(prequest);
+
+            if (rc > 0)
+                printf("Received response of length %d from server\n", rc);
+            else {
+                free(response);
+                printf("ERROR: No response from server!\n");
+                return false;
+            }
+
+            /* Decode the server response */
+            ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
+            free(response);
+
+            if (ret_status != SKY_SUCCESS) {
+                printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
+                if (sky_errno == SKY_AUTH_RETRY) {
+                    /* Repeat request if Authentication was required for last message */
+                    goto retry_after_auth;
+                }
+                return false;
             }
         }
-        break;
+        return true;
     }
+    /* Location was found in the cache. No need to go to server. */
+    printf("Location found in cache\n");
     return false;
 }
 
@@ -538,9 +532,9 @@ int main(int argc, char *argv[])
      * A real device would do this at boot time, or perhaps the first
      * time a location is to be performed.
      */
-    ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
-        config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
-        config.debounce);
+    ret_status =
+        sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
+            config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime);
     if (ret_status != SKY_SUCCESS) {
         printf("sky_open returned error (%s), Can't continue\n", sky_perror(sky_errno));
         exit(-1);
@@ -555,27 +549,28 @@ int main(int argc, char *argv[])
      * hour) rather than one immediately after another.
      */
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, true, &loc, config.debounce) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc,
+            config.debounce) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, true, &loc, config.debounce) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, true, &loc, config.debounce) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);

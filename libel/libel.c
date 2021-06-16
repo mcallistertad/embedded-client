@@ -65,7 +65,6 @@ static size_t strnlen_(char *s, size_t maxlen);
  *  @param logf pointer to logging function
  *  @param rand_bytes pointer to random function
  *  @param gettime pointer to time function
- *  @param debounce true if cached beacons should be added to request rather than newly scanned
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
@@ -76,8 +75,7 @@ static size_t strnlen_(char *s, size_t maxlen);
  */
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
     uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *session_buf,
-    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime,
-    bool debounce)
+    Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime)
 {
     Sky_session_t *session;
     int sku_len;
@@ -164,7 +162,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     session->sky_logf = logf;
     session->sky_rand_bytes = rand_bytes;
     session->sky_time = gettime;
-    session->sky_debounce = debounce;
     session->sky_plugins = NULL; /* re-register plugins */
 
     if (sky_register_plugins((Sky_plugin_table_t **)&session->sky_plugins) != SKY_SUCCESS)
@@ -340,6 +337,8 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
                 CACHE_SIZE, now - s->cacheline[i].time);
         }
     }
+#else
+    s->sky_debounce = false;
 #endif
     s->sky_ul_app_data_len = ul_app_data_len;
     memcpy(s->sky_ul_app_data, ul_app_data, ul_app_data_len);
@@ -395,6 +394,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
+
     if (frequency < 2400 || frequency > 6000)
         frequency = 0; /* 0's not sent to server */
     b.ap.freq = frequency;
@@ -945,13 +945,13 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     time_t timestamp)
 {
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe %d, alt %d.%02d, vpe %d,", (int)lat,
-        (int)fabs(round(1000000 * (lat - (int)lat))), (int)lon,
-        (int)fabs(round(1000000 * (lon - (int)lon))), hpe, (int)altitude,
-        (int)fabs(round(100 * (altitude - (int)altitude))), vpe);
+        (int)fabs(round(1000000.0 * (lat - (int)lat))), (int)lon,
+        (int)fabs(round(1000000.0 * (lon - (int)lon))), hpe, (int)altitude,
+        (int)fabs(round(100.0 * (altitude - (int)altitude))), vpe);
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing %d.%01d, nsat %d, age %d", (int)speed,
-        (int)fabs(round(10 * (speed - (int)speed))), (int)bearing,
-        (int)fabs(round(1 * (bearing - (int)bearing))), nsat,
+        (int)fabs(round(10.0 * (speed - (int)speed))), (int)bearing,
+        (int)fabs(round(1.0 * (bearing - (int)bearing))), nsat,
         (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
     /* location was determined before sky_new_request and since Mar 1st 2019 */
@@ -988,6 +988,91 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
+/*! \brief Determines whether the request matches a cached result
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param loc where to save device latitude, longitude etc from cache if known
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
+{
+    int rq_config = false;
+    Sky_session_t *s = ctx->session;
+#if CACHE_SIZE
+    Sky_cacheline_t *cl;
+#endif
+
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
+    /* determine whether request_client_conf should be true in request message */
+    rq_config = CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE ||
+                ctx->header.time == TIME_UNAVAILABLE ||
+                (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
+        rq_config                                                     ? "Forced" :
+                                                                        "No");
+
+    if (rq_config)
+        CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
+
+#if !CACHE_SIZE
+    ctx->get_from = -1; /* cache miss */
+    ctx->session->cache_hits = 0; /* report 0 for cache miss */
+
+    loc->location_source = SKY_LOCATION_SOURCE_UNKNOWN;
+    loc->location_status = SKY_LOCATION_STATUS_UNABLE_TO_LOCATE;
+    return set_error_status(sky_errno, SKY_ERROR_NONE);
+#else
+
+    /* check cache against beacons for match
+     * setting from_cache if a matching cacheline is found
+     * */
+    get_from_cache(ctx);
+
+    /* check cache match result */
+    if (IS_CACHE_HIT(ctx)) {
+        cl = &s->cacheline[ctx->get_from];
+        if (loc != NULL) {
+            *loc = cl->loc;
+            /* no downlink data to report to user */
+            loc->dl_app_data = NULL;
+            loc->dl_app_data_len = 0;
+        }
+#if SKY_DEBUG
+        time_t cached_time = loc->time;
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
+            (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
+            (ctx->header.time - cached_time));
+#endif
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache Hit");
+        return set_error_status(sky_errno, SKY_ERROR_NONE);
+    }
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache miss");
+    return set_error_status(sky_errno, SKY_ERROR_NONE);
+#endif
+}
+
+/*! \brief Make a note that cached scan should be sent to server
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_report_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
+{
+#if CACHE_SIZE
+    ctx->session->sky_debounce = true;
+    return set_error_status(sky_errno, SKY_ERROR_NONE);
+#else
+#endif
+}
+
 /*! \brief Determines the required size of the network request buffer
  *
  *  Size is determined by doing a dry run of encoding the request
@@ -998,7 +1083,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
+Sky_status_t sky_sizeof_request(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
     int rc, rq_config = false;
     Sky_session_t *s = ctx->session;
@@ -1024,16 +1109,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
     if (rq_config)
         CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
 
-    /* Trim any excess vap from request ctx i.e. total number of vap
-     * in request ctx cannot exceed max that a request can carry
-     */
-    select_vap(ctx);
-
-    /* check cache against beacons for match
+        /* check cache against beacons for match
      * setting from_cache if a matching cacheline is found
      * */
 #if CACHE_SIZE
-    get_from_cache(ctx);
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->session->cacheline[ctx->get_from];
 
@@ -1053,6 +1132,11 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
             ctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
             ctx->session->cache_hits = 0; /* report 0 for cache miss */
         }
+    } else {
+        /* Trim any excess vap from request ctx i.e. total number of vap
+         * in request ctx cannot exceed max that a request can carry
+         */
+        select_vap(ctx);
     }
 #else
     ctx->get_from = -1; /* cache miss */
@@ -1079,69 +1163,34 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
  *  @param sky_errno skyErrno is set to the error code
  *  @param request_buf Request to send to Skyhook server
  *  @param bufsize Request size in bytes
- *  @param loc where to save device latitude, longitude etc from cache if known
  *  @param response_size the space required to hold the server response
  *
- *  @return SKY_FINALIZE_REQUEST, SKY_FINALIZE_LOCATION or
- *          SKY_FINALIZE_ERROR and sets sky_errno with error code
+ *  @return SKY_SUCCESS if request was encoded,
+ *          SKY_ERROR and sets sky_errno with error code
  */
-Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
-    uint32_t bufsize, Sky_location_t *loc, uint32_t *response_size)
+Sky_status_t sky_encode_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
+    uint32_t bufsize, uint32_t *response_size)
 {
     int rc;
-    Sky_finalize_t ret = SKY_FINALIZE_ERROR;
     Sky_session_t *s = ctx->session;
-#if CACHE_SIZE
-    Sky_cacheline_t *cl;
-#endif
 
     if (!validate_request_ctx(ctx)) {
-        *sky_errno = SKY_ERROR_BAD_REQUEST_CTX;
-        return ret;
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
     if (backoff_violation(ctx, ctx->header.time)) {
-        *sky_errno = SKY_ERROR_SERVICE_DENIED;
-        return ret;
+        return set_error_status(sky_errno, SKY_ERROR_SERVICE_DENIED);
     }
 
     /* There must be at least one beacon */
     if (NUM_BEACONS(ctx) == 0 && !has_gps(ctx)) {
-        *sky_errno = SKY_ERROR_NO_BEACONS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
-        return ret;
+        return set_error_status(sky_errno, SKY_ERROR_NO_BEACONS);
     }
 
-    /* check cache match result */
-#if CACHE_SIZE
-    if (IS_CACHE_HIT(ctx)) {
-        cl = &s->cacheline[ctx->get_from];
-        if (loc != NULL) {
-            *loc = cl->loc;
-            /* no downlink data to report to user */
-            loc->dl_app_data = NULL;
-            loc->dl_app_data_len = 0;
-        }
-#if SKY_DEBUG
-        time_t cached_time = loc->time;
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
-            (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-            (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
-            (ctx->header.time - cached_time));
-#endif
-        ret = SKY_FINALIZE_LOCATION;
-    } else
-        ret = SKY_FINALIZE_REQUEST;
-#else
-    (void)loc; /* suppress warning of unused parameter */
-    ret = SKY_FINALIZE_REQUEST;
-#endif
-
     if (request_buf == NULL) {
-        *sky_errno = SKY_ERROR_BAD_PARAMETERS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Buffer pointer is bad");
-        return SKY_FINALIZE_ERROR;
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
@@ -1162,18 +1211,13 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     if (rc > 0) {
         *response_size = get_maximum_response_size();
 
-        *sky_errno = SKY_ERROR_NONE;
-
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request buffer of %d bytes prepared %s", rc,
-            (s->sky_debounce && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
-                                                                "from request ctx");
+            s->sky_debounce ? "from cache(debounce)" : "from request ctx");
         LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, request_buf, rc);
-        return ret;
+        return set_error_status(sky_errno, SKY_ERROR_NONE);
     } else {
-        *sky_errno = SKY_ERROR_ENCODE_ERROR;
-
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Failed to encode request");
-        return SKY_FINALIZE_ERROR;
+        return set_error_status(sky_errno, SKY_ERROR_ENCODE_ERROR);
     }
 }
 

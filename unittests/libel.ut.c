@@ -22,7 +22,7 @@ TEST_FUNC(test_sky_open)
         ASSERT(SKY_SUCCESS == sky_close(ctx->session, &sky_errno));
         ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
-                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
+                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time));
         ASSERT(sky_errno == SKY_ERROR_NONE);
         ASSERT(nv_state.sky_partner_id == 666);
 
@@ -30,13 +30,13 @@ TEST_FUNC(test_sky_open)
         ASSERT(sky_sizeof_session_ctx(&nv_state) == sizeof(Sky_session_t));
         ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 911,
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
-                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
+                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time));
         ASSERT(sky_errno == SKY_ERROR_NONE);
         ASSERT(nv_state.sky_partner_id == 911);
 
         ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
                                 (uint8_t *)"01234567890123", "sk", 0, &nv_state,
-                                SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
+                                SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time));
         ASSERT(sky_errno == SKY_ERROR_ALREADY_OPEN);
     });
     TEST("sky_close fails if LibEL is not open", ctx, {
@@ -122,7 +122,7 @@ TEST_FUNC(test_sky_add)
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
         ASSERT(SKY_SUCCESS == sky_add_ap_beacon(ctx, &sky_errno, mac, ctx->header.time - 3, rssi,
                                   freq, connected));
-        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
     TEST("sky_add_ap_beacon set last_config to timestamp second time", ctx, {
@@ -136,7 +136,7 @@ TEST_FUNC(test_sky_add)
         ctx->session->config.last_config_time = time(NULL);
         ASSERT(SKY_SUCCESS == sky_add_ap_beacon(ctx, &sky_errno, mac, ctx->header.time - 3, rssi,
                                   freq, connected));
-        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time != CONFIG_UPDATE_DUE);
     });
     TEST("sky_add_ap_beacon set last_config to zero with bad timestamp", ctx, {
@@ -149,7 +149,7 @@ TEST_FUNC(test_sky_add)
 
         ASSERT(SKY_SUCCESS ==
                sky_add_ap_beacon(ctx, &sky_errno, mac, TIME_UNAVAILABLE, rssi, freq, connected));
-        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
 }
