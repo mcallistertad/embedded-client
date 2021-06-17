@@ -299,9 +299,10 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->session = s;
-    ctx->auth_state = !is_tbr_enabled(ctx)                 ? STATE_TBR_DISABLED :
-                      s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                             STATE_TBR_REGISTERED;
+    ctx->auth_state =
+        !is_tbr_enabled(ctx) ?
+            STATE_TBR_DISABLED :
+            s->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     ctx->gps.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -344,7 +345,7 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
     memcpy(s->sky_ul_app_data, ul_app_data, ul_app_data_len);
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", s->sky_partner_id, s->sky_sku);
     dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, s->sky_device_id, s->sky_id_len, 0);
-    DUMP_REQUEST_CTX(ctx);
+    DUMP_CACHE(ctx);
     return ctx;
 }
 
@@ -998,7 +999,6 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
  */
 Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
-    int rq_config = false;
     Sky_session_t *s = ctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
@@ -1007,27 +1007,7 @@ Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_locat
     if (!validate_request_ctx(ctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
-    /* determine whether request_client_conf should be true in request message */
-    rq_config = CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE ||
-                ctx->header.time == TIME_UNAVAILABLE ||
-                (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                     ? "Forced" :
-                                                                        "No");
-
-    if (rq_config)
-        CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
-
-#if !CACHE_SIZE
-    ctx->get_from = -1; /* cache miss */
-    ctx->session->cache_hits = 0; /* report 0 for cache miss */
-
-    loc->location_source = SKY_LOCATION_SOURCE_UNKNOWN;
-    loc->location_status = SKY_LOCATION_STATUS_UNABLE_TO_LOCATE;
-    return set_error_status(sky_errno, SKY_ERROR_NONE);
-#else
-
+#if CACHE_SIZE
     /* check cache against beacons for match
      * setting from_cache if a matching cacheline is found
      * */
@@ -1042,6 +1022,7 @@ Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_locat
             loc->dl_app_data = NULL;
             loc->dl_app_data_len = 0;
         }
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache hit");
 #if SKY_DEBUG
         time_t cached_time = loc->time;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
@@ -1050,12 +1031,17 @@ Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_locat
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
             (ctx->header.time - cached_time));
 #endif
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache Hit");
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
+#else
+    ctx->get_from = -1; /* cache miss */
+    ctx->session->cache_hits = 0; /* report 0 for cache miss */
+#endif
+
+    loc->location_source = SKY_LOCATION_SOURCE_UNKNOWN;
+    loc->location_status = SKY_LOCATION_STATUS_UNABLE_TO_LOCATE;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache miss");
     return set_error_status(sky_errno, SKY_ERROR_NONE);
-#endif
 }
 
 /*! \brief Make a note that cached scan should be sent to server
@@ -1067,9 +1053,18 @@ Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_locat
 Sky_status_t sky_report_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
 #if CACHE_SIZE
+    if (IS_CACHE_MISS(ctx)) {
+        /* error if this API is called when there has not been a cache hit determined */
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Can't report cached beacons without a cache hit");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
+    }
+
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Marking request with flag for cached beacons");
     ctx->session->sky_debounce = true;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 #else
+    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Can't report cached beacons with no cache");
+    return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
 #endif
 }
 
@@ -1083,7 +1078,7 @@ Sky_status_t sky_report_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_sizeof_request(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
+Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
     int rc, rq_config = false;
     Sky_session_t *s = ctx->session;
@@ -1102,9 +1097,9 @@ Sky_status_t sky_sizeof_request(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky
                 ctx->header.time == TIME_UNAVAILABLE ||
                 (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                     ? "Forced" :
-                                                                        "No");
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
+            "Timeout" :
+            rq_config ? "Forced" : "No");
 
     if (rq_config)
         CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
@@ -1242,6 +1237,8 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Process response buffer of %d bytes", bufsize);
+
     /* note the time of this server response in the state */
     s->header.time = now;
     s->header.crc32 =
@@ -1268,11 +1265,18 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             if (sky_plugin_add_to_cache(ctx, sky_errno, loc) != SKY_SUCCESS)
                 LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
 #endif
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Location from server %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d", (int)loc->lat,
-                (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-                (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
-                loc->dl_app_data_len);
+            if (IS_CACHE_MISS(ctx))
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "Location from server %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
+                    (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))),
+                    (int)loc->lon, (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+                    sky_psource(loc), loc->dl_app_data_len);
+            else
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                    "Server location for cache hit %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
+                    (int)loc->lat, (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))),
+                    (int)loc->lon, (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe,
+                    sky_psource(loc), loc->dl_app_data_len);
 
             return set_error_status(sky_errno, SKY_ERROR_NONE);
             break;
