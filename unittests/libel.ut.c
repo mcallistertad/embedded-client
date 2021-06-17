@@ -122,7 +122,7 @@ TEST_FUNC(test_sky_add)
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
         ASSERT(SKY_SUCCESS == sky_add_ap_beacon(ctx, &sky_errno, mac, ctx->header.time - 3, rssi,
                                   freq, connected));
-        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
     TEST("sky_add_ap_beacon set last_config to timestamp second time", ctx, {
@@ -136,7 +136,7 @@ TEST_FUNC(test_sky_add)
         ctx->session->config.last_config_time = time(NULL);
         ASSERT(SKY_SUCCESS == sky_add_ap_beacon(ctx, &sky_errno, mac, ctx->header.time - 3, rssi,
                                   freq, connected));
-        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time != CONFIG_UPDATE_DUE);
     });
     TEST("sky_add_ap_beacon set last_config to zero with bad timestamp", ctx, {
@@ -149,7 +149,7 @@ TEST_FUNC(test_sky_add)
 
         ASSERT(SKY_SUCCESS ==
                sky_add_ap_beacon(ctx, &sky_errno, mac, TIME_UNAVAILABLE, rssi, freq, connected));
-        ASSERT(sky_sizeof_request(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
 }

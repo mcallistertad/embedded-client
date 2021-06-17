@@ -131,7 +131,7 @@ struct cell_scan cells3[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-/* Scan set 4 */
+/* Scan set 4 - cache match */
 struct ap_scan aps4[] =
     { { "287AEEBA96C0", 0, 2412, -89, 0 },
       { "287AEEBA96C7", 0, 2412, -89, 0 },
@@ -141,6 +141,17 @@ struct ap_scan aps4[] =
 struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+/* Scan set 5 - cache match */
+struct ap_scan aps5[] =
+    { { "287AEEBA96C0", 0, 2412, -89, 0 },
+      { "287AEEBA96C7", 0, 2412, -89, 0 },
+      { "287AEEBA96C7", 0, 2412, -89, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells5[] =
+    { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
 /* clang-format on */
 
@@ -327,7 +338,7 @@ static time_t mytime(time_t *t)
  */
 static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
-    bool server_request, Sky_location_t *loc, bool debounce)
+    bool server_request, Sky_location_t *loc)
 {
     uint32_t i;
     uint32_t request_size;
@@ -336,6 +347,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     time_t timestamp = mytime(NULL);
     Sky_status_t ret_status;
     Sky_errno_t sky_errno;
+    bool cache_miss;
 
     /* Start new request */
     if (sky_new_request(ctx, bufsize, session, ul_data, data_len, &sky_errno) != ctx) {
@@ -407,29 +419,29 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
         }
     }
 
-retry_after_auth:
-    /* Determine how big the network request buffer must be, and allocate a */
-    /* buffer of that length. This function must be called for each request. */
-    if (sky_sizeof_request(ctx, &request_size, &sky_errno) != SKY_SUCCESS) {
-        printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
-        return false;
-    }
-    printf("Required buffer size = %d\n", request_size);
-
-    if ((prequest = malloc(request_size)) == NULL) {
-        printf("Error allocating request buffer\n");
-        return false;
-    }
-
-    if (debounce)
-        sky_report_cache(ctx, &sky_errno);
-
     /* check for a cache match */
-    if ((sky_get_cache_hit(ctx, &sky_errno, loc) == SKY_SUCCESS &&
-            loc->location_status == SKY_LOCATION_STATUS_UNABLE_TO_LOCATE) ||
+    if ((cache_miss = (sky_get_cache_hit(ctx, &sky_errno, loc) == SKY_SUCCESS &&
+                       loc->location_status == SKY_LOCATION_STATUS_UNABLE_TO_LOCATE)) ||
         server_request) {
-        if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
-            SKY_ERROR) {
+        /* report the cached beacons if config requires it */
+        if (!cache_miss) {
+            printf("Location found in cache and reporting to server %s\n",
+                config->debounce ? "cached location" : "new scan");
+            if (config->debounce)
+                sky_report_cache(ctx, &sky_errno);
+        }
+
+    retry_after_auth:
+        /* Determine how big the network request buffer must be, and allocate a
+         * buffer of that length. This function must be called for each request */
+        if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
+            printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
+            return false;
+        } else if ((prequest = malloc(request_size)) == NULL) {
+            printf("Can't allocate request buf\n");
+            return false;
+        } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
+                   SKY_ERROR) {
             free(prequest);
             printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
             return false;
@@ -469,9 +481,11 @@ retry_after_auth:
             }
         }
         return true;
+    } else if (!cache_miss) {
+        /* Location was found in the cache. No need to go to server. */
+        printf("Location found in cache\n");
+        return true;
     }
-    /* Location was found in the cache. No need to go to server. */
-    printf("Location found in cache\n");
     return false;
 }
 
@@ -549,28 +563,34 @@ int main(int argc, char *argv[])
      * hour) rather than one immediately after another.
      */
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
-            config.ul_app_data_len, true, &loc, config.debounce) == false) {
+            config.ul_app_data_len, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc,
-            config.debounce) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc, config.debounce) == false) {
+            config.ul_app_data_len, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc, config.debounce) == false) {
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
+    }
+
+    if (locate(ctx, bufsize, pstate, &config, aps5, cells5, NULL, config.ul_app_data,
+            config.ul_app_data_len, false, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
