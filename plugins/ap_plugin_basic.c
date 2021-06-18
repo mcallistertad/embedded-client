@@ -287,7 +287,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     int idx_of_worst;
     idx_of_worst = set_priorities(ctx);
 
-    /* no work to do if workspace not full of max APs */
+    /* no work to do if request context is not full of max APs */
     if (NUM_APS(ctx) <= CONFIG(ctx->session, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove AP");
         return SKY_ERROR;

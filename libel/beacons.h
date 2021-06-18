@@ -224,25 +224,25 @@ typedef struct sky_config_pad {
  */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    bool sky_open_flag; /* true if sky_open() has been called by user */
-    Sky_randfn_t sky_rand_bytes; /* User rand_bytes fn */
-    Sky_loggerfn_t sky_logf; /* User logging fn */
-    Sky_log_level_t sky_min_level; /* User log level */
-    Sky_timefn_t sky_time; /* User time fn */
-    bool sky_debounce; /* send cached or request beacons */
-    void *sky_plugins; /* root of registered plugin list */
-    uint32_t sky_id_len; /* device ID num_beacons */
-    uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
-    uint32_t sky_token_id; /* TBR token ID */
-    uint32_t sky_ul_app_data_len; /* uplink app data length */
-    uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
-    uint32_t sky_dl_app_data_len; /* downlink app data length */
-    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-    char sky_sku[MAX_SKU_LEN + 1]; /* product family ID */
-    uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+    bool open_flag; /* true if sky_open() has been called by user */
+    Sky_randfn_t rand_bytes; /* User rand_bytes fn */
+    Sky_loggerfn_t logf; /* User logging fn */
+    Sky_log_level_t min_level; /* User log level */
+    Sky_timefn_t timefn; /* User time fn */
+    bool report_cache; /* send cached or request beacons */
+    void *plugins; /* root of registered plugin list */
+    uint32_t id_len; /* device ID num_beacons */
+    uint8_t device_id[MAX_DEVICE_ID]; /* device ID */
+    uint32_t token_id; /* TBR token ID */
+    uint32_t ul_app_data_len; /* uplink app data length */
+    uint8_t ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
+    uint32_t dl_app_data_len; /* downlink app data length */
+    uint8_t dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
+    char sku[MAX_SKU_LEN + 1]; /* product family ID */
+    uint16_t cc; /* Optional Country Code (0 = unused) */
     Sky_errno_t backoff; /* last auth error */
-    uint32_t sky_partner_id; /* partner ID */
-    uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
+    uint32_t partner_id; /* partner ID */
+    uint8_t aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
     int num_cachelines; /* number of cache lines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
@@ -251,7 +251,7 @@ typedef struct sky_session {
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_session_t;
 
-/*! \brief Request Context - workspace for new request
+/*! \brief Request Context - temporary space used to build a request
  */
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */

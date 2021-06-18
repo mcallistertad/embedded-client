@@ -60,7 +60,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
     return SKY_SUCCESS;
 }
 
-/*! \brief compare beacons for positioning in workspace
+/*! \brief compare beacons for ordering when inserting in request context
  *
  * better beacons are inserted before worse.
  *
@@ -183,7 +183,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         NUM_APS(ctx)++;
     }
 
-#ifdef SKY_DEBUG
+#ifdef SKY_LOGGING
     /* Verify that the beacon we just added now appears in our beacon set. */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         bool equal;
