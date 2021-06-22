@@ -180,7 +180,6 @@ TEST_FUNC(test_sky_option)
         ASSERT(ctx->num_beacons == 4);
         ASSERT(ctx->num_ap == 4);
     });
-
     TEST("Add 4 beacons with max_ap_beacons 3 results in 3 in request context", ctx, {
         Sky_errno_t sky_errno;
         uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
@@ -205,6 +204,48 @@ TEST_FUNC(test_sky_option)
         ASSERT(ctx->num_ap == 3);
         ASSERT(
             SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "max_ap_beacons", &value) && value == 3);
+    });
+    TEST("set/get operates for report_cache and logging level", ctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+
+        /* check defaults for a new request */
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "logging_level", &value) &&
+               value == SKY_LOG_LEVEL_DEBUG);
+        ASSERT(
+            SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "report_cache", &value) && value == 0);
+
+        ASSERT(SKY_SUCCESS ==
+               sky_set_option(ctx, &sky_errno, "logging_level", SKY_LOG_LEVEL_CRITICAL));
+        ASSERT(SKY_SUCCESS == sky_set_option(ctx, &sky_errno, "report_cache", 1));
+
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "logging_level", &value) &&
+               value == SKY_LOG_LEVEL_CRITICAL);
+        ASSERT(
+            SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "report_cache", &value) && value == 1);
+    });
+    TEST("set options reports Bad Parameters appropriately", ctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "nonesense", -1) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "total_beacons", 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "max_ap_beacons", 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "cache_beacon_threshold", 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "cache_neg_rssi_threshold", -130) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "cache_match_all_threshold", 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "cache_match_used_threshold", 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "max_vap_per_ap", 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, "max_vap_per_rq", 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
     });
 }
 
