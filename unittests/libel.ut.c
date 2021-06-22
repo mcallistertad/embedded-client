@@ -154,10 +154,65 @@ TEST_FUNC(test_sky_add)
     });
 }
 
+TEST_FUNC(test_sky_option)
+{
+    TEST("Add 4 beacons with default config results in 4 in request context", ctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        bool connected = false;
+        uint32_t value;
+
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "max_ap_beacons", &value) &&
+               value == 20);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(ctx->num_beacons == 4);
+        ASSERT(ctx->num_ap == 4);
+    });
+
+    TEST("Add 4 beacons with max_ap_beacons 3 results in 3 in request context", ctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        bool connected = false;
+        uint32_t value;
+
+        ASSERT(SKY_SUCCESS == sky_set_option(ctx, &sky_errno, "max_ap_beacons", 3));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(ctx->num_beacons == 3);
+        ASSERT(ctx->num_ap == 3);
+        ASSERT(
+            SKY_SUCCESS == sky_get_option(ctx, &sky_errno, "max_ap_beacons", &value) && value == 3);
+    });
+}
+
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
+GROUP_CALL("sky option tests", test_sky_option);
 
 END_TESTS();
