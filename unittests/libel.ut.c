@@ -24,7 +24,7 @@ TEST_FUNC(test_sky_open)
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 666);
+        ASSERT(nv_state.partner_id == 666);
 
         ASSERT(SKY_SUCCESS == sky_close(&nv_state, &sky_errno));
         ASSERT(sky_sizeof_session_ctx(&nv_state) == sizeof(Sky_session_t));
@@ -32,7 +32,7 @@ TEST_FUNC(test_sky_open)
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 911);
+        ASSERT(nv_state.partner_id == 911);
 
         ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
                                 (uint8_t *)"01234567890123", "sk", 0, &nv_state,
@@ -55,9 +55,9 @@ TEST_FUNC(test_sky_new_request)
         ctx, {
             Sky_errno_t sky_errno;
 
-            ctx->session->sky_time = bad_time;
-            ctx->session->sky_sku[0] = 's';
-            ctx->session->sky_sku[1] = '\0';
+            ctx->session->timefn = bad_time;
+            ctx->session->sku[0] = 's';
+            ctx->session->sku[1] = '\0';
             ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
             ASSERT(
                 NULL == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
@@ -66,9 +66,9 @@ TEST_FUNC(test_sky_new_request)
     TEST("sky_new_request succeeds after first failed registration with good time", ctx, {
         Sky_errno_t sky_errno;
 
-        ctx->session->sky_time = good_time;
-        ctx->session->sky_sku[0] = 's';
-        ctx->session->sky_sku[1] = '\0';
+        ctx->session->timefn = good_time;
+        ctx->session->sku[0] = 's';
+        ctx->session->sku[1] = '\0';
         ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
         ASSERT(ctx == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
         ASSERT(sky_errno == SKY_ERROR_NONE);

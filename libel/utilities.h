@@ -25,7 +25,7 @@
 #ifndef SKY_UTILITIES_H
 #define SKY_UTILITIES_H
 
-#if SKY_DEBUG
+#if SKY_LOGGING
 #define DUMP_REQUEST_CTX(...) dump_request_ctx(__VA_ARGS__, __FILE__, __FUNCTION__)
 #define DUMP_CACHE(...) dump_cache(__VA_ARGS__, __FILE__, __FUNCTION__)
 #define LOGFMT(...) logfmt(__FILE__, __FUNCTION__, __VA_ARGS__)
@@ -48,7 +48,7 @@ int validate_request_ctx(Sky_ctx_t *ctx);
 int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf);
 int validate_mac(const uint8_t mac[6], Sky_ctx_t *ctx);
 bool is_tbr_enabled(Sky_ctx_t *ctx);
-#if SKY_DEBUG
+#if SKY_LOGGING
 const char *sky_basename(const char *path);
 int logfmt(
     const char *file, const char *function, Sky_ctx_t *ctx, Sky_log_level_t level, char *fmt, ...);
