@@ -305,11 +305,12 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
     ctx->auth_state = !is_tbr_enabled(ctx)             ? STATE_TBR_DISABLED :
                       s->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
                                                          STATE_TBR_REGISTERED;
-    ctx->gps.lat = NAN; /* empty */
+    ctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
+    ctx->gnss.lat = NAN;
 
     if (backoff_violation(ctx, now)) {
         if (sky_errno != NULL)
@@ -956,9 +957,9 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        ctx->gps.age = 0;
+        ctx->gnss.age = 0;
     else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        ctx->gps.age = ctx->header.time - timestamp;
+        ctx->gnss.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
 
@@ -977,14 +978,14 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     if (!validate_request_ctx(ctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
-    ctx->gps.lat = lat;
-    ctx->gps.lon = lon;
-    ctx->gps.hpe = hpe;
-    ctx->gps.alt = altitude;
-    ctx->gps.vpe = vpe;
-    ctx->gps.speed = speed;
-    ctx->gps.bearing = bearing;
-    ctx->gps.nsat = nsat;
+    ctx->gnss.lat = lat;
+    ctx->gnss.lon = lon;
+    ctx->gnss.hpe = hpe;
+    ctx->gnss.alt = altitude;
+    ctx->gnss.vpe = vpe;
+    ctx->gnss.speed = speed;
+    ctx->gnss.bearing = bearing;
+    ctx->gnss.nsat = nsat;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -1048,6 +1049,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 NUM_APS(ctx) = cl->num_ap;
                 for (int j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
+                ctx->gnss = cl->gnss;
             }
         } else {
             ctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
@@ -1106,7 +1108,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* There must be at least one beacon */
-    if (NUM_BEACONS(ctx) == 0 && !has_gps(ctx)) {
+    if (NUM_BEACONS(ctx) == 0 && !has_gnss(ctx)) {
         *sky_errno = SKY_ERROR_NO_BEACONS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
         return ret;

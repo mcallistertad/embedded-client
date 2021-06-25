@@ -1,5 +1,5 @@
 /*! \file plugins/ap_plugin_basic.c
-     *  \brief AP plugin supporting basic APs and cells Only
+ *  \brief AP plugin supporting basic APs and cells Only
  *  Plugin for Skyhook Embedded Library
  *
  * Copyright (c) 2020 Skyhook, Inc.
@@ -481,6 +481,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
     cl->num_beacons = NUM_BEACONS(ctx);
     cl->num_ap = NUM_APS(ctx);
+    cl->gnss = ctx->gnss;
     cl->loc = *loc;
     cl->time = loc->time;
 

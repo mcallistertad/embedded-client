@@ -27,6 +27,7 @@
 
 #include <inttypes.h>
 #include <time.h>
+#include <math.h>
 
 #define SKY_MAGIC 0xD1967806
 #define BEACON_MAGIC 0xf0f0
@@ -55,8 +56,7 @@
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
 
-#define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
-
+#define has_gnss(c) ((c) != NULL && !isnan((c)->gnss.lat))
 #define CACHE_EMPTY ((time_t)0)
 #define CONFIG_UPDATE_DUE ((time_t)0)
 #define IS_CACHE_HIT(c) ((c)->get_from != -1)
@@ -168,9 +168,9 @@ typedef union beacon {
     struct cell cell;
 } Beacon_t;
 
-/*! \brief gps/gnss
+/*! \brief gnss/gnss
  */
-typedef struct gps {
+typedef struct gnss {
     double lat;
     double lon;
     uint32_t hpe;
@@ -180,7 +180,7 @@ typedef struct gps {
     float bearing;
     uint32_t nsat;
     uint32_t age;
-} Gps_t;
+} Gnss_t;
 
 /*! \brief each cacheline holds a copy of a scan and the server response
  */
@@ -189,6 +189,7 @@ typedef struct sky_cacheline {
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+    Gnss_t gnss; /* GNSS info */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
@@ -258,8 +259,7 @@ typedef struct sky_ctx {
     uint16_t num_beacons; /* number of beacons in list (0 == none) */
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
-    Gps_t gps; /* GNSS info */
-    /* Assume worst case is that beacons and gps info takes twice the bare structure size */
+    Gnss_t gnss; /* GNSS info */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
     Sky_session_t *session;

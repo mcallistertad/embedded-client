@@ -35,6 +35,7 @@
 #include "proto.h"
 
 #define MIN(a, b) ((a < b) ? a : b)
+#define FABS(a) (((a) < 0.0) ? (0.0 - (a)) : (a))
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -499,6 +500,11 @@ void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func)
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
         is_tbr_enabled(ctx) ? ", TBR" : "", ctx->session->report_cache ? ", Debounce" : "");
+    if (has_gnss(ctx))
+        logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)ctx->gnss.lat,
+            (int)(FABS((ctx->gnss.lat - (int)ctx->gnss.lat) * 1000000.0)), (int)ctx->gnss.lon,
+            (int)(FABS((ctx->gnss.lon - (int)ctx->gnss.lon) * 1000000.0)));
+
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
@@ -1117,7 +1123,7 @@ int64_t get_cell_ta(Beacon_t *cell)
  */
 int32_t get_num_gnss(Sky_ctx_t *ctx)
 {
-    return has_gps(ctx) ? 1 : 0;
+    return has_gnss(ctx) ? 1 : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lat)
@@ -1125,12 +1131,12 @@ int32_t get_num_gnss(Sky_ctx_t *ctx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps lat info
+ *  @return gnss lat info
  */
 float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.lat : NAN;
+    return has_gnss(ctx) ? ctx->gnss.lat : NAN;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/lon)
@@ -1138,12 +1144,12 @@ float get_gnss_lat(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps lon info
+ *  @return gnss lon info
  */
 float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.lon : NAN;
+    return has_gnss(ctx) ? ctx->gnss.lon : NAN;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/hpe)
@@ -1151,12 +1157,12 @@ float get_gnss_lon(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps hpe info
+ *  @return gnss hpe info
  */
 int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.hpe : 0;
+    return has_gnss(ctx) ? ctx->gnss.hpe : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/alt)
@@ -1164,12 +1170,12 @@ int64_t get_gnss_hpe(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps alt info
+ *  @return gnss alt info
  */
 float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.alt : NAN;
+    return has_gnss(ctx) ? ctx->gnss.alt : NAN;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/vpe)
@@ -1177,12 +1183,12 @@ float get_gnss_alt(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps vpe info
+ *  @return gnss vpe info
  */
 int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.vpe : 0;
+    return has_gnss(ctx) ? ctx->gnss.vpe : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/speed)
@@ -1190,12 +1196,12 @@ int64_t get_gnss_vpe(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps gps speed info
+ *  @return gnss gnss speed info
  */
 float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.speed : NAN;
+    return has_gnss(ctx) ? ctx->gnss.speed : NAN;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/bearing)
@@ -1203,12 +1209,12 @@ float get_gnss_speed(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps bearing info
+ *  @return gnss bearing info
  */
 int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.bearing : 0;
+    return has_gnss(ctx) ? ctx->gnss.bearing : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/nsat)
@@ -1216,12 +1222,12 @@ int64_t get_gnss_bearing(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index (unused)
  *
- *  @return gps nsat info
+ *  @return gnss nsat info
  */
 int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.nsat : 0;
+    return has_gnss(ctx) ? ctx->gnss.nsat : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (gnss/timestamp)
@@ -1229,12 +1235,12 @@ int64_t get_gnss_nsat(Sky_ctx_t *ctx, uint32_t idx)
  *  @param ctx request ctx buffer
  *  @param idx index into beacons
  *
- *  @return gps timestamp info
+ *  @return gnss timestamp info
  */
 int64_t get_gnss_age(Sky_ctx_t *ctx, uint32_t idx)
 {
     (void)idx; /* suppress warning of unused parameter */
-    return has_gps(ctx) ? ctx->gps.age : 0;
+    return has_gnss(ctx) ? ctx->gnss.age : 0;
 }
 
 /*! \brief field extraction for dynamic use of Nanopb (num vaps)
