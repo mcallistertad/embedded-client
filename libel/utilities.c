@@ -556,11 +556,17 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 ctx->session->num_cachelines, cl->num_beacons, cl->num_ap, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i,
+                "cache: %d of %d lat,lon:%d.%06d,%d.%06d,%d %s  %d beacons", i,
                 ctx->session->num_cachelines, (int)cl->loc.lat,
                 (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
                 (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
-                cl->num_beacons);
+                sky_psource(&cl->loc), cl->num_beacons);
+            if (has_gnss(cl))
+                logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d",
+                    (int)ctx->gnss.lat,
+                    (int)(FABS((ctx->gnss.lat - (int)ctx->gnss.lat) * 1000000.0)),
+                    (int)ctx->gnss.lon,
+                    (int)(FABS((ctx->gnss.lon - (int)ctx->gnss.lon) * 1000000.0)));
             for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
