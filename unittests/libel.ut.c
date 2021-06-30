@@ -24,7 +24,7 @@ TEST_FUNC(test_sky_open)
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 666);
+        ASSERT(nv_state.partner_id == 666);
 
         ASSERT(SKY_SUCCESS == sky_close(&nv_state, &sky_errno));
         ASSERT(sky_sizeof_session_ctx(&nv_state) == sizeof(Sky_session_t));
@@ -32,7 +32,7 @@ TEST_FUNC(test_sky_open)
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 911);
+        ASSERT(nv_state.partner_id == 911);
 
         ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
                                 (uint8_t *)"01234567890123", "sk", 0, &nv_state,
@@ -55,9 +55,9 @@ TEST_FUNC(test_sky_new_request)
         ctx, {
             Sky_errno_t sky_errno;
 
-            ctx->session->sky_time = bad_time;
-            ctx->session->sky_sku[0] = 's';
-            ctx->session->sky_sku[1] = '\0';
+            ctx->session->timefn = bad_time;
+            ctx->session->sku[0] = 's';
+            ctx->session->sku[1] = '\0';
             ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
             ASSERT(
                 NULL == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
@@ -66,9 +66,9 @@ TEST_FUNC(test_sky_new_request)
     TEST("sky_new_request succeeds after first failed registration with good time", ctx, {
         Sky_errno_t sky_errno;
 
-        ctx->session->sky_time = good_time;
-        ctx->session->sky_sku[0] = 's';
-        ctx->session->sky_sku[1] = '\0';
+        ctx->session->timefn = good_time;
+        ctx->session->sku[0] = 's';
+        ctx->session->sku[1] = '\0';
         ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
         ASSERT(ctx == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
         ASSERT(sky_errno == SKY_ERROR_NONE);
@@ -249,11 +249,84 @@ TEST_FUNC(test_sky_option)
     });
 }
 
+#if CACHE_SIZE != 0
+TEST_FUNC(test_sky_gnss)
+{
+    TEST("to cache plugin copies gnss to cache", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        ctx->gnss.lat = 35.511315;
+        ctx->gnss.lon = 139.618906;
+        ctx->gnss.hpe = 16;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ASSERT(ctx->gnss.lat == ctx->session->cacheline[0].gnss.lat);
+        ASSERT(ctx->gnss.lon == ctx->session->cacheline[0].gnss.lon);
+        ASSERT(ctx->gnss.hpe == ctx->session->cacheline[0].gnss.hpe);
+    });
+    TEST("debounce true copies gnss from cache", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        ctx->session->report_cache = true;
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        ctx->gnss.lat = 35.511315;
+        ctx->gnss.lon = 139.618906;
+        ctx->gnss.hpe = 16;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ctx->session->cacheline[0].gnss.lat = 36.511315;
+        ctx->session->cacheline[0].gnss.lon = 140.618906;
+        ctx->session->cacheline[0].gnss.hpe = 17;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->gnss.lat == ctx->session->cacheline[0].gnss.lat);
+        ASSERT(ctx->gnss.lon == ctx->session->cacheline[0].gnss.lon);
+        ASSERT(ctx->gnss.hpe == ctx->session->cacheline[0].gnss.hpe);
+    });
+}
+#endif
+
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
 GROUP_CALL("sky option tests", test_sky_option);
+#if CACHE_SIZE != 0
+GROUP_CALL("sky gnss tests", test_sky_gnss);
+#endif
 
 END_TESTS();

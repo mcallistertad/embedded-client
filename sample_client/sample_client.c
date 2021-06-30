@@ -118,6 +118,9 @@ struct cell_scan cells2[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
+struct gnss_scan gnss2 =
+   {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* Scan set 3 */
 struct ap_scan aps3[] =
     { { "287AEEBA96C0", 0, 2462, -89, 0 },
@@ -131,16 +134,62 @@ struct cell_scan cells3[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
+struct gnss_scan gnss3 =
+   {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* Scan set 4 */
 struct ap_scan aps4[] =
-    { { "287AEEBA96C0", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
+    { { "98F199A3D313", 0, 2412, -40, 0 },
+      { "54EC2F6730D8", 0, 2412, -53, 0 },
+      { "54EC2F673058", 0, 2412, -60, 0 },
+      { "54EC2F66FEF8", 0, 2412, -65, 0 },
+      { "54EC2F65ACC8", 0, 2412, -66, 0 },
+      { "54EC2F672DD8", 0, 2412, -66, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
 struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss4 =
+   {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+/* Scan set 5 */
+struct ap_scan aps5[] =
+    { { "98F199A3D313", 0, 2412, -40, 0 },
+      { "54EC2F6730D8", 0, 2412, -53, 0 },
+      { "54EC2F673058", 0, 2412, -60, 0 },
+      { "54EC2F66FEF8", 0, 2412, -65, 0 },
+      { "54EC2F65ACC8", 0, 2412, -66, 0 },
+      { "54EC2F672DD8", 0, 2412, -66, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells5[] =
+    { { TYPE_LTE, 1, -68, 411, 53, 36375, 34718211, 368, 5901, SKY_UNKNOWN_TA, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss5 =
+    {0, 35.700388, 139.751840, 37, 0, 0, 0, 0, 7};
+
+/* Scan set 6 */
+struct ap_scan aps6[] =
+    { { "98F199A3D313", 0, 2412, -40, 0 },
+      { "54EC2F6730D8", 0, 2412, -53, 0 },
+      { "54EC2F673058", 0, 2412, -60, 0 },
+      { "54EC2F66FEF8", 0, 2412, -65, 0 },
+      { "54EC2F65ACC8", 0, 2412, -66, 0 },
+      { "54EC2F672DD8", 0, 2412, -66, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells6[] =
+    { { TYPE_LTE, 1, -68, 411, 53, 36375, 34718211, 368, 5901, SKY_UNKNOWN_TA, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss6 =
+    {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* clang-format on */
 
@@ -554,6 +603,7 @@ int main(int argc, char *argv[])
      * device would perform locations periodically (perhaps once every
      * hour) rather than one immediately after another.
      */
+#if 0
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -573,8 +623,22 @@ int main(int argc, char *argv[])
     } else {
         report_location(&loc);
     }
+#endif
+    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, &gnss4, config.ul_app_data,
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
+    }
 
-    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
+    if (locate(ctx, bufsize, pstate, &config, aps5, cells5, &gnss5, config.ul_app_data,
+            config.ul_app_data_len, true, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
+    }
+
+    if (locate(ctx, bufsize, pstate, &config, aps6, cells6, &gnss6, config.ul_app_data,
             config.ul_app_data_len, true, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {

@@ -84,7 +84,8 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 
 /*! \brief call the equal operation in the registered plugins
  *
- * equal operation returns true if the beacons are equivalent
+ * equal operation returns true if the beacons of same type are equivalent
+ * used to find duplicates or finding beacons in the cache
  *
  *  @param ctx Skyhook request context
  *  @param code the sky_errno_t code to return
@@ -106,7 +107,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
-    p = ctx->session->sky_plugins;
+    p = ctx->session->plugins;
     while (p) {
         if (p->equal)
             ret = p->equal(ctx, a, b, prop, equal);
@@ -125,7 +126,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
 
 /*! \brief call the compare operation in the registered plugins
  *
- * compare operation is used to order beacons in the workspace
+ * compare operation is used to order beacons of same type
  *
  *  @param ctx Skyhook request context
  *  @param code the sky_errno_t code to return
@@ -142,11 +143,11 @@ Sky_status_t sky_plugin_compare(
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "inconsistency found in request context");
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
-    p = ctx->session->sky_plugins;
+    p = ctx->session->plugins;
     while (p) {
         if (p->compare)
             ret = p->compare(ctx, a, b, diff);
@@ -172,7 +173,7 @@ Sky_status_t sky_plugin_compare(
  */
 Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -206,7 +207,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  */
 Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -240,7 +241,7 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
  */
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -490,13 +491,13 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     };
 
     /* clear registration of standard plugins */
-    ctx->session->sky_plugins = NULL;
+    ctx->session->plugins = NULL;
     /* add single access table with empty operations */
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table1));
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table2));
-    ASSERT((Sky_plugin_table_t *)ctx->session->sky_plugins == &table1);
-    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next == &table2);
-    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next->next == NULL);
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->plugins, &table1));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->plugins, &table2));
+    ASSERT((Sky_plugin_table_t *)ctx->session->plugins == &table1);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->plugins)->next == &table2);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->plugins)->next->next == NULL);
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;

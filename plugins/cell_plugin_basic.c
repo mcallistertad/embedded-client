@@ -160,7 +160,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_CELLS(ctx),
         CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons));
 
-    /* no work to do if request ctx not full of max cell */
+    /* no work to do if request context is not full of max cell */
     if (NUM_CELLS(ctx) <=
         CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
