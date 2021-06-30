@@ -24,6 +24,8 @@
  */
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
+#include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define SKY_LIBEL
@@ -53,12 +55,12 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
         NUM_APS(ctx) -= 1;
     NUM_BEACONS(ctx) -= 1;
 #if VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 #endif
     return SKY_SUCCESS;
 }
 
-/*! \brief compare beacons for positioning in workspace
+/*! \brief compare beacons for ordering when inserting in request context
  *
  * better beacons are inserted before worse.
  *
@@ -123,7 +125,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     int j;
 
     /* sanity checks */
-    if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
+    if (!validate_request_ctx(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid params. Beacon type %s", sky_pbeacon(b));
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
@@ -181,7 +183,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         NUM_APS(ctx)++;
     }
 
-#ifdef SKY_DEBUG
+#ifdef SKY_LOGGING
     /* Verify that the beacon we just added now appears in our beacon set. */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         bool equal;
@@ -197,21 +199,21 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
     return SKY_SUCCESS;
 }
 
-/*! \brief add beacon to list in workspace context
+/*! \brief add beacon to list in request ctx
  *
- *   if beacon is not AP and workspace is full (of non-AP), pick best one
+ *   if beacon is not AP and request ctx is full (of non-AP), pick best one
  *   if beacon is AP,
  *    . reject a duplicate
  *    . for duplicates, keep newest and strongest
  *
- *   Insert new beacon in workspace
+ *   Insert new beacon in request ctx
  *    . Add APs in order based on lowest to highest rssi value
  *    . Add cells after APs
  *
  *   If AP just added is known in cache,
  *    . set cached and copy Used property from cache
  *
- *   If AP just added fills workspace, remove one AP,
+ *   If AP just added fills request ctx, remove one AP,
  *    . Remove one virtual AP if there is a match
  *    . If haven't removed one AP, remove one based on rssi distribution
  *
@@ -251,16 +253,16 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_SUCCESS;
 
     /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
+    if (NUM_APS(ctx) <= CONFIG(ctx->session, max_ap_beacons) &&
         (NUM_CELLS(ctx) <=
-            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
+            (CONFIG(ctx->session, total_beacons) - CONFIG(ctx->session, max_ap_beacons)))) {
         return SKY_SUCCESS;
     }
 
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on rssi distribution */
     if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
-        if (NUM_BEACONS(ctx) > CONFIG(ctx->state, total_beacons))
+        if (NUM_BEACONS(ctx) > CONFIG(ctx->session, total_beacons))
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
@@ -294,8 +296,8 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
         return false;
     }
 
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
+    for (int i = 0; i < ctx->session->num_cachelines; i++) {
+        if (beacon_in_cacheline(ctx, b, &ctx->session->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
             best_prop.in_cache = true;
@@ -370,10 +372,10 @@ int find_oldest(Sky_ctx_t *ctx)
          * then return index of current cache line 
          */
         if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
-            ctx->state->cacheline[i].time == CACHE_EMPTY)
+            ctx->session->cacheline[i].time == CACHE_EMPTY)
             return i;
-        else if (ctx->state->cacheline[i].time < oldest) {
-            oldest = ctx->state->cacheline[i].time;
+        else if (ctx->session->cacheline[i].time < oldest) {
+            oldest = ctx->session->cacheline[i].time;
             oldestc = i;
         }
     }
@@ -411,7 +413,7 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 
     if (NUM_CELLS(ctx) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request ctx");
 #endif
         return false;
     }
@@ -427,7 +429,7 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request ctx");
 #endif
         return false;
     }
@@ -452,6 +454,11 @@ int get_from_cache(Sky_ctx_t *ctx)
 #else
     int idx;
 
+    if (ctx->session->num_cachelines < 1) {
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
+    }
+
     /* Avoid using the cache if we have good reason */
     /* to believe that system time is bad */
     if (ctx->header.time <= TIMESTAMP_2019_03_01) {
@@ -466,7 +473,7 @@ int get_from_cache(Sky_ctx_t *ctx)
 
 /*! \brief check if an AP beacon is in a virtual group
  *
- *  Both the b (in workspace) and vg in cache may be virtual groups
+ *  Both the b (in request ctx) and vg in cache may be virtual groups
  *  if the two macs are similar and difference is same nibble as child, then
  *  if any of the children have matching macs, then match
  *
@@ -480,6 +487,11 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 {
     int w, c, num_aps = 0;
     uint8_t mac_va[MAC_SIZE] = { 0 };
+    return ctx->get_from;
+    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
+        /* no match to cacheline */
+        return (ctx->get_from = -1);
+    }
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 

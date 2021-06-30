@@ -26,9 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 #include <math.h>
-#include <ctype.h>
 #define SKY_LIBEL
 #include "libel.h"
 #include "proto.h"
@@ -46,59 +44,11 @@
 /* The following definition is intended to be changed only for QA purposes */
 #define BACKOFF_UNITS_PER_HR 3600 // time in seconds
 
-static Sky_state_t state;
-
-/*! \brief keep track of when the user has opened the library */
-static uint32_t sky_open_flag = 0;
-
-/*! \brief keep track of user handler functions */
-static Sky_randfn_t sky_rand_bytes;
-static Sky_loggerfn_t sky_logf;
-static Sky_log_level_t sky_min_level;
-static Sky_timefn_t sky_time;
-static bool sky_debounce;
-
-/*! \brief base of plugin chain */
-static Sky_plugin_table_t *sky_plugins = NULL;
-
 /* Local functions */
-static bool validate_device_id(uint8_t *device_id, uint32_t id_len);
+static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
 static bool validate_partner_id(uint32_t partner_id);
 static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 static size_t strnlen_(char *s, size_t maxlen);
-
-/*! \brief Copy state buffer from src to dest
- *
- *  Note: dynamic parameters are updated after copying from src
- *  to internal state buffer. If src state is too large for
- *  current configuration (in config.h), src state is ignored.
- *
- *  @param sky_errno Pointer to error code
- *  @param src Pointer to the src state buffer
- *  @param dest Pointer to the dest state buffer
- *
- *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
- */
-static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_state_t *dest, Sky_state_t *src)
-{
-    bool update = false;
-
-    if (src != NULL) {
-        if (src->header.size < sizeof(Sky_state_t)) {
-            /* if src state is smaller than current configuration, pad uninitialized
-             * buffer with zeros */
-            memset((uint8_t *)dest + src->header.size, 0, dest->header.size - src->header.size);
-            update = true;
-        } else if (src->header.size > sizeof(Sky_state_t))
-            return set_error_status(sky_errno, SKY_ERROR_BAD_STATE);
-        memmove(dest, src, src->header.size);
-        config_defaults(dest);
-        if (update)
-            dest->config.last_config_time = CONFIG_UPDATE_DUE; /* force an update */
-        return set_error_status(sky_errno, SKY_ERROR_NONE);
-    }
-    return set_error_status(sky_errno, SKY_ERROR_BAD_STATE);
-}
 
 /*! \brief Initialize Skyhook library and verify access to resources
  *
@@ -109,7 +59,7 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_state_t *dest, Sky_st
  *  @param aes_key Skyhook assigned encryption key
  *  @param sku unique name of device family, must be non-empty to enable TBR Auth
  *  @param cc County code where device is being registered, 0 if unknown
- *  @param state_buf pointer to a state buffer (provided by sky_close) or NULL
+ *  @param session_buf pointer to a session buffer
  *  @param min_level logging function is called for msg with equal or greater level
  *  @param logf pointer to logging function
  *  @param rand_bytes pointer to random function
@@ -118,134 +68,146 @@ static Sky_status_t copy_state(Sky_errno_t *sky_errno, Sky_state_t *dest, Sky_st
  *
  *  @return sky_status_t SKY_SUCCESS or SKY_ERROR
  *
- *  sky_open can be called many times with the same parameters. This does
- *  nothing and returns SKY_SUCCESS. However, sky_close must be called
- *  in order to change the parameter values. Device ID length will
- *  be truncated to 16 if larger, without causing an error.
+ *  If session buffer is being restored from a previous session, cache is restored.
+ *  If session buffer is an empty buffer, a new session is started with empty cache.
+ *  sky_open will return an error if the library is already open and (sky_close has not been called).
+ *  Device ID length will be truncated to 16 if larger, without causing an error.
  */
 Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_len,
-    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *state_buf,
+    uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *session_buf,
     Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime,
     bool debounce)
 {
-#if SKY_DEBUG
+    Sky_session_t *session;
+    int sku_len;
+#if SKY_LOGGING
     char buf[SKY_LOG_LENGTH];
 #endif
-    Sky_state_t *sky_state = state_buf;
-    uint32_t sku_len = 0;
 
-    memset(&state, 0, sizeof(state));
+    if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
+        (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
+
+    if (session_buf == NULL)
+        if (logf != NULL && SKY_LOG_LEVEL_ERROR <= min_level) {
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Must provide session buffer!");
+            return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+        }
+    session = (Sky_session_t *)session_buf;
+
+    if (session->header.magic != 0 && !validate_session_ctx(session, logf)) {
+        if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
+            (*logf)(SKY_LOG_LEVEL_WARNING, "Ignoring invalid session buffer!");
+        session->header.magic = 0;
+    } else {
+        if (session->open_flag) {
+            return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
+        }
+    }
+
     /* Only consider up to 16 bytes. Ignore any extra */
     id_len = (id_len > MAX_DEVICE_ID) ? MAX_DEVICE_ID : id_len;
     sku = !sku ? "" : sku;
-    sku_len = strnlen_(sku, MAX_SKU_LEN);
+    sku_len = (int)strnlen_(sku, MAX_SKU_LEN);
 
-    if (sky_state != NULL && !validate_cache(sky_state, logf)) {
-        if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
-            (*logf)(SKY_LOG_LEVEL_WARNING, "Invalid state buffer was ignored!");
-        sky_state = NULL;
+    rand_bytes = (rand_bytes == NULL) ? sky_rand_fn : rand_bytes;
+    if (gettime == NULL) {
+        if (logf != NULL && SKY_LOG_LEVEL_ERROR <= min_level)
+            (*logf)(SKY_LOG_LEVEL_ERROR, "Must provide gettime callback function!");
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
-    sky_min_level = min_level;
-    sky_logf = logf;
-    sky_rand_bytes = rand_bytes == NULL ? sky_rand_fn : rand_bytes;
-    sky_time = (gettime == NULL) ? &time : gettime;
-    sky_debounce = debounce;
-
-    if (sky_register_plugins(&sky_plugins) != SKY_SUCCESS)
-        return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
-
-    /* if open already */
-    if (sky_open_flag && sky_state) {
-        /* if library is already open and sky_open parameters match those we already have, */
-        /* we can ignore this call to sky_open, otherwise report error already open */
-        if (memcmp(device_id, sky_state->sky_device_id, id_len) == 0 &&
-            id_len == sky_state->sky_id_len && sky_state->header.size == sizeof(state) &&
-            partner_id == sky_state->sky_partner_id &&
-            memcmp(aes_key, sky_state->sky_aes_key, sizeof(sky_state->sky_aes_key)) == 0 &&
-            strcmp(sku, sky_state->sky_sku) == 0 && cc == sky_state->sky_cc)
-            return set_error_status(sky_errno, SKY_ERROR_NONE);
-        else
-            return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
-    } else if (!sky_state || copy_state(sky_errno, &state, sky_state) != SKY_SUCCESS) {
-        memset(&state, 0, sizeof(state));
-        state.header.magic = SKY_MAGIC;
-        state.header.size = sizeof(state);
-        state.header.time = (*sky_time)(NULL);
-        state.header.crc32 = sky_crc32(
-            &state.header.magic, (uint8_t *)&state.header.crc32 - (uint8_t *)&state.header.magic);
+    /* Initialize the session context if needed */
+    if (session->header.magic == 0) {
+        memset(session, 0, sizeof(*session));
+        session->header.magic = SKY_MAGIC;
+        session->header.size = sizeof(*session);
+        session->header.time = (*gettime)(NULL);
+        session->header.crc32 = sky_crc32(&session->header.magic,
+            (uint8_t *)&session->header.crc32 - (uint8_t *)&session->header.magic);
 #if CACHE_SIZE
-        state.len = CACHE_SIZE;
+        session->num_cachelines = CACHE_SIZE;
         for (int i = 0; i < CACHE_SIZE; i++) {
             for (int j = 0; j < TOTAL_BEACONS; j++) {
-                state.cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
-                state.cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
+                session->cacheline[i].beacon[j].h.magic = BEACON_MAGIC;
+                session->cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
 #endif
-#if SKY_DEBUG
+#if SKY_LOGGING
     } else {
         if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
             snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X, size %d restored",
-                sky_basename(__FILE__), __FUNCTION__, sky_crc32(sky_state, sky_state->header.size),
-                sky_state->header.size);
+                sky_basename(__FILE__), __FUNCTION__, sky_crc32(session, session->header.size),
+                session->header.size);
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
 #endif
     }
-    config_defaults(&state);
+    config_defaults(session);
 
     /* Sanity check */
     if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
         !validate_aes_key(aes_key))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    state.sky_id_len = id_len;
-    memcpy(state.sky_device_id, device_id, id_len);
-    state.sky_partner_id = partner_id;
-    memcpy(state.sky_aes_key, aes_key, sizeof(state.sky_aes_key));
+    session->id_len = id_len;
+    memcpy(session->device_id, device_id, id_len);
+    session->partner_id = partner_id;
+    memcpy(session->aes_key, aes_key, sizeof(session->aes_key));
     if (sku_len) {
-        strncpy(state.sky_sku, sku, MAX_SKU_LEN); /* Only pass up to maximum characters of sku */
-        state.sky_sku[MAX_SKU_LEN] = '\0'; /* Guarentee sku is null terminated */
-        state.sky_cc = cc;
+        strncpy(session->sku, sku, MAX_SKU_LEN); /* Only pass up to maximum characters of sku */
+        session->sku[MAX_SKU_LEN] = '\0'; /* Guarantee sku is null terminated */
+        session->cc = cc;
     }
-    sky_open_flag = true;
+    session->min_level = min_level;
+    session->logf = logf;
+    session->rand_bytes = rand_bytes;
+    session->timefn = gettime;
+    session->report_cache = debounce;
+    session->plugins = NULL; /* re-register plugins */
 
-    if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
-        (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
+    if (sky_register_plugins((Sky_plugin_table_t **)&session->plugins) != SKY_SUCCESS)
+        return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
+
+    session->open_flag = true;
 
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-/*! \brief Determines the size of the non-volatile memory state buffer
+/*! \brief Determines the size of a session buffer
  *
- *  @param sky_state Pointer to state buffer
+ *  @param session Pointer to session buffer or NULL
  *
- *  @return Size of state buffer or 0 to indicate that the buffer was invalid
+ *  @return Size of session buffer or 0 to indicate that the buffer was invalid
  */
-int32_t sky_sizeof_state(void *sky_state)
+int32_t sky_sizeof_session_ctx(void *session)
 {
-    Sky_state_t *s = sky_state;
+    Sky_session_t *s = session;
+
+    /* if no session pointer provided, return size required,
+     * else return the size of the session buffer
+     */
+    if (s == NULL)
+        return sizeof(Sky_session_t);
 
     /* Cache space required
      *
      * header - Magic number, size of space, checksum
      * body - number of entries
      */
-    if (s->header.magic != SKY_MAGIC) {
+    if (s->header.magic != SKY_MAGIC ||
+        s->header.crc32 != sky_crc32(&s->header.magic,
+                               (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return 0;
-    } else if (s->header.crc32 == sky_crc32(&s->header.magic,
-                                      (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
-        return s->header.size;
     }
-    return 0;
+    return (int32_t)((s->header.size == sizeof(Sky_session_t)) ? s->header.size : 0);
 }
 
-/*! \brief Determines the size of the workspace required to build request
+/*! \brief Returns the size of the request ctx required to build request
  *
- *  @return Size of state buffer or 0 to indicate that the buffer was invalid
+ *  @return Size of request buffer
  */
-int32_t sky_sizeof_workspace(void)
+int32_t sky_sizeof_request_ctx(void)
 {
     /* Total space required
      *
@@ -257,7 +219,7 @@ int32_t sky_sizeof_workspace(void)
 
 /*! \brief Validate backoff period
  *
- *  @param ctx Pointer to workspace provided by user
+ *  @param ctx Pointer to request ctx provided by user
  *  @param now current time
  *
  *  @return false if backoff period has not passed
@@ -266,24 +228,24 @@ static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
 {
     (void)ctx;
     /* Enforce backoff period, check that enough time has passed since last request was received */
-    if (state.backoff != SKY_ERROR_NONE) { /* Retry backoff in progress */
+    if (ctx->session->backoff != SKY_ERROR_NONE) { /* Retry backoff in progress */
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
-            sky_perror(state.backoff), (int)(now - state.header.time));
-        switch (state.backoff) {
+            sky_perror(ctx->session->backoff), (int)(now - ctx->session->header.time));
+        switch (ctx->session->backoff) {
         case SKY_AUTH_RETRY_8H:
-            if (now - state.header.time < (8 * BACKOFF_UNITS_PER_HR))
+            if (now - ctx->session->header.time < (8 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_16H:
-            if (now - state.header.time < (16 * BACKOFF_UNITS_PER_HR))
+            if (now - ctx->session->header.time < (16 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_1D:
-            if (now - state.header.time < (24 * BACKOFF_UNITS_PER_HR))
+            if (now - ctx->session->header.time < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_30D:
-            if (now - state.header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
+            if (now - ctx->session->header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_NEEDS_TIME:
@@ -298,96 +260,93 @@ static bool backoff_violation(Sky_ctx_t *ctx, time_t now)
     return false;
 }
 
-/*! \brief Initializes the workspace provided ready to build a request
+/*! \brief Initializes the request ctx provided ready to build a request
  *
- *  @param workspace_buf Pointer to workspace provided by user
- *  @param bufsize Workspace buffer size (from sky_sizeof_workspace)
+ *  @param request_ctx Pointer to request ctx provided by user
+ *  @param session_buf Pointer to session ctx provided by user
+ *  @param bufsize Request ctx buffer size (from sky_sizeof_request_ctx)
  *  @param sky_errno Pointer to error code
  *
- *  @return Pointer to the initialized workspace context buffer or NULL
+ *  @return Pointer to the initialized request context buffer or NULL
  */
-Sky_ctx_t *sky_new_request(void *workspace_buf, uint32_t bufsize, uint8_t *ul_app_data,
-    uint32_t ul_app_data_len, Sky_errno_t *sky_errno)
+Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_buf,
+    uint8_t *ul_app_data, uint32_t ul_app_data_len, Sky_errno_t *sky_errno)
 {
     int i;
-    Sky_ctx_t *ctx = (Sky_ctx_t *)workspace_buf;
+    Sky_session_t *s = (Sky_session_t *)session_buf;
+    Sky_ctx_t *ctx = (Sky_ctx_t *)request_ctx;
     time_t now;
 
-    if (!sky_open_flag) {
-        *sky_errno = SKY_ERROR_NEVER_OPEN;
+    if (bufsize != (uint32_t)sky_sizeof_request_ctx() || request_ctx == NULL || s == NULL) {
+        if (sky_errno != NULL)
+            *sky_errno = SKY_ERROR_BAD_PARAMETERS;
         return NULL;
     }
-    if (bufsize != (uint32_t)sky_sizeof_workspace() || workspace_buf == NULL) {
-        *sky_errno = SKY_ERROR_BAD_PARAMETERS;
+    if (!s->open_flag) {
+        if (sky_errno != NULL)
+            *sky_errno = SKY_ERROR_NEVER_OPEN;
         return NULL;
     }
-    if ((now = (*sky_time)(NULL)) < TIMESTAMP_2019_03_01) {
+    if ((now = (*s->timefn)(NULL)) < TIMESTAMP_2019_03_01) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         now = TIME_UNAVAILABLE; /* note that time was bad when request was started */
     }
 
     memset(ctx, 0, bufsize);
-    /* update header in workspace */
+    /* update header in request ctx */
     ctx->header.magic = SKY_MAGIC;
     ctx->header.size = bufsize;
     ctx->header.time = now;
     ctx->header.crc32 = sky_crc32(
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
-    ctx->state = &state;
-    ctx->min_level = sky_min_level;
-    ctx->logf = sky_logf;
-    ctx->rand_bytes = sky_rand_bytes;
-    ctx->gettime = sky_time;
-    ctx->plugin = sky_plugins;
-    ctx->debounce = sky_debounce;
-    ctx->auth_state = !is_tbr_enabled(ctx) ?
-                          STATE_TBR_DISABLED :
-                          ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                                          STATE_TBR_REGISTERED;
-    ctx->gps.lat = NAN; /* empty */
+    ctx->session = s;
+    ctx->auth_state =
+        !is_tbr_enabled(ctx) ?
+            STATE_TBR_DISABLED :
+            s->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
+    ctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
+    ctx->gnss.lat = NAN;
 
     if (backoff_violation(ctx, now)) {
-        *sky_errno = SKY_ERROR_SERVICE_DENIED;
+        if (sky_errno != NULL)
+            *sky_errno = SKY_ERROR_SERVICE_DENIED;
         return NULL;
     }
 
 #if CACHE_SIZE
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines configured", ctx->state->len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cachelines configured", s->num_cachelines);
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (state.cacheline[i].ap_len > CONFIG(ctx->state, max_ap_beacons) ||
-            state.cacheline[i].len > CONFIG(ctx->state, total_beacons)) {
-            state.cacheline[i].time = TIME_UNAVAILABLE;
+        if (s->cacheline[i].num_ap > CONFIG(s, max_ap_beacons) ||
+            s->cacheline[i].num_beacons > CONFIG(s, total_beacons)) {
+            s->cacheline[i].time = TIME_UNAVAILABLE;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
                 "cache %d of %d cleared due to new Dynamic Parameters. Total beacons %d vs %d, AP %d vs %d",
-                i, CACHE_SIZE, CONFIG(ctx->state, total_beacons), ctx->state->cacheline[i].len,
-                CONFIG(ctx->state, max_ap_beacons), ctx->state->cacheline[i].ap_len);
+                i, CACHE_SIZE, CONFIG(s, total_beacons), s->cacheline[i].num_beacons,
+                CONFIG(s, max_ap_beacons), s->cacheline[i].num_ap);
         }
-        if (ctx->state->cacheline[i].time != CACHE_EMPTY && now == TIME_UNAVAILABLE) {
-            ctx->state->cacheline[i].time = CACHE_EMPTY;
+        if (s->cacheline[i].time != CACHE_EMPTY && now == TIME_UNAVAILABLE) {
+            s->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to time being unavailable",
                 i, CACHE_SIZE);
-        } else if (ctx->state->cacheline[i].time != CACHE_EMPTY &&
-                   (now - ctx->state->cacheline[i].time) >
-                       ctx->state->config.cache_age_threshold * SECONDS_IN_HOUR) {
-            ctx->state->cacheline[i].time = CACHE_EMPTY;
+        } else if (s->cacheline[i].time != CACHE_EMPTY &&
+                   (now - s->cacheline[i].time) >
+                       CONFIG(s, cache_age_threshold) * SECONDS_IN_HOUR) {
+            s->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
-                CACHE_SIZE, now - ctx->state->cacheline[i].time);
+                CACHE_SIZE, now - s->cacheline[i].time);
         }
     }
 #endif
-    DUMP_CACHE(ctx);
-    ctx->state->sky_ul_app_data_len = ul_app_data_len;
-    memcpy(ctx->state->sky_ul_app_data, ul_app_data, ul_app_data_len);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", ctx->state->sky_partner_id,
-        ctx->state->sky_sku);
-    dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, ctx->state->sky_device_id,
-        ctx->state->sky_id_len, 0);
-    DUMP_WORKSPACE(ctx);
+    s->ul_app_data_len = ul_app_data_len;
+    memcpy(s->ul_app_data, ul_app_data, ul_app_data_len);
+    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %s", s->partner_id, s->sku);
+    dump_hex16(__FILE__, "Device_id", ctx, SKY_LOG_LEVEL_DEBUG, s->device_id, s->id_len, 0);
+    DUMP_REQUEST_CTX(ctx);
     return ctx;
 }
 
@@ -413,11 +372,11 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
         is_connected ? "serve " : "",
         (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create AP beacon */
     memset(&b, 0, sizeof(b));
@@ -436,7 +395,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     else if (ctx->header.time >= timestamp)
         b.h.age = ctx->header.time - timestamp;
     else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     if (frequency < 2400 || frequency > 6000)
         frequency = 0; /* 0's not sent to server */
     b.ap.freq = frequency;
@@ -491,17 +450,17 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
         (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 7690)))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     if (rsrp > -40 || rsrp < -140)
         rsrp = -1;
     b.h.rssi = rsrp;
@@ -510,7 +469,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -585,17 +544,17 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
         (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 63)))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_GSM;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     if (rssi > -32 || rssi < -128)
         rssi = -1;
     b.h.rssi = rssi;
@@ -603,7 +562,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -659,17 +618,17 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
         (uarfcn != SKY_UNKNOWN_ID6 && (uarfcn < 412 || uarfcn > 10838)))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_UMTS;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     if (rscp > -20 || rscp < -120)
         rscp = -1;
     b.h.rssi = rscp;
@@ -677,7 +636,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -736,17 +695,17 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_CDMA;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     if (rssi > -49 || rssi < -140)
         rssi = -1;
     b.h.rssi = rssi;
@@ -754,7 +713,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -809,17 +768,17 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
         (earfcn != SKY_UNKNOWN_ID6 && (earfcn < 0 || earfcn > 262143)))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_NBIOT;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     if (nrsrp > -44 || nrsrp < -156)
         nrsrp = -1;
     b.h.rssi = nrsrp;
@@ -827,7 +786,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -909,22 +868,22 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
         (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 3846)))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!sky_open_flag)
+    if (!ctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_NR;
-    b.h.connected = is_connected;
+    b.h.connected = (int8_t)is_connected;
     /* If beacon has meaningful timestamp */
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b.h.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
         b.h.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
@@ -998,9 +957,9 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        ctx->gps.age = 0;
-    else if (ctx->header.time > timestamp && timestamp > TIMESTAMP_2019_03_01)
-        ctx->gps.age = ctx->header.time - timestamp;
+        ctx->gnss.age = 0;
+    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
+        ctx->gnss.age = ctx->header.time - timestamp;
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
 
@@ -1016,24 +975,23 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
         nsat > 100) /* 100 is conservative max gnss sat count */
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
-    ctx->gps.lat = lat;
-    ctx->gps.lon = lon;
-    ctx->gps.hpe = hpe;
-    ctx->gps.alt = altitude;
-    ctx->gps.vpe = vpe;
-    ctx->gps.speed = speed;
-    ctx->gps.bearing = bearing;
-    ctx->gps.nsat = nsat;
+    ctx->gnss.lat = lat;
+    ctx->gnss.lon = lon;
+    ctx->gnss.hpe = hpe;
+    ctx->gnss.alt = altitude;
+    ctx->gnss.vpe = vpe;
+    ctx->gnss.speed = speed;
+    ctx->gnss.bearing = bearing;
+    ctx->gnss.nsat = nsat;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
 /*! \brief Determines the required size of the network request buffer
  *
  *  Size is determined by doing a dry run of encoding the request
- *  but this requires the workspace to be prepared first
  *
  *  @param ctx Skyhook request context
  *  @param size parameter which will be set to the size value
@@ -1044,30 +1002,31 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
 Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t *sky_errno)
 {
     int rc, rq_config = false;
+    Sky_session_t *s = ctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
 #endif
 
-    if (!validate_workspace(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* determine whether request_client_conf should be true in request message */
-    rq_config = ctx->state->config.last_config_time == CONFIG_UPDATE_DUE ||
+    rq_config = CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE ||
                 ctx->header.time == TIME_UNAVAILABLE ||
-                (ctx->header.time - ctx->state->config.last_config_time) > CONFIG_REQUEST_INTERVAL;
+                (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && ctx->state->config.last_config_time != CONFIG_UPDATE_DUE ?
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
             "Timeout" :
             rq_config ? "Forced" : "No");
 
     if (rq_config)
-        ctx->state->config.last_config_time = CONFIG_UPDATE_DUE; /* request on next serialize */
+        CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
 
-    /* Trim any excess vap from workspace i.e. total number of vap
-     * in workspace cannot exceed max that a request can carry
+    /* Trim any excess vap from request ctx i.e. total number of vap
+     * in request ctx cannot exceed max that a request can carry
      */
     select_vap(ctx);
 
@@ -1077,28 +1036,29 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 #if CACHE_SIZE
     get_from_cache(ctx);
     if (IS_CACHE_HIT(ctx)) {
-        cl = &ctx->state->cacheline[ctx->get_from];
+        cl = &ctx->session->cacheline[ctx->get_from];
 
         /* cache hit */
         /* count of consecutive cache hits since last cache miss */
-        if (ctx->state->cache_hits < 127) {
-            ctx->state->cache_hits++;
-            if (ctx->debounce) {
-                /* overwrite workspace with cached beacons */
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate workspace with cached beacons");
-                NUM_BEACONS(ctx) = cl->len;
-                NUM_APS(ctx) = cl->ap_len;
+        if (ctx->session->cache_hits < 127) {
+            ctx->session->cache_hits++;
+            if (ctx->session->report_cache) {
+                /* overwrite beacons in request ctx with cached beacons */
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "populate request ctx with cached beacons");
+                NUM_BEACONS(ctx) = cl->num_beacons;
+                NUM_APS(ctx) = cl->num_ap;
                 for (int j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
+                ctx->gnss = cl->gnss;
             }
         } else {
             ctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
-            ctx->state->cache_hits = 0; /* report 0 for cache miss */
+            ctx->session->cache_hits = 0; /* report 0 for cache miss */
         }
     }
 #else
     ctx->get_from = -1; /* cache miss */
-    ctx->state->cache_hits = 0; /* report 0 for cache miss */
+    ctx->session->cache_hits = 0; /* report 0 for cache miss */
 #endif
 
     /* encode request into the bit bucket, just to determine the length of the
@@ -1132,12 +1092,13 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 {
     int rc;
     Sky_finalize_t ret = SKY_FINALIZE_ERROR;
+    Sky_session_t *s = ctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
 #endif
 
-    if (!validate_workspace(ctx)) {
-        *sky_errno = SKY_ERROR_BAD_WORKSPACE;
+    if (!validate_request_ctx(ctx)) {
+        *sky_errno = SKY_ERROR_BAD_REQUEST_CTX;
         return ret;
     }
 
@@ -1147,7 +1108,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     }
 
     /* There must be at least one beacon */
-    if (NUM_BEACONS(ctx) == 0 && !has_gps(ctx)) {
+    if (NUM_BEACONS(ctx) == 0 && !has_gnss(ctx)) {
         *sky_errno = SKY_ERROR_NO_BEACONS;
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Cannot process request with no beacons");
         return ret;
@@ -1156,14 +1117,14 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
-        cl = &ctx->state->cacheline[ctx->get_from];
+        cl = &s->cacheline[ctx->get_from];
         if (loc != NULL) {
             *loc = cl->loc;
             /* no downlink data to report to user */
             loc->dl_app_data = NULL;
             loc->dl_app_data_len = 0;
         }
-#if SKY_DEBUG
+#if SKY_LOGGING
         time_t cached_time = loc->time;
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
             "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
@@ -1188,17 +1149,17 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Processing request with %d beacons into %d byte buffer",
         NUM_BEACONS(ctx), bufsize);
 
-#if SKY_DEBUG
-    if (ctx->state->config.last_config_time == CONFIG_UPDATE_DUE)
+#if SKY_LOGGING
+    if (CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Requesting new dynamic configuration parameters");
     else
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
-            ctx->state->config.last_config_time);
+        LOGFMT(
+            ctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d", CONFIG(s, last_config_time));
 #endif
 
     /* encode request */
-    rc = serialize_request(ctx, request_buf, bufsize, SW_VERSION,
-        ctx->state->config.last_config_time == CONFIG_UPDATE_DUE);
+    rc = serialize_request(
+        ctx, request_buf, bufsize, SW_VERSION, CONFIG(s, last_config_time) == CONFIG_UPDATE_DUE);
 
     if (rc > 0) {
         *response_size = get_maximum_response_size();
@@ -1206,8 +1167,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         *sky_errno = SKY_ERROR_NONE;
 
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request buffer of %d bytes prepared %s", rc,
-            (ctx->debounce && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
-                                                              "from workspace");
+            (s->report_cache && ret == SKY_FINALIZE_LOCATION) ? "from cache(debounce)" :
+                                                                "from request ctx");
         LOG_BUFFER(ctx, SKY_LOG_LEVEL_DEBUG, request_buf, rc);
         return ret;
     } else {
@@ -1231,15 +1192,15 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc)
 {
-    Sky_state_t *s = ctx->state;
-    time_t now = (*ctx->gettime)(NULL);
+    Sky_session_t *s = ctx->session;
+    time_t now = (*s->timefn)(NULL);
 
     if (loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
-    /* note the time of this server response in the state */
+    /* note the time of this server response in the request context */
     s->header.time = now;
     s->header.crc32 =
         sky_crc32(&s->header.magic, (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic);
@@ -1251,13 +1212,14 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
     } else {
         /* if this is a response from a cache miss, clear cache_hits count */
         if (IS_CACHE_MISS(ctx))
-            ctx->state->cache_hits = 0;
+            ctx->session->cache_hits = 0;
 
         /* set error status based on server error code */
         switch (loc->location_status) {
         case SKY_LOCATION_STATUS_SUCCESS:
             /* Server reports success so clear backoff period tracking */
             s->backoff = SKY_ERROR_NONE;
+            loc->time = (*ctx->session->timefn)(NULL);
 
 #if CACHE_SIZE > 0
             /* Add location and current beacons to Cache */
@@ -1274,32 +1236,27 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             break;
         case SKY_LOCATION_STATUS_AUTH_ERROR:
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Authentication required, retry.");
-
             if (ctx->auth_state ==
                 STATE_TBR_DISABLED) { /* Non-TBR Location request failed auth, error */
                 return set_error_status(sky_errno, SKY_ERROR_AUTH);
             } else if (ctx->auth_state ==
                        STATE_TBR_REGISTERED) { /* Location request failed auth, retry */
-                ctx->state->backoff = SKY_ERROR_NONE;
+                ctx->session->backoff = SKY_ERROR_NONE;
                 return set_error_status(sky_errno, SKY_AUTH_RETRY);
-            } else if (ctx->state->backoff ==
-                       SKY_ERROR_NONE) { /* Registration request failed auth, retry */
-                /* if time is unknown, set back off immediately to limit client to one request */
-                if (ctx->header.time == TIME_UNAVAILABLE)
-                    return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_NEEDS_TIME));
-                else
-                    return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY));
-            } else if (ctx->state->backoff ==
-                       SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_8H));
-            else if (ctx->state->backoff ==
+            } else if (ctx->session->backoff ==
+                       SKY_ERROR_NONE) /* Registration request failed auth, retry */
+                return set_error_status(sky_errno, (ctx->session->backoff = SKY_AUTH_RETRY));
+            else if (ctx->session->backoff ==
+                     SKY_AUTH_RETRY) /* Registration request failed again, retry after 8hr */
+                return set_error_status(sky_errno, (ctx->session->backoff = SKY_AUTH_RETRY_8H));
+            else if (ctx->session->backoff ==
                      SKY_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_16H));
-            else if (ctx->state->backoff ==
+                return set_error_status(sky_errno, (ctx->session->backoff = SKY_AUTH_RETRY_16H));
+            else if (ctx->session->backoff ==
                      SKY_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_1D));
+                return set_error_status(sky_errno, (ctx->session->backoff = SKY_AUTH_RETRY_1D));
             else
-                return set_error_status(sky_errno, (ctx->state->backoff = SKY_AUTH_RETRY_30D));
+                return set_error_status(sky_errno, (ctx->session->backoff = SKY_AUTH_RETRY_30D));
             break;
         case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
         case SKY_LOCATION_STATUS_DECODE_ERROR:
@@ -1312,6 +1269,147 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             return set_error_status(sky_errno, SKY_ERROR_SERVER_ERROR);
         }
     }
+}
+
+/*! \brief query value of a configuration parameter
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno Error code for which to provide descriptive string
+ *  @param name configuration parameter to read
+ *  @param value Pointer to location where value should be returned
+ *
+ *  @return SKY_SUCCESS if value was updated, SKY_ERROR otherwise
+ */
+Sky_status_t sky_get_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, uint32_t *value)
+{
+    Sky_errno_t err = SKY_ERROR_NONE;
+
+    switch (name) {
+    case CONF_TOTAL_BEACONS:
+        *value = ctx->session->config.total_beacons;
+        break;
+    case CONF_MAX_AP_BEACONS:
+        *value = ctx->session->config.max_ap_beacons;
+        break;
+    case CONF_CACHE_AGE_THRESHOLD:
+        *value = ctx->session->config.cache_age_threshold;
+        break;
+    case CONF_CACHE_BEACON_THRESHOLD:
+        *value = ctx->session->config.cache_beacon_threshold;
+        break;
+    case CONF_CACHE_NEG_RSSI_THRESHOLD:
+        *value = ctx->session->config.cache_neg_rssi_threshold;
+        break;
+    case CONF_CACHE_MATCH_ALL_THRESHOLD:
+        *value = ctx->session->config.cache_match_all_threshold;
+        break;
+    case CONF_CACHE_MATCH_USED_THRESHOLD:
+        *value = ctx->session->config.cache_match_used_threshold;
+        break;
+    case CONF_MAX_VAP_PER_AP:
+        *value = ctx->session->config.max_vap_per_ap;
+        break;
+    case CONF_MAX_VAP_PER_RQ:
+        *value = ctx->session->config.max_vap_per_rq;
+        break;
+    case CONF_REPORT_CACHE:
+        *value = ctx->session->report_cache;
+        break;
+    case CONF_LOGGING_LEVEL:
+        *value = ctx->session->min_level;
+        break;
+    default:
+        err = SKY_ERROR_BAD_PARAMETERS;
+        break;
+    }
+    return set_error_status(sky_errno, err);
+}
+
+/*! \brief set value of a configuration parameter
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno Error code for which to provide descriptive string
+ *  @param name configuration parameter to set
+ *  @param value value to set
+ *
+ *  @return SKY_SUCCESS if value was updated, SKY_ERROR otherwise
+ */
+Sky_status_t sky_set_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, int32_t value)
+{
+    Sky_errno_t err = SKY_ERROR_NONE;
+
+    switch (name) {
+    case CONF_TOTAL_BEACONS:
+        if (value > TOTAL_BEACONS || value < 6) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.total_beacons = value;
+        break;
+    case CONF_MAX_AP_BEACONS:
+        if (value > MAX_AP_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_ap_beacons = value;
+        break;
+    case CONF_CACHE_AGE_THRESHOLD:
+        ctx->session->config.cache_age_threshold = value;
+        break;
+    case CONF_CACHE_BEACON_THRESHOLD:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_beacon_threshold = value;
+        break;
+    case CONF_CACHE_NEG_RSSI_THRESHOLD:
+        if (value > 128) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_neg_rssi_threshold = value;
+        break;
+    case CONF_CACHE_MATCH_ALL_THRESHOLD:
+        if (value > 100) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_match_all_threshold = value;
+        break;
+    case CONF_CACHE_MATCH_USED_THRESHOLD:
+        if (value > 100) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_match_used_threshold = value;
+        break;
+    case CONF_MAX_VAP_PER_AP:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_vap_per_ap = value;
+        break;
+    case CONF_MAX_VAP_PER_RQ:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_vap_per_rq = value;
+        break;
+    case CONF_REPORT_CACHE:
+        ctx->session->report_cache = value ? 1 : 0;
+        break;
+    case CONF_LOGGING_LEVEL:
+        ctx->session->min_level = value;
+        break;
+    default:
+        err = SKY_ERROR_BAD_PARAMETERS;
+    }
+    return set_error_status(sky_errno, err);
 }
 
 /*! \brief returns a string which describes the meaning of sky_errno codes
@@ -1336,11 +1434,11 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_ERROR_BAD_PARAMETERS:
         str = "Validation of parameters failed";
         break;
-    case SKY_ERROR_BAD_WORKSPACE:
-        str = "The workspace buffer is corrupt";
+    case SKY_ERROR_BAD_REQUEST_CTX:
+        str = "The request ctx buffer is corrupt";
         break;
-    case SKY_ERROR_BAD_STATE:
-        str = "The state buffer is corrupt";
+    case SKY_ERROR_BAD_SESSION_CTX:
+        str = "The session buffer is corrupt";
         break;
     case SKY_ERROR_ENCODE_ERROR:
         str = "The request could not be encoded";
@@ -1510,33 +1608,19 @@ char *sky_psource(struct sky_location *l)
 
 /*! \brief clean up library resourses
  *
+ *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param sky_state pointer to where the state buffer reference should be
- * stored
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
+Sky_status_t sky_close(void *session, Sky_errno_t *sky_errno)
 {
-#if SKY_DEBUG
-    char buf[SKY_LOG_LENGTH];
-#endif
-    if (!sky_open_flag)
+    Sky_session_t *s = (Sky_session_t *)session;
+
+    if (!s->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
+    s->open_flag = false;
 
-    sky_open_flag = false;
-
-    if (sky_state != NULL) {
-        *sky_state = &state;
-#if SKY_DEBUG
-        if (sky_logf != NULL && SKY_LOG_LEVEL_DEBUG <= sky_min_level) {
-            snprintf(buf, sizeof(buf), "%s:%s() State buffer with CRC 0x%08X and size %d",
-                sky_basename(__FILE__), __FUNCTION__, sky_crc32(&state, state.header.size),
-                state.header.size);
-            (*sky_logf)(SKY_LOG_LEVEL_DEBUG, buf);
-        }
-#endif
-    }
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
@@ -1551,7 +1635,7 @@ Sky_status_t sky_close(Sky_errno_t *sky_errno, void **sky_state)
  *
  *  @return true or false
  */
-static bool validate_device_id(uint8_t *device_id, uint32_t id_len)
+static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
 {
     if (device_id == NULL || id_len > MAX_DEVICE_ID)
         return false;

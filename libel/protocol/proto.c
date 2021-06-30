@@ -41,7 +41,7 @@
 /* extract the n-th bit from used AP array of l bytes */
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
-static bool apply_config_overrides(Sky_state_t *s, Rs *rs);
+static bool apply_config_overrides(Sky_session_t *s, Rs *rs);
 static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
@@ -152,7 +152,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(&substream, data + 1, *data))
             return false;
     }
@@ -164,7 +164,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(ostream, data + 1, *data))
             return false;
     }
@@ -342,7 +342,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
      * then we need to encode a registration request,
      * which does not include any beacon info
      */
-    if (ctx && (!is_tbr_enabled(ctx) || ctx->state->sky_token_id != TBR_TOKEN_UNKNOWN)) {
+    if (ctx && (!is_tbr_enabled(ctx) || ctx->session->token_id != TBR_TOKEN_UNKNOWN)) {
         // Per the documentation here:
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
@@ -392,13 +392,13 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(sizeof(ctx->state->sky_sku) >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->session->sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // sky_new_request initializes rand_bytes if user does not
-    if (ctx->rand_bytes != NULL)
-        ctx->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
+    if (ctx->session->rand_bytes != NULL)
+        ctx->session->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
 
     // Initialize crypto_info
     rq_crypto_info.iv.size = AES_BLOCKLEN;
@@ -409,7 +409,7 @@ int32_t serialize_request(
 
     rq.timestamp = (int64_t)ctx->header.time;
 
-    rq.cache_hits = ctx->state->cache_hits;
+    rq.cache_hits = ctx->session->cache_hits;
 
     /* if we have been given a sku, then
      * if we don't yet have a token_id,
@@ -418,7 +418,7 @@ int32_t serialize_request(
      * make a legacy style request
      */
     if (is_tbr_enabled(ctx)) {
-        if (ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN) {
+        if (ctx->session->token_id == TBR_TOKEN_UNKNOWN) {
             /* build a tbr registration request */
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
@@ -428,7 +428,7 @@ int32_t serialize_request(
                 rq_hdr.partner_id, rq.tbr.sku);
         } else {
             /* build tbr location request */
-            rq.token_id = ctx->state->sky_token_id;
+            rq.token_id = ctx->session->token_id;
             rq.max_dl_app_data = SKY_MAX_DL_APP_DATA;
             rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
             memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
@@ -472,7 +472,7 @@ int32_t serialize_request(
 
     total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
@@ -551,7 +551,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
         if (nap++ > size * CHAR_BIT)
             break;
     }
-    for (v = 0; v < CONFIG(ctx->state, max_vap_per_ap); v++) {
+    for (v = 0; v < CONFIG(ctx->session, max_vap_per_ap); v++) {
         for (i = 0; i < NUM_APS(ctx); i++) {
             if (v < NUM_VAPS(&ctx->beacon[i])) {
                 ctx->beacon[i].ap.vg_prop[v].used = GET_USED_AP(used, size, nap);
@@ -644,12 +644,13 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         }
-        if (apply_config_overrides(ctx->state, &rs)) {
-            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
-                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
+        if (apply_config_overrides(ctx->session, &rs)) {
+            if (ctx->session->logf && SKY_LOG_LEVEL_DEBUG <= ctx->session->min_level)
+                (*ctx->session->logf)(
+                    SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->state, last_config_time) == CONFIG_UPDATE_DUE)
-            CONFIG(ctx->state, last_config_time) = ctx->state->header.time;
+        if (CONFIG(ctx->session, last_config_time) == CONFIG_UPDATE_DUE)
+            CONFIG(ctx->session, last_config_time) = ctx->session->header.time;
     }
     ret = 0;
     switch (ctx->auth_state) {
@@ -662,7 +663,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* successful TBR registration response */
             /* Save the token_id for use in subsequent location requests. */
             ctx->auth_state = STATE_TBR_REGISTERED;
-            ctx->state->sky_token_id = rs.token_id;
+            ctx->session->token_id = rs.token_id;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
         }
         /* User must retry because this was a registration */
@@ -673,7 +674,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* failed TBR location request */
             /* Clear the token_id because it is invalid. */
             ctx->auth_state = STATE_TBR_UNREGISTERED;
-            ctx->state->sky_token_id = TBR_TOKEN_UNKNOWN;
+            ctx->session->token_id = TBR_TOKEN_UNKNOWN;
             /* Application must re-register */
             loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
@@ -686,7 +687,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
         } else {
             /* Legacy or tbr location request */
-            loc->time = ctx->state->header.time;
+            loc->time = ctx->session->header.time;
             loc->lat = rs.lat;
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;
@@ -731,7 +732,7 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return bool true if new override is recived from server
  */
-static bool apply_config_overrides(Sky_state_t *s, Rs *rs)
+static bool apply_config_overrides(Sky_session_t *s, Rs *rs)
 {
     bool override = false;
 
