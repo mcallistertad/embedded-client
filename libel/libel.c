@@ -26,7 +26,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 #include <math.h>
 #define SKY_LIBEL
 #include "libel.h"
@@ -201,7 +200,7 @@ int32_t sky_sizeof_session_ctx(void *session)
                                (uint8_t *)&s->header.crc32 - (uint8_t *)&s->header.magic)) {
         return 0;
     }
-    return (s->header.size == sizeof(Sky_session_t)) ? s->header.size : 0;
+    return (int32_t)((s->header.size == sizeof(Sky_session_t)) ? s->header.size : 0);
 }
 
 /*! \brief Returns the size of the request ctx required to build request
@@ -302,9 +301,10 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
         &ctx->header.magic, (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic);
 
     ctx->session = s;
-    ctx->auth_state = !is_tbr_enabled(ctx)             ? STATE_TBR_DISABLED :
-                      s->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                         STATE_TBR_REGISTERED;
+    ctx->auth_state =
+        !is_tbr_enabled(ctx) ?
+            STATE_TBR_DISABLED :
+            s->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     ctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         ctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -395,7 +395,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
     else if (ctx->header.time >= timestamp)
         b.h.age = ctx->header.time - timestamp;
     else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     if (frequency < 2400 || frequency > 6000)
         frequency = 0; /* 0's not sent to server */
     b.ap.freq = frequency;
@@ -1018,9 +1018,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 ctx->header.time == TIME_UNAVAILABLE ||
                 (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                     ? "Forced" :
-                                                                        "No");
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
+            "Timeout" :
+            rq_config ? "Forced" : "No");
 
     if (rq_config)
         CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
@@ -1114,7 +1114,7 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
+        /* check cache match result */
 #if CACHE_SIZE
     if (IS_CACHE_HIT(ctx)) {
         cl = &s->cacheline[ctx->get_from];
@@ -1269,6 +1269,147 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *r
             return set_error_status(sky_errno, SKY_ERROR_SERVER_ERROR);
         }
     }
+}
+
+/*! \brief query value of a configuration parameter
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno Error code for which to provide descriptive string
+ *  @param name configuration parameter to read
+ *  @param value Pointer to location where value should be returned
+ *
+ *  @return SKY_SUCCESS if value was updated, SKY_ERROR otherwise
+ */
+Sky_status_t sky_get_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, uint32_t *value)
+{
+    Sky_errno_t err = SKY_ERROR_NONE;
+
+    switch (name) {
+    case CONF_TOTAL_BEACONS:
+        *value = ctx->session->config.total_beacons;
+        break;
+    case CONF_MAX_AP_BEACONS:
+        *value = ctx->session->config.max_ap_beacons;
+        break;
+    case CONF_CACHE_AGE_THRESHOLD:
+        *value = ctx->session->config.cache_age_threshold;
+        break;
+    case CONF_CACHE_BEACON_THRESHOLD:
+        *value = ctx->session->config.cache_beacon_threshold;
+        break;
+    case CONF_CACHE_NEG_RSSI_THRESHOLD:
+        *value = ctx->session->config.cache_neg_rssi_threshold;
+        break;
+    case CONF_CACHE_MATCH_ALL_THRESHOLD:
+        *value = ctx->session->config.cache_match_all_threshold;
+        break;
+    case CONF_CACHE_MATCH_USED_THRESHOLD:
+        *value = ctx->session->config.cache_match_used_threshold;
+        break;
+    case CONF_MAX_VAP_PER_AP:
+        *value = ctx->session->config.max_vap_per_ap;
+        break;
+    case CONF_MAX_VAP_PER_RQ:
+        *value = ctx->session->config.max_vap_per_rq;
+        break;
+    case CONF_REPORT_CACHE:
+        *value = ctx->session->report_cache;
+        break;
+    case CONF_LOGGING_LEVEL:
+        *value = ctx->session->min_level;
+        break;
+    default:
+        err = SKY_ERROR_BAD_PARAMETERS;
+        break;
+    }
+    return set_error_status(sky_errno, err);
+}
+
+/*! \brief set value of a configuration parameter
+ *
+ *  @param ctx Skyhook request context
+ *  @param sky_errno Error code for which to provide descriptive string
+ *  @param name configuration parameter to set
+ *  @param value value to set
+ *
+ *  @return SKY_SUCCESS if value was updated, SKY_ERROR otherwise
+ */
+Sky_status_t sky_set_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, int32_t value)
+{
+    Sky_errno_t err = SKY_ERROR_NONE;
+
+    switch (name) {
+    case CONF_TOTAL_BEACONS:
+        if (value > TOTAL_BEACONS || value < 6) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.total_beacons = value;
+        break;
+    case CONF_MAX_AP_BEACONS:
+        if (value > MAX_AP_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_ap_beacons = value;
+        break;
+    case CONF_CACHE_AGE_THRESHOLD:
+        ctx->session->config.cache_age_threshold = value;
+        break;
+    case CONF_CACHE_BEACON_THRESHOLD:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_beacon_threshold = value;
+        break;
+    case CONF_CACHE_NEG_RSSI_THRESHOLD:
+        if (value > 128) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_neg_rssi_threshold = value;
+        break;
+    case CONF_CACHE_MATCH_ALL_THRESHOLD:
+        if (value > 100) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_match_all_threshold = value;
+        break;
+    case CONF_CACHE_MATCH_USED_THRESHOLD:
+        if (value > 100) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.cache_match_used_threshold = value;
+        break;
+    case CONF_MAX_VAP_PER_AP:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_vap_per_ap = value;
+        break;
+    case CONF_MAX_VAP_PER_RQ:
+        if (value > TOTAL_BEACONS) {
+            err = SKY_ERROR_BAD_PARAMETERS;
+            break;
+        }
+        ctx->session->config.max_vap_per_rq = value;
+        break;
+    case CONF_REPORT_CACHE:
+        ctx->session->report_cache = value ? 1 : 0;
+        break;
+    case CONF_LOGGING_LEVEL:
+        ctx->session->min_level = value;
+        break;
+    default:
+        err = SKY_ERROR_BAD_PARAMETERS;
+    }
+    return set_error_status(sky_errno, err);
 }
 
 /*! \brief returns a string which describes the meaning of sky_errno codes
