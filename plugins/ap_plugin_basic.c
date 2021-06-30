@@ -51,8 +51,8 @@
  * Overall priority value is the sum of the three priorities which allows
  * priority values (priority of beacons) to be compared numerically
  *
- * Connected - value 512
- * Cached - value 255
+ * Connected - value 512 (2^9)
+ * Cached - value 256 (2^8)
  * Deviation from ideal rssi is fractional but in the range of 0 through 128.
  * The priority is held as 128 - deviation, making the priority higher when better.
  *
@@ -551,37 +551,49 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 #endif
 }
 
-/*! \brief Assign relative priority value to AP based on attributes
+/*! \brief Compute an AP's priority value.
  *
- * Priority is based on the attributes connected, virtual groups and cached APs
- * and best fit to rssi uniform distribution
+ * An AP's priority is based on the following attributes, in priority order:
+ * 1. its connected flag value
+ * 2. whether it's present in the cache
+ * 3. the deviation of its RSSI value from the ideal
+ *
+ * The computed priority is really just a concatenation of these 3 components
+ * expressed as a single floating point quantity, partitioned in the following way:
+ * 1. connected flag: bit 9
+ * 2. present in cache: bit 8
+ * 3. RSSI deviation from ideal: bits 0-7 plus the fractional part
  *
  *  @param ctx pointer to request context
  *  @param b pointer to AP
- *  @param beacons_by_rssi rssi ordered array of all beacons
- *  @param idx index of beacon we want to prioritize
  *
- *  @return priority
+ *  @return computed priority
  */
 static float get_priority(Sky_ctx_t *ctx, Beacon_t *b)
 {
     float priority = 0;
+    float deviation;
     int lowest_rssi, highest_rssi;
-    float band, ideal_rssi;
+    float band_width, ideal_rssi;
 
     if (b->h.connected)
         priority += (float)CONNECTED;
     if (b->ap.property.in_cache) {
         priority += (float)IN_CACHE;
     }
-    /* Note that APs are in rssi order so index 0 is strongest beacon */
+    /* Compute the range of RSSI values across all APs. */
+    /* (Note that the list of APs is in rssi order so index 0 is the strongest beacon.) */
     highest_rssi = EFFECTIVE_RSSI(ctx->beacon[0].h.rssi);
     lowest_rssi = EFFECTIVE_RSSI(ctx->beacon[NUM_APS(ctx) - 1].h.rssi);
-    /* divide the total rssi range equally between all the APs */
-    band = (float)(highest_rssi - lowest_rssi) / (float)(NUM_APS(ctx) - 1);
-    ideal_rssi = (float)highest_rssi - band * (float)(IDX(b));
 
-    priority += (128 - ABS(ideal_rssi - EFFECTIVE_RSSI(b->h.rssi)));
+    /* Find the deviation of the AP's RSSI from its ideal RSSI. Subtract this number from
+     * 128 so that smaller deviations are considered better.
+     */
+    band_width = (float)(highest_rssi - lowest_rssi) / (float)(NUM_APS(ctx) - 1);
+    ideal_rssi = (float)highest_rssi - band_width * (float)(IDX(b));
+    deviation = ABS(EFFECTIVE_RSSI(b->h.rssi) - ideal_rssi);
+    priority += 128 - deviation;
+
 #if VERBOSE_DEBUG
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d rssi:%d ideal:%d.%d priority:%d.%d", IDX(b),
         EFFECTIVE_RSSI(b->h.rssi), ideal_rssi, (int)((ideal_rssi - (int)ideal_rssi) * 10),
