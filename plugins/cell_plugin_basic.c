@@ -40,7 +40,7 @@ typedef enum {
     CONNECTED = 0x200,
     NON_NMR = 0x100,
     LOWEST_PRIORITY = 0x000
-} Priority_t;
+} Property_priority_t;
 
 static uint16_t get_priority(Beacon_t *b);
 
@@ -136,9 +136,9 @@ static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
         return SKY_ERROR;
 
     if (a->h.priority == 0)
-        a->h.priority = get_priority(a);
+        a->h.priority = (float)get_priority(a);
     if (b->h.priority == 0)
-        b->h.priority = get_priority(b);
+        b->h.priority = (float)get_priority(b);
 
     if (a->h.age != b->h.age)
         *diff = COMPARE_AGE(a, b);

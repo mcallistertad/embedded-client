@@ -24,7 +24,6 @@
  */
 #ifndef SKY_LIBEL_H
 #define SKY_LIBEL_H
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
