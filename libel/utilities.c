@@ -486,6 +486,29 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
 #endif
 }
 
+/*! \brief dump gnss info, if present
+ *
+ *  @param ctx workspace pointer
+ *  @param file the file name where LOG_BUFFER was invoked
+ *  @param function the function name where LOG_BUFFER was invoked
+ *  @param gnss gnss pointer
+ *  @returns void
+ */
+void dump_gnss(Sky_ctx_t *ctx, const char *file, const char *func, Gnss_t *gnss)
+{
+#if SKY_LOGGING
+    if (ctx != NULL && gnss != NULL && !isnan(gnss->lat))
+        logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
+            (int)(FABS((gnss->lat - (int)gnss->lat) * 1000000.0)), (int)gnss->lon,
+            (int)(FABS((gnss->lon - (int)gnss->lon) * 1000000.0)));
+#else
+    (void)ctx;
+    (void)file;
+    (void)func;
+    (void)gnss;
+#endif
+}
+
 /*! \brief dump the beacons in the request ctx
  *
  *  @param ctx request ctx pointer
@@ -500,10 +523,7 @@ void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func)
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
         is_tbr_enabled(ctx) ? ", TBR" : "", ctx->session->report_cache ? ", Debounce" : "");
-    if (has_gnss(ctx))
-        logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)ctx->gnss.lat,
-            (int)(FABS((ctx->gnss.lat - (int)ctx->gnss.lat) * 1000000.0)), (int)ctx->gnss.lon,
-            (int)(FABS((ctx->gnss.lon - (int)ctx->gnss.lon) * 1000000.0)));
+    dump_gnss(ctx, file, func, &ctx->gnss);
 
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
@@ -561,12 +581,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
                 (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
                 sky_psource(&cl->loc), cl->num_beacons);
-            if (has_gnss(cl))
-                logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d",
-                    (int)ctx->gnss.lat,
-                    (int)(FABS((ctx->gnss.lat - (int)ctx->gnss.lat) * 1000000.0)),
-                    (int)ctx->gnss.lon,
-                    (int)(FABS((ctx->gnss.lon - (int)ctx->gnss.lon) * 1000000.0)));
+            dump_gnss(ctx, file, func, &cl->gnss);
             for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
