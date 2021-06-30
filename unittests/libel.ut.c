@@ -154,6 +154,7 @@ TEST_FUNC(test_sky_add)
     });
 }
 
+#if CACHE_SIZE != 0
 TEST_FUNC(test_sky_gnss)
 {
     TEST("to cache plugin copies gnss to cache", ctx, {
@@ -221,12 +222,15 @@ TEST_FUNC(test_sky_gnss)
         ASSERT(ctx->gnss.hpe == ctx->session->cacheline[0].gnss.hpe);
     });
 }
+#endif
 
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
+#if CACHE_SIZE != 0
 GROUP_CALL("sky gnss tests", test_sky_gnss);
+#endif
 
 END_TESTS();
