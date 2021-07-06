@@ -289,11 +289,13 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
     #else
                 (void)vap_b;
     #endif
-                if (worst_vap == NULL ||
-                        cmp_properties(ctx, IDX(vap_a), IDX(worst_vap)) < 0 ||
-                        COMPARE_MAC(vap_a, worst_vap) > 0) {
+                c2 = cmp_properties(ctx, IDX(vap_a), IDX(worst_vap));
+
+                if (worst_vap == NULL || c2 < 0 || (c2 == 0 &&
+                        COMPARE_MAC(vap_a, worst_vap) > 0)) {
                     /* This is the first removal candidate or its properties are
-                     * worse than the current candidate or it has a larger MAC value. */
+                     * worse than the current candidate or its properties are the same
+                     * but it has a larger MAC value. */
                     worst_vap = vap_a;
                     dump_ap(ctx, "worst vap >>>:", vap_a, __FILE__, __FUNCTION__);
                 }
