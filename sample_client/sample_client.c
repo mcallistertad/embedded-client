@@ -350,16 +350,14 @@ static int locate(Sky_ctx_t *ctx, uint32_t bufsize, Config_t *config, struct ap_
     for (i = 0; true; i++, ap++) {
         uint8_t mac[MAC_SIZE];
 
-        if (ap->mac == NULL)
+        if (ap->mac[0] == '\0')
             break;
-        if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
+        else if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
             ret_status = sky_add_ap_beacon(
                 ctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, ap->frequency, ap->connected);
             if (ret_status != SKY_SUCCESS)
                 printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
-        } else if (ap->mac[0] == '\0')
-            break;
-        else
+        } else
             printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
     }
 
@@ -474,10 +472,23 @@ retry_after_auth:
         if (ret_status == SKY_SUCCESS) {
             return true;
         } else {
-            printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_AUTH_RETRY) {
-                /* Repeat request if Authentication was required for last message */
+            switch (sky_errno) {
+            case SKY_AUTH_RETRY:
                 goto retry_after_auth;
+            case SKY_AUTH_RETRY_8H:
+                /* sleep 8 hours */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_16H:
+                /* sleep 16 hours */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_1D:
+                /* sleep 1 day */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_30D:
+                /* sleep 30 days */
+                goto retry_after_auth;
+            default:
+                printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
             }
         }
         break;
@@ -536,7 +547,10 @@ int main(int argc, char *argv[])
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    pstate = restore_state(config.statefile); /* returns a non-NULL pointer if space allocated */
+    if (config.factory_reset)
+        pstate = NULL;
+    else
+        pstate = restore_state(config.statefile); /* returns a non-NULL pointer if space allocated */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
