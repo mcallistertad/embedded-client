@@ -169,6 +169,7 @@ typedef struct sky_cacheline {
     uint16_t ap_len; /* number of AP beacons in list (0 == none) */
     uint32_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+    Gps_t gps; /* GNSS info */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 

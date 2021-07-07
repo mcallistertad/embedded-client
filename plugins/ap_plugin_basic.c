@@ -600,6 +600,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 
     cl->len = NUM_BEACONS(ctx);
     cl->ap_len = NUM_APS(ctx);
+    cl->gps = ctx->gps;
     cl->loc = *loc;
     cl->time = now;
 

@@ -35,6 +35,8 @@
 #include "proto.h"
 
 #define MIN(a, b) ((a < b) ? a : b)
+#define has_gnss(c) ((c) != NULL && !isnan((c)->gps.lat))
+#define FABS(a) (((a) < 0.0) ? (0.0 - (a)) : (a))
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -481,6 +483,24 @@ void dump_beacon(Sky_ctx_t *ctx, char *str, Beacon_t *b, const char *file, const
 #endif
 }
 
+/*! \brief dump gnss info, if present
+ *
+ *  @param ctx workspace pointer
+ *  @param file the file name where LOG_BUFFER was invoked
+ *  @param function the function name where LOG_BUFFER was invoked
+ *  @param gnss gnss pointer
+ *  @returns void
+ */
+void dump_gnss(Sky_ctx_t *ctx, const char *file, const char *func, Gps_t *gnss)
+{
+#if SKY_DEBUG
+    if (ctx != NULL && gnss != NULL && !isnan(gnss->lat))
+        logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
+            (int)(FABS((gnss->lat - (int)gnss->lat) * 1000000.0)), (int)gnss->lon,
+            (int)(FABS((gnss->lon - (int)gnss->lon) * 1000000.0)));
+#endif
+}
+
 /*! \brief dump the beacons in the workspace
  *
  *  @param ctx workspace pointer
@@ -495,6 +515,7 @@ void dump_workspace(Sky_ctx_t *ctx, const char *file, const char *func)
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG, "Dump WorkSpace: Got %d beacons, WiFi %d, %s%s",
         NUM_BEACONS(ctx), NUM_APS(ctx), is_tbr_enabled(ctx) ? ", TBR" : "",
         ctx->debounce ? ", Debounce" : "");
+    dump_gnss(ctx, file, func, &ctx->gps);
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
@@ -549,6 +570,8 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 (int)cl->loc.lat, (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))),
                 (int)cl->loc.lon, (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))),
                 cl->loc.hpe, cl->len);
+            dump_gnss(ctx, file, func, &ctx->gps);
+
             for (j = 0; j < cl->len; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }
