@@ -427,11 +427,11 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
                 /* vg with most members is better */
                 better = new->ap.vg_len - wb->ap.vg_len;
         } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
 #ifdef VERBOSE_DEBUG
             dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
             dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
 #endif
+            /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
             if (new->h.connected || wb->h.connected) {
                 better = (new->h.connected ? 1 : -1);
 #ifdef VERBOSE_DEBUG
