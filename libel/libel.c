@@ -38,7 +38,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 16
+#define SW_VERSION 18
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -1038,6 +1038,7 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
                 NUM_APS(ctx) = cl->ap_len;
                 for (int j = 0; j < NUM_BEACONS(ctx); j++)
                     ctx->beacon[j] = cl->beacon[j];
+                ctx->gps = cl->gps;
             }
         } else {
             ctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
@@ -1101,8 +1102,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-    /* check cache match result */
 #if CACHE_SIZE
+    /* check cache match result */
     if (IS_CACHE_HIT(ctx)) {
         cl = &ctx->state->cacheline[ctx->get_from];
         if (loc != NULL) {
@@ -1513,3 +1514,9 @@ static bool validate_aes_key(uint8_t aes_key[AES_SIZE])
     else
         return true; /* TODO check for non-trivial values? e.g. zero */
 }
+
+#ifdef UNITTESTS
+
+#include "libel.ut.c"
+
+#endif
