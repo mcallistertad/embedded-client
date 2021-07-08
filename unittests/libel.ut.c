@@ -160,7 +160,6 @@ TEST_FUNC(test_cache_match)
 }
 TEST_FUNC(test_sky_gnss)
 {
-#if 0 /* These cases need EC-205 */
     TEST("to cache plugin copies gnss to cache", ctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
@@ -223,7 +222,6 @@ TEST_FUNC(test_sky_gnss)
         ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
         ASSERT(ctx->get_from == -1); /* Cache miss */
     });
-#endif
     TEST("2 APs + cell misses cache with 2 AP + different cell", ctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
