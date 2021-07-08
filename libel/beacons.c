@@ -479,6 +479,39 @@ static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *dif
     return ret;
 }
 
+/*! \brief test whether gnss in new scan is preferable to that in cache
+ *
+ *  if new scan has better gnss that that in cache, it is better to update cache
+ *  by sending new scan to server.
+ *
+ *  true only if gnss fix in cache is worse than new scan
+ *  false if cached gnss is not
+ *
+ *  @param ctx Skyhook request context
+ *  @param cl the cacheline to count in
+ *
+ *  @return true or false
+ */
+int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+{
+    if (!ctx || !cl) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+#endif
+        return true;
+    }
+
+    /* in future, this condition could take accuracy into account */
+    /* Reject cached fix if new scan contains gnss and cache does not */
+    if (has_gps(ctx) && !has_gps(cl)) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
+#endif
+        return true;
+    }
+    return false;
+}
+
 /*! \brief test serving cell in workspace has changed from that in cache
  *
  *  Cells in workspace are in priority order

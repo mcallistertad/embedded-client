@@ -198,9 +198,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         threshold = ratio = score = 0;
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
+        if (cl->time == 0 || cell_changed(ctx, cl) == true || cached_gnss_worse(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cell change", i);
+                "Cache: %d: Score 0 for empty cacheline or cacheline has different cell or worse gnss",
+                i);
             continue;
         } else {
             /* count number of matching cells */
