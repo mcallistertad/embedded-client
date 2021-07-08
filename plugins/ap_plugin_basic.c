@@ -501,7 +501,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 if (NUM_APS(ctx) <= CONFIG(ctx->state, cache_beacon_threshold))
                     threshold = 99; /* cache hit requires 100% */
                 else
-                    threshold = CONFIG(ctx->state, cache_match_used_threshold);
+                    threshold = CONFIG(ctx->state, cache_match_all_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);
