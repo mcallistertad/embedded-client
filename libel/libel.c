@@ -36,7 +36,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 16
+#define SW_VERSION 18
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -1114,8 +1114,8 @@ Sky_finalize_t sky_finalize_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void
         return ret;
     }
 
-        /* check cache match result */
 #if CACHE_SIZE
+    /* check cache match result */
     if (IS_CACHE_HIT(ctx)) {
         cl = &s->cacheline[ctx->get_from];
         if (loc != NULL) {

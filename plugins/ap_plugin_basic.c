@@ -431,8 +431,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         if (cl->time == CACHE_EMPTY) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
             continue;
-        } else if (serving_cell_changed(ctx, cl) == true) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for serving cell change", i);
+        } else if (serving_cell_changed(ctx, cl) == true || cached_gnss_worse(ctx, cl) == true) {
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                "Cache: %d: Score 0 for empty cacheline or cacheline has difference cell or worse gnss",
+                i);
             continue;
         } else {
             /* count number of matching APs in request ctx and cache */
@@ -444,7 +446,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(ctx) + NUM_APS(cl) - num_aps_cached;
-                threshold = CONFIG(ctx->session, cache_match_all_threshold);
+                if (NUM_APS(ctx) <= CONFIG(ctx->session, cache_beacon_threshold))
+                    threshold = 99; /* cache hit requires 100% */
+                else
+                    threshold = CONFIG(ctx->session, cache_match_all_threshold);
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round((double)ratio * 100), score, unionAB, threshold);
