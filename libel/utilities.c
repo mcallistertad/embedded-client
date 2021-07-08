@@ -569,7 +569,7 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 (int)cl->loc.lat, (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))),
                 (int)cl->loc.lon, (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))),
                 cl->loc.hpe, cl->len);
-            dump_gnss(ctx, file, func, &ctx->gps);
+            dump_gnss(ctx, file, func, &cl->gps);
 
             for (j = 0; j < cl->len; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
