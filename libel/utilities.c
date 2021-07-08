@@ -35,7 +35,6 @@
 #include "proto.h"
 
 #define MIN(a, b) ((a < b) ? a : b)
-#define has_gnss(c) ((c) != NULL && !isnan((c)->gps.lat))
 #define FABS(a) (((a) < 0.0) ? (0.0 - (a)) : (a))
 
 /*! \brief set sky_errno and return Sky_status
