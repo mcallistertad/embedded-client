@@ -245,6 +245,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
 int get_from_cache(Sky_ctx_t *ctx);

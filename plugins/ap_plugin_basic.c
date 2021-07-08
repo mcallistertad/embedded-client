@@ -257,7 +257,7 @@ static bool remove_worst_ap_by_rssi(Sky_ctx_t *ctx)
  *  @param ctx Skyhook request context
  *  @param cl the cacheline to count in, otherwise count in workspace
  *
- *  @return number of used APs or -1 for fatal error
+ *  @return number of cached APs or -1 for fatal error
  */
 static int count_cached_aps_in_workspace(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 {
@@ -483,9 +483,10 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     for (i = 0, err = false; i < CACHE_SIZE; i++) {
         cl = &ctx->state->cacheline[i];
         threshold = ratio = score = 0;
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
+        if (cl->time == 0 || cell_changed(ctx, cl) == true || cached_gnss_worse(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cell change", i);
+                "Cache: %d: Score 0 for empty cacheline or cacheline has difference cell or worse gnss",
+                i);
             continue;
         } else {
             /* count number of matching APs in workspace and cache */
@@ -501,7 +502,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
                     threshold = 99; /* cache hit requires 100% */
                 else
                     threshold = CONFIG(ctx->state, cache_match_used_threshold);
-
                 ratio = (float)score / unionAB;
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: score %d (%d/%d) vs %d", i,
                     (int)round(ratio * 100), score, unionAB, threshold);

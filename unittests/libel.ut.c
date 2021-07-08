@@ -157,10 +157,7 @@ TEST_FUNC(test_cache_match)
         ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
         ASSERT(ctx->get_from == -1); /* Cache miss */
     });
-}
-TEST_FUNC(test_sky_gnss)
-{
-    TEST("to cache plugin copies gnss to cache", ctx, {
+    TEST("3 APs misses cache with 3 AP same, 1 extra ", ctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
             .lon = 139.618906,
@@ -347,6 +344,37 @@ TEST_FUNC(test_sky_gnss)
         sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
         c.cell.id2 = 47;
         ctx->state->cacheline[0].beacon[0] = c;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+}
+TEST_FUNC(test_sky_gnss)
+{
+    TEST("cell misses cache with different gnss", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        ctx->beacon[0] = c;
+        ctx->len = 1;
+        ctx->ap_len = 0;
+        ctx->gps.lat = NAN;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ctx->gps.lat = 3.1; /* new scan has gps (not NaN) */
         ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
         ASSERT(ctx->get_from == -1); /* Cache miss */
     });
