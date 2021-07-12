@@ -627,44 +627,6 @@ static int set_priorities(Sky_ctx_t *ctx)
     return idx_of_worst;
 }
 
-#ifdef UNITTESTS
-
-TEST_FUNC(test_ap_plugin)
-{
-    GROUP("ap_plugin_basic");
-    TEST("remove_worst respects connected and cached properties", ctx, {
-        Sky_errno_t sky_errno;
-        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
-        int16_t rssi = -30;
-        int32_t freq = 3660;
-        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
-        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
-        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
-        bool connected = false;
-        uint32_t value;
-
-        sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) &&
-            ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
-                   value == 3);
-        ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
-        ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
-        ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
-        ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, true));
-        ASSERT(ctx->num_beacons == 4);
-        ASSERT(ctx->num_ap == 4);
-        ASSERT(ctx->beacons[3].ap.mac[5] == 0x4D);
-    });
-}
-
-static Sky_status_t unit_tests(Sky_ctx_t *ctx)
-{
-    RUN_TEST(test_ap_plugin);
-}
-#endif
 /* * * * * * Plugin access table * * * * *
  *
  * Each plugin is registered via the access table
@@ -684,7 +646,4 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .remove_worst = remove_worst, /* Remove lowest priority beacon from  */
     .cache_match = match, /* Find best match between request context and cache lines */
     .add_to_cache = to_cache, /* Copy request context beacons to a cacheline */
-#ifdef UNITTESTS
-    .unit_tests = unit_tests, /* Unit Tests */
-#endif
 };
