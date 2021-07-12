@@ -264,15 +264,16 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
      */
     for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
-            int c1 = mac_similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL); // <0 => i is better
-            if (c1 != 0) {
+            int mac_diff = mac_similar(
+                ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL); // <0 => i is better
+            if (mac_diff != 0) {
                 /* The MACs are similar (part of the same VAP group). Removal candidate is
                  * the one with worse properties, or, if properties are the same, the one with
                  * the higher MAC address.
                  */
-                int c2 = cmp_properties(ctx, i, j); // <0 => j is better
-                if (c2 > 0 || (c2 == 0 && c1 < 0)) {
-                    /* i is better. j becomes removal candidate */
+                int prop_diff = cmp_properties(ctx, i, j); // <0 => j is better
+                if (prop_diff > 0 || (prop_diff == 0 && mac_diff < 0)) {
+                    /* i is better (either because of major properties or mac). j becomes removal candidate */
                     vap_a = &ctx->beacon[j];
                     vap_b = &ctx->beacon[i];
                 } else {
@@ -280,24 +281,27 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
                     vap_a = &ctx->beacon[i];
                     vap_b = &ctx->beacon[j];
                 }
-    #if VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar to %d%s%s", IDX(vap_a), IDX(vap_b),
-                    vap_b->h.connected ? " (connected)" : "",
-                    vap_b->ap.property.in_cache ? " (cached)" : "");
-                dump_ap(ctx, "similar A:", vap_a, __FILE__, __FUNCTION__);
-                dump_ap(ctx, "similar B:", vap_b, __FILE__, __FUNCTION__);
-    #else
+#if VERBOSE_DEBUG
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s %s", IDX(vap_a),
+                    IDX(vap_b), vap_b->h.connected != vap_a->h.connected ? "(connected)" : "",
+                    vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
+                        "(cached)" :
+                        mac_diff < 0 ? "(mac)" : "");
+                dump_ap(ctx, "similar A:  ", vap_a, __FILE__, __FUNCTION__);
+                dump_ap(ctx, "similar B:  ", vap_b, __FILE__, __FUNCTION__);
+#else
                 (void)vap_b;
-    #endif
-                c2 = cmp_properties(ctx, IDX(vap_a), IDX(worst_vap));
+#endif
+                if (worst_vap != NULL)
+                    prop_diff = cmp_properties(ctx, IDX(vap_a), IDX(worst_vap));
 
-                if (worst_vap == NULL || c2 < 0 || (c2 == 0 &&
-                        COMPARE_MAC(vap_a, worst_vap) > 0)) {
+                if (worst_vap == NULL || prop_diff < 0 ||
+                    (prop_diff == 0 && COMPARE_MAC(vap_a, worst_vap) < 0)) {
                     /* This is the first removal candidate or its properties are
                      * worse than the current candidate or its properties are the same
                      * but it has a larger MAC value. */
                     worst_vap = vap_a;
-                    dump_ap(ctx, "worst vap >>>:", vap_a, __FILE__, __FUNCTION__);
+                    dump_ap(ctx, "worst vap:>>", vap_a, __FILE__, __FUNCTION__);
                 }
             }
         }
@@ -623,6 +627,44 @@ static int set_priorities(Sky_ctx_t *ctx)
     return idx_of_worst;
 }
 
+#ifdef UNITTESTS
+
+TEST_FUNC(test_ap_plugin)
+{
+    GROUP("ap_plugin_basic");
+    TEST("remove_worst respects connected and cached properties", ctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        bool connected = false;
+        uint32_t value;
+
+        sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) &&
+            ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+                   value == 3);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, true));
+        ASSERT(ctx->num_beacons == 4);
+        ASSERT(ctx->num_ap == 4);
+        ASSERT(ctx->beacons[3].ap.mac[5] == 0x4D);
+    });
+}
+
+static Sky_status_t unit_tests(Sky_ctx_t *ctx)
+{
+    RUN_TEST(test_ap_plugin);
+}
+#endif
 /* * * * * * Plugin access table * * * * *
  *
  * Each plugin is registered via the access table
@@ -642,4 +684,7 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .remove_worst = remove_worst, /* Remove lowest priority beacon from  */
     .cache_match = match, /* Find best match between request context and cache lines */
     .add_to_cache = to_cache, /* Copy request context beacons to a cacheline */
+#ifdef UNITTESTS
+    .unit_tests = unit_tests, /* Unit Tests */
+#endif
 };
