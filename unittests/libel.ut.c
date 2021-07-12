@@ -19,7 +19,6 @@ TEST_FUNC(test_sky_open)
         Sky_session_t nv_state;
 
         memset(&nv_state, 0, sizeof(nv_state));
-        ASSERT(SKY_SUCCESS == sky_close(ctx->session, &sky_errno));
         ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
@@ -41,10 +40,14 @@ TEST_FUNC(test_sky_open)
     });
     TEST("sky_close fails if LibEL is not open", ctx, {
         Sky_errno_t sky_errno;
+        Sky_session_t nv_state;
 
-        ASSERT(SKY_SUCCESS == sky_close(ctx->session, &sky_errno));
-        ASSERT(
-            SKY_ERROR == sky_close(ctx->session, &sky_errno) && sky_errno == SKY_ERROR_NEVER_OPEN);
+        memset(&nv_state, 0, sizeof(nv_state));
+        ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
+                                  (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
+                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
+        ASSERT(SKY_SUCCESS == sky_close(&nv_state, &sky_errno));
+        ASSERT(SKY_ERROR == sky_close(&nv_state, &sky_errno) && sky_errno == SKY_ERROR_NEVER_OPEN);
     });
 }
 
