@@ -160,8 +160,10 @@
  */
 #define ASSERT(X)                                                                                  \
     fprintf(stderr, "Running ASSERT() in %s:%d\n", __FILENAME__, __LINE__);                        \
-    if (!(X))                                                                                      \
-        break;
+    if (!(X)) {                                                                                    \
+        fprintf(stderr, "ASSERT() error in %s:%d\n", __FILENAME__, __LINE__);                      \
+        break;                                                                                     \
+    }
 
 /* \brief Get external reference to named test
  * @param identifier Test name

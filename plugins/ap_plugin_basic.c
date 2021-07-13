@@ -148,8 +148,11 @@ static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
  *  @param macB pointer to the second MAC
  *  @param pn pointer to nibble index of where they differ if similar (0-11) (needed for premium)
  *
- *  @return negative, 0 or positive
- *  return 0 when NOT similar, negative indicates parent is B, positive parent is A
+ *  @return negative, 0 or positive:
+ *  - zero when MACs are NOT similar
+ *  - negative when parent is A (i.e., A has lower MAC address)
+ *  - positive when parent is B (i.e., B has lower MAC address)
+ *
  *  if macs are similar, and pn is not NULL, *pn is set to nibble index of difference
  */
 static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
@@ -169,7 +172,9 @@ static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
         }
     }
 
-    /* Only one nibble different, but is the Local Administrative bit different */
+    /* No more than one nibble is different, so they're similar. Unless their respective
+     * local admin bits differ, in which case, they're not.
+     */
     if (LOCAL_ADMIN_MASK(macA[0]) != LOCAL_ADMIN_MASK(macB[0])) {
         return 0; /* not similar */
     }
@@ -209,9 +214,9 @@ static int count_cached_aps_in_request_ctx(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 }
 #endif
 
-/*! \brief select between two APs which should be removed,
+/*! \brief determine which of a pair of APs is more valuable
  *
- *  return negative if j has better properties than i
+ *  return positive value if i is more valuable, negative value is j is more valuable
  *  otherwise return positive if worse (or 0 when same)
  *
  *  @param ctx Skyhook request context
@@ -220,13 +225,11 @@ static int count_cached_aps_in_request_ctx(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 #define CONNECTED_AND_IN_CACHE_ONLY(priority) ((int16_t)(priority) & (CONNECTED | IN_CACHE))
 static int cmp_properties(Sky_ctx_t *ctx, int i, int j)
 {
-    /* Assume i is better than j (positive) unless priority
-     * logic dictates this should be reversed */
     return (CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[i].h.priority) -
             CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[j].h.priority));
 }
 
-/*! \brief try to reduce AP by filtering out virtual AP
+/*! \brief Remove a single virtual AP
  *
  *  When similar, select beacon with highest mac address
  *  unless it better properties, then choose to select the other beacon
@@ -239,7 +242,6 @@ static int cmp_properties(Sky_ctx_t *ctx, int i, int j)
 static bool remove_virtual_ap(Sky_ctx_t *ctx)
 {
     int i, j;
-    int cmp;
     Beacon_t *vap_a = NULL;
     Beacon_t *vap_b = NULL;
     Beacon_t *worst_vap = NULL;
@@ -254,68 +256,54 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
         return false;
     }
 
-    /* Compare all beacons, looking for similar macs
-     * find the lowest of two beacons with similar macs, with
-     * the lowest priority
+    /*
+     * Iterate over all beacon pairs. For each pair whose members are "similar" to
+     * one another (i.e., which are part of the same virtual AP (VAP) group),
+     * identify which member of the pair is a candidate for removal. After iterating,
+     * remove the worse such candidate.
      */
     for (j = NUM_APS(ctx) - 1; j > 0; j--) {
         for (i = j - 1; i >= 0; i--) {
-            if ((cmp = mac_similar(ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL)) < 0) {
-                /* beacons are similar and i has lower mac */
-                /* j has higher mac so we will remove it unless properties indicate otherwise
+            int mac_diff = mac_similar(
+                ctx->beacon[i].ap.mac, ctx->beacon[j].ap.mac, NULL); // <0 => i is better
+            if (mac_diff != 0) {
+                /* The MACs are similar (part of the same VAP group). Removal candidate is
+                 * the one with worse properties, or, if properties are the same, the one with
+                 * the higher MAC address.
                  */
-                if (cmp_properties(ctx, j, i) > 0) {
-                    vap_a = &ctx->beacon[i];
-                    vap_b = &ctx->beacon[j];
-                } else {
-                    vap_a = &ctx->beacon[j];
-                    vap_b = &ctx->beacon[i];
-                }
-            } else if (cmp > 0) {
-                /* beacons are similar and j has lower mac */
-                /* situation is exactly reversed (i has higher mac) but logic is otherwise
-                 * identical
-                 */
-                if (cmp_properties(ctx, i, j) > 0) {
+                int prop_diff = cmp_properties(ctx, i, j); // <0 => j is better
+                if (prop_diff > 0 || (prop_diff == 0 && mac_diff < 0)) {
+                    /* i is better (either because of major properties or mac). j becomes removal candidate */
                     vap_a = &ctx->beacon[j];
                     vap_b = &ctx->beacon[i];
                 } else {
+                    /* j is better. i becomes removal candidate */
                     vap_a = &ctx->beacon[i];
                     vap_b = &ctx->beacon[j];
                 }
-            } else
-                continue;
 #if VERBOSE_DEBUG
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar to %d%s%s", IDX(vap_a), IDX(vap_b),
-                vap_b->h.connected ? " (connected)" : "",
-                vap_b->ap.property.in_cache ? " (cached)" : "");
-            dump_ap(ctx, "similar A:", vap_a, __FILE__, __FUNCTION__);
-            dump_ap(ctx, "similar B:", vap_b, __FILE__, __FUNCTION__);
+                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s %s", IDX(vap_a),
+                    IDX(vap_b), vap_b->h.connected != vap_a->h.connected ? "(connected)" : "",
+                    vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
+                        "(cached)" :
+                        mac_diff < 0 ? "(mac)" : "");
+                dump_ap(ctx, "similar A:  ", vap_a, __FILE__, __FUNCTION__);
+                dump_ap(ctx, "similar B:  ", vap_b, __FILE__, __FUNCTION__);
 #else
-            (void)vap_b;
+                (void)vap_b;
 #endif
-            /* if new match is similar to existing best candidate,
-             * select new match if it is worse properties,
-             * else if not similar, choose new match if lower mac and same properties or worse properties.
-             */
-            if (worst_vap == vap_a)
-                continue;
-            if (worst_vap == NULL)
-                worst_vap = vap_a;
-            else if (mac_similar(worst_vap->ap.mac, vap_a->ap.mac, NULL)) {
-                /* same virtual group. Check if worse properties */
-                if (cmp_properties(ctx, IDX(vap_a), IDX(worst_vap)) < 0)
+                if (worst_vap != NULL)
+                    prop_diff = cmp_properties(ctx, IDX(vap_a), IDX(worst_vap));
+
+                if (worst_vap == NULL || prop_diff < 0 ||
+                    (prop_diff == 0 && COMPARE_MAC(vap_a, worst_vap) < 0)) {
+                    /* This is the first removal candidate or its properties are
+                     * worse than the current candidate or its properties are the same
+                     * but it has a larger MAC value. */
                     worst_vap = vap_a;
-            } else {
-                /* different virtual group. Choose one based on properties or MAC */
-                if (cmp_properties(ctx, IDX(vap_a), IDX(worst_vap)) == 0 &&
-                    COMPARE_MAC(vap_a, worst_vap) > 0)
-                    worst_vap = vap_a;
-                else if (cmp_properties(ctx, IDX(vap_a), IDX(worst_vap)) < 0)
-                    worst_vap = vap_a;
+                    dump_ap(ctx, "worst vap:>>", vap_a, __FILE__, __FUNCTION__);
+                }
             }
-            if (worst_vap == vap_a)
-                dump_ap(ctx, "worst vap >>>:", vap_a, __FILE__, __FUNCTION__);
         }
     }
     if (worst_vap != NULL)
