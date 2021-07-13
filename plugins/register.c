@@ -56,3 +56,11 @@ Sky_status_t sky_register_plugins(Sky_plugin_table_t **table)
         return SKY_SUCCESS;
     return SKY_ERROR;
 }
+
+#ifdef UNITTESTS
+void sky_plugin_unit_tests(void *_ctx)
+{
+    (*ap_plugin_basic_table.unit_tests)(_ctx);
+    (*cell_plugin_basic_table.unit_tests)(_ctx);
+}
+#endif

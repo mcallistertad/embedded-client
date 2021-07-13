@@ -345,6 +345,100 @@ static uint16_t get_priority(Beacon_t *b)
     return score;
 }
 
+#ifdef UNITTESTS
+TEST_FUNC(test_cell_plugin)
+{
+    GROUP("remove worst");
+    TEST("remove_worst chooses lowest priority Air type by default", ctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+        NBIOT_NMR(a, 10, -108, 25, 255);
+        UMTS_NMR(b, 10, -108, 0, 412);
+        LTE(c, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
+        LTE_NMR(d, 10, -108, 387, 1000);
+        NR_NMR(e, 10, -108, 0, 0);
+
+        ASSERT(sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
+        ASSERT(sky_set_option(ctx, &sky_errno, CONF_TOTAL_BEACONS, 6) == SKY_SUCCESS);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 3);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_TOTAL_BEACONS, &value) &&
+               value == 6);
+        ASSERT(SKY_SUCCESS == sky_add_cell_nb_iot_neighbor_beacon(ctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_umts_neighbor_beacon(ctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_beacon(ctx, &sky_errno, c.cell.id3, c.cell.id4,
+                                  c.cell.id1, c.cell.id2, c.cell.id5, c.cell.freq, c.cell.ta,
+                                  TIME_UNAVAILABLE, c.h.rssi, c.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_neighbor_beacon(ctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_nr_neighbor_beacon(ctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(ctx->num_beacons == 3);
+        ASSERT(ctx->num_ap == 0);
+        /*
+         *  >>> beacons.c:remove_beacon() req     0       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         *  >>> beacons.c:remove_beacon() req     1    NR-NMR     0 412MHz rssi:-108 age:0
+         *  >>> beacons.c:remove_beacon() req     2   LTE-NMR     0 412MHz rssi:-108 age:0
+         */
+        ASSERT(ctx->beacon[0].h.type == SKY_BEACON_LTE);
+        ASSERT(ctx->beacon[1].h.type == SKY_BEACON_NR);
+        ASSERT(ctx->beacon[2].h.type == SKY_BEACON_LTE);
+        ASSERT(ctx->beacon[0].h.connected == true);
+        ASSERT(ctx->beacon[1].h.connected == false);
+        ASSERT(ctx->beacon[2].h.connected == false);
+    });
+
+    TEST("remove_worst respects connected and cached properties", ctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+        LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+        UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 412);
+        NBIOT(c, 10, -108, false, 515, 2, 20263, 15664525, 25, 255);
+        CDMA(d, 10, -108, false, 5000, 16683, 25614, 22265, 0, 0);
+        GSM(e, 10, -108, false, 515, 2, 20263, 22265, 0, 0);
+
+        ASSERT(sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
+        ASSERT(sky_set_option(ctx, &sky_errno, CONF_TOTAL_BEACONS, 6) == SKY_SUCCESS);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 3);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_TOTAL_BEACONS, &value) &&
+               value == 6);
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_beacon(ctx, &sky_errno, a.cell.id3, a.cell.id4,
+                                  a.cell.id1, a.cell.id2, a.cell.id5, a.cell.freq, a.cell.ta,
+                                  TIME_UNAVAILABLE, a.h.rssi, a.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_umts_beacon(ctx, &sky_errno, b.cell.id3, b.cell.id4,
+                                  b.cell.id1, b.cell.id2, b.cell.id5, b.cell.freq, TIME_UNAVAILABLE,
+                                  b.h.rssi, b.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_nb_iot_beacon(ctx, &sky_errno, c.cell.id1, c.cell.id2,
+                                  c.cell.id4, c.cell.id3, c.cell.id5, c.cell.freq, TIME_UNAVAILABLE,
+                                  c.h.rssi, c.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_cdma_beacon(ctx, &sky_errno, d.cell.id2, d.cell.id3,
+                                  d.cell.id4, TIME_UNAVAILABLE, d.h.rssi, d.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_gsm_beacon(ctx, &sky_errno, e.cell.id3, e.cell.id4,
+                                  e.cell.id1, e.cell.id2, e.cell.ta, TIME_UNAVAILABLE, e.h.rssi,
+                                  e.h.connected));
+        ASSERT(ctx->num_beacons == 3);
+        ASSERT(ctx->num_ap == 0);
+        /* >>> beacons.c:remove_beacon() req     0 *    UMTS     515,2,32768,16843545,0 0MHz rssi:-108 ta:0 age:0
+         * >>> beacons.c:remove_beacon() req     1       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         * >>> beacons.c:remove_beacon() req     2    NB-IoT     515,2,20263,15664525,25 255MHz rssi:-108 ta:0 age:0
+         */
+        ASSERT(ctx->beacon[0].h.type == SKY_BEACON_UMTS);
+        ASSERT(ctx->beacon[1].h.type == SKY_BEACON_LTE);
+        ASSERT(ctx->beacon[2].h.type == SKY_BEACON_NBIOT);
+    });
+}
+
+static Sky_status_t unit_tests(void *_ctx)
+{
+    GROUP_CALL("Remove Worst", test_cell_plugin);
+    return SKY_SUCCESS;
+}
+
+#endif
+
 /* * * * * * Plugin access table * * * * *
  *
  * Each plugin is registered via the access table
@@ -364,4 +458,8 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .remove_worst = remove_worst, /* Remove least compare beacon from request context */
     .cache_match = match, /* Find best match between request context and cache lines */
     .add_to_cache = NULL, /* Copy request context beacons to a cacheline */
+#ifdef UNITTESTS
+    .unit_tests = unit_tests, /* Unit Tests */
+#endif
+
 };

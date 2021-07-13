@@ -257,6 +257,12 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc);
 
+Sky_status_t sky_get_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, uint32_t *value);
+
+Sky_status_t sky_set_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, int32_t value);
+
 char *sky_perror(Sky_errno_t sky_errno);
 
 char *sky_pserver_status(Sky_loc_status_t status);
