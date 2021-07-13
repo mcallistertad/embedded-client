@@ -378,9 +378,9 @@ TEST_FUNC(test_cell_plugin)
         ASSERT(ctx->num_beacons == 3);
         ASSERT(ctx->num_ap == 0);
         /*
-         *  >>> beacons.c:remove_beacon() req     0       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
-         *  >>> beacons.c:remove_beacon() req     1    NR-NMR     0 412MHz rssi:-108 age:0
-         *  >>> beacons.c:remove_beacon() req     2   LTE-NMR     0 412MHz rssi:-108 age:0
+         *       0       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         *       1    NR-NMR     0 412MHz rssi:-108 age:0
+         *       2   LTE-NMR     0 412MHz rssi:-108 age:0
          */
         ASSERT(ctx->beacon[0].h.type == SKY_BEACON_LTE);
         ASSERT(ctx->beacon[1].h.type == SKY_BEACON_NR);
@@ -389,8 +389,7 @@ TEST_FUNC(test_cell_plugin)
         ASSERT(ctx->beacon[1].h.connected == false);
         ASSERT(ctx->beacon[2].h.connected == false);
     });
-
-    TEST("remove_worst respects connected and cached properties", ctx, {
+    TEST("remove_worst respects connected properties", ctx, {
         Sky_errno_t sky_errno;
         uint32_t value;
         LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
@@ -421,9 +420,9 @@ TEST_FUNC(test_cell_plugin)
                                   e.h.connected));
         ASSERT(ctx->num_beacons == 3);
         ASSERT(ctx->num_ap == 0);
-        /* >>> beacons.c:remove_beacon() req     0 *    UMTS     515,2,32768,16843545,0 0MHz rssi:-108 ta:0 age:0
-         * >>> beacons.c:remove_beacon() req     1       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
-         * >>> beacons.c:remove_beacon() req     2    NB-IoT     515,2,20263,15664525,25 255MHz rssi:-108 ta:0 age:0
+        /*          0 *    UMTS     515,2,32768,16843545,0 0MHz rssi:-108 ta:0 age:0
+         *          1       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         *          2    NB-IoT     515,2,20263,15664525,25 255MHz rssi:-108 ta:0 age:0
          */
         ASSERT(ctx->beacon[0].h.type == SKY_BEACON_UMTS);
         ASSERT(ctx->beacon[1].h.type == SKY_BEACON_LTE);
