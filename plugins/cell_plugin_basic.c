@@ -255,9 +255,11 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         cl = &ctx->session->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
-        if (cl->time == CACHE_EMPTY || serving_cell_changed(ctx, cl) == true) {
+        if (cl->time == CACHE_EMPTY || serving_cell_changed(ctx, cl) == true ||
+            cached_gnss_worse(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cell change", i);
+                "Cache: %d: Score 0 for empty cacheline or cacheline has different cell or worse gnss",
+                i);
             continue;
         } else {
             /* count number of matching cells */

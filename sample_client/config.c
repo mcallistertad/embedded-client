@@ -201,12 +201,17 @@ int load_config(char *filename, Config_t *config)
         }
         if (sscanf(line, "DEBOUNCE %5s", str) == 1) {
             if (strcasecmp_(str, "off") == 0 || strcasecmp_(str, "false") == 0)
-                config->debounce = 0;
+                config->debounce = false;
             continue;
         }
         if (sscanf(line, "UL_APP_DATA %s", str) == 1) {
             config->ul_app_data_len = strlen(str) / 2;
             hex2bin(str, config->ul_app_data_len * 2, config->ul_app_data, config->ul_app_data_len);
+            continue;
+        }
+        if (sscanf(line, "FACTORY_RESET %5s", str) == 1) {
+            if (strcasecmp_(str, "true") == 0)
+                config->factory_reset = true;
             continue;
         }
     }
@@ -246,4 +251,5 @@ void print_config(Config_t *config)
     printf("CC: %d\n", config->cc);
     printf("Debounce: %s\n", config->debounce ? "true" : "false");
     printf("Uplink data: %s\n", ul_app_data);
+    printf("Factory reset: %s\n", config->factory_reset ? "true" : "false");
 }
