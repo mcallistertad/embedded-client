@@ -126,7 +126,7 @@ TEST_FUNC(test_compare)
 
     TEST("should return a better with one NMR with same cell type", ctx, {
         LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
-        LTE_NMR(b, 10, -108, false, 387, 1000);
+        LTE_NMR(b, 10, -108, 387, 1000);
         Sky_errno_t sky_errno;
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
@@ -137,8 +137,8 @@ TEST_FUNC(test_compare)
     });
 
     TEST("should return a better with two NMR one younger", ctx, {
-        LTE_NMR(a, 8, -10, false, 38, 100);
-        LTE_NMR(b, 10, -108, false, 387, 1000);
+        LTE_NMR(a, 8, -10, 38, 100);
+        LTE_NMR(b, 10, -108, 387, 1000);
         Sky_errno_t sky_errno;
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, &sky_errno, &a));
@@ -149,8 +149,8 @@ TEST_FUNC(test_compare)
     });
 
     TEST("should return a better diff with two NMR one stronger", ctx, {
-        LTE_NMR(a, 10, -10, false, 38, 100);
-        LTE_NMR(b, 10, -108, false, 387, 1000);
+        LTE_NMR(a, 10, -10, 38, 100);
+        LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
@@ -171,8 +171,8 @@ TEST_FUNC(test_compare)
     });
 
     TEST("should report 1st best with two NMR very similar", ctx, {
-        LTE_NMR(a, 10, -108, false, 387, 1000);
-        LTE_NMR(b, 10, -108, false, 38, 100);
+        LTE_NMR(a, 10, -108, 387, 1000);
+        LTE_NMR(b, 10, -108, 38, 100);
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
@@ -183,7 +183,7 @@ TEST_FUNC(test_compare)
 
     TEST("should return a better with one NMR with different cell type", ctx, {
         CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
-        LTE_NMR(b, 10, -108, false, 387, 1000);
+        LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));
@@ -372,7 +372,7 @@ TEST_FUNC(test_compare)
 
     TEST("should return false and calc diff: one NMR", ctx, {
         LTE(a, 10, -94, false, 310, 470, 25613, 25664526, 387, 1000);
-        LTE_NMR(b, 10, -108, false, 387, 1000);
+        LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(ctx, NULL, &b));

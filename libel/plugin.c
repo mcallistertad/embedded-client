@@ -375,7 +375,7 @@ TEST("should return SKY_SUCCESS and not equal with one connected with different 
 
 TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type", ctx, {
     LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -383,8 +383,8 @@ TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type",
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one younger", ctx, {
-    LTE_NMR(a, 8, -10, false, 38, 100);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(a, 8, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -392,8 +392,8 @@ TEST("should return SKY_SUCCESS and not equal with two NMR one younger", ctx, {
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one stronger", ctx, {
-    LTE_NMR(a, 10, -10, false, 38, 100);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(a, 10, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -410,8 +410,8 @@ TEST("should return SKY_SUCCESS and not equal with two very similar cells", ctx,
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR very similar", ctx, {
-    LTE_NMR(a, 10, -108, false, 387, 1000);
-    LTE_NMR(b, 10, -108, false, 38, 100);
+    LTE_NMR(a, 10, -108, 387, 1000);
+    LTE_NMR(b, 10, -108, 38, 100);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -420,7 +420,7 @@ TEST("should return SKY_SUCCESS and not equal with two NMR very similar", ctx, {
 
 TEST("should return SKY_ERROR one NMR with different cell type", ctx, {
     CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -510,6 +510,9 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_get_matching_cacheline(ctx, &errno, &idx));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
 });
+
+/* call any plugin specific tests */
+sky_plugin_unit_tests(_ctx);
 
 END_TESTS();
 
