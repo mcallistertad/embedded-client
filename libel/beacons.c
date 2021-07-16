@@ -278,7 +278,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
  *
  *   Scan all cachelines in the cache. 
  *   If the given beacon is found in the cache true is returned otherwise
- *   false. A beacon may appear in multiple cache lines.
+ *   false. A beacon may appear in multiple cachelines.
  *   If prop is not NULL, algorithm searches all caches for best match
  *   (beacon with Used == true is best) otherwise, first match is returned
  *
@@ -369,10 +369,10 @@ int find_oldest(Sky_ctx_t *ctx)
     time_t oldest = ctx->header.time;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        /* if there is only one cache line or
+        /* if there is only one cacheline or
          * if time is unavailable or
          * cacheline is empty,
-         * then return index of current cache line 
+         * then return index of current cacheline 
          */
         if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
             ctx->session->cacheline[i].time == CACHE_EMPTY)
@@ -445,32 +445,31 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 
 /*! \brief get location from cache
  *
+ *  The request context is updated with the index of cacheline with best match
+ *  and the status of whether that cacheline is a good enough match to be considered
+ *  a cache hit.
+ *
  *  @param ctx Skyhook request context
  *
- *  @return cacheline index or -1
+ *  @return true or false based on match of new scan to cachelines
  */
-int get_from_cache(Sky_ctx_t *ctx)
+int search_cache(Sky_ctx_t *ctx)
 {
 #if CACHE_SIZE == 0
     /* no match to cacheline */
+    ctx->hit = false;
     return (ctx->get_from = -1);
 #else
-    int idx;
-
-    if (ctx->session->num_cachelines < 1) {
-        /* no match to cacheline */
-        return (ctx->get_from = -1);
-    }
-
     /* Avoid using the cache if we have good reason */
-    /* to believe that system time is bad */
-    if (ctx->header.time <= TIMESTAMP_2019_03_01) {
+    /* to believe that system time is bad or no cache */
+    if (ctx->session->num_cachelines < 1 || ctx->header.time <= TIMESTAMP_2019_03_01 ||
+        sky_plugin_match_cache(ctx, NULL) != SKY_SUCCESS) {
         /* no match to cacheline */
-        return (ctx->get_from = -1);
+        ctx->get_from = -1;
+        return (ctx->hit = false);
     }
-    return (ctx->get_from =
-                (int16_t)(sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS) ? idx :
-                                                                                               -1);
+
+    return (ctx->hit);
 #endif
 }
 

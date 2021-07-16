@@ -59,8 +59,8 @@
 
 #define CACHE_EMPTY ((time_t)0)
 #define CONFIG_UPDATE_DUE ((time_t)0)
-#define IS_CACHE_HIT(c) ((c)->get_from != -1)
-#define IS_CACHE_MISS(c) ((c)->get_from == -1)
+#define IS_CACHE_HIT(c) (c->get_from != -1 && (c)->hit)
+#define IS_CACHE_MISS(c) ((c)->hit == false)
 
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
 
@@ -220,7 +220,7 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-/*! \brief Session Context - holds parameters defined when Libel is opened and the cache lines
+/*! \brief Session Context - holds parameters defined when Libel is opened and the cachelines
  */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
@@ -229,7 +229,6 @@ typedef struct sky_session {
     Sky_loggerfn_t sky_logf; /* User logging fn */
     Sky_log_level_t sky_min_level; /* User log level */
     Sky_timefn_t sky_time; /* User time fn */
-    bool sky_debounce; /* send cached or request beacons */
     void *sky_plugins; /* root of registered plugin list */
     uint32_t sky_id_len; /* device ID num_beacons */
     uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
@@ -244,7 +243,7 @@ typedef struct sky_session {
     uint32_t sky_partner_id; /* partner ID */
     uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
-    int num_cachelines; /* number of cache lines */
+    int num_cachelines; /* number of cachelines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 #endif
     Sky_config_t config; /* dynamic config parameters */
@@ -259,9 +258,9 @@ typedef struct sky_ctx {
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     Gps_t gps; /* GNSS info */
-    /* Assume worst case is that beacons and gps info takes twice the bare structure size */
-    int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
-    int16_t save_to; /* cacheline with best match for saving scan*/
+    bool hit; /* status of search of cache for match to new scan (true/false) */
+    int16_t get_from; /* cacheline with best match to scan (-1 if none) */
+    int16_t save_to; /* cacheline with best match for saving server location and scan */
     Sky_session_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
@@ -275,7 +274,7 @@ bool beacon_in_cacheline(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
 int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
-int get_from_cache(Sky_ctx_t *ctx);
+int search_cache(Sky_ctx_t *ctx);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 
 #endif

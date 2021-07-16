@@ -181,9 +181,8 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     uint32_t partner_id, uint8_t aes_key[AES_KEYLEN], char *sku, uint32_t cc, void *session_buf,
     Sky_log_level_t min_level, Sky_loggerfn_t logf, Sky_randfn_t rand_bytes, Sky_timefn_t gettime);
 
-Sky_status_t sky_get_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc);
-
-Sky_status_t sky_report_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
+Sky_status_t sky_search_cache(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, bool *cache_hit, Sky_location_t *loc);
 
 int32_t sky_sizeof_session_ctx(void *session);
 
@@ -233,6 +232,8 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_er
 Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, float lon,
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp);
+
+Sky_status_t sky_override_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, bool cache_hit);
 
 Sky_status_t sky_encode_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, uint32_t *response_size);

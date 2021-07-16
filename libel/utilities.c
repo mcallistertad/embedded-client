@@ -498,7 +498,7 @@ void dump_request_ctx(Sky_ctx_t *ctx, const char *file, const char *func)
 
     logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
         "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(ctx), NUM_APS(ctx),
-        is_tbr_enabled(ctx) ? ", TBR" : "", ctx->session->sky_debounce ? ", Debounce" : "");
+        is_tbr_enabled(ctx) ? ", TBR" : "", ctx->hit ? ", Cache Hit" : "");
     for (i = 0; i < NUM_BEACONS(ctx); i++)
         dump_beacon(ctx, "req", &ctx->beacon[i], file, func);
 
@@ -550,11 +550,11 @@ void dump_cache(Sky_ctx_t *ctx, const char *file, const char *func)
                 ctx->session->num_cachelines, cl->num_beacons, cl->num_ap, cl->time);
         } else {
             logfmt(file, func, ctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons", i,
+                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons%s", i,
                 ctx->session->num_cachelines, (int)cl->loc.lat,
                 (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
                 (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
-                cl->num_beacons);
+                cl->num_beacons, (ctx->hit && ctx->get_from == i) ? ", <--Cache Hit" : "");
             for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(ctx, "cache", &cl->beacon[j], file, func);
             }

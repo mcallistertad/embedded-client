@@ -204,7 +204,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx)
+Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
     Sky_plugin_table_t *p = ctx->session->sky_plugins;
     Sky_status_t ret = SKY_ERROR;
@@ -216,7 +216,7 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
 
     while (p) {
         if (p->cache_match)
-            ret = (*p->cache_match)(ctx, idx);
+            ret = (*p->cache_match)(ctx);
 #if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
@@ -469,7 +469,6 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
         0,
         0,
     };
-    int idx = -1;
     Sky_plugin_table_t table1 = {
         .next = NULL,
         .magic = SKY_MAGIC,
@@ -506,7 +505,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_remove_worst(ctx, &errno));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_get_matching_cacheline(ctx, &errno, &idx));
+    ASSERT(SKY_ERROR == sky_plugin_match_cache(ctx, &errno));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
 });
 
