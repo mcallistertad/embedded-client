@@ -23,7 +23,7 @@
 #ifndef TEST_SEND_H
 #define TEST_SEND_H
 
-int send_request(
-    char *request, int req_size, uint8_t *response, int resp_size, char *server, int port);
+int send_request(char *request, uint32_t req_size, uint8_t *response, uint32_t resp_size,
+    char *server, int port);
 
 #endif

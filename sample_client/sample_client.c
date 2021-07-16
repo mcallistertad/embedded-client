@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include "libel.h"
 #include "send.h"
-#include "math.h"
 #include "config.h"
 
 typedef enum {
@@ -109,7 +109,7 @@ struct gnss_scan gnss1 =
 
 /* Scan set 2 */
 struct ap_scan aps2[] =
-    { { "287AEEBA96C0", 0, 2462, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -120,9 +120,10 @@ struct cell_scan cells2[] =
 
 /* Scan set 3 */
 struct ap_scan aps3[] =
-    { { "287AEEBA96C0", 0, 2462, -89, 0 },
-      { "287AEEBA96C3", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "74DAD95E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -133,8 +134,9 @@ struct cell_scan cells3[] =
 
 /* Scan set 4 - cache match */
 struct ap_scan aps4[] =
-    { { "287AEEBA96C0", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -144,9 +146,9 @@ struct cell_scan cells4[] =
 
 /* Scan set 5 - cache match */
 struct ap_scan aps5[] =
-    { { "287AEEBA96C0", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -331,14 +333,13 @@ static time_t mytime(time_t *t)
  *  @param gp pointer to gnss data
  *  @param ul_data pointer to uplink data buffer
  *  @param data_len length of uplink data buffer
- *  @param server_request true to force server_request
  *  @param loc pointer to location structure for result
  *
  *  @returns true if loc was updated, otherwise false
  */
 static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
-    bool server_request, Sky_location_t *loc)
+    Sky_location_t *loc)
 {
     uint32_t i;
     uint32_t request_size;
@@ -347,7 +348,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     time_t timestamp = mytime(NULL);
     Sky_status_t ret_status;
     Sky_errno_t sky_errno;
-    bool cache_miss;
+    bool cache_hit = false;
 
     /* Start new request */
     if (sky_new_request(ctx, bufsize, session, ul_data, data_len, &sky_errno) != ctx) {
@@ -418,75 +419,91 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
         }
     }
+    /* All data has been added to new scan info */
 
-    /* check for a cache match */
-    if ((cache_miss = (sky_get_cache_hit(ctx, &sky_errno, loc) == SKY_SUCCESS &&
-                       loc->location_status == SKY_LOCATION_STATUS_UNABLE_TO_LOCATE)) ||
-        server_request) {
-        /* report the cached beacons if config requires it */
-        if (!cache_miss) {
-            printf("Location found in cache and reporting to server %s\n",
-                config->debounce ? "cached location" : "new scan");
-            if (config->debounce)
-                sky_report_cache(ctx, &sky_errno);
-        }
+    /* check to see if new scan has a cache hit on known locations (aka stationary test) */
+    sky_search_cache(ctx, &sky_errno, &cache_hit, loc);
 
-    retry_after_auth:
-        /* Determine how big the network request buffer must be, and allocate a
-         * buffer of that length. This function must be called for each request */
-        if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
-            printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
-            return false;
-        } else if ((prequest = malloc(request_size)) == NULL) {
-            printf("Can't allocate request buf\n");
-            return false;
-        } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
-                   SKY_ERROR) {
-            free(prequest);
-            printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
-            return false;
-        } else {
-            /* send the request to the server. */
-            response = malloc(response_size);
-            if (response == NULL) {
-                free(prequest);
-                return false;
-            }
-            printf("server=%s, port=%d\n", config->server, config->port);
-            printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
-                request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
-            int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
-                config->server, config->port);
-            free(prequest);
+    /* If cache hit, do one of the following
+     *  a) if regular reports of position are priority, encode cached scan and send to server
+     *  b) if minimizing network traffic is priority, simply use loc from cache in application,
+     *  c) if network resourses allow all locations to be reported to the server,
+     *      . if cached scan is not trusted, clear cache hit status and encoding request
+     *      . otherwise encode request (which will include cached scan for a cache hit)
+     *
+     * If cache miss
+     *  encode the request (which will include new scan for a cache miss)
+     */
 
-            if (rc > 0)
-                printf("Received response of length %d from server\n", rc);
-            else {
-                free(response);
-                printf("ERROR: No response from server!\n");
-                return false;
-            }
+    if (cache_hit) {
+        /*     // loc has been updated from cache. If application wants to use the cached
+         *     // location simply return here
+         *     return SKY_SUCCESS;
+         */
 
-            /* Decode the server response */
-            ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
-            free(response);
-
-            if (ret_status != SKY_SUCCESS) {
-                printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
-                if (sky_errno == SKY_AUTH_RETRY) {
-                    /* Repeat request if Authentication was required for last message */
-                    goto retry_after_auth;
-                }
-                return false;
-            }
-        }
-        return true;
-    } else if (!cache_miss) {
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
-        return true;
+        /* if (low confidence in cached location)
+         *     // remove cache hit status. New scan will be encoded in request
+         *     cache_hit = false;
+         *     sky_override_cache_hit(ctx, &sky_errno, cache_hit);
+         */
+        if (cache_hit)
+            printf("Location found in cache\n");
     }
-    return false;
+
+/* Encode the appropriate scan into a server request.
+ * If cache hit status is true, the scan is taken from the matching cacheline
+ * otherwise, the new scan is used to encode the request.
+ */
+retry_after_auth:
+    /* Determine how big the network request buffer must be, and allocate a
+         * buffer of that length. This function must be called for each request */
+    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
+        printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
+        return false;
+    } else if ((prequest = malloc(request_size)) == NULL) {
+        printf("Can't allocate request buf\n");
+        return false;
+    } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
+               SKY_ERROR) {
+        free(prequest);
+        printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
+        return false;
+    } else {
+        /* send the request to the server. */
+        response = malloc(response_size);
+        if (response == NULL) {
+            free(prequest);
+            return false;
+        }
+        printf("server=%s, port=%d\n", config->server, config->port);
+        printf("Sending request of length %d to server\nResponse buffer length %d\n", request_size,
+            response_size);
+        int32_t rc = send_request(
+            (char *)prequest, request_size, response, response_size, config->server, config->port);
+        free(prequest);
+
+        if (rc > 0)
+            printf("Received response of length %d from server\n", rc);
+        else {
+            free(response);
+            printf("ERROR: No response from server!\n");
+            return false;
+        }
+
+        /* Decode the server response */
+        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
+        free(response);
+
+        if (ret_status != SKY_SUCCESS) {
+            printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
+            if (sky_errno == SKY_AUTH_RETRY) {
+                /* Repeat request if Authentication was required for last message */
+                goto retry_after_auth;
+            }
+            return false;
+        } else
+            return true;
+    }
 }
 
 static void report_location(Sky_location_t *loc)
@@ -494,8 +511,9 @@ static void report_location(Sky_location_t *loc)
     char hex_data[200];
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
         sky_pserver_status(loc->location_status), (int)loc->lat,
-        (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, loc->location_source);
+        (int)fabs(round(1000000.0 * (loc->lat - truncf(loc->lat)))), (int)loc->lon,
+        (int)fabs(round(1000000.0 * (loc->lon - truncf(loc->lon)))), loc->hpe,
+        loc->location_source);
     bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, loc->dl_app_data_len);
     printf("Downlink data: %s(%d)\n", hex_data, loc->dl_app_data_len);
 }
@@ -563,34 +581,34 @@ int main(int argc, char *argv[])
      * hour) rather than one immediately after another.
      */
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
-            config.ul_app_data_len, false, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
-            config.ul_app_data_len, false, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps5, cells5, NULL, config.ul_app_data,
-            config.ul_app_data_len, false, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
