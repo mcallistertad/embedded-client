@@ -12,7 +12,7 @@
         * [Build Directions](#build-directions)
     * [API Guide](#api-guide)
         * [Summary](#summary)
-        * [Requirements](#requirments)
+        * [Requirements](#requirements)
         * [API conventions](#api-conventions)
         * [Client Configuration](#client-configuration)
         * [General Sequence of Operations](#general-sequence-of-operations)
@@ -20,7 +20,7 @@
             * [sky_open() - Initialize Skyhook library and verify access to resources](#sky_open---initialize-skyhook-library-and-verify-access-to-resources)
             * [sky_sizeof_session_ctx() - Get the size of the non-volatile memory required to save and restore the library state.](#sky_sizeof_session_ctx---get-the-size-of-the-non-volatile-memory-required-to-save-and-restore-the-library-state)
             * [sky_sizeof_request_ctx() - Determines the size of the work space required to process the request](#sky_sizeof_request_ctx---determines-the-size-of-the-work-space-required-to-process-the-request)
-            * [sky_new_request() - Initializes work space for a new request](#sky_new_request---initializes-work-space-for-a-new-request)
+            * [sky_new_request() - Initializes request context for a new request](#sky_new_request---initializes-request-context-for-a-new-request)
             * [sky_add_ap_beacon() - Add a Wi-Fi beacon to request context](#sky_add_ap_beacon---add-a-wi-fi-beacon-to-request-context)
             * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
             * [sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_lte_neighbor_beacon---adds-an-lte-neighbor-cell-beacon-to-the-request-context)
@@ -34,8 +34,12 @@
             * [sky_add_cell_nr_neighbor_beacon() - Adds a neighbor nr cell beacon to the request context](#sky_add_cell_nr_neighbor_beacon---adds-a-neighbor-nr-cell-beacon-to-the-request-context)
             * [sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context](#sky_add_gnss---adds-the-position-of-the-device-from-gnss-gps-glonass-or-others-to-the-request-context)
             * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-user)
-            * [sky_finalize_request() - generate a Skyhook request from the request context](#sky_finalize_request---generate-a-skyhook-request-from-the-request-context)
+            * [sky_encode_request() - generate a Skyhook request from the request context](#sky_encode_request---generate-a-skyhook-request-from-the-request-context)
             * [sky_decode_response() - decodes a Skyhook server response](#sky_decode_response---decodes-a-skyhook-server-response)
+            * [sky_search_cache()  - compares the new request beacons with those in the cache](#sky_search_cache---compares-the-new-request-beacons-with-those-in-the-cache)
+            * [sky_override_cache_hit()  - allows the result of sky_search_cache() to be overridden](#sky_override_cache_hit---allows-the-result-of-sky_search_cache-to-be-overridden)
+            * [sky_get_option() - query the value of a configuration parameter](#sky_get_option---query-the-value-of-a-configuration-parameter)
+            * [sky_set_option() - set the value of a configuration parameter](#sky_set_option---set-the-value-of-a-configuration-parameter)
             * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
             * [sky_pbeacon() - returns a string which describes the type of a beacon](#sky_pbeacon---returns-a-string-which-describes-the-type-of-a-beacon)
             * [sky_pserver_status() - returns a string which describes the meaning of status codes](#sky_pserver_status---returns-a-string-which-describes-the-meaning-of-status-codes)
@@ -62,6 +66,7 @@ Instructions for cloning and building the library are below.
 ### Release 4.0.0
 
 #### API simplifications.
+
 * LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
 * LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer and session
   context buffer.
@@ -69,6 +74,7 @@ Instructions for cloning and building the library are below.
 * User may tune some configuration parameters at runtime using sky_set_option().
 
 #### Code size optimizations.
+
 * Build time options allow inclusion/exclusion of non-essential consistency checks.
 * Common code sequences have been factored out.
 * Some of the largest functions have been re-written.
@@ -878,7 +884,7 @@ sky_add_cell_nr_beacon() may report the following error conditions in sky_errno:
 | `SKY_ERROR_NEVER_OPEN`                          | sky_open() must be called before the current operation can succeed
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 | `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
-| `SKY_ERROR_INTERNAL`                            | An unexpected error occured
+| `SKY_ERROR_INTERNAL`                            | An unexpected error occurred
 
 ### sky_add_cell_nr_neighbor_beacon() - Adds a neighbor NR cell beacon to the request context
 
@@ -959,6 +965,72 @@ sky_add_gnss() may report the following error conditions in sky_errno:
 | `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 | `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
 
+### sky_search_cache() - compares the new request beacons with those in the cache.
+
+```c
+Sky_status_t sky_search_cache(Sky_ctx_t *ctx,
+Sky_errno_t *sky_errno,
+bool *cache_hit,
+Sky_location_t *loc
+)
+
+/*
+ * Parameters
+ * ctx              Skyhook request context
+ * sky_errno        sky_errno is set to the error code
+ * cache_hit        true or false based on the match between new scan and cache
+ * loc              where to save device latitude, longitude etc from cache if known
+
+ * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+ ```
+
+Optionally called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine
+whether there is a good match to the new scan in the cache. Loc is set to the location of the matching cache when a
+cache hit is found.
+
+sky_search_cache() may report the following error conditions in sky_errno:
+
+| Error Code                                      | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `SKY_ERROR_NONE`                                | No error
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
+
+### sky_override_cache_hit() - allows the result of sky_search_cache to be overridden
+
+```c
+Sky_status_t sky_override_cache_hit(Sky_ctx_t *ctx,
+Sky_errno_t *sky_errno,
+bool cache_hit,
+)
+
+/*
+ * Parameters
+ * ctx              Skyhook request context
+ * sky_errno        sky_errno is set to the error code
+ * cache_hit        true or false based on the desired match between new scan and cache
+
+ * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+ ```
+
+Optionally called after sky_search_cache(). If cache_hit is true and a cache hit had been found, the hit can be cleared.
+If cache_hit is false, and a cache hit failed to meet the score threshold (but otherwise the cache was a suitable match)
+, the miss can be reassigned to a hit.
+
+sky_override_cache_hit() is primarily intended to clear a cache_hit when the cached location is determined to be less
+accurate than the new scan. sky_override_cache_hit() may report the following error conditions in sky_errno:
+
+sky_override_cache_hit() will not reassign a miss to a hit if no suitable cache match exists. A warning is logged.
+sky_override_cache_hit() will simply report SKY_SUCCESS if no action is required. For example overriding a cache hit
+with cache_hit true will not change the status, or report an error.
+
+| Error Code                                      | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `SKY_ERROR_NONE`                                | No error
+| `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
+| `SKY_ERROR_BAD_SESSION_CTX`                     | The session context buffer is corrupt
+
 ### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
 
 ```c
@@ -990,15 +1062,6 @@ sky_sizeof_request_buf() may report the following error conditions in sky_errno:
 | `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
 | `SKY_ERROR_ENCODE_ERROR`                        | Could not encode the request
 
-sky_get_cache_hit()
-
-If the result is `SKY_FINALIZE_LOCATION`, the location (lat, lon, hpe and source) are filled in from a previously
-successful server response held in the cache. The user may decide to send a request to the ELG server, even though a
-previously cached location was found. This allows (uplink) application data to be reported to the server, downlink
-application data to be collected from the server and, when sky_open() is called with debounce = 'true', the set of
-cached beacons to be sent to the server that produced the previously reported (cached) location. This allows for
-optional server updates during periods when the device is stationary.
-
 ### sky_encode_request() - generate a Skyhook request from the request context
 
 ```c
@@ -1020,8 +1083,9 @@ Sky_status_t sky_encode_request(Sky_ctx_t *ctx,
  */
  ```
 
-Returns `SKY_ERROR` and sets sky_errno if an error occurs. If the result
-is `SKY_SUCCESS' buffer is filled in with the serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum buffer size needed to receive the Skyhook server response. If the error `
+Returns `SKY_ERROR` and sets sky_errno if an error occurs. If the result is `SKY_SUCCESS` buffer is filled in with the
+serialized request data which the user must then send to the Skyhook server, and the response_size is set to the maximum
+buffer size needed to receive the Skyhook server response. If the error `
 SKY_ERROR_SERVICE_DENIED` is returned, the request was submitted too often with repeated Authentication failures. The
 user may generate a new request after correcting the problem (TBR only).
 
@@ -1085,6 +1149,95 @@ sky_decode_response() may report the following error conditions in sky_errno:
 | `SKY_AUTH_RETRY_16HR`                           | Server indicated that authentication failed. Service is blocked for 16 hours (TBR only)
 | `SKY_AUTH_RETRY_24HR`                           | Server indicated that authentication failed. Service is blocked for 24 hours (TBR only)
 | `SKY_AUTH_RETRY_30DAY`                          | Server indicated that authentication failed. Service is blocked for 30 Days (TBR only)
+
+### sky_get_option() - query the value of a configuration parameter
+
+```c
+Sky_status_t sky_get_option(Sky_ctx_t *ctx,
+    Sky_errno_t *sky_errno,
+    Sky_config_name_t name,
+    uint32_t *value
+)
+
+/* Parameters
+ * ctx              Skyhook request context
+ * sky_errno        sky_errno is set to the error code
+ * name             configuration parameter to read
+ * value             Pointer to location where value should be returned
+
+ * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+```
+
+User may call this to interrogate the current value of the dynamic configuration parameters listed below.
+
+| Configuration parameter name                    | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `CONF_TOTAL_BEACONS`                            | Maximum number of beacons that can be held in a request
+| `CONF_MAX_AP_BEACONS`                           | Maximum number of Access points that can be held in a request
+| `CONF_CACHE_MATCH_THRESHOLD`                    | Obsolete
+| `CONF_CACHE_AGE_THRESHOLD`                      | Life span in hours of a cache entry. Typically 24 hr
+| `CONF_CACHE_BEACON_THRESHOLD`                   | The threshold below which an exact match is required for a cache hit. The following score thresholds are used when more than this number of APs are present in the new scan
+| `CONF_CACHE_NEG_RSSI_THRESHOLD`                 | The signal strength below which an AP is considered of low priority
+| `CONF_CACHE_MATCH_ALL_THRESHOLD`                | The score threshold used to compare new scan to cache
+| `CONF_CACHE_MATCH_USED_THRESHOLD`               | The score threshold used when an enhanced matching algorithm can be used (Premium)
+| `CONF_MAX_VAP_PER_AP`                           | Maximum number of Virtual APs that can be added to a group (Premium)
+| `CONF_MAX_VAP_PER_RQ`                           | Maximum number of Virtual AP groups that can be compressed in a request (Premium)
+| `CONF_LOGGING_LEVEL`                            | The severity level below which logged messages are suppressed
+
+sky_get_option() may report the following error conditions in sky_errno:
+
+| Error Code                                      | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `SKY_ERROR_NONE`                                | No error
+| `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
+
+### sky_set_option() - set the value of a configuration parameter
+
+```c
+Sky_status_t sky_set_option(Sky_ctx_t *ctx,
+    Sky_errno_t *sky_errno,
+    Sky_config_name_t name,
+    uint32_t value
+)
+
+/* Parameters
+ * ctx              Skyhook request context
+ * sky_errno        sky_errno is set to the error code
+ * name             configuration parameter to set
+ * value            value should be assigned
+
+ * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+```
+
+User may call this to set the value of the dynamic configuration parameters listed below.
+
+| Configuration parameter name                    | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `CONF_TOTAL_BEACONS`                            | Maximum number of beacons that can be held in a request
+| `CONF_MAX_AP_BEACONS`                           | Maximum number of Access points that can be held in a request
+| `CONF_CACHE_MATCH_THRESHOLD`                    | Obsolete
+| `CONF_CACHE_AGE_THRESHOLD`                      | Life span in hours of a cache entry. Typically 24 hr
+| `CONF_CACHE_BEACON_THRESHOLD`                   | The threshold below which an exact match is required for a cache hit. The following score thresholds are used when more than this number of APs are present in the new scan
+| `CONF_CACHE_NEG_RSSI_THRESHOLD`                 | The signal strength below which an AP is considered of low priority
+| `CONF_CACHE_MATCH_ALL_THRESHOLD`                | The score threshold used to compare new scan to cache
+| `CONF_CACHE_MATCH_USED_THRESHOLD`               | The score threshold used when an enhanced matching algorithm can be used (Premium)
+| `CONF_MAX_VAP_PER_AP`                           | Maximum number of Virtual APs that can be added to a group (Premium)
+| `CONF_MAX_VAP_PER_RQ`                           | Maximum number of Virtual AP groups that can be compressed in a request (Premium)
+| `CONF_LOGGING_LEVEL`                            | The severity level below which logged messages are suppressed
+
+The following parameters can not be assigned a larger value than that used when LibEL is built:
+`CONF_TOTAL_BEACONS`, `CONF_MAX_AP_BEACONS`, `CONF_MAX_VAP_PER_AP`, `CONF_MAX_VAP_PER_RQ`
+
+If `SKY_SUCCESS` is returned, the value of the identified parameter is updated.
+
+sky_set_option() may report the following error conditions in sky_errno:
+
+| Error Code                                      | Description
+| ----------------------------------------------- | --------------------------------------------------------------
+| `SKY_ERROR_NONE`                                | No error
+| `SKY_ERROR_BAD_PARAMETERS`                      | The parameters to the current operation are illegal
 
 ### sky_perror() - returns a string which describes the meaning of sky_errno codes
 
