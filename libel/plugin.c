@@ -84,7 +84,8 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 
 /*! \brief call the equal operation in the registered plugins
  *
- * equal operation returns true if the beacons are equivalent
+ * equal operation returns true if the beacons of same type are equivalent
+ * used to find duplicates or finding beacons in the cache
  *
  *  @param ctx Skyhook request context
  *  @param code the sky_errno_t code to return
@@ -106,7 +107,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
-    p = ctx->session->sky_plugins;
+    p = ctx->session->plugins;
     while (p) {
         if (p->equal)
             ret = p->equal(ctx, a, b, prop, equal);
@@ -125,7 +126,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
 
 /*! \brief call the compare operation in the registered plugins
  *
- * compare operation is used to order beacons in the workspace
+ * compare operation is used to order beacons of same type
  *
  *  @param ctx Skyhook request context
  *  @param code the sky_errno_t code to return
@@ -142,11 +143,11 @@ Sky_status_t sky_plugin_compare(
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "inconsistency found in request context");
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
     }
 
-    p = ctx->session->sky_plugins;
+    p = ctx->session->plugins;
     while (p) {
         if (p->compare)
             ret = p->compare(ctx, a, b, diff);
@@ -172,7 +173,7 @@ Sky_status_t sky_plugin_compare(
  */
 Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -206,7 +207,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  */
 Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -240,7 +241,7 @@ Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  */
 Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
-    Sky_plugin_table_t *p = ctx->session->sky_plugins;
+    Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
     if (!validate_request_ctx(ctx)) {
@@ -374,7 +375,7 @@ TEST("should return SKY_SUCCESS and not equal with one connected with different 
 
 TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type", ctx, {
     LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -382,8 +383,8 @@ TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type",
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one younger", ctx, {
-    LTE_NMR(a, 8, -10, false, 38, 100);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(a, 8, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -391,8 +392,8 @@ TEST("should return SKY_SUCCESS and not equal with two NMR one younger", ctx, {
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one stronger", ctx, {
-    LTE_NMR(a, 10, -10, false, 38, 100);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(a, 10, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -409,8 +410,8 @@ TEST("should return SKY_SUCCESS and not equal with two very similar cells", ctx,
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR very similar", ctx, {
-    LTE_NMR(a, 10, -108, false, 387, 1000);
-    LTE_NMR(b, 10, -108, false, 38, 100);
+    LTE_NMR(a, 10, -108, 387, 1000);
+    LTE_NMR(b, 10, -108, 38, 100);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -419,7 +420,7 @@ TEST("should return SKY_SUCCESS and not equal with two NMR very similar", ctx, {
 
 TEST("should return SKY_ERROR one NMR with different cell type", ctx, {
     CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
-    LTE_NMR(b, 10, -108, false, 387, 1000);
+    LTE_NMR(b, 10, -108, 387, 1000);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -489,13 +490,13 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     };
 
     /* clear registration of standard plugins */
-    ctx->session->sky_plugins = NULL;
+    ctx->session->plugins = NULL;
     /* add single access table with empty operations */
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table1));
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->sky_plugins, &table2));
-    ASSERT((Sky_plugin_table_t *)ctx->session->sky_plugins == &table1);
-    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next == &table2);
-    ASSERT(((Sky_plugin_table_t *)ctx->session->sky_plugins)->next->next == NULL);
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->plugins, &table1));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->session->plugins, &table2));
+    ASSERT((Sky_plugin_table_t *)ctx->session->plugins == &table1);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->plugins)->next == &table2);
+    ASSERT(((Sky_plugin_table_t *)ctx->session->plugins)->next->next == NULL);
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
@@ -508,6 +509,9 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     ASSERT(SKY_ERROR == sky_plugin_match_cache(ctx, &errno));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
 });
+
+/* call any plugin specific tests */
+sky_plugin_unit_tests(_ctx);
 
 END_TESTS();
 

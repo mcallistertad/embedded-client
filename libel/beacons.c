@@ -60,7 +60,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
     return SKY_SUCCESS;
 }
 
-/*! \brief compare beacons for positioning in workspace
+/*! \brief compare beacons for ordering when inserting in request context
  *
  * better beacons are inserted before worse.
  *
@@ -183,7 +183,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         NUM_APS(ctx)++;
     }
 
-#ifdef SKY_DEBUG
+#ifdef SKY_LOGGING
     /* Verify that the beacon we just added now appears in our beacon set. */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         bool equal;
@@ -251,9 +251,6 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
         return SKY_ERROR;
     if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
         return SKY_SUCCESS;
-#if VERBOSE_DEBUG
-    DUMP_REQUEST_CTX(ctx);
-#endif
 
     /* done if no filtering needed */
     if (NUM_APS(ctx) <= CONFIG(ctx->session, max_ap_beacons) &&
@@ -387,12 +384,40 @@ int find_oldest(Sky_ctx_t *ctx)
 }
 #endif
 
-/*! \brief test serving cell in request context has changed from that in cache
+/*! \brief test whether gnss in new scan is preferable to that in cache
  *
- *  Cells are in priority order
+ *  if new scan has better gnss that that in cache, it is better to update cache
+ *  by sending new scan to server.
+ *
+ *  true only if gnss fix in cache is worse than new scan
+ *  false if cached gnss is not
  *
  *  @param ctx Skyhook request context
  *  @param cl the cacheline to count in
+ *
+ *  @return true or false
+ */
+int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+{
+    if (!ctx || !cl) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+#endif
+        return true;
+    }
+
+    /* in future, this condition could take accuracy into account */
+    /* Reject cached fix if new scan contains gnss and cache does not */
+    if (has_gnss(ctx) && !has_gnss(cl)) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
+#endif
+        return true;
+    }
+    return false;
+}
+
+/*! \brief test serving cell in workspace has changed from that in cache
  *
  *  @return true or false
  *

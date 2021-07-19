@@ -61,16 +61,14 @@ Instructions for cloning and building the library are below.
 
 ### Release 4.0.0
 
-API simplifications.
-
+#### API simplifications.
 * LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
 * LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer and session
   context buffer.
 * User may call new API call, sky_get_cache_hit(), to determine whether the current request has a match in the cache.
-* User may tune some configuration parameters at runtime.
+* User may tune some configuration parameters at runtime using sky_set_option().
 
-Code size optimizations.
-
+#### Code size optimizations.
 * Build time options allow inclusion/exclusion of non-essential consistency checks.
 * Common code sequences have been factored out.
 * Some of the largest functions have been re-written.
@@ -83,6 +81,13 @@ Code size optimizations.
 
 * Bug fix - server side tuning of cache match thresholds was being ignored by LibEL
 * Change default configuration to 28 total beacons, 20 APs
+
+### Release 3.0.1.1
+
+* Bug fix - gnss was not saved to cache
+* Bug fix - low AP count in scan should require exact cache match
+* Bug fix - scan with gnss should never match a cache entry without gnss
+* Bug fix - cache match threshold wrongly referenced premium threshold
 
 ### Release 3.0.1
 

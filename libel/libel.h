@@ -24,7 +24,6 @@
  */
 #ifndef SKY_LIBEL_H
 #define SKY_LIBEL_H
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
@@ -164,6 +163,25 @@ typedef struct sky_header {
 } Sky_header_t;
 #define SKY_SIZEOF_SESSION_HEADER (sizeof(Sky_header_t))
 
+/* \brief dynamically trunable configuration parameters
+ */
+typedef enum config_names {
+    CONF_TOTAL_BEACONS = 0,
+    CONF_MAX_AP_BEACONS,
+    CONF_CACHE_MATCH_THRESHOLD,
+    CONF_CACHE_AGE_THRESHOLD,
+    CONF_CACHE_BEACON_THRESHOLD,
+    CONF_CACHE_NEG_RSSI_THRESHOLD,
+    CONF_CACHE_MATCH_ALL_THRESHOLD,
+    CONF_CACHE_MATCH_USED_THRESHOLD,
+    CONF_MAX_VAP_PER_AP,
+    CONF_MAX_VAP_PER_RQ,
+    CONF_REPORT_CACHE,
+    CONF_LOGGING_LEVEL,
+    /* Add more config variables here */
+    CONF_UNKNOWN,
+} Sky_config_name_t;
+
 #ifndef SKY_LIBEL
 #include "aes.h"
 #include "crc32.h"
@@ -242,6 +260,12 @@ Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx, uint32_t *size, Sky_errno_t 
 
 Sky_status_t sky_decode_response(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc);
+
+Sky_status_t sky_get_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, uint32_t *value);
+
+Sky_status_t sky_set_option(
+    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_config_name_t name, int32_t value);
 
 char *sky_perror(Sky_errno_t sky_errno);
 

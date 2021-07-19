@@ -26,8 +26,8 @@
 #define SKY_CONFIG_H
 
 /* Change to false to remove all calls to logging */
-#ifndef SKY_DEBUG
-#define SKY_DEBUG true
+#ifndef SKY_LOGGING
+#define SKY_LOGGING true
 #endif
 
 #ifndef SKY_LOG_LENGTH

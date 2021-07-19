@@ -27,6 +27,7 @@
 
 #include <inttypes.h>
 #include <time.h>
+#include <math.h>
 
 #define SKY_MAGIC 0xD1967806
 #define BEACON_MAGIC 0xf0f0
@@ -55,8 +56,7 @@
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
 
-#define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
-
+#define has_gnss(c) ((c) != NULL && !isnan((c)->gnss.lat))
 #define CACHE_EMPTY ((time_t)0)
 #define CONFIG_UPDATE_DUE ((time_t)0)
 #define IS_CACHE_HIT(c) (c->get_from != -1 && (c)->hit)
@@ -105,8 +105,8 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
-    int16_t rssi; /* -255 unkonwn - map it to - 128 */
-    uint16_t priority; /* used to remove worst beacon */
+    int16_t rssi; /* -128 through -10, Uknownn = -1 */
+    float priority; /* used to remove worst beacon. Higher values are better, always positive */
     int8_t connected; /* beacon connected */
 };
 
@@ -168,9 +168,9 @@ typedef union beacon {
     struct cell cell;
 } Beacon_t;
 
-/*! \brief gps/gnss
+/*! \brief gnss/gnss
  */
-typedef struct gps {
+typedef struct gnss {
     double lat;
     double lon;
     uint32_t hpe;
@@ -180,7 +180,7 @@ typedef struct gps {
     float bearing;
     uint32_t nsat;
     uint32_t age;
-} Gps_t;
+} Gnss_t;
 
 /*! \brief each cacheline holds a copy of a scan and the server response
  */
@@ -189,6 +189,7 @@ typedef struct sky_cacheline {
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+    Gnss_t gnss; /* GNSS info */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
@@ -224,24 +225,24 @@ typedef struct sky_config_pad {
  */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    bool sky_open_flag; /* true if sky_open() has been called by user */
-    Sky_randfn_t sky_rand_bytes; /* User rand_bytes fn */
-    Sky_loggerfn_t sky_logf; /* User logging fn */
-    Sky_log_level_t sky_min_level; /* User log level */
-    Sky_timefn_t sky_time; /* User time fn */
-    void *sky_plugins; /* root of registered plugin list */
-    uint32_t sky_id_len; /* device ID num_beacons */
-    uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
-    uint32_t sky_token_id; /* TBR token ID */
-    uint32_t sky_ul_app_data_len; /* uplink app data length */
-    uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
-    uint32_t sky_dl_app_data_len; /* downlink app data length */
-    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-    char sky_sku[MAX_SKU_LEN + 1]; /* product family ID */
-    uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+    bool open_flag; /* true if sky_open() has been called by user */
+    Sky_randfn_t rand_bytes; /* User rand_bytes fn */
+    Sky_loggerfn_t logf; /* User logging fn */
+    Sky_log_level_t min_level; /* User log level */
+    Sky_timefn_t timefn; /* User time fn */
+    void *plugins; /* root of registered plugin list */
+    uint32_t id_len; /* device ID num_beacons */
+    uint8_t device_id[MAX_DEVICE_ID]; /* device ID */
+    uint32_t token_id; /* TBR token ID */
+    uint32_t ul_app_data_len; /* uplink app data length */
+    uint8_t ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
+    uint32_t dl_app_data_len; /* downlink app data length */
+    uint8_t dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
+    char sku[MAX_SKU_LEN + 1]; /* product family ID */
+    uint16_t cc; /* Optional Country Code (0 = unused) */
     Sky_errno_t backoff; /* last auth error */
-    uint32_t sky_partner_id; /* partner ID */
-    uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
+    uint32_t partner_id; /* partner ID */
+    uint8_t aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
     int num_cachelines; /* number of cachelines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
@@ -250,17 +251,17 @@ typedef struct sky_session {
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_session_t;
 
-/*! \brief Request Context - workspace for new request
+/*! \brief Request Context - temporary space used to build a request
  */
 typedef struct sky_ctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint16_t num_beacons; /* number of beacons in list (0 == none) */
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
-    Gps_t gps; /* GNSS info */
+    Gnss_t gnss; /* GNSS info */
     bool hit; /* status of search of cache for match to new scan (true/false) */
-    int16_t get_from; /* cacheline with best match to scan (-1 if none) */
-    int16_t save_to; /* cacheline with best match for saving server location and scan */
+    int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
+    int16_t save_to; /* cacheline with best match for saving scan*/
     Sky_session_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
@@ -273,6 +274,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
     Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
 int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
+int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
 int search_cache(Sky_ctx_t *ctx);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);

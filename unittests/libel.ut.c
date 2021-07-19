@@ -19,12 +19,11 @@ TEST_FUNC(test_sky_open)
         Sky_session_t nv_state;
 
         memset(&nv_state, 0, sizeof(nv_state));
-        ASSERT(SKY_SUCCESS == sky_close(ctx->session, &sky_errno));
         ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 666);
+        ASSERT(nv_state.partner_id == 666);
 
         ASSERT(SKY_SUCCESS == sky_close(&nv_state, &sky_errno));
         ASSERT(sky_sizeof_session_ctx(&nv_state) == sizeof(Sky_session_t));
@@ -32,7 +31,7 @@ TEST_FUNC(test_sky_open)
                                   (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
                                   SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time));
         ASSERT(sky_errno == SKY_ERROR_NONE);
-        ASSERT(nv_state.sky_partner_id == 911);
+        ASSERT(nv_state.partner_id == 911);
 
         ASSERT(SKY_ERROR == sky_open(&sky_errno, (uint8_t *)"ABCDEFGH", 8, 666,
                                 (uint8_t *)"01234567890123", "sk", 0, &nv_state,
@@ -41,10 +40,14 @@ TEST_FUNC(test_sky_open)
     });
     TEST("sky_close fails if LibEL is not open", ctx, {
         Sky_errno_t sky_errno;
+        Sky_session_t nv_state;
 
-        ASSERT(SKY_SUCCESS == sky_close(ctx->session, &sky_errno));
-        ASSERT(
-            SKY_ERROR == sky_close(ctx->session, &sky_errno) && sky_errno == SKY_ERROR_NEVER_OPEN);
+        memset(&nv_state, 0, sizeof(nv_state));
+        ASSERT(SKY_SUCCESS == sky_open(&sky_errno, (uint8_t *)"ABCDEF", 6, 666,
+                                  (uint8_t *)"0123456789012345", "sku", 0, &nv_state,
+                                  SKY_LOG_LEVEL_DEBUG, _test_log, sky_rand_fn, good_time, true));
+        ASSERT(SKY_SUCCESS == sky_close(&nv_state, &sky_errno));
+        ASSERT(SKY_ERROR == sky_close(&nv_state, &sky_errno) && sky_errno == SKY_ERROR_NEVER_OPEN);
     });
 }
 
@@ -55,9 +58,9 @@ TEST_FUNC(test_sky_new_request)
         ctx, {
             Sky_errno_t sky_errno;
 
-            ctx->session->sky_time = bad_time;
-            ctx->session->sky_sku[0] = 's';
-            ctx->session->sky_sku[1] = '\0';
+            ctx->session->timefn = bad_time;
+            ctx->session->sku[0] = 's';
+            ctx->session->sku[1] = '\0';
             ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
             ASSERT(
                 NULL == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
@@ -66,9 +69,9 @@ TEST_FUNC(test_sky_new_request)
     TEST("sky_new_request succeeds after first failed registration with good time", ctx, {
         Sky_errno_t sky_errno;
 
-        ctx->session->sky_time = good_time;
-        ctx->session->sky_sku[0] = 's';
-        ctx->session->sky_sku[1] = '\0';
+        ctx->session->timefn = good_time;
+        ctx->session->sku[0] = 's';
+        ctx->session->sku[1] = '\0';
         ctx->session->backoff = SKY_AUTH_NEEDS_TIME;
         ASSERT(ctx == sky_new_request(ctx, sizeof(Sky_ctx_t), ctx->session, NULL, 0, &sky_errno));
         ASSERT(sky_errno == SKY_ERROR_NONE);
@@ -154,10 +157,460 @@ TEST_FUNC(test_sky_add)
     });
 }
 
+TEST_FUNC(test_sky_option)
+{
+    TEST("Add 4 beacons with default config results in 4 in request context", ctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        bool connected = false;
+        uint32_t value;
+
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 20);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(ctx->num_beacons == 4);
+        ASSERT(ctx->num_ap == 4);
+    });
+    TEST("Add 4 beacons with max_ap_beacons 3 results in 3 in request context", ctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4C };
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        bool connected = false;
+        uint32_t value;
+
+        ASSERT(SKY_SUCCESS == sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi, freq, connected));
+        ASSERT(ctx->num_beacons == 3);
+        ASSERT(ctx->num_ap == 3);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 3);
+    });
+    TEST("set/get operates for report_cache and logging level", ctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+
+        /* check defaults for a new request */
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_LOGGING_LEVEL, &value) &&
+               value == SKY_LOG_LEVEL_DEBUG);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_REPORT_CACHE, &value) &&
+               value == 0);
+
+        ASSERT(SKY_SUCCESS ==
+               sky_set_option(ctx, &sky_errno, CONF_LOGGING_LEVEL, SKY_LOG_LEVEL_CRITICAL));
+        ASSERT(SKY_SUCCESS == sky_set_option(ctx, &sky_errno, CONF_REPORT_CACHE, 1));
+
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_LOGGING_LEVEL, &value) &&
+               value == SKY_LOG_LEVEL_CRITICAL);
+        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_REPORT_CACHE, &value) &&
+               value == 1);
+    });
+    TEST("set options reports Bad Parameters appropriately", ctx, {
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_UNKNOWN, -1) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_TOTAL_BEACONS, 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_CACHE_BEACON_THRESHOLD, 100) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_CACHE_NEG_RSSI_THRESHOLD, 230) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_CACHE_MATCH_ALL_THRESHOLD, 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(
+            SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_CACHE_MATCH_USED_THRESHOLD, 1000) &&
+            sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_MAX_VAP_PER_AP, 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+        ASSERT(SKY_ERROR == sky_set_option(ctx, &sky_errno, CONF_MAX_VAP_PER_RQ, 1000) &&
+               sky_errno == SKY_ERROR_BAD_PARAMETERS);
+    });
+}
+
+#if CACHE_SIZE != 0
+TEST_FUNC(test_sky_gnss)
+{
+    TEST("to cache plugin copies gnss to cache", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        ctx->gnss.lat = 35.511315;
+        ctx->gnss.lon = 139.618906;
+        ctx->gnss.hpe = 16;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ASSERT(ctx->gnss.lat == ctx->session->cacheline[0].gnss.lat);
+        ASSERT(ctx->gnss.lon == ctx->session->cacheline[0].gnss.lon);
+        ASSERT(ctx->gnss.hpe == ctx->session->cacheline[0].gnss.hpe);
+    });
+    TEST("debounce true copies gnss from cache", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        ctx->session->report_cache = true;
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        ctx->gnss.lat = 35.511315;
+        ctx->gnss.lon = 139.618906;
+        ctx->gnss.hpe = 16;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ctx->session->cacheline[0].gnss.lat = 36.511315;
+        ctx->session->cacheline[0].gnss.lon = 140.618906;
+        ctx->session->cacheline[0].gnss.hpe = 17;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->gnss.lat == ctx->session->cacheline[0].gnss.lat);
+        ASSERT(ctx->gnss.lon == ctx->session->cacheline[0].gnss.lon);
+        ASSERT(ctx->gnss.hpe == ctx->session->cacheline[0].gnss.hpe);
+    });
+}
+
+TEST_FUNC(test_cache_match)
+{
+    TEST("AP matches cache with same AP", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        uint32_t size;
+
+        ctx->beacon[0] = b;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 1;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from != -1); /* Cache hit */
+    });
+    TEST("4 APs match cache with same 4 AP", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        uint32_t size;
+
+        /* four different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        b.ap.mac[3] = 0x99;
+        ctx->beacon[2] = b;
+        b.ap.mac[3] = 0x88;
+        ctx->beacon[3] = b;
+        ctx->num_beacons = 4;
+        ctx->num_ap = 4;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from != -1); /* Cache hit */
+    });
+    TEST("4 APs misses cache with different 4 AP, 2 different", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        uint32_t size;
+
+        /* four different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        b.ap.mac[3] = 0x99;
+        ctx->beacon[2] = b;
+        b.ap.mac[3] = 0x88;
+        ctx->beacon[3] = b;
+        ctx->num_beacons = 4;
+        ctx->num_ap = 4;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ctx->session->cacheline[0].beacon[0].ap.mac[3] = 0x77;
+        ctx->session->cacheline[0].beacon[1].ap.mac[3] = 0x66;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+    TEST("3 APs misses cache with 3 AP same, 1 extra ", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        uint32_t size;
+
+        /* 3 different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        b.ap.mac[3] = 0x99;
+        ctx->beacon[2] = b;
+        ctx->num_beacons = 3;
+        ctx->num_ap = 3;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        b.ap.mac[3] = 0x88;
+        ctx->session->cacheline[0].beacon[3] = b;
+        ctx->session->cacheline[0].num_beacons = 4;
+        ctx->session->cacheline[0].num_ap = 4;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+    TEST("2 APs misses cache with 1 AP", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        uint32_t size;
+
+        /* 2 different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        ctx->num_beacons = 2;
+        ctx->num_ap = 2;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        b.ap.mac[3] = 0x88;
+        ctx->session->cacheline[0].beacon[2] = b;
+        ctx->session->cacheline[0].num_beacons = 3;
+        ctx->session->cacheline[0].num_ap = 3;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+    TEST("2 APs + cell misses cache with 2 AP + different cell", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        /* 2 different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        ctx->beacon[2] = c;
+        ctx->num_beacons = 3;
+        ctx->num_ap = 2;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        c.cell.id2 = 47;
+        ctx->session->cacheline[0].beacon[2] = c;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+    TEST("4 APs + cell misses cache with 4 AP + different cell", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0 },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0, 0 },
+            .ap.vg_len = 0 };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        /* 2 different APs */
+        ctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        ctx->beacon[1] = b;
+        ctx->beacon[2] = c;
+        ctx->num_beacons = 3;
+        ctx->num_ap = 2;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        c.cell.id2 = 47;
+        ctx->session->cacheline[0].beacon[2] = c;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+    TEST("cell matches cache with cell", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from != -1); /* Cache hit */
+    });
+    TEST("cell misses cache with different cell", ctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+        uint32_t size;
+
+        ctx->beacon[0] = c;
+        ctx->num_beacons = 1;
+        ctx->num_ap = 0;
+        loc.time = ctx->header.time;
+
+        sky_plugin_add_to_cache(ctx, &sky_errno, &loc);
+        c.cell.id2 = 47;
+        ctx->session->cacheline[0].beacon[0] = c;
+        ASSERT(SKY_SUCCESS == sky_sizeof_request_buf(ctx, &size, &sky_errno));
+        ASSERT(ctx->get_from == -1); /* Cache miss */
+    });
+}
+
+#endif
+
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
+GROUP_CALL("sky match tests", test_cache_match);
+GROUP_CALL("sky option tests", test_sky_option);
+#if CACHE_SIZE != 0
+GROUP_CALL("sky gnss tests", test_sky_gnss);
+#endif
 
 END_TESTS();

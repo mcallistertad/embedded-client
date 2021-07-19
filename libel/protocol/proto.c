@@ -342,7 +342,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
      * then we need to encode a registration request,
      * which does not include any beacon info
      */
-    if (ctx && (!is_tbr_enabled(ctx) || ctx->session->sky_token_id != TBR_TOKEN_UNKNOWN)) {
+    if (ctx && (!is_tbr_enabled(ctx) || ctx->session->token_id != TBR_TOKEN_UNKNOWN)) {
         // Per the documentation here:
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
@@ -392,13 +392,13 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(sizeof(ctx->session->sky_sku) >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->session->sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // sky_new_request initializes rand_bytes if user does not
-    if (ctx->session->sky_rand_bytes != NULL)
-        ctx->session->sky_rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
+    if (ctx->session->rand_bytes != NULL)
+        ctx->session->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
 
     // Initialize crypto_info
     rq_crypto_info.iv.size = AES_BLOCKLEN;
@@ -418,7 +418,7 @@ int32_t serialize_request(
      * make a legacy style request
      */
     if (is_tbr_enabled(ctx)) {
-        if (ctx->session->sky_token_id == TBR_TOKEN_UNKNOWN) {
+        if (ctx->session->token_id == TBR_TOKEN_UNKNOWN) {
             /* build a tbr registration request */
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
@@ -428,7 +428,7 @@ int32_t serialize_request(
                 rq_hdr.partner_id, rq.tbr.sku);
         } else {
             /* build tbr location request */
-            rq.token_id = ctx->session->sky_token_id;
+            rq.token_id = ctx->session->token_id;
             rq.max_dl_app_data = SKY_MAX_DL_APP_DATA;
             rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
             memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
@@ -610,9 +610,10 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
-        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
-                                                      "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
+            "STATE_TBR_UNREGISTERED" :
+            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
+                                                        "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
@@ -644,8 +645,8 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             return ret;
         }
         if (apply_config_overrides(ctx->session, &rs)) {
-            if (ctx->session->sky_logf && SKY_LOG_LEVEL_DEBUG <= ctx->session->sky_min_level)
-                (*ctx->session->sky_logf)(
+            if (ctx->session->logf && SKY_LOG_LEVEL_DEBUG <= ctx->session->min_level)
+                (*ctx->session->logf)(
                     SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
         if (CONFIG(ctx->session, last_config_time) == CONFIG_UPDATE_DUE)
@@ -662,7 +663,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* successful TBR registration response */
             /* Save the token_id for use in subsequent location requests. */
             ctx->auth_state = STATE_TBR_REGISTERED;
-            ctx->session->sky_token_id = rs.token_id;
+            ctx->session->token_id = rs.token_id;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
         }
         /* User must retry because this was a registration */
@@ -673,7 +674,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* failed TBR location request */
             /* Clear the token_id because it is invalid. */
             ctx->auth_state = STATE_TBR_UNREGISTERED;
-            ctx->session->sky_token_id = TBR_TOKEN_UNKNOWN;
+            ctx->session->token_id = TBR_TOKEN_UNKNOWN;
             /* Application must re-register */
             loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");

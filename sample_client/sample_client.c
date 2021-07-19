@@ -118,6 +118,9 @@ struct cell_scan cells2[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
+struct gnss_scan gnss2 =
+   {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* Scan set 3 */
 struct ap_scan aps3[] =
     { { "74DADA5E1015", 300, 3660, -88, 0 },
@@ -155,6 +158,27 @@ struct ap_scan aps5[] =
 struct cell_scan cells5[] =
     { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
+struct gnss_scan gnss5 =
+    {0, 35.700388, 139.751840, 37, 0, 0, 0, 0, 7};
+
+/* Scan set 6 */
+struct ap_scan aps6[] =
+    { { "98F199A3D313", 0, 2412, -40, 0 },
+      { "54EC2F6730D8", 0, 2412, -53, 0 },
+      { "54EC2F673058", 0, 2412, -60, 0 },
+      { "54EC2F66FEF8", 0, 2412, -65, 0 },
+      { "54EC2F65ACC8", 0, 2412, -66, 0 },
+      { "54EC2F672DD8", 0, 2412, -66, 0 },
+      { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
+    };
+
+struct cell_scan cells6[] =
+    { { TYPE_LTE, 1, -68, 411, 53, 36375, 34718211, 368, 5901, SKY_UNKNOWN_TA, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+struct gnss_scan gnss6 =
+    {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* clang-format on */
 
 /*! \brief save cache state
@@ -191,11 +215,11 @@ static int save_session_context(void *p, char *file_name)
 
 /*! \brief restore saved cache state
  *
- *  @param file_name name of file to read
+ *  @param pointer to configuration
  *
  *  @returns NULL for failure to restore cache state, pointer to c state otherwise
  */
-static void *retrieve_session_context(char *file_name)
+static void *retrieve_session_context(Config_t *config)
 {
     void *pstate;
 
@@ -203,9 +227,9 @@ static void *retrieve_session_context(char *file_name)
     uint32_t state_size;
     FILE *fio;
 
-    if (strlen(file_name) != 0) {
+    if (!config->factory_reset && strlen(config->statefile) != 0) {
         /* Open file and read header */
-        if ((fio = fopen(file_name, "r")) != NULL) {
+        if ((fio = fopen(config->statefile, "r")) != NULL) {
             if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
                 /* query header for actual size */
                 if ((state_size = sky_sizeof_session_ctx(tmp)) > 0) {
@@ -213,16 +237,22 @@ static void *retrieve_session_context(char *file_name)
                     pstate = malloc(state_size);
                     if (fread(pstate, state_size, 1, fio) == 1) {
                         fclose(fio);
-                        printf("Restored state from %s (%d bytes)\n", file_name, state_size);
+                        printf(
+                            "Restored state from %s (%d bytes)\n", config->statefile, state_size);
                         return pstate;
                     }
-                }
-            }
+                } else
+                    printf("ERROR: sky_sizeof_session_ctx() checksum %s failed %d\n",
+                        config->statefile, state_size);
+            } else
+                printf("ERROR: sky_sizeof_session_ctx() read for %s failed\n", config->statefile);
             fclose(fio);
-        }
+        } else
+            printf("ERROR: sky_sizeof_session_ctx() fopen for %s failed\n", config->statefile);
     }
-    printf("Failed to retrieve state from %s.\n", file_name);
-    state_size = sky_sizeof_session_ctx(NULL); /* size of new buffere */
+    if (config->factory_reset)
+        printf("Clearing state due to Factory reset\n");
+    state_size = sky_sizeof_session_ctx(NULL); /* Get size of new buffer */
     pstate = malloc(state_size);
     memset(pstate, 0, state_size);
     printf("Allocated empty state buffer %d bytes\n", state_size);
@@ -360,14 +390,14 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     for (i = 0; ap; i++, ap++) {
         uint8_t mac[MAC_SIZE];
 
-        if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
+        if (ap->mac[0] == '\0')
+            break;
+        else if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
             ret_status = sky_add_ap_beacon(
                 ctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, ap->frequency, ap->connected);
             if (ret_status != SKY_SUCCESS)
                 printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
-        } else if (ap->mac[0] == '\0')
-            break;
-        else
+        } else
             printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
     }
 
@@ -494,15 +524,31 @@ retry_after_auth:
         ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
         free(response);
 
-        if (ret_status != SKY_SUCCESS) {
+        if (ret_status == SKY_SUCCESS) {
+            return true;
+        } else {
             printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
-            if (sky_errno == SKY_AUTH_RETRY) {
-                /* Repeat request if Authentication was required for last message */
+            /* Repeat request if Authentication was required for last message */
+            switch (sky_errno) {
+            case SKY_AUTH_RETRY:
                 goto retry_after_auth;
+            case SKY_AUTH_RETRY_8H:
+                /* sleep 8 hours */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_16H:
+                /* sleep 16 hours */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_1D:
+                /* sleep 1 day */
+                goto retry_after_auth;
+            case SKY_AUTH_RETRY_30D:
+                /* sleep 30 days */
+                goto retry_after_auth;
+            default:
+                printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
             }
             return false;
-        } else
-            return true;
+        }
     }
 }
 
@@ -558,7 +604,7 @@ int main(int argc, char *argv[])
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    pstate = retrieve_session_context(config.statefile); /* may return an empty buffer */
+    pstate = retrieve_session_context(&config); /* returns a non-NULL pointer if space allocated */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
@@ -580,6 +626,7 @@ int main(int argc, char *argv[])
      * device would perform locations periodically (perhaps once every
      * hour) rather than one immediately after another.
      */
+#if 0
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -599,7 +646,7 @@ int main(int argc, char *argv[])
     } else {
         report_location(&loc);
     }
-
+#endif
     if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -607,7 +654,14 @@ int main(int argc, char *argv[])
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps5, cells5, NULL, config.ul_app_data,
+    if (locate(ctx, bufsize, pstate, &config, aps5, cells5, &gnss5, config.ul_app_data,
+            config.ul_app_data_len, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
+    }
+
+    if (locate(ctx, bufsize, pstate, &config, aps6, cells6, &gnss6, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {

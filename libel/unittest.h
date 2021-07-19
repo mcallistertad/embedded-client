@@ -10,6 +10,8 @@
 #define _POSIX_C_SOURCE 200809L // for strsignal()
 #endif
 
+#define UNITTESTS
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -19,8 +21,6 @@
 
 #define SKY_LIBEL
 #include "libel.h"
-
-#define UNITTESTS
 
 /* Constants for sky_open */
 #define TEST_DEVICE_ID "123456123456112233445566"
@@ -231,21 +231,21 @@
     _test_cell(                                                                                    \
         &(N), SKY_BEACON_GSM, (TIME), (RSSI), (CON), (ID1), (ID2), (ID3), (ID4), (ID5), (ID6));
 
-#define NR_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                       \
+#define NR_NMR(N, TIME, RSSI, ID5, ID6)                                                            \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_NR, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_NR, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define LTE_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                      \
+#define LTE_NMR(N, TIME, RSSI, ID5, ID6)                                                           \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_LTE, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_LTE, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define UMTS_NMR(N, TIME, RSSI, CON, ID1, ID2, ID3, ID4, ID5, ID6)                                 \
+#define UMTS_NMR(N, TIME, RSSI, ID5, ID6)                                                          \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_UMTS, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_UMTS, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define NBIOT_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                    \
+#define NBIOT_NMR(N, TIME, RSSI, ID5, ID6)                                                         \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_NBIOT, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_NBIOT, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
 #define BEACON_EQ(A, B) _test_beacon_eq((A), (B))
 #define AP_EQ(A, B) _test_ap_eq((A), (B))
@@ -288,5 +288,7 @@ int _test_cell(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rs
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b);
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b);
 bool _test_cell_eq(const Beacon_t *a, const Beacon_t *b);
+Sky_status_t plugin_unit_tests(void);
+void sky_plugin_unit_tests(void *_ctx);
 
 #endif
