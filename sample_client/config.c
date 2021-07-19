@@ -215,7 +215,7 @@ int load_config(char *filename, Config_t *config)
             continue;
         }
     }
-    config->filename = filename;
+    config->configfile = filename;
     fclose(fp);
     printf("Config Loaded\n");
     return 0;
@@ -240,7 +240,7 @@ void print_config(Config_t *config)
     bin2hex(ul_app_data, sizeof(ul_app_data), config->ul_app_data, config->ul_app_data_len);
     ul_app_data[config->ul_app_data_len * 2] = '\0';
 
-    printf("Configuration file: %s\n", config->filename);
+    printf("Configuration file: %s\n", config->configfile);
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
     printf("Key: %32s\n", key);
