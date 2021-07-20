@@ -296,10 +296,7 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
             *sky_errno = SKY_ERROR_NEVER_OPEN;
         return NULL;
     }
-    if ((now = (*s->timefn)(NULL)) < TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
-        now = TIME_UNAVAILABLE; /* note that time was bad when request was started */
-    }
+    now = (*s->timefn)(NULL);
 
     memset(ctx, 0, bufsize);
     /* update header in request ctx */
@@ -322,6 +319,11 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
         ctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
     ctx->gnss.lat = NAN;
+
+    if (now < TIMESTAMP_2019_03_01) {
+        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
+        now = TIME_UNAVAILABLE; /* note that time was bad when request was started */
+    }
 
     if (backoff_violation(ctx, now)) {
         if (sky_errno != NULL)

@@ -234,8 +234,8 @@ int logfmt(
     va_list ap;
     char buf[SKY_LOG_LENGTH];
     int ret, n;
-    if (ctx == NULL || ctx->session->logf == NULL || level > ctx->session->min_level ||
-        function == NULL)
+    if (ctx == NULL || ctx->session == NULL || ctx->session->logf == NULL ||
+        level > ctx->session->min_level || function == NULL)
         return -1;
     memset(buf, '\0', sizeof(buf));
     // Print log-line prefix ("<source file>:<function name>")
