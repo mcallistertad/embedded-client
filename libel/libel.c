@@ -1063,33 +1063,28 @@ Sky_status_t sky_search_cache(
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-/*! \brief force cache hit or miss status
+/*! \brief force cache miss status
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param cache_hit true/false
  *
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
-Sky_status_t sky_override_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, bool cache_hit)
+Sky_status_t sky_ignore_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
     if (!validate_request_ctx(ctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
 #if CACHE_SIZE
-    if (IS_CACHE_HIT(ctx) && !cache_hit) {
+    if (IS_CACHE_HIT(ctx)) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Clearing hit status for cacheline %d!", ctx->get_from);
         ctx->hit = false;
-    } else if (IS_CACHE_MISS(ctx) && ctx->get_from != -1 && cache_hit) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Setting cache hit for cacheline %d!", ctx->get_from);
-        ctx->hit = true;
-    } else if (cache_hit)
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "No cache entry to select as hit");
-    else
+    } else {
         LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "No cache entry selected to clear");
+    }
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 #else
-    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Can't report cached beacons with no cache");
+    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Can't ignore cache with no cache");
     return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
 #endif
 }

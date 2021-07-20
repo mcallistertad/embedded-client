@@ -296,7 +296,7 @@ TEST_FUNC(test_sky_gnss)
         ctx->session->cacheline[0].gnss.lon = 140.618906;
         ctx->session->cacheline[0].gnss.hpe = 17;
         sky_search_cache(ctx, &sky_errno, NULL, &loc);
-        sky_override_cache_hit(ctx, &sky_errno, true);
+        ASSERT(ctx->hit == true);
         ASSERT(sky_sizeof_request_buf(ctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(ctx->gnss.lat == ctx->session->cacheline[0].gnss.lat);
         ASSERT(ctx->gnss.lon == ctx->session->cacheline[0].gnss.lon);

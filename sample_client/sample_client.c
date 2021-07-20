@@ -451,30 +451,31 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     }
     /* All data has been added to new scan info */
 
-    /* check to see if new scan has a cache hit on known locations (aka stationary test) */
+    /* check to see if new scan matches cached scan (i.e. test for stationarity) */
     sky_search_cache(ctx, &sky_errno, &cache_hit, loc);
 
-    /* If cache hit, do one of the following
+    /* if cache hit, do one of the following
      *  a) if regular reports of position are priority, encode cached scan and send to server
-     *  b) if minimizing network traffic is priority, simply use loc from cache in application,
-     *  c) if network resourses allow all locations to be reported to the server,
-     *      . if cached scan is not trusted, clear cache hit status and encoding request
-     *      . otherwise encode request (which will include cached scan for a cache hit)
+     *  b) if minimizing network traffic is priority, simply use loc from cache in application
+     *  c) if network resources allow all locations to be reported to the server
+     *    - if cached scan (and associated location estimate) is not suitable for some reason,
+     *      clear cache hit status by calling sky_ignore_cache_hit() and then call sky_encode_request()
+     *    - otherwise, call sky_encode_request() (which will encode the cached location in case of cache hit)
      *
-     * If cache miss
-     *  encode the request (which will include new scan for a cache miss)
+     * if cache miss
+     *  call sky_encode_request() (which will encode the new scan information)
      */
 
     if (cache_hit) {
-        /*     // loc has been updated from cache. If application wants to use the cached
-         *     // location simply return here
-         *     return SKY_SUCCESS;
+        /* new scan matches cached scan. Application may choose to use the
+         * associated location estimate here, and then simply return, without reporting
+         * the cached location estimation to the server
          */
 
         /* if (low confidence in cached location)
          *     // remove cache hit status. New scan will be encoded in request
          *     cache_hit = false;
-         *     sky_override_cache_hit(ctx, &sky_errno, cache_hit);
+         *     sky_ignore_cache_hit(ctx, &sky_errno);
          */
         if (cache_hit)
             printf("Location found in cache\n");
@@ -486,7 +487,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
  */
 retry_after_auth:
     /* Determine how big the network request buffer must be, and allocate a
-         * buffer of that length. This function must be called for each request */
+     * buffer of that length. This function must be called for each request */
     if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
         printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
         return false;
@@ -496,7 +497,7 @@ retry_after_auth:
     } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
                SKY_ERROR) {
         free(prequest);
-        printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
+        printf("sky_encode_request error '%s'", sky_perror(sky_errno));
         return false;
     } else {
         /* send the request to the server. */
@@ -598,7 +599,7 @@ int main(int argc, char *argv[])
         exit(-1);
     print_config(&config);
 
-    /* Retrieve saved state, if any. State includes cached scans and
+    /* Retrieve saved state, if any. State includes cached scans (with associated location estimate) and
      * registration information. Failure to retrieve state will force a
      * reregistration sequence and will limit stationary detection,
      * which will result in needless additional messaging to and from

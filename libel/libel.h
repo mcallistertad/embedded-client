@@ -251,7 +251,7 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp);
 
-Sky_status_t sky_override_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, bool cache_hit);
+Sky_status_t sky_ignore_cache_hit(Sky_ctx_t *ctx, Sky_errno_t *sky_errno);
 
 Sky_status_t sky_encode_request(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, void *request_buf,
     uint32_t bufsize, uint32_t *response_size);

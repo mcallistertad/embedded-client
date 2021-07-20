@@ -33,11 +33,11 @@
             * [sky_add_cell_nr_beacon() - Adds a nr cell beacon to the request context](#sky_add_cell_nr_beacon---adds-a-nr-cell-beacon-to-the-request-context)
             * [sky_add_cell_nr_neighbor_beacon() - Adds a neighbor nr cell beacon to the request context](#sky_add_cell_nr_neighbor_beacon---adds-a-neighbor-nr-cell-beacon-to-the-request-context)
             * [sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context](#sky_add_gnss---adds-the-position-of-the-device-from-gnss-gps-glonass-or-others-to-the-request-context)
+            * [sky_search_cache()  - compares the new request beacons with those in the cache](#sky_search_cache---compares-the-new-request-beacons-with-those-in-the-cache)
+            * [sky_ignore_cache_hit()  - allows the result of sky_search_cache() to be overridden](#sky_ignore_cache_hit---allows-the-result-of-sky_search_cache-to-be-overridden)
             * [sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user](#sky_sizeof_request_buf----determines-the-size-of-the-network-request-buffer-which-must-be-provided-by-the-user)
             * [sky_encode_request() - generate a Skyhook request from the request context](#sky_encode_request---generate-a-skyhook-request-from-the-request-context)
             * [sky_decode_response() - decodes a Skyhook server response](#sky_decode_response---decodes-a-skyhook-server-response)
-            * [sky_search_cache()  - compares the new request beacons with those in the cache](#sky_search_cache---compares-the-new-request-beacons-with-those-in-the-cache)
-            * [sky_override_cache_hit()  - allows the result of sky_search_cache() to be overridden](#sky_override_cache_hit---allows-the-result-of-sky_search_cache-to-be-overridden)
             * [sky_get_option() - query the value of a configuration parameter](#sky_get_option---query-the-value-of-a-configuration-parameter)
             * [sky_set_option() - set the value of a configuration parameter](#sky_set_option---set-the-value-of-a-configuration-parameter)
             * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
@@ -978,7 +978,7 @@ Sky_location_t *loc
  * Parameters
  * ctx              Skyhook request context
  * sky_errno        sky_errno is set to the error code
- * cache_hit        true or false based on the match between new scan and cache
+ * cache_hit        pointer to location where true or false is stored based on the match between new scan and cache
  * loc              where to save device latitude, longitude etc from cache if known
 
  * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
@@ -987,7 +987,7 @@ Sky_location_t *loc
 
 Optionally called after all beacon and GNSS data has been added (via the sky_add_*() functions) in order to determine
 whether there is a good match to the new scan in the cache. Loc is set to the location of the matching cache when a
-cache hit is found.
+cache hit.
 
 sky_search_cache() may report the following error conditions in sky_errno:
 
@@ -996,34 +996,29 @@ sky_search_cache() may report the following error conditions in sky_errno:
 | `SKY_ERROR_NONE`                                | No error
 | `SKY_ERROR_BAD_REQUEST_CTX`                     | The request context structure is corrupt
 
-### sky_override_cache_hit() - allows the result of sky_search_cache to be overridden
+### sky_ignore_cache_hit() - allows the result of sky_search_cache to be overridden
 
 ```c
-Sky_status_t sky_override_cache_hit(Sky_ctx_t *ctx,
-Sky_errno_t *sky_errno,
-bool cache_hit,
+Sky_status_t sky_ignore_cache_hit(Sky_ctx_t *ctx,
+Sky_errno_t *sky_errno
 )
 
 /*
  * Parameters
  * ctx              Skyhook request context
  * sky_errno        sky_errno is set to the error code
- * cache_hit        true or false based on the desired match between new scan and cache
 
  * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
  ```
 
-Optionally called after sky_search_cache(). If cache_hit is true and a cache hit had been found, the hit can be cleared.
-If cache_hit is false, and a cache hit failed to meet the score threshold (but otherwise the cache was a suitable match)
-, the miss can be reassigned to a hit.
+Optionally called after sky_search_cache(). If a cache hit had been found, the hit is cleared.
 
-sky_override_cache_hit() is primarily intended to clear a cache_hit when the cached location is determined to be less
-accurate than the new scan. sky_override_cache_hit() may report the following error conditions in sky_errno:
+A warning is logged if sky_ignore_cache_hit is called after a cache miss. sky_ignore_cache_hit() reports SKY_SUCCESS
+even if a cache hit is not cleared.
 
-sky_override_cache_hit() will not reassign a miss to a hit if no suitable cache match exists. A warning is logged.
-sky_override_cache_hit() will simply report SKY_SUCCESS if no action is required. For example overriding a cache hit
-with cache_hit true will not change the status, or report an error.
+sky_ignore_cache_hit() is provided to clear a cache_hit when the cached location is determined to be less accurate than
+the new scan. sky_override_cache_hit() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
