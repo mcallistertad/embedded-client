@@ -32,7 +32,7 @@ AES_DIR = submodules/tiny-AES128-C
 
 INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLUGIN_DIR}
 
-VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}
+VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}:sample_client
 
 LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c plugin.c
 LIBELG_PLUG=$(shell find ${PLUGIN_DIR} -name '*.c' -print)
@@ -43,13 +43,15 @@ TINYAES_SRCS = ${AES_DIR}/aes.c
 
 LIBELG_ALL = ${LIBELG_SRCS} ${LIBELG_PLUG} ${PROTO_SRCS} ${TINYAES_SRCS}
 LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
+CLIENT_SRCS = sample_client.c send.c config.c
+CLIENT_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(CLIENT_SRCS:.c=.o)))
 
 .PHONY: all
 
-all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client
+all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client.exe
 
-sample_client/sample_client: sample_client/sample_client.c ${BIN_DIR}/libel.a
-	make -C sample_client ${DEBUG}
+sample_client/sample_client.exe: ${CLIENT_OBJS}
+	$(CC) -lc -o $@ ${CLIENT_OBJS} ${BIN_DIR}/libel.a -lm
 
 submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."

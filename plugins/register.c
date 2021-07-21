@@ -43,8 +43,8 @@
  * Each table has entry points to handle the following operations
  *  EQUAL        - Test if two beacons are equal
  *  REMOVE_WORST - Find the lowest priority beacon and remove it from the request ctx
- *  MATCH_CACHE  - Find the best cache line that matches the beacons in the request ctx
- *  ADD_TO_CACHE - Copy request ctx beacons to appropriate cache line
+ *  MATCH_CACHE  - Find the best cacheline that matches the beacons in the request ctx
+ *  ADD_TO_CACHE - Copy request ctx beacons to appropriate cacheline
  */
 extern Sky_plugin_table_t ap_plugin_basic_table;
 extern Sky_plugin_table_t cell_plugin_basic_table;

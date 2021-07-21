@@ -187,18 +187,18 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  *   Compare each cacheline with the request ctx cell beacons:
  *    . compare cells for match using cells and NMR
  *
- *   If any cacheline score meets threshold, accept it.
+ *   If any cacheline score meets threshold, accept it
+ *   setting get_from to index of cacheline and hit to true.
  *   While searching, keep track of best cacheline to
  *   save a new server response. An empty cacheline is
  *   best, a good match is next, oldest is the fall back.
  *   Best cacheline to 'save_to' is set in the request ctx for later use.
  *
  *  @param ctx Skyhook request context
- *  @param idx cacheline index of best match or empty cacheline or -1
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t match(Sky_ctx_t *ctx)
 {
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
@@ -216,11 +216,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     DUMP_REQUEST_CTX(ctx);
     DUMP_CACHE(ctx);
 
-    if (!idx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameter");
-        return SKY_ERROR;
-    }
-
     /* expire old cachelines and note first empty cacheline as best line to save to */
     for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
@@ -228,7 +223,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         if (cl->time != TIME_UNAVAILABLE &&
             (ctx->header.time - cl->time) >
                 (CONFIG(ctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
             cl->time = CACHE_EMPTY;
         }
         /* if line is empty and it is the first one, remember it */
@@ -250,7 +245,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     DUMP_REQUEST_CTX(ctx);
     DUMP_CACHE(ctx);
 
-    /* score each cache line wrt beacon match ratio */
+    /* score each cacheline wrt beacon match ratio */
     for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
         threshold = score = 0;
@@ -303,21 +298,23 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
 
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
+    ctx->get_from = bestc;
 
     if (bestratio * 100 > (float)bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
             bestc, ctx->session->num_cachelines, (int)round((double)bestratio * 100), bestthresh);
-        *idx = bestc;
+        ctx->hit = true;
     } else {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)",
             bestc, (int)round((double)bestratio * 100), bestthresh);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
             bestput, ctx->session->num_cachelines, (int)round((double)bestputratio * 100));
-        *idx = -1;
+        ctx->hit = false;
     }
     return SKY_SUCCESS;
 #else
-    *idx = -1;
+    ctx->from_cache = -1;
+    ctx->hit = false;
     (void)ctx; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif
@@ -457,7 +454,7 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .equal = equal, /* Compare two beacons for equality */
     .compare = compare, /* Compare priority of two beacons for ordering in request context */
     .remove_worst = remove_worst, /* Remove least compare beacon from request context */
-    .cache_match = match, /* Find best match between request context and cache lines */
+    .cache_match = match, /* Find best match between request context and cachelines */
     .add_to_cache = NULL, /* Copy request context beacons to a cacheline */
 #ifdef UNITTESTS
     .unit_tests = unit_tests, /* Unit Tests */

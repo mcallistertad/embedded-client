@@ -59,8 +59,8 @@
 #define has_gnss(c) ((c) != NULL && !isnan((c)->gnss.lat))
 #define CACHE_EMPTY ((time_t)0)
 #define CONFIG_UPDATE_DUE ((time_t)0)
-#define IS_CACHE_HIT(c) ((c)->get_from != -1)
-#define IS_CACHE_MISS(c) ((c)->get_from == -1)
+#define IS_CACHE_HIT(c) (c->get_from != -1 && (c)->hit)
+#define IS_CACHE_MISS(c) ((c)->hit == false)
 
 #define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
 
@@ -221,7 +221,7 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-/*! \brief Session Context - holds parameters defined when Libel is opened and the cache lines
+/*! \brief Session Context - holds parameters defined when Libel is opened and the cachelines
  */
 typedef struct sky_session {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
@@ -230,7 +230,6 @@ typedef struct sky_session {
     Sky_loggerfn_t logf; /* User logging fn */
     Sky_log_level_t min_level; /* User log level */
     Sky_timefn_t timefn; /* User time fn */
-    bool report_cache; /* send cached or request beacons */
     void *plugins; /* root of registered plugin list */
     uint32_t id_len; /* device ID num_beacons */
     uint8_t device_id[MAX_DEVICE_ID]; /* device ID */
@@ -245,7 +244,7 @@ typedef struct sky_session {
     uint32_t partner_id; /* partner ID */
     uint8_t aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
-    int num_cachelines; /* number of cache lines */
+    int num_cachelines; /* number of cachelines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 #endif
     Sky_config_t config; /* dynamic config parameters */
@@ -260,6 +259,7 @@ typedef struct sky_ctx {
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
     Gnss_t gnss; /* GNSS info */
+    bool hit; /* status of search of cache for match to new scan (true/false) */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
     Sky_session_t *session;
@@ -276,7 +276,7 @@ bool beacon_in_cacheline(
 int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_ctx_t *ctx);
-int get_from_cache(Sky_ctx_t *ctx);
+int search_cache(Sky_ctx_t *ctx);
 Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
 
 #endif

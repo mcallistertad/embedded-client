@@ -28,7 +28,7 @@
 #include "../libel/config.h"
 
 typedef struct client_config {
-    char *filename;
+    char *configfile;
     uint16_t port;
     uint16_t partner_id;
 

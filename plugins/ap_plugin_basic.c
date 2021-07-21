@@ -350,18 +350,18 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  *    . If just a few APs, compare all APs with higher threshold
  *    . If no APs, compare cells for 100% match
  *
- *   If any cacheline score meets threshold, accept it.
+ *   If any cacheline score meets threshold, accept it
+ *   setting hit to true and from_cache to cachline index.
  *   While searching, keep track of best cacheline to
  *   save a new server response. An empty cacheline is
  *   best, a good match is next, oldest is the fall back.
- *   Best cacheline to 'save_to' is set in the request ctx for later use.
+ *   Best cacheline to 'save_to' is set to cacheline index for later use.
  *
  *  @param ctx Skyhook request context
- *  @param idx cacheline index of best match or empty cacheline or -1
  *
- *  @return index of best match or empty cacheline or -1
+ *  @return Sky_status_t SKY_SUCCESS if search produced result, SKY_ERROR otherwise
  */
-static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t match(Sky_ctx_t *ctx)
 {
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
@@ -377,11 +377,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     int bestthresh = 0;
     Sky_cacheline_t *cl;
 
-    if (!idx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameter");
-        return SKY_ERROR;
-    }
-
     /* expire old cachelines and note first empty cacheline as best line to save to */
     for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
@@ -389,7 +384,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         if (cl->time != CACHE_EMPTY &&
             (ctx->header.time - cl->time) >
                 (CONFIG(ctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
+            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
             cl->time = CACHE_EMPTY;
         }
         /* if line is empty and it is the first one, remember it */
@@ -411,7 +406,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     DUMP_REQUEST_CTX(ctx);
     DUMP_CACHE(ctx);
 
-    /* score each cache line wrt beacon match ratio */
+    /* score each cacheline wrt beacon match ratio */
     for (i = 0; i < ctx->session->num_cachelines; i++) {
         cl = &ctx->session->cacheline[i];
         threshold = score = 0;
@@ -427,8 +422,7 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
         } else {
             /* count number of matching APs in request ctx and cache */
             if ((num_aps_cached = count_cached_aps_in_request_ctx(ctx, cl)) < 0) {
-                *idx = -1;
-                return SKY_SUCCESS;
+                return SKY_ERROR;
             } else if (NUM_APS(ctx) && NUM_APS(cl)) {
                 /* Score based on ALL APs */
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
@@ -464,20 +458,22 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
     /* make a note of the best match used by add_to_cache */
     ctx->save_to = bestput;
 
+    ctx->get_from = bestc;
     if ((bestratio * 100) > (float)bestthresh) {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
             bestc, ctx->session->num_cachelines, (int)round((double)bestratio * 100), bestthresh);
-        *idx = bestc;
+        ctx->hit = true;
     } else {
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No Cache match found. Cache %d, best score %d (vs %d)",
             bestc, (int)round((double)bestratio * 100), bestthresh);
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
             bestput, ctx->session->num_cachelines, (int)round((double)bestputratio * 100));
-        *idx = -1;
+        ctx->get_from = false;
     }
     return SKY_SUCCESS;
 #else
-    *idx = -1;
+    ctx->get_from = -1;
+    ctx->hit = false;
     (void)ctx; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif
@@ -881,7 +877,7 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .equal = equal, /* Compare two beacons for equality*/
     .compare = compare, /*Compare two beacons for ordering in request context */
     .remove_worst = remove_worst, /* Remove lowest priority beacon from  */
-    .cache_match = match, /* Find best match between request context and cache lines */
+    .cache_match = match, /* Find best match between request context and cachelines */
     .add_to_cache = to_cache, /* Copy request context beacons to a cacheline */
 #ifdef UNITTESTS
     .unit_tests = unit_tests, /* Unit Tests */

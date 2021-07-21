@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include "libel.h"
 #include "send.h"
-#include "math.h"
 #include "config.h"
 
 typedef enum {
@@ -109,7 +109,7 @@ struct gnss_scan gnss1 =
 
 /* Scan set 2 */
 struct ap_scan aps2[] =
-    { { "287AEEBA96C0", 0, 2462, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -123,9 +123,10 @@ struct gnss_scan gnss2 =
 
 /* Scan set 3 */
 struct ap_scan aps3[] =
-    { { "287AEEBA96C0", 0, 2462, -89, 0 },
-      { "287AEEBA96C3", 0, 2412, -89, 0 },
-      { "287AEEBA96C7", 0, 2412, -89, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "74DAD95E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -134,17 +135,11 @@ struct cell_scan cells3[] =
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-struct gnss_scan gnss3 =
-   {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-/* Scan set 4 */
+/* Scan set 4 - cache match */
 struct ap_scan aps4[] =
-    { { "98F199A3D313", 0, 2412, -40, 0 },
-      { "54EC2F6730D8", 0, 2412, -53, 0 },
-      { "54EC2F673058", 0, 2412, -60, 0 },
-      { "54EC2F66FEF8", 0, 2412, -65, 0 },
-      { "54EC2F65ACC8", 0, 2412, -66, 0 },
-      { "54EC2F672DD8", 0, 2412, -66, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -152,23 +147,16 @@ struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-struct gnss_scan gnss4 =
-   {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-/* Scan set 5 */
+/* Scan set 5 - cache match */
 struct ap_scan aps5[] =
-    { { "98F199A3D313", 0, 2412, -40, 0 },
-      { "54EC2F6730D8", 0, 2412, -53, 0 },
-      { "54EC2F673058", 0, 2412, -60, 0 },
-      { "54EC2F66FEF8", 0, 2412, -65, 0 },
-      { "54EC2F65ACC8", 0, 2412, -66, 0 },
-      { "54EC2F672DD8", 0, 2412, -66, 0 },
+    { { "74DADA5E1015", 300, 3660, -88, 0 },
+      { "B482F1A46221", 30, 3660, -89, 0 },
+      { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
 struct cell_scan cells5[] =
-    { { TYPE_LTE, 1, -68, 411, 53, 36375, 34718211, 368, 5901, SKY_UNKNOWN_TA, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
 struct gnss_scan gnss5 =
     {0, 35.700388, 139.751840, 37, 0, 0, 0, 0, 7};
@@ -227,11 +215,11 @@ static int save_session_context(void *p, char *file_name)
 
 /*! \brief restore saved cache state
  *
- *  @param file_name name of file to read
+ *  @param pointer to configuration
  *
  *  @returns NULL for failure to restore cache state, pointer to c state otherwise
  */
-static void *retrieve_session_context(char *file_name)
+static void *retrieve_session_context(Config_t *config)
 {
     void *pstate;
 
@@ -239,9 +227,9 @@ static void *retrieve_session_context(char *file_name)
     uint32_t state_size;
     FILE *fio;
 
-    if (strlen(file_name) != 0) {
+    if (!config->factory_reset && strlen(config->statefile) != 0) {
         /* Open file and read header */
-        if ((fio = fopen(file_name, "r")) != NULL) {
+        if ((fio = fopen(config->statefile, "r")) != NULL) {
             if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
                 /* query header for actual size */
                 if ((state_size = sky_sizeof_session_ctx(tmp)) > 0) {
@@ -249,16 +237,22 @@ static void *retrieve_session_context(char *file_name)
                     pstate = malloc(state_size);
                     if (fread(pstate, state_size, 1, fio) == 1) {
                         fclose(fio);
-                        printf("Restored state from %s (%d bytes)\n", file_name, state_size);
+                        printf(
+                            "Restored state from %s (%d bytes)\n", config->statefile, state_size);
                         return pstate;
                     }
-                }
-            }
+                } else
+                    printf("ERROR: sky_sizeof_session_ctx() checksum %s failed %d\n",
+                        config->statefile, state_size);
+            } else
+                printf("ERROR: sky_sizeof_session_ctx() read for %s failed\n", config->statefile);
             fclose(fio);
-        }
+        } else
+            printf("ERROR: sky_sizeof_session_ctx() fopen for %s failed\n", config->statefile);
     }
-    printf("Failed to retrieve state from %s.\n", file_name);
-    state_size = sky_sizeof_session_ctx(NULL); /* size of new buffere */
+    if (config->factory_reset)
+        printf("Clearing state due to Factory reset\n");
+    state_size = sky_sizeof_session_ctx(NULL); /* Get size of new buffer */
     pstate = malloc(state_size);
     memset(pstate, 0, state_size);
     printf("Allocated empty state buffer %d bytes\n", state_size);
@@ -369,14 +363,13 @@ static time_t mytime(time_t *t)
  *  @param gp pointer to gnss data
  *  @param ul_data pointer to uplink data buffer
  *  @param data_len length of uplink data buffer
- *  @param server_request true to force server_request
  *  @param loc pointer to location structure for result
  *
  *  @returns true if loc was updated, otherwise false
  */
 static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
     struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
-    bool server_request, Sky_location_t *loc)
+    Sky_location_t *loc)
 {
     uint32_t i;
     uint32_t request_size;
@@ -385,6 +378,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     time_t timestamp = mytime(NULL);
     Sky_status_t ret_status;
     Sky_errno_t sky_errno;
+    bool cache_hit = false;
 
     /* Start new request */
     if (sky_new_request(ctx, bufsize, session, ul_data, data_len, &sky_errno) != ctx) {
@@ -455,42 +449,57 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
         }
     }
+    /* All data has been added to new scan info */
 
+    /* check to see if new scan matches cached scan (i.e. test for stationarity) */
+    sky_search_cache(ctx, &sky_errno, &cache_hit, loc);
+
+    /* if cache hit, do one of the following
+     *  a) if regular reports of position are priority, encode cached scan and send to server
+     *  b) if minimizing network traffic is priority, simply use loc from cache in application
+     *  c) if network resources allow all locations to be reported to the server
+     *    - if cached scan (and associated location estimate) is not suitable for some reason,
+     *      clear cache hit status by calling sky_ignore_cache_hit() and then call sky_encode_request()
+     *    - otherwise, call sky_encode_request() (which will encode the cached location in case of cache hit)
+     *
+     * if cache miss
+     *  call sky_encode_request() (which will encode the new scan information)
+     */
+
+    if (cache_hit) {
+        /* new scan matches cached scan. Application may choose to use the
+         * associated location estimate here, and then simply return, without reporting
+         * the cached location estimation to the server
+         */
+
+        /* if (low confidence in cached location)
+         *     // remove cache hit status. New scan will be encoded in request
+         *     cache_hit = false;
+         *     sky_ignore_cache_hit(ctx, &sky_errno);
+         */
+        if (cache_hit)
+            printf("Location found in cache\n");
+    }
+
+/* Encode the appropriate scan into a server request.
+ * If cache hit status is true, the scan is taken from the matching cacheline
+ * otherwise, the new scan is used to encode the request.
+ */
 retry_after_auth:
-    /* Determine how big the network request buffer must be, and allocate a */
-    /* buffer of that length. This function must be called for each request. */
-    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) != SKY_SUCCESS) {
-        printf("Error getting size of request buffer: %s\n", sky_perror(sky_errno));
+    /* Determine how big the network request buffer must be, and allocate a
+     * buffer of that length. This function must be called for each request */
+    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
+        printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
         return false;
-    }
-    printf("Required buffer size = %d\n", request_size);
-
-    if ((prequest = malloc(request_size)) == NULL) {
-        printf("Error allocating request buffer\n");
+    } else if ((prequest = malloc(request_size)) == NULL) {
+        printf("Can't allocate request buf\n");
         return false;
-    }
-
-    /* Finalize the request. This will return either SKY_FINALIZE_LOCATION, in */
-    /* which case the loc parameter will contain the location result which was */
-    /* obtained from the cache, or SKY_FINALIZE_REQUEST, which means that the */
-    /* request buffer must be sent to the Skyhook server. */
-    Sky_finalize_t finalize =
-        sky_finalize_request(ctx, &sky_errno, prequest, request_size, loc, &response_size);
-
-    switch (finalize) {
-    case SKY_FINALIZE_ERROR:
+    } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
+               SKY_ERROR) {
         free(prequest);
-        printf("sky_finalize_request error '%s'", sky_perror(sky_errno));
+        printf("sky_encode_request error '%s'", sky_perror(sky_errno));
         return false;
-        break;
-    case SKY_FINALIZE_LOCATION:
-        /* Location was found in the cache. No need to go to server. */
-        printf("Location found in cache\n");
-        if (!server_request)
-            return true;
-        printf("Making server request\n");
-        /* fall through */
-    case SKY_FINALIZE_REQUEST:
+    } else {
         /* send the request to the server. */
         response = malloc(response_size);
         if (response == NULL) {
@@ -498,10 +507,10 @@ retry_after_auth:
             return false;
         }
         printf("server=%s, port=%d\n", config->server, config->port);
-        printf("Sending request of length %d to server\nResponse buffer length %d %s\n",
-            request_size, response_size, response != NULL ? "alloc'ed" : "bad alloc");
-        int32_t rc = send_request((char *)prequest, (int)request_size, response, response_size,
-            config->server, config->port);
+        printf("Sending request of length %d to server\nResponse buffer length %d\n", request_size,
+            response_size);
+        int32_t rc = send_request(
+            (char *)prequest, request_size, response, response_size, config->server, config->port);
         free(prequest);
 
         if (rc > 0)
@@ -519,6 +528,8 @@ retry_after_auth:
         if (ret_status == SKY_SUCCESS) {
             return true;
         } else {
+            printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
+            /* Repeat request if Authentication was required for last message */
             switch (sky_errno) {
             case SKY_AUTH_RETRY:
                 goto retry_after_auth;
@@ -537,10 +548,9 @@ retry_after_auth:
             default:
                 printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
             }
+            return false;
         }
-        break;
     }
-    return false;
 }
 
 static void report_location(Sky_location_t *loc)
@@ -548,8 +558,9 @@ static void report_location(Sky_location_t *loc)
     char hex_data[200];
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
         sky_pserver_status(loc->location_status), (int)loc->lat,
-        (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
-        (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, loc->location_source);
+        (int)fabs(round(1000000.0 * (loc->lat - truncf(loc->lat)))), (int)loc->lon,
+        (int)fabs(round(1000000.0 * (loc->lon - truncf(loc->lon)))), loc->hpe,
+        loc->location_source);
     bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, loc->dl_app_data_len);
     printf("Downlink data: %s(%d)\n", hex_data, loc->dl_app_data_len);
 }
@@ -588,25 +599,21 @@ int main(int argc, char *argv[])
         exit(-1);
     print_config(&config);
 
-    /* Retrieve saved state, if any. State includes cached scans and
+    /* Retrieve saved state, if any. State includes cached scans (with associated location estimate) and
      * registration information. Failure to retrieve state will force a
      * reregistration sequence and will limit stationary detection,
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    if (config.factory_reset)
-        pstate = NULL;
-    else
-        pstate = retrieve_session_context(
-            config.statefile); /* returns a non-NULL pointer if space allocated */
+    pstate = retrieve_session_context(&config); /* returns a non-NULL pointer if space allocated */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
      * time a location is to be performed.
      */
-    ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
-        config.key, config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime,
-        config.debounce);
+    ret_status =
+        sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
+            config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime);
     if (ret_status != SKY_SUCCESS) {
         printf("sky_open returned error (%s), Can't continue\n", sky_perror(sky_errno));
         exit(-1);
@@ -622,41 +629,41 @@ int main(int argc, char *argv[])
      */
 #if 0
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, false, &loc) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 #endif
-    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, &gnss4, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps5, cells5, &gnss5, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
     if (locate(ctx, bufsize, pstate, &config, aps6, cells6, &gnss6, config.ul_app_data,
-            config.ul_app_data_len, true, &loc) == false) {
+            config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
