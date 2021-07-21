@@ -125,6 +125,7 @@ struct gnss_scan gnss2 =
 struct ap_scan aps3[] =
     { { "74DADA5E1015", 300, 3660, -88, 0 },
       { "74DAD95E1015", 300, 3660, -88, 0 },
+      { "74DADB5E1015", 300, 3660, -88, 0 },
       { "B482F1A46221", 30, 3660, -89, 0 },
       { "EC22809E00DB", 300, 3660, -90, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
@@ -140,6 +141,7 @@ struct ap_scan aps4[] =
     { { "74DADA5E1015", 300, 3660, -88, 0 },
       { "B482F1A46221", 30, 3660, -89, 0 },
       { "EC22809E00DB", 300, 3660, -90, 0 },
+      { "74DADB5E1015", 300, 3660, -88, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
@@ -147,7 +149,7 @@ struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-/* Scan set 5 - cache match */
+/* Scan set 5 - cache miss due to gnss */
 struct ap_scan aps5[] =
     { { "74DADA5E1015", 300, 3660, -88, 0 },
       { "B482F1A46221", 30, 3660, -89, 0 },
@@ -627,7 +629,6 @@ int main(int argc, char *argv[])
      * device would perform locations periodically (perhaps once every
      * hour) rather than one immediately after another.
      */
-#if 0
     if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
@@ -647,7 +648,6 @@ int main(int argc, char *argv[])
     } else {
         report_location(&loc);
     }
-#endif
     if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
