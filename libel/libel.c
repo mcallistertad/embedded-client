@@ -1051,12 +1051,11 @@ Sky_status_t sky_search_cache(
 #endif
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
-#else
+#endif
     ctx->hit = false;
     ctx->session->cache_hits = 0; /* report 0 for cache miss */
     if (cache_hit != NULL)
         *cache_hit = false;
-#endif
 
     loc->location_source = SKY_LOCATION_SOURCE_UNKNOWN;
     loc->location_status = SKY_LOCATION_STATUS_UNABLE_TO_LOCATE;
