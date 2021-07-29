@@ -134,11 +134,10 @@ rm -rf ${packages}
 if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
     if [[ $OSTYPE == 'darwin'* ]]; then
         echo 'Running on macOS'
-        if [[ ! command -v gcp &> /dev/null ]]; then
-            echo 'gcp not found. Maybe do "brew install coreutils"?'
-            exit
-        else
+        if command -v gcp &> /dev/null ; then
             CP=cp
+        else
+            err_exit 'gcp not found. Maybe do "brew install coreutils"?'
         fi
     else
         CP=cp
