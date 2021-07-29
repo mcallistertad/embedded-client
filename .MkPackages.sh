@@ -135,7 +135,7 @@ if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
     if [[ $OSTYPE == 'darwin'* ]]; then
         echo 'Running on macOS'
         if command -v gcp &> /dev/null ; then
-            CP=cp
+            CP=gcp
         else
             err_exit 'gcp not found. Maybe do "brew install coreutils"?'
         fi
