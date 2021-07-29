@@ -46,8 +46,6 @@
 
 /* Local functions */
 static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
-static bool validate_partner_id(uint32_t partner_id);
-static bool validate_aes_key(uint8_t aes_key[AES_SIZE]);
 static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Initialize Skyhook library and verify access to resources
@@ -154,8 +152,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     config_defaults(session);
 
     /* Sanity check */
-    if (!validate_device_id(device_id, id_len) || !validate_partner_id(partner_id) ||
-        !validate_aes_key(aes_key))
+    if (!validate_device_id(device_id, id_len) || aes_key == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     session->id_len = id_len;
@@ -286,7 +283,7 @@ Sky_ctx_t *sky_new_request(void *request_ctx, uint32_t bufsize, void *session_bu
     Sky_ctx_t *ctx = (Sky_ctx_t *)request_ctx;
     time_t now;
 
-    if (bufsize != (uint32_t)sky_sizeof_request_ctx() || request_ctx == NULL || s == NULL) {
+    if (bufsize != (uint32_t)sky_sizeof_request_ctx() || ctx == NULL || s == NULL) {
         if (sky_errno != NULL)
             *sky_errno = SKY_ERROR_BAD_PARAMETERS;
         return NULL;
@@ -380,43 +377,26 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint8_t m
 {
     Beacon_t b;
 
+    if (!ctx)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
         is_connected ? "serve " : "",
-        (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+        (int)timestamp == TIME_UNAVAILABLE ? 0 : (int)(ctx->header.time - timestamp));
 
     /* Create AP beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_AP;
     b.h.connected = (int8_t)is_connected;
-    if (rssi > -10 || rssi < -127)
-        rssi = -1;
     b.h.rssi = rssi;
     memcpy(b.ap.mac, mac, MAC_SIZE);
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (timestamp != TIME_UNAVAILABLE && timestamp < TIMESTAMP_2019_03_01)
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
-    else if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
-
-    if (frequency < 2400 || frequency > 6000)
-        frequency = 0; /* 0's not sent to server */
     b.ap.freq = frequency;
     b.ap.property.in_cache = false;
     b.ap.property.used = false;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Add an lte cell beacon to request context
@@ -447,58 +427,21 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
             mcc, mnc, tac, e_cellid, pci, earfcn, ta, rsrp, is_connected ? "serve, " : "",
             (int)(ctx->header.time - timestamp));
 
-    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
-     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
-     * specification of primary IDs is considered an error.
-     */
-    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
-        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
-        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
-        (e_cellid != SKY_UNKNOWN_ID4 && (e_cellid < 0 || e_cellid > 268435455)) ||
-        (pci != SKY_UNKNOWN_ID5 && pci > 503) || (earfcn != SKY_UNKNOWN_ID6 && earfcn > 262143) ||
-        (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 7690)))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_LTE;
     b.h.connected = (int8_t)is_connected;
-    if (rsrp > -40 || rsrp < -140)
-        rsrp = -1;
     b.h.rssi = rsrp;
-    /* If beacon has meaningful timestamp */
-    /* If time is not available, pass all beacons with age 0 */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
     b.cell.id3 = tac;
     b.cell.id4 = e_cellid;
     b.cell.id5 = pci;
     b.cell.freq = earfcn;
-    if (!is_cell_nmr(&b))
-        b.cell.ta = ta;
-    else
-        b.cell.ta = SKY_UNKNOWN_TA;
+    b.cell.ta = ta;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Add an lte cell neighbor beacon to request context
@@ -545,48 +488,19 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, ta %d, rssi %d, %sage %d", lac, ci, mcc,
         mnc, ta, rssi, is_connected ? "serve, " : "", (int)(ctx->header.time - timestamp));
 
-    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
-     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
-     * specification of primary IDs is considered an error.
-     */
-    if (mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || lac == SKY_UNKNOWN_ID3 ||
-        ci == SKY_UNKNOWN_ID4)
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if (mcc < 200 || mcc > 799 || mnc > 999 || lac == 0 ||
-        (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 63)))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_GSM;
     b.h.connected = (int8_t)is_connected;
-    if (rssi > -32 || rssi < -128)
-        rssi = -1;
     b.h.rssi = rssi;
-    /* If beacon has meaningful timestamp */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
     b.cell.id3 = lac;
     b.cell.id4 = ci;
     b.cell.ta = ta;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Adds a umts cell beacon to the request context
@@ -611,56 +525,28 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, in
 {
     Beacon_t b;
 
+    if (!ctx)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || ucid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
-
-    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
-     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
-     * specification of primary IDs is considered an error.
-     */
-    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || ucid == SKY_UNKNOWN_ID4) &&
-        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && ucid == SKY_UNKNOWN_ID4))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && (mnc > 999)) ||
-        (ucid != SKY_UNKNOWN_ID4 && (ucid < 0 || ucid > 268435455)) ||
-        (psc != SKY_UNKNOWN_ID5 && (psc < 0 || psc > 511)) ||
-        (uarfcn != SKY_UNKNOWN_ID6 && (uarfcn < 412 || uarfcn > 10838)))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_UMTS;
     b.h.connected = (int8_t)is_connected;
-    if (rscp > -20 || rscp < -120)
-        rscp = -1;
     b.h.rssi = rscp;
-    /* If beacon has meaningful timestamp */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
     b.cell.id3 = lac;
     b.cell.id4 = ucid;
     b.cell.id5 = psc;
+    b.cell.freq = uarfcn;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Adds a umts cell neighbor beacon to the request context
@@ -701,41 +587,24 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, ui
 {
     Beacon_t b;
 
+    if (!ctx)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
         is_connected ? "serve, " : "",
         (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
-
-    /* Range check parameters */
-    if (sid > 32767 || nid < 0 || nid > 65535 || bsid < 0 || bsid > 65535)
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_CDMA;
     b.h.connected = (int8_t)is_connected;
-    if (rssi > -49 || rssi < -140)
-        rssi = -1;
     b.h.rssi = rssi;
-    /* If beacon has meaningful timestamp */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     b.cell.id2 = sid;
     b.cell.id3 = nid;
     b.cell.id4 = bsid;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Adds a nb_iot cell beacon to the request context
@@ -760,50 +629,20 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
 {
     Beacon_t b;
 
+    if (!ctx)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
             mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
-
-    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
-     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
-     * specification of primary IDs is considered an error.
-     */
-    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || e_cellid == SKY_UNKNOWN_ID4) &&
-        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && e_cellid == SKY_UNKNOWN_ID4))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
-        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
-        (e_cellid != SKY_UNKNOWN_ID4 && (e_cellid < 0 || e_cellid > 268435455)) ||
-        (ncid != SKY_UNKNOWN_ID5 && (ncid < 0 || ncid > 503)) ||
-        (earfcn != SKY_UNKNOWN_ID6 && (earfcn < 0 || earfcn > 262143)))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_NBIOT;
     b.h.connected = (int8_t)is_connected;
-    if (nrsrp > -44 || nrsrp < -156)
-        nrsrp = -1;
     b.h.rssi = nrsrp;
-    /* If beacon has meaningful timestamp */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
     b.cell.id3 = tac;
@@ -811,7 +650,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, 
     b.cell.id5 = ncid;
     b.cell.freq = earfcn;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Adds a nb_iot cell neighbor beacon to the request context
@@ -864,45 +703,11 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
             mcc, mnc, tac, nci, pci, nrarfcn, ta, csi_rsrp, is_connected ? "serve, " : "",
             (int)timestamp == -1 ? -1 : (int)(ctx->header.time - timestamp));
 
-    /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
-     * be unvalued (meaning user is attempting to add a neighbor cell). Partial
-     * specification of primary IDs is considered an error.
-     */
-    if ((mcc == SKY_UNKNOWN_ID1 || mnc == SKY_UNKNOWN_ID2 || nci == SKY_UNKNOWN_ID4) &&
-        !(mcc == SKY_UNKNOWN_ID1 && mnc == SKY_UNKNOWN_ID2 && nci == SKY_UNKNOWN_ID4))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    /* range check parameters */
-    if ((mcc != SKY_UNKNOWN_ID1 && (mcc < 200 || mcc > 799)) ||
-        (mnc != SKY_UNKNOWN_ID2 && mnc > 999) ||
-        (nci != SKY_UNKNOWN_ID4 && (nci < 0 || nci > 68719476735)) ||
-        (tac != SKY_UNKNOWN_ID3 && (tac < 1 || tac > 65535)) ||
-        (pci != SKY_UNKNOWN_ID5 && (pci < 0 || pci > 1007)) ||
-        (nrarfcn != SKY_UNKNOWN_ID6 && (nrarfcn < 0 || nrarfcn > 3279165)) ||
-        (ta != SKY_UNKNOWN_TA && (ta < 0 || ta > 3846)))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-
-    if (!ctx->session->open_flag)
-        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
-
-    if (!validate_request_ctx(ctx))
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
     b.h.magic = BEACON_MAGIC;
     b.h.type = SKY_BEACON_NR;
     b.h.connected = (int8_t)is_connected;
-    /* If beacon has meaningful timestamp */
-    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
-    if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
-        b.h.age = 0;
-    else if (ctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        b.h.age = ctx->header.time - timestamp;
-    else
-        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
-    if (csi_rsrp > -40 || csi_rsrp < -140)
-        csi_rsrp = -1;
     b.h.rssi = csi_rsrp;
     b.cell.id1 = mcc;
     b.cell.id2 = mnc;
@@ -910,12 +715,9 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, uint
     b.cell.id4 = nci;
     b.cell.id5 = pci;
     b.cell.freq = nrarfcn;
-    if (!is_cell_nmr(&b))
-        b.cell.ta = ta;
-    else
-        b.cell.ta = SKY_UNKNOWN_TA;
+    b.cell.ta = ta;
 
-    return add_beacon(ctx, sky_errno, &b);
+    return add_beacon(ctx, sky_errno, &b, timestamp);
 }
 
 /*! \brief Adds a NR cell neighbor beacon to the request context
@@ -959,6 +761,9 @@ Sky_status_t sky_add_gnss(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, float lat, flo
     uint16_t hpe, float altitude, uint16_t vpe, float speed, float bearing, uint16_t nsat,
     time_t timestamp)
 {
+    if (!ctx)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d.%06d,%d.%06d, hpe %d, alt %d.%02d, vpe %d,", (int)lat,
         (int)fabs(round(1000000.0 * (lat - (int)lat))), (int)lon,
         (int)fabs(round(1000000.0 * (lon - (int)lon))), hpe, (int)altitude,
@@ -1703,20 +1508,6 @@ static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
         return true;
 }
 
-/*! \brief sanity check the partner_id
- *
- *  @param partner_id this is expected to be in the range (1 - ???)
- *
- *  @return true or false
- */
-static bool validate_partner_id(uint32_t partner_id)
-{
-    if (partner_id == 0)
-        return false;
-    else
-        return true; /* TODO check upper bound? */
-}
-
 /*! \brief safely return bounded length of string
  *
  *  @param pointer to string
@@ -1732,20 +1523,6 @@ static size_t strnlen_(char *s, size_t maxlen)
         return p - s;
     } else
         return maxlen;
-}
-
-/*! \brief sanity check the aes_key
- *
- *  @param aes_key this is expected to be a binary 16 byte value
- *
- *  @return true or false
- */
-static bool validate_aes_key(uint8_t aes_key[AES_SIZE])
-{
-    if (aes_key == NULL)
-        return false;
-    else
-        return true; /* TODO check for non-trivial values? e.g. zero */
 }
 
 #ifdef UNITTESTS

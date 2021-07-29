@@ -26,8 +26,6 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
-#include <stdio.h>
-#include <stdlib.h>
 #define SKY_LIBEL
 #include "libel.h"
 
@@ -124,12 +122,6 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
 {
     int j;
 
-    /* sanity checks */
-    if (!validate_request_ctx(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid params. Beacon type %s", sky_pbeacon(b));
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    }
-
     /* check for duplicate */
     if (is_ap_type(b) || is_cell_type(b)) {
         for (j = 0; j < NUM_BEACONS(ctx); j++) {
@@ -146,7 +138,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
                         b->h.connected == ctx->beacon[j].h.connected &&
                         b->h.rssi > ctx->beacon[j].h.rssi)) {
                     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate");
-                    break; /* fall through to remove existing duplicate */
+                    break; /* break for loop and remove existing duplicate */
                 } else {
                     LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate");
                     return set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -162,7 +154,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
 
-    /* find initial position to insert based on type */
+    /* find position to insert based on plugin compare operation */
     for (j = 0; j < NUM_BEACONS(ctx); j++) {
         if (is_beacon_better(ctx, b, &ctx->beacon[j]) > 0)
             break;
@@ -219,21 +211,33 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  *
  *  @param ctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
+ *  @param b beacon to be added
+ *  @param timestamp time that the beacon was scanned
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
+Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp)
 {
     int n;
 
-    if (is_ap_type(b)) {
-        if (!validate_mac(b->ap.mac, ctx))
-            return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    }
+    if (!validate_request_ctx(ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
 
-    /* connected flag for nmr beacons always false */
-    if (is_cell_nmr(b))
-        b->h.connected = false;
+    if (!ctx->session->open_flag)
+        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
+
+    if (!validate_beacon(b, ctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
+    if (timestamp != TIME_UNAVAILABLE && timestamp < TIMESTAMP_2019_03_01)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
+    else if (ctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
+        b->h.age = 0;
+    else if (ctx->header.time >= timestamp)
+        b->h.age = ctx->header.time - timestamp;
+    else
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
 #if CACHE_SIZE
     /* Update the AP */
@@ -273,7 +277,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 #if CACHE_SIZE
 /*! \brief check if a beacon is in cache
  *
- *   Scan all cachelines in the cache. 
+ *   Scan all cachelines in the cache.
  *   If the given beacon is found in the cache true is returned otherwise
  *   false. A beacon may appear in multiple cachelines.
  *   If prop is not NULL, algorithm searches all caches for best match

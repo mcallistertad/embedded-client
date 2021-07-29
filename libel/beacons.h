@@ -268,7 +268,7 @@ typedef struct sky_ctx {
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
 } Sky_ctx_t;
 
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
+Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
 int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
 bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
