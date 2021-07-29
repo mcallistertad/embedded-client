@@ -134,7 +134,7 @@ rm -rf ${packages}
 if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
     if [[ $OSTYPE == 'darwin'* ]]; then
         echo 'Running on macOS'
-        if ! command -v gcp &> /dev/null then
+        if [[ ! command -v gcp &> /dev/null ]]; then
             echo 'gcp not found. Maybe do "brew install coreutils"?'
             exit
         else
@@ -142,6 +142,7 @@ if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
         fi
     else
         CP=cp
+    fi
 
     $CP -r . ${scratch}/${archive} || err_exit "Failed to copy package files to ${scratch}"
 
