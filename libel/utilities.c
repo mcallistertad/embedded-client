@@ -51,13 +51,153 @@ Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code)
     return (code == SKY_ERROR_NONE) ? SKY_SUCCESS : SKY_ERROR;
 }
 
+/*! \brief validate a beacon
+ *
+ *  @param b the beacon to be validated
+ *  @param ctx request ctx buffer
+ *
+ *  No check is made to insist that NMRs have appropriate UNKNOWN values
+ *
+ *  @return true if beacon is valid, else false
+ */
+bool validate_beacon(Beacon_t *b, Sky_ctx_t *ctx)
+{
+    if (b == NULL || b->h.magic != BEACON_MAGIC)
+        return false;
+    switch (b->h.type) {
+    case SKY_BEACON_AP:
+        if (b->h.rssi > -10 || b->h.rssi < -127)
+            b->h.rssi = -1;
+        if (b->ap.freq < 2400 || b->ap.freq > 6000)
+            b->ap.freq = 0; /* 0's not sent to server */
+        return validate_mac(b->ap.mac, ctx);
+    case SKY_BEACON_LTE:
+        if (b->h.rssi > -40 || b->h.rssi < -140)
+            b->h.rssi = -1;
+        /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
+         * be unvalued (meaning user is attempting to add a neighbor cell). Partial
+         * specification of primary IDs is considered an error.
+         */
+        if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+                b->cell.id4 == SKY_UNKNOWN_ID4) &&
+            !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
+                b->cell.id4 == SKY_UNKNOWN_ID4))
+            return false;
+
+        /* range check parameters */
+        if ((b->cell.id1 != SKY_UNKNOWN_ID1 &&
+                (b->cell.id1 < 200 || b->cell.id1 > 799)) || /* mcc */
+            (b->cell.id2 != SKY_UNKNOWN_ID2 && b->cell.id2 > 999) || /* mnc */
+            (b->cell.id3 != SKY_UNKNOWN_ID3 &&
+                (b->cell.id3 < 1 || b->cell.id3 > 65535)) || /* tac */
+            (b->cell.id4 != SKY_UNKNOWN_ID4 &&
+                (b->cell.id4 < 0 || b->cell.id4 > 268435455)) || /* e_cellid */
+            (b->cell.id5 != SKY_UNKNOWN_ID5 && b->cell.id5 > 503) || /* pci */
+            (b->cell.freq != SKY_UNKNOWN_ID6 && b->cell.freq > 262143) || /* earfcn */
+            (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 7690))) /* ta */
+            return false;
+        break;
+    case SKY_BEACON_NBIOT:
+        if (b->h.rssi > -44 || b->h.rssi < -156)
+            b->h.rssi = -1;
+        if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+                b->cell.id4 == SKY_UNKNOWN_ID4) &&
+            !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
+                b->cell.id4 == SKY_UNKNOWN_ID4))
+            return false;
+        /* range check parameters */
+        if ((b->cell.id1 != SKY_UNKNOWN_ID1 &&
+                (b->cell.id1 < 200 || b->cell.id1 > 799)) || /* mcc */
+            (b->cell.id2 != SKY_UNKNOWN_ID2 && b->cell.id2 > 999) || /* mnc */
+            (b->cell.id3 != SKY_UNKNOWN_ID3 &&
+                (b->cell.id3 < 1 || b->cell.id3 > 65535)) || /* tac */
+            (b->cell.id4 != SKY_UNKNOWN_ID4 &&
+                (b->cell.id4 < 0 || b->cell.id4 > 268435455)) || /* e_cellid */
+            (b->cell.id5 != SKY_UNKNOWN_ID5 && (b->cell.id5 < 0 || b->cell.id5 > 503)) || /* ncid */
+            (b->cell.freq != SKY_UNKNOWN_ID6 &&
+                (b->cell.freq < 0 || b->cell.freq > 262143))) /* earfcn */
+            return false;
+        break;
+    case SKY_BEACON_GSM:
+        if (b->h.rssi > -32 || b->h.rssi < -128)
+            b->h.rssi = -1;
+        if (b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+            b->cell.id3 == SKY_UNKNOWN_ID3 || b->cell.id4 == SKY_UNKNOWN_ID4)
+            return false;
+        /* range check parameters */
+        if (b->cell.id1 < 200 || b->cell.id1 > 799 || /* mcc */
+            b->cell.id2 > 999 || /* mnc */
+            (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 63))) /* ta */
+            return false;
+        break;
+    case SKY_BEACON_UMTS:
+        if (b->h.rssi > -20 || b->h.rssi < -120)
+            b->h.rssi = -1;
+        if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+                b->cell.id4 == SKY_UNKNOWN_ID4) &&
+            !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
+                b->cell.id4 == SKY_UNKNOWN_ID4))
+            return false;
+        /* range check parameters */
+        if ((b->cell.id1 != SKY_UNKNOWN_ID1 &&
+                (b->cell.id1 < 200 || b->cell.id1 > 799)) || /* mcc */
+            (b->cell.id2 != SKY_UNKNOWN_ID2 && b->cell.id2 > 999) || /* mnc */
+            (b->cell.id4 != SKY_UNKNOWN_ID4 &&
+                (b->cell.id4 < 0 || b->cell.id4 > 268435455)) || /* e_cellid */
+            (b->cell.id5 != SKY_UNKNOWN_ID5 && b->cell.id5 > 511) || /* psc */
+            (b->cell.freq != SKY_UNKNOWN_ID6 &&
+                (b->cell.freq < 412 || b->cell.freq > 262143))) /* earfcn */
+            return false;
+        break;
+    case SKY_BEACON_CDMA:
+        if (b->h.rssi > -49 || b->h.rssi < -140)
+            b->h.rssi = -1;
+        if (b->cell.id2 == SKY_UNKNOWN_ID2 || b->cell.id3 == SKY_UNKNOWN_ID3 ||
+            b->cell.id4 == SKY_UNKNOWN_ID4)
+            return false;
+        /* range check parameters */
+        if (b->cell.id2 > 32767 || /* sid */
+            b->cell.id3 < 0 || b->cell.id3 > 65535 || /* nid */
+            b->cell.id4 < 0 || b->cell.id4 > 65535) /* bsid */
+            return false;
+        break;
+    case SKY_BEACON_NR:
+        if (b->h.rssi > -40 || b->h.rssi < -140)
+            b->h.rssi = -1;
+        if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+                b->cell.id4 == SKY_UNKNOWN_ID4) &&
+            !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
+                b->cell.id4 == SKY_UNKNOWN_ID4))
+            return false;
+        /* range check parameters */
+        if ((b->cell.id1 != SKY_UNKNOWN_ID1 &&
+                (b->cell.id1 < 200 || b->cell.id1 > 799)) || /* mcc */
+            (b->cell.id2 != SKY_UNKNOWN_ID2 && b->cell.id2 > 999) || /* mnc */
+            (b->cell.id4 != SKY_UNKNOWN_ID4 &&
+                (b->cell.id4 < 0 || b->cell.id4 > 68719476735)) || /* nci */
+            (b->cell.id5 != SKY_UNKNOWN_ID5 && (b->cell.id5 < 0 || b->cell.id5 > 107)) || /* pci */
+            (b->cell.freq != SKY_UNKNOWN_ID6 &&
+                (b->cell.freq < 0 || b->cell.freq > 3279165)) || /* nrarfcn */
+            (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 3846)))
+            return false;
+        break;
+    default:
+        return false;
+    }
+    if (is_cell_nmr(b)) {
+        b->h.connected = false;
+        b->cell.ta = SKY_UNKNOWN_TA;
+    }
+    return true;
+}
+
 /*! \brief validate the request ctx buffer
  *
  *  @param ctx request ctx buffer
  *
  *  @return true if request ctx is valid, else false
  */
-int validate_request_ctx(Sky_ctx_t *ctx)
+bool validate_request_ctx(Sky_ctx_t *ctx)
 {
     int i;
 
@@ -73,12 +213,24 @@ int validate_request_ctx(Sky_ctx_t *ctx)
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Too many AP beacons");
         return false;
     }
-    if (ctx->header.crc32 == sky_crc32(&ctx->header.magic,
+    if (ctx->header.magic == SKY_MAGIC &&
+        ctx->header.crc32 == sky_crc32(&ctx->header.magic,
                                  (uint8_t *)&ctx->header.crc32 - (uint8_t *)&ctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
-            if (ctx->beacon[i].h.magic != BEACON_MAGIC || ctx->beacon[i].h.type > SKY_BEACON_MAX) {
-                LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon #%d of %d", i, TOTAL_BEACONS);
-                return false;
+            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "beacon #%d of %d (%d)", i, NUM_BEACONS(ctx),
+                TOTAL_BEACONS);
+            if (i < NUM_BEACONS(ctx)) {
+                if (!validate_beacon(&ctx->beacon[i], ctx)) {
+                    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad beacon #%d of %d", i, TOTAL_BEACONS);
+                    return false;
+                }
+            } else {
+                if (ctx->beacon[i].h.magic != BEACON_MAGIC ||
+                    ctx->beacon[i].h.type > SKY_BEACON_MAX) {
+                    LOGFMT(
+                        ctx, SKY_LOG_LEVEL_ERROR, "Bad empty beacon #%d of %d", i, TOTAL_BEACONS);
+                    return false;
+                }
             }
         }
     } else {
@@ -94,7 +246,7 @@ int validate_request_ctx(Sky_ctx_t *ctx)
  *
  *  @return true if session context is valid, else false
  */
-int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
+bool validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
 {
     if (s == NULL) {
 #if SKY_LOGGING
@@ -174,7 +326,7 @@ int validate_session_ctx(Sky_session_t *s, Sky_loggerfn_t logf)
  *
  *  @return true if mac address not all zeros or ones
  */
-int validate_mac(const uint8_t mac[6], Sky_ctx_t *ctx)
+bool validate_mac(const uint8_t mac[6], Sky_ctx_t *ctx)
 {
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&

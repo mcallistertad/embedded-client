@@ -102,11 +102,6 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
-
     p = ctx->session->plugins;
     while (p) {
         if (p->equal)
@@ -142,11 +137,6 @@ Sky_status_t sky_plugin_compare(
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "inconsistency found in request context");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
-
     p = ctx->session->plugins;
     while (p) {
         if (p->compare)
@@ -175,11 +165,6 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 {
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
-
-    if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
 
     while (p) {
         if (p->remove_worst)
@@ -210,11 +195,6 @@ Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
-
     while (p) {
         if (p->cache_match)
             ret = (*p->cache_match)(ctx);
@@ -243,11 +223,6 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 {
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
-
-    if (!validate_request_ctx(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid request context");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
 
     while (p) {
         if (p->add_to_cache)
