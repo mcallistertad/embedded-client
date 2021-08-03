@@ -28,7 +28,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
-#define SKY_LIBEL
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
@@ -96,7 +95,7 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
+Sky_status_t sky_plugin_equal(Sky_rctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
     Sky_beacon_property_t *prop, bool *equal)
 {
     Sky_plugin_table_t *p;
@@ -132,7 +131,7 @@ Sky_status_t sky_plugin_equal(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
 Sky_status_t sky_plugin_compare(
-    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, int *diff)
+    Sky_rctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, int *diff)
 {
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
@@ -161,7 +160,7 @@ Sky_status_t sky_plugin_compare(
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
+Sky_status_t sky_plugin_remove_worst(Sky_rctx_t *ctx, Sky_errno_t *sky_errno)
 {
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
@@ -190,7 +189,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
+Sky_status_t sky_plugin_match_cache(Sky_rctx_t *ctx, Sky_errno_t *sky_errno)
 {
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
@@ -219,7 +218,7 @@ Sky_status_t sky_plugin_match_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
+Sky_status_t sky_plugin_add_to_cache(Sky_rctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
     Sky_plugin_table_t *p = ctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
@@ -242,7 +241,7 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 
 #ifdef UNITTESTS
 
-static Sky_status_t operation_add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+static Sky_status_t operation_add_to_cache(Sky_rctx_t *ctx, Sky_location_t *loc)
 {
     (void)ctx;
     (void)loc;

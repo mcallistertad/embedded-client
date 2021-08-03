@@ -108,9 +108,9 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
     return 1;
 }
 
-Sky_ctx_t *_test_sky_ctx()
+Sky_rctx_t *_test_sky_ctx()
 {
-    Sky_ctx_t *ctx;
+    Sky_rctx_t *ctx;
     void *session;
     Sky_errno_t _ctx_errno;
     uint8_t _aes_key[AES_KEYLEN] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,

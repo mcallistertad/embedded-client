@@ -26,7 +26,6 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
-#define SKY_LIBEL
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
@@ -41,7 +40,7 @@
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
+Sky_status_t remove_beacon(Sky_rctx_t *ctx, int index)
 {
     if (index >= NUM_BEACONS(ctx))
         return SKY_ERROR;
@@ -69,7 +68,7 @@ Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
  *  @return  >0 if beacon A is better
  *           <0 if beacon B is better
  */
-static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
+static int is_beacon_better(Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b)
 {
     int diff = 0;
 
@@ -118,7 +117,7 @@ static int is_beacon_better(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b)
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
+static Sky_status_t insert_beacon(Sky_rctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
     int j;
 
@@ -216,7 +215,7 @@ static Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp)
+Sky_status_t add_beacon(Sky_rctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp)
 {
     int n;
 
@@ -290,7 +289,7 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, tim
  *
  *  @return true if beacon successfully found or false
  */
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
+bool beacon_in_cache(Sky_rctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
     Sky_beacon_property_t best_prop = { false, false };
     Sky_beacon_property_t result = { false, false };
@@ -335,7 +334,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
  *  @return true if beacon successfully found or false
  */
 bool beacon_in_cacheline(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
+    Sky_rctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
 
@@ -359,32 +358,35 @@ bool beacon_in_cacheline(
 
 /*! \brief find cache entry with oldest entry
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *
  *  @return index of oldest cache entry, or empty
  */
-int find_oldest(Sky_ctx_t *ctx)
+int find_oldest(Sky_rctx_t *rctx)
 {
+#if CACHE_SIZE == 1
+    /* if there is only one cacheline */
+    (void)rctx;
+    return 0;
+#else
     int i;
     int oldestc = 0;
-    time_t oldest = ctx->header.time;
+    time_t oldest = rctx->header.time;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        /* if there is only one cacheline or
-         * if time is unavailable or
+        /* if time is unavailable or
          * cacheline is empty,
-         * then return index of current cacheline 
-         */
-        if (CACHE_SIZE == 1 || oldest == TIME_UNAVAILABLE ||
-            ctx->session->cacheline[i].time == CACHE_EMPTY)
+         * then return index of current cacheline */
+        if (oldest == TIME_UNAVAILABLE || rctx->session->cacheline[i].time == CACHE_EMPTY)
             return i;
-        else if (ctx->session->cacheline[i].time < oldest) {
-            oldest = ctx->session->cacheline[i].time;
+        else if (rctx->session->cacheline[i].time < oldest) {
+            oldest = rctx->session->cacheline[i].time;
             oldestc = i;
         }
     }
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
     return oldestc;
+#endif
 }
 #endif
 
@@ -401,7 +403,7 @@ int find_oldest(Sky_ctx_t *ctx)
  *
  *  @return true or false
  */
-int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+int cached_gnss_worse(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
 {
     if (!ctx || !cl) {
 #ifdef VERBOSE_DEBUG
@@ -431,7 +433,7 @@ int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *  not the user has marked it "connected") matches cache
  *  true otherwise
  */
-int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+int serving_cell_changed(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
     bool equal = false;
@@ -482,7 +484,7 @@ int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *
  *  @return true or false based on match of new scan to cachelines
  */
-int search_cache(Sky_ctx_t *ctx)
+int search_cache(Sky_rctx_t *ctx)
 {
 #if CACHE_SIZE == 0
     /* no match to cacheline */
@@ -514,7 +516,7 @@ int search_cache(Sky_ctx_t *ctx)
  *
  *  @return 0 if no matches otherwise return number of matching APs
  */
-int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop)
+int ap_beacon_in_vg(Sky_rctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop)
 {
     int w, c, num_aps = 0;
     uint8_t mac_va[MAC_SIZE] = { 0 };

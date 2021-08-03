@@ -347,7 +347,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     uint8_t aes_key[AES_KEYLEN],
     char *sku,
     uint32_t cc,
-    void *session_buf,
+    Sky_sctx_t *sctx,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
@@ -362,7 +362,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * aes_key      Skyhook assigned encryption key
  * sku          Skyhook assigned model number / product identifier
  * cc           Country Code (optional) country in which the device was registered. 0 if undefined
- * session_buf  pointer to a session buffer, either empty, or a restored buffer from previous session
+ * sctx         pointer to a session context buffer , empty, or restored from previous session
  * min_level    logging function is called for msg with equal or greater level
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
@@ -374,9 +374,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  ```
 
 Called once to set up any resources needed by the library (e.g. cache space). Returns `SKY_SUCCESS` on
-success, `SKY_ERROR` on error and sets sky_errno. If the buffer pointed to by session_buf is not empty (filled with
-zeros) it must be a valid copy of a session buffer from a previously closed session, otherwise it is it must be empty.
-If valid, it is restored including cache content if not stale. If the session buffer is not valid and not empty, it is
+success, `SKY_ERROR` on error and sets sky_errno. If the buffer pointed to by sctx is not empty (filled with zeros) it
+must be a valid copy of a session context buffer from a previously closed session, otherwise it is it must be empty. If
+valid, it is restored including cache content if not stale. If the session buffer is not valid and not empty, it is
 considered an error (`SKY_ERROR_BAD_SESSION_CTX`). If sku is a non-zero length string, LibEL will attempt to use TBR
 authentication otherwise a simple key based authentication is used. cc is the Mobile Country Code of the country in
 which the device was registered to operate. If logf() is not NULL, the log messages will be generated if they were
@@ -402,21 +402,21 @@ will resolve to a stable location.
 ### sky_sizeof_session_ctx() - Get the size of the non-volatile memory required to save and restore the library state.
 
 ```c
-int32_t sky_sizeof_session_ctx(void *session)
+int32_t sky_sizeof_session_ctx(Sky_sctx_t *sctx)
 
 /* Parameters
- * session          Pointer to session buffer, or NULL to request the size of a new empty session buffer.
+ * sctx             Pointer to session context buffer, or NULL to request the size of a new empty session context buffer.
 
- * Returns          Size of session buffer or 0 to indicate that the buffer was invalid
+ * Returns          Size of session context buffer or 0 to indicate that the buffer was invalid
  */
  ```
 
-Can be used to determine the size of a session buffer that is being restored from a pervious LibEL session, or the size
-of a new empty buffer that the User is allocating for an initial session. When LibEL is opened, a session buffer must be
-provided, in RAM, either initialized with the contents from a previous, saved, buffer, or an empty buffer. The session
-buffer contains the cache and other library state. Copying the session buffer to non-volatile memory after closing the
-library and copying from non-volatile memory to RAM before opening the library allows the state of the library to be
-preserved during periods where RAM contents may be lost e.g. low power modes.
+Can be used to determine the size of a session context buffer that is being restored from a pervious LibEL session, or
+the size of a new empty buffer that the User is allocating for an initial session. When LibEL is opened, a session
+buffer must be provided, in RAM, either initialized with the contents from a previous, saved, buffer, or an empty
+buffer. The session buffer contains the cache and other library state. Copying the session buffer to non-volatile memory
+after closing the library and copying from non-volatile memory to RAM before opening the library allows the state of the
+library to be preserved during periods where RAM contents may be lost e.g. low power modes.
 
 ### sky_sizeof_request_ctx() - Determines the size of the work space required to process the request
 
@@ -436,18 +436,18 @@ and after processing downlink application data.
 ### sky_new_request() - Initializes request context for a new request
 
 ```c
-Sky_ctx_t* sky_new_request(void *ctx,
-    uint32_t bufsize,
-    void *session,
+Sky_rctx_t* sky_new_request(Sky_rctx_t *rctx,
+    uint32_t rbufsize,
+    Sky_sctx_t *sctx,
     uint8_t *ul_app_data,
     uint32_t ul_app_data_len,
     Sky_errno_t *sky_errno
 )
 
 /* Parameters
- * ctx                  Pointer to request context buffer provided by user
- * bufsize              Buffer size (from sky_sizeof_request_ctx)
- * session              Pointer to session context buffer provided to sky_open
+ * rctx                 Pointer to request context buffer provided by user
+ * rbufsize             Request buffer size (from sky_sizeof_request_ctx)
+ * sctx                 Pointer to session context buffer provided to sky_open
  * ul_app_data          Pointer to uplink data buffer
  * ul_app_data_len      Length of uplink data buffer
  * sky_errno            Pointer to error code
@@ -472,7 +472,7 @@ sky_new_request() may report the following error conditions in sky_errno:
 ### sky_add_ap_beacon() - Add a Wi-Fi beacon to request context
 
 ```c
-Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     uint8_t mac[6],
     time_t timestamp,
@@ -482,7 +482,7 @@ Sky_status_t sky_add_ap_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * mac          pointer to mac address of the Wi-Fi beacon
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
@@ -510,7 +510,7 @@ sky_add_ap_beacon() may report the following error conditions in sky_errno:
 ### sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context
 
 ```c
-Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int32_t tac,
     int64_t e_cellid,
@@ -525,7 +525,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * tac          lte tracking area code identifier (1-65535), 'SKY_UNKNOWN_ID3' if unknown
  * e_cellid     lte beacon identifier 28bit (0-268435455)
@@ -558,7 +558,7 @@ sky_add_cell_lte_beacon() may report the following error conditions in sky_errno
 ### sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int16_t pci,
     int32_t earfcn,
@@ -566,7 +566,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_ctx_t *ctx,
     int16_t rsrp)
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * pci          mobile pci (0-503, 'SKY_UNKNOWN_ID5' if unknown)
  * earfcn,      channel (0-45589, 'SKY_UNKNOWN_ID6' if unknown)
@@ -594,7 +594,7 @@ sky_add_cell_lte_neighbor_beacon() may report the following error conditions in 
 ### sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
+Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
     Sky_errno_t *sky_errno,
     int32_t lac,
     int64_t ci,
@@ -607,7 +607,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_ctx_t * ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * lac          gsm location area code identifier (1-65535)
  * ci           gsm cell identifier (0-65535)
@@ -638,7 +638,7 @@ sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno
 ### sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_umts_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int32_t lac,
     int64_t ucid,
@@ -652,7 +652,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * lac          umts location area code identifier (1-65535), `SKY_UNKNOWN_ID`3 if unknown
  * ucid         umts cell identifier 28bit (0-268435455)
@@ -684,7 +684,7 @@ sky_add_cell_umts_beacon() may report the following error conditions in sky_errn
 ### sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int16_t psc,
     int16_t uarfcn,
@@ -693,7 +693,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * psc          primary scrambling code (0-511), `SKY_UNKNOWN_ID`5 if unknown
  * uarfcn       channel (412-10838), `SKY_UNKNOWN_ID`6 if unknown
@@ -720,7 +720,7 @@ sky_add_cell_umts_neighbor_beacon() may report the following error conditions in
 ### sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_cdma_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     uint32_t sid,
     uint32_t nid,
@@ -731,7 +731,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * sid          cdma system identifier (0-32767)
  * nid          cdma network identifier(0-65535)
@@ -760,7 +760,7 @@ sky_add_cell_cdma_beacon() may report the following error conditions in sky_errn
 ### sky_add_cell_nb_iot_beacon() - Adds a nb_iot cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nb_iot_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     uint16_t mcc,
     uint16_t mnc,
@@ -774,7 +774,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
@@ -806,7 +806,7 @@ sky_add_cell_nb_iot_beacon() may report the following error conditions in sky_er
 ### sky_add_cell_nb_iot_neighbor_beacon() - Adds a neighbor nb_iot cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int16_t ncid,
     int32_t earfcn,
@@ -815,7 +815,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * ncid         mobile cell ID  (0-503), `SKY_UNKNOWN_ID`4 if unknown
  * earfcn       channel (0-45589), `SKY_UNKNOWN_ID`6 if unknown
@@ -842,7 +842,7 @@ sky_add_cell_nb_iot_neighbor_beacon() may report the following error conditions 
 ### sky_add_cell_nr_beacon() - Adds a NR cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nr_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     uint16_t mcc,
     uint16_t mnc,
@@ -856,7 +856,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
@@ -889,7 +889,7 @@ sky_add_cell_nr_beacon() may report the following error conditions in sky_errno:
 ### sky_add_cell_nr_neighbor_beacon() - Adds a neighbor NR cell beacon to the request context
 
 ```c
-Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx,
+Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     int16_t pci,
     int32_t nrarfcn,
@@ -898,7 +898,7 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * pci          physical cell ID (0-1007), `SKY_UNKNOWN_ID`5 if unknown
  * nrarfcn      channel (0-3279165), `SKY_UNKNOWN_ID`6 if unknown
@@ -925,7 +925,7 @@ sky_add_cell_nr_neighbor_beacon() may report the following error conditions in s
 ### sky_add_gnss() - Adds the position of the device from GNSS (GPS, GLONASS, or others) to the request context
 
 ```c
-sky_status_t sky_add_gnss(sky_ctx_t *ctx,
+sky_status_t sky_add_gnss(sky_ctx_t *rctx,
 sky_errno_t *sky_errno,
 float lat,
 float lon,
@@ -938,7 +938,7 @@ uint16_t nsat,
 time_t timestamp)
 
 /* Parameters
- * ctx          Skyhook request context
+ * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
  * lat          device latitude in degrees, NaN if unknown
  * lon          device longitude in degrees, NaN if unknown
@@ -968,7 +968,7 @@ sky_add_gnss() may report the following error conditions in sky_errno:
 ### sky_search_cache() - compares the new request beacons with those in the cache.
 
 ```c
-Sky_status_t sky_search_cache(Sky_ctx_t *ctx,
+Sky_status_t sky_search_cache(Sky_rctx_t *rctx,
 Sky_errno_t *sky_errno,
 bool *cache_hit,
 Sky_location_t *loc
@@ -976,7 +976,7 @@ Sky_location_t *loc
 
 /*
  * Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * cache_hit        pointer to location where true or false is stored based on the match between new scan and cache
  * loc              where to save device latitude, longitude etc from cache if known
@@ -999,13 +999,13 @@ sky_search_cache() may report the following error conditions in sky_errno:
 ### sky_ignore_cache_hit() - allows the result of sky_search_cache to be overridden
 
 ```c
-Sky_status_t sky_ignore_cache_hit(Sky_ctx_t *ctx,
+Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx,
 Sky_errno_t *sky_errno
 )
 
 /*
  * Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
 
  * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
@@ -1029,14 +1029,14 @@ the new scan. sky_override_cache_hit() may report the following error conditions
 ### sky_sizeof_request_buf()  - determines the size of the network request buffer which must be provided by the user
 
 ```c
-Sky_status_t sky_sizeof_request_buf(Sky_ctx_t *ctx,
+Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx,
     uint32_t *size,
     Sky_errno_t *sky_errno
 )
 
 /*
  * Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * size             Request size in bytes stored here
 
@@ -1060,7 +1060,7 @@ sky_sizeof_request_buf() may report the following error conditions in sky_errno:
 ### sky_encode_request() - generate a Skyhook request from the request context
 
 ```c
-Sky_status_t sky_encode_request(Sky_ctx_t *ctx,
+Sky_status_t sky_encode_request(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     void *request_buf,
     uint32_t bufsize,
@@ -1068,7 +1068,7 @@ Sky_status_t sky_encode_request(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * request_buf      Request buffer (allocated by the user) into which the Skyhook server request will be encoded
  * bufsize          Request buffer size in bytes (should be set to the result of the call to sky_sizeof_request_buf() function)
@@ -1098,7 +1098,7 @@ sky_encode_request() may report the following error conditions in sky_errno:
 ### sky_decode_response() - decodes a Skyhook server response
 
 ```c
-Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
+Sky_status_t sky_decode_response(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     void *response_buf,
     uint32_t bufsize,
@@ -1106,7 +1106,7 @@ Sky_status_t sky_decode_response(Sky_ctx_t *ctx,
 )
 
 /* Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * response_buf     buffer holding the skyhook server response
  * bufsize          Size of response buffer in bytes as returned by sky_finalize_request()
@@ -1148,14 +1148,14 @@ sky_decode_response() may report the following error conditions in sky_errno:
 ### sky_get_option() - query the value of a configuration parameter
 
 ```c
-Sky_status_t sky_get_option(Sky_ctx_t *ctx,
+Sky_status_t sky_get_option(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     Sky_config_name_t name,
     uint32_t *value
 )
 
 /* Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * name             configuration parameter to read
  * value             Pointer to location where value should be returned
@@ -1190,14 +1190,14 @@ sky_get_option() may report the following error conditions in sky_errno:
 ### sky_set_option() - set the value of a configuration parameter
 
 ```c
-Sky_status_t sky_set_option(Sky_ctx_t *ctx,
+Sky_status_t sky_set_option(Sky_rctx_t *rctx,
     Sky_errno_t *sky_errno,
     Sky_config_name_t name,
     uint32_t value
 )
 
 /* Parameters
- * ctx              Skyhook request context
+ * rctx             Skyhook request context
  * sky_errno        sky_errno is set to the error code
  * name             configuration parameter to set
  * value            value should be assigned
@@ -1306,12 +1306,12 @@ Hybrid"
 ### sky_close() - frees any resources in use by the Skyhook library
 
 ```c
-Sky_status_t sky_close(Sky_ctx_t *ctx,
+Sky_status_t sky_close(Sky_sctx_t *sctx,
     Sky_errno_t *sky_errno
 )
 
 /* Parameters
- * ctx              Skyhook request context
+ * sctx             Skyhook session context
  * sky_errno        sky_errno is set to the error code
 
  * Returns          `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
@@ -1319,7 +1319,7 @@ Sky_status_t sky_close(Sky_ctx_t *ctx,
 ```
 
 Returns `SKY_SUCCESS` on success, `SKY_ERROR` on error and sets sky_errno appropriately. After a successful close, the
-session context buffer may be copied to non-volatile storage. The size of the buffer may be deterined by a call to
+session context may be copied to non-volatile storage. The size of the buffer may be determined by a call to
 sky_sizeof_session_ctx().
 
 sky_close() may report the following error conditions in sky_errno:

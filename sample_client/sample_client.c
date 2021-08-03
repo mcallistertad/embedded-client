@@ -101,10 +101,10 @@ struct cell_scan cells1[] =
       { TYPE_LTE, 45, -86, 311, 480, 25614, 25629196, 114, 66536, SKY_UNKNOWN_TA, 0},
       { TYPE_LTE, 154, -105, 311, 480, 25614, 25664524, 387, 66536, SKY_UNKNOWN_TA, 1},
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 struct gnss_scan gnss1 =
-    {15,36.740028, 3.049608, 108, 219.0, 40, 10.0, 270.0, 5};
+    {15,36.740028f, 3.049608f, 108, 219.0f, 40, 10.0f, 270.0f, 5};
 
 
 /* Scan set 2 */
@@ -116,10 +116,7 @@ struct ap_scan aps2[] =
 struct cell_scan cells2[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664524, 387, 66536, SKY_UNKNOWN_TA, 1},
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-
-struct gnss_scan gnss2 =
-   {0, 0, 0, 0, 0, 0, 0, 0, 0};
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 /* Scan set 3 */
 struct ap_scan aps3[] =
@@ -134,7 +131,7 @@ struct ap_scan aps3[] =
 struct cell_scan cells3[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
       { TYPE_LTE, 154, -112, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4, 214, 66536, SKY_UNKNOWN_TA, 0},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 /* Scan set 4 - cache match */
 struct ap_scan aps4[] =
@@ -147,7 +144,7 @@ struct ap_scan aps4[] =
 
 struct cell_scan cells4[] =
     { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 /* Scan set 5 - cache miss due to gnss */
 struct ap_scan aps5[] =
@@ -158,10 +155,10 @@ struct ap_scan aps5[] =
     };
 
 struct cell_scan cells5[] =
-    { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
+    { { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
 struct gnss_scan gnss5 =
-    {0, 35.700388, 139.751840, 37, 0, 0, 0, 0, 7};
+    {0, 35.700388f, 139.751840f, 37, 0, 0, 0, 0, 7};
 
 /* Scan set 6 */
 struct ap_scan aps6[] =
@@ -176,7 +173,7 @@ struct ap_scan aps6[] =
 
 struct cell_scan cells6[] =
     { { TYPE_LTE, 1, -68, 411, 53, 36375, 34718211, 368, 5901, SKY_UNKNOWN_TA, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 struct gnss_scan gnss6 =
     {0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -190,20 +187,20 @@ struct gnss_scan gnss6 =
  *
  *  @returns 0 for success or negative number for error
  */
-static int save_session_context(void *p, char *file_name)
+static int save_session_context(Sky_sctx_t *sctx, char *file_name)
 {
     FILE *fio;
-    uint32_t state_size;
+    uint32_t session_size;
 
-    if ((state_size = sky_sizeof_session_ctx(p)) == 0 || strlen(file_name) == 0) {
-        free(p);
+    if ((session_size = sky_sizeof_session_ctx(sctx)) == 0 || strlen(file_name) == 0) {
+        free(sctx);
         return -1; /* nothing to save */
     }
     if ((fio = fopen(file_name, "w+")) != NULL) {
-        if (fwrite(p, state_size, 1, fio) == 1) {
-            printf("Saved state: size %d bytes\n", state_size);
+        if (fwrite(sctx, session_size, 1, fio) == 1) {
+            printf("Saved state: size %d bytes\n", session_size);
             fclose(fio);
-            free(p);
+            free(sctx);
             return 0;
         } else {
             fclose(fio);
@@ -211,7 +208,7 @@ static int save_session_context(void *p, char *file_name)
         }
     } else
         printf("Error: could not open file %s\n", file_name);
-    free(p);
+    free(sctx);
     return -1;
 }
 
@@ -221,12 +218,12 @@ static int save_session_context(void *p, char *file_name)
  *
  *  @returns NULL for failure to restore cache state, pointer to c state otherwise
  */
-static void *retrieve_session_context(Config_t *config)
+static Sky_sctx_t *retrieve_session_context(Config_t *config)
 {
-    void *pstate;
+    void *sctx;
 
     uint8_t tmp[SKY_SIZEOF_SESSION_HEADER];
-    uint32_t state_size;
+    uint32_t sbufsize;
     FILE *fio;
 
     if (!config->factory_reset && strlen(config->statefile) != 0) {
@@ -234,18 +231,17 @@ static void *retrieve_session_context(Config_t *config)
         if ((fio = fopen(config->statefile, "r")) != NULL) {
             if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
                 /* query header for actual size */
-                if ((state_size = sky_sizeof_session_ctx(tmp)) > 0) {
+                if ((sbufsize = sky_sizeof_session_ctx(tmp)) > 0) {
                     rewind(fio);
-                    pstate = malloc(state_size);
-                    if (fread(pstate, state_size, 1, fio) == 1) {
+                    sctx = malloc(sbufsize);
+                    if (fread(sctx, sbufsize, 1, fio) == 1) {
                         fclose(fio);
-                        printf(
-                            "Restored state from %s (%d bytes)\n", config->statefile, state_size);
-                        return pstate;
+                        printf("Restored state from %s (%d bytes)\n", config->statefile, sbufsize);
+                        return sctx;
                     }
                 } else
                     printf("ERROR: sky_sizeof_session_ctx() checksum %s failed %d\n",
-                        config->statefile, state_size);
+                        config->statefile, sbufsize);
             } else
                 printf("ERROR: sky_sizeof_session_ctx() read for %s failed\n", config->statefile);
             fclose(fio);
@@ -254,11 +250,11 @@ static void *retrieve_session_context(Config_t *config)
     }
     if (config->factory_reset)
         printf("Clearing state due to Factory reset\n");
-    state_size = sky_sizeof_session_ctx(NULL); /* Get size of new buffer */
-    pstate = malloc(state_size);
-    memset(pstate, 0, state_size);
-    printf("Allocated empty state buffer %d bytes\n", state_size);
-    return pstate;
+    sbufsize = sky_sizeof_session_ctx(NULL); /* Get size of new buffer */
+    sctx = malloc(sbufsize);
+    memset(sctx, 0, sbufsize); /* empty buffer causes immediate Token based registration */
+    printf("Allocated empty state buffer %d bytes\n", sbufsize);
+    return sctx;
 }
 
 /* From c-faq.com/lib/rand.html
@@ -310,7 +306,7 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 
     for (i = 0; i < bufsize; i++)
         rand_buf[i] = PMrand() % 256;
-    return bufsize;
+    return (int)bufsize;
 }
 
 /*! \brief logging function
@@ -323,12 +319,11 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ?
-            "CRIT" :
-            level == SKY_LOG_LEVEL_ERROR ?
-            "ERRR" :
-            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
-                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
+        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
+        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
+        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
+                                          "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -356,10 +351,10 @@ static time_t mytime(time_t *t)
  *  Add a set of beacon scans process the request
  *  return the location structure
  *
- *  @param request context pointer to the buffer allocated
- *  @param bufsize size of the the request context buffer allocated
- *  @param session context pointer to the buffer allocated
- *  @param config pointer to the config structure
+ *  @param rctx request context pointer (holds info for a specific request)
+ *  @param rbufsize size of the the request context buffer allocated
+ *  @param sctx session context pointer (holds info for a session opened with sky_open)
+ *  @param config pointer to the sample client config structure
  *  @param ap pointer to array of wifi data
  *  @param cp pointer to array of cell data
  *  @param gp pointer to gnss data
@@ -369,9 +364,9 @@ static time_t mytime(time_t *t)
  *
  *  @returns true if loc was updated, otherwise false
  */
-static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, struct ap_scan *ap,
-    struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data, uint32_t data_len,
-    Sky_location_t *loc)
+static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *config,
+    struct ap_scan *ap, struct cell_scan *cp, struct gnss_scan *gp, uint8_t *ul_data,
+    uint32_t data_len, Sky_location_t *loc)
 {
     uint32_t i;
     uint32_t request_size;
@@ -383,7 +378,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     bool cache_hit = false;
 
     /* Start new request */
-    if (sky_new_request(ctx, bufsize, session, ul_data, data_len, &sky_errno) != ctx) {
+    if (sky_new_request(rctx, rbufsize, sctx, ul_data, data_len, &sky_errno) != rctx) {
         printf("sky_new_request() ERROR: '%s'\n", sky_perror(sky_errno));
         return false;
     }
@@ -396,7 +391,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
             break;
         else if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
             ret_status = sky_add_ap_beacon(
-                ctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, ap->frequency, ap->connected);
+                rctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, (int32_t)ap->frequency, ap->connected);
             if (ret_status != SKY_SUCCESS)
                 printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
         } else
@@ -409,34 +404,35 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
             break;
         switch (cp->type) {
         case TYPE_CDMA:
-            if (sky_add_cell_cdma_beacon(ctx, &sky_errno, cp->id2, cp->id3, cp->id4,
-                    timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+            if (sky_add_cell_cdma_beacon(rctx, &sky_errno, cp->id2, cp->id3, cp->id4,
+                    timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_cdma_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_GSM:
-            if (sky_add_cell_gsm_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2, cp->ta,
-                    timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+            if (sky_add_cell_gsm_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
+                    cp->ta, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_gsm_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_LTE:
-            if (sky_add_cell_lte_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
-                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, cp->ss,
+            if (sky_add_cell_lte_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
+                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
                     cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_lte_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_NBIOT:
-            if (sky_add_cell_nb_iot_beacon(ctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
-                    cp->id5, cp->freq, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+            if (sky_add_cell_nb_iot_beacon(rctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
+                    cp->id5, cp->freq, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_nb_iot_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_NR:
-            if (sky_add_cell_nr_beacon(ctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3, cp->id5,
-                    cp->freq, cp->ta, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+            if (sky_add_cell_nr_beacon(rctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
+                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
+                    cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_nr_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_UMTS:
-            if (sky_add_cell_umts_beacon(ctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
-                    cp->id5, cp->freq, timestamp - cp->age, cp->ss, cp->connected) != SKY_SUCCESS)
+            if (sky_add_cell_umts_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
+                    cp->id5, (int16_t)cp->freq, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_umts_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         default:
@@ -446,7 +442,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     }
 
     if (gp) {
-        if (sky_add_gnss(ctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
+        if (sky_add_gnss(rctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
                 gp->speed, gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
         }
@@ -454,7 +450,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
     /* All data has been added to new scan info */
 
     /* check to see if new scan matches cached scan (i.e. test for stationarity) */
-    sky_search_cache(ctx, &sky_errno, &cache_hit, loc);
+    sky_search_cache(rctx, &sky_errno, &cache_hit, loc);
 
     /* if cache hit, do one of the following
      *  a) if regular reports of position are priority, encode cached scan and send to server
@@ -477,7 +473,7 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
         /* if (low confidence in cached location)
          *     // remove cache hit status. New scan will be encoded in request
          *     cache_hit = false;
-         *     sky_ignore_cache_hit(ctx, &sky_errno);
+         *     sky_ignore_cache_hit(rctx, &sky_errno);
          */
         if (cache_hit)
             printf("Location found in cache\n");
@@ -490,13 +486,13 @@ static int locate(void *ctx, uint32_t bufsize, void *session, Config_t *config, 
 retry_after_auth:
     /* Determine how big the network request buffer must be, and allocate a
      * buffer of that length. This function must be called for each request */
-    if (sky_sizeof_request_buf(ctx, &request_size, &sky_errno) == SKY_ERROR) {
+    if (sky_sizeof_request_buf(rctx, &request_size, &sky_errno) == SKY_ERROR) {
         printf("sky_sizeof_request_buf error '%s'\n", sky_perror(sky_errno));
         return false;
     } else if ((prequest = malloc(request_size)) == NULL) {
         printf("Can't allocate request buf\n");
         return false;
-    } else if (sky_encode_request(ctx, &sky_errno, prequest, request_size, &response_size) ==
+    } else if (sky_encode_request(rctx, &sky_errno, prequest, request_size, &response_size) ==
                SKY_ERROR) {
         free(prequest);
         printf("sky_encode_request error '%s'", sky_perror(sky_errno));
@@ -524,7 +520,7 @@ retry_after_auth:
         }
 
         /* Decode the server response */
-        ret_status = sky_decode_response(ctx, &sky_errno, response, response_size, loc);
+        ret_status = sky_decode_response(rctx, &sky_errno, response, response_size, loc);
         free(response);
 
         if (ret_status == SKY_SUCCESS) {
@@ -563,7 +559,7 @@ static void report_location(Sky_location_t *loc)
         (int)fabs(round(1000000.0 * (loc->lat - truncf(loc->lat)))), (int)loc->lon,
         (int)fabs(round(1000000.0 * (loc->lon - truncf(loc->lon)))), loc->hpe,
         loc->location_source);
-    bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, loc->dl_app_data_len);
+    bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, (int)loc->dl_app_data_len);
     printf("Downlink data: %s(%d)\n", hex_data, loc->dl_app_data_len);
 }
 
@@ -578,13 +574,13 @@ int main(int argc, char *argv[])
 {
     Sky_errno_t sky_errno = -1;
     Sky_status_t ret_status;
-    uint32_t *ctx;
-    uint32_t bufsize;
-    void *pstate;
+    Sky_rctx_t *rctx;
+    uint32_t rbufsize;
+    Sky_sctx_t *sctx;
     Sky_location_t loc;
     char *configfile = NULL;
     Config_t config;
-    int ret_code = 0;
+    int ret_code;
 
     /* Seed the random number generator
      */
@@ -607,62 +603,61 @@ int main(int argc, char *argv[])
      * which will result in needless additional messaging to and from
      * the Skyhook server.
      */
-    pstate = retrieve_session_context(&config); /* returns a non-NULL pointer if space allocated */
+    sctx = retrieve_session_context(&config); /* returns a non-NULL pointer if space allocated */
 
     /* Initialize the Skyhook resources and restore any saved state.
      * A real device would do this at boot time, or perhaps the first
      * time a location is to be performed.
      */
-    ret_status =
-        sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id, config.key,
-            config.sku, config.cc, pstate, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime);
+    ret_status = sky_open(&sky_errno, config.device_id, config.device_len, config.partner_id,
+        config.key, config.sku, config.cc, sctx, SKY_LOG_LEVEL_ALL, &logger, &rand_bytes, &mytime);
     if (ret_status != SKY_SUCCESS) {
         printf("sky_open returned error (%s), Can't continue\n", sky_perror(sky_errno));
         exit(-1);
     }
 
     /* Allocate request context */
-    bufsize = sky_sizeof_request_ctx();
-    ctx = malloc(bufsize);
+    rbufsize = sky_sizeof_request_ctx();
+    rctx = malloc(rbufsize);
 
     /* Perform several locations using simulated scan data. A real
      * device would perform locations periodically (perhaps once every
      * hour) rather than one immediately after another.
      */
-    if (locate(ctx, bufsize, pstate, &config, aps1, cells1, &gnss1, config.ul_app_data,
+    if (locate(rctx, rbufsize, sctx, &config, aps1, cells1, &gnss1, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps2, cells2, NULL, NULL, 0, &loc) == false) {
+    if (locate(rctx, rbufsize, sctx, &config, aps2, cells2, NULL, NULL, 0, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps3, cells3, NULL, config.ul_app_data,
+    if (locate(rctx, rbufsize, sctx, &config, aps3, cells3, NULL, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
-    if (locate(ctx, bufsize, pstate, &config, aps4, cells4, NULL, config.ul_app_data,
-            config.ul_app_data_len, &loc) == false) {
-        printf("ERROR: Failed to resolve location\n");
-    } else {
-        report_location(&loc);
-    }
-
-    if (locate(ctx, bufsize, pstate, &config, aps5, cells5, &gnss5, config.ul_app_data,
+    if (locate(rctx, rbufsize, sctx, &config, aps4, cells4, NULL, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
         report_location(&loc);
     }
 
-    if (locate(ctx, bufsize, pstate, &config, aps6, cells6, &gnss6, config.ul_app_data,
+    if (locate(rctx, rbufsize, sctx, &config, aps5, cells5, &gnss5, config.ul_app_data,
+            config.ul_app_data_len, &loc) == false) {
+        printf("ERROR: Failed to resolve location\n");
+    } else {
+        report_location(&loc);
+    }
+
+    if (locate(rctx, rbufsize, sctx, &config, aps6, cells6, &gnss6, config.ul_app_data,
             config.ul_app_data_len, &loc) == false) {
         printf("ERROR: Failed to resolve location\n");
     } else {
@@ -675,10 +670,10 @@ int main(int argc, char *argv[])
      * time skyhook_open() is called (see comments above
      * immediately preceding the call to sky_open()).
      */
-    if (sky_close(pstate, &sky_errno) != SKY_SUCCESS)
+    if (sky_close(sctx, &sky_errno) != SKY_SUCCESS)
         printf("sky_close sky_errno contains '%s'\n", sky_perror(sky_errno));
 
-    save_session_context(pstate, config.statefile);
-    free(ctx);
+    save_session_context(sctx, config.statefile);
+    free(rctx);
     printf("Done.\n\n");
 }
