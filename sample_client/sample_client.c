@@ -220,7 +220,7 @@ static int save_session_context(Sky_sctx_t *sctx, char *file_name)
  */
 static Sky_sctx_t *retrieve_session_context(Config_t *config)
 {
-    void *sctx;
+    Sky_sctx_t *sctx;
 
     uint8_t tmp[SKY_SIZEOF_SESSION_HEADER];
     uint32_t sbufsize;
@@ -231,7 +231,7 @@ static Sky_sctx_t *retrieve_session_context(Config_t *config)
         if ((fio = fopen(config->statefile, "r")) != NULL) {
             if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
                 /* query header for actual size */
-                if ((sbufsize = sky_sizeof_session_ctx(tmp)) > 0) {
+                if ((sbufsize = sky_sizeof_session_ctx((void *)tmp)) > 0) {
                     rewind(fio);
                     sctx = malloc(sbufsize);
                     if (fread(sctx, sbufsize, 1, fio) == 1) {
@@ -319,11 +319,12 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
-        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
-        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
-        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
-                                          "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ?
+            "CRIT" :
+            level == SKY_LOG_LEVEL_ERROR ?
+            "ERRR" :
+            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
+                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -390,8 +391,8 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         if (ap->mac[0] == '\0')
             break;
         else if (hex2bin(ap->mac, MAC_SIZE * 2, mac, MAC_SIZE) == MAC_SIZE) {
-            ret_status = sky_add_ap_beacon(
-                rctx, &sky_errno, mac, timestamp - ap->age, ap->rssi, (int32_t)ap->frequency, ap->connected);
+            ret_status = sky_add_ap_beacon(rctx, &sky_errno, mac, timestamp - ap->age, ap->rssi,
+                (int32_t)ap->frequency, ap->connected);
             if (ret_status != SKY_SUCCESS)
                 printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
         } else
@@ -421,7 +422,8 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         case TYPE_NBIOT:
             if (sky_add_cell_nb_iot_beacon(rctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
-                    cp->id5, cp->freq, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
+                    cp->id5, cp->freq, timestamp - cp->age, (int16_t)cp->ss,
+                    cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_nb_iot_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         case TYPE_NR:
@@ -432,7 +434,8 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         case TYPE_UMTS:
             if (sky_add_cell_umts_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
-                    cp->id5, (int16_t)cp->freq, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
+                    cp->id5, (int16_t)cp->freq, timestamp - cp->age, (int16_t)cp->ss,
+                    cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_umts_beacon sky_errno contains '%s'", sky_perror(sky_errno));
             break;
         default:

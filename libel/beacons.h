@@ -277,6 +277,6 @@ int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_rctx_t *rctx);
 int search_cache(Sky_rctx_t *rctx);
-Sky_status_t remove_beacon(Sky_rctx_t *ctx, int index);
+Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index);
 
 #endif

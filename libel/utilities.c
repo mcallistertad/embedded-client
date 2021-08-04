@@ -446,7 +446,7 @@ int dump_hex16(const char *file, const char *function, Sky_rctx_t *rctx, Sky_log
     (void)bufsize;
     (void)buf_offset;
 #endif
-    return pb;
+    return (int)pb;
 }
 
 /*! \brief dump all bytes of the given buffer in hex
@@ -553,7 +553,7 @@ void dump_ap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, cons
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age, (int)b->h.priority,
-        (int)((b->h.priority - (int)b->h.priority) * 10));
+        (int)((b->h.priority - truncf(b->h.priority)) * 10.0));
     dump_vap(rctx, prefix, b, file, func);
 #else
     (void)rctx;
@@ -1488,9 +1488,9 @@ uint8_t *get_vap_data(Sky_rctx_t *rctx, uint32_t idx)
  *
  *  @param rctx request rctx buffer
  *
- *  @return vaps data i.e num_beacons, AP, patch1, patch2...
+ *  @return void
  */
-uint8_t *select_vap(Sky_rctx_t *rctx)
+void select_vap(Sky_rctx_t *rctx)
 {
     uint32_t j, nvap = 0, no_more = false;
     Beacon_t *w;
@@ -1500,7 +1500,7 @@ uint8_t *select_vap(Sky_rctx_t *rctx)
 
     if (rctx == NULL) {
         // LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad param");
-        return 0;
+        return;
     }
     for (; !no_more && nvap < CONFIG(rctx->session, max_vap_per_rq);) {
         /* Walk through APs counting vap, when max_vap_per_rq is reached */
@@ -1530,7 +1530,6 @@ uint8_t *select_vap(Sky_rctx_t *rctx)
         dump_hex16(__FILE__, __FUNCTION__, rctx, SKY_LOG_LEVEL_DEBUG, w->ap.vg + 1,
             w->ap.vg[VAP_LENGTH].len, 0);
     }
-    return 0;
 }
 
 /*! \brief generate random byte sequence
