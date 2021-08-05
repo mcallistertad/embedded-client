@@ -34,7 +34,6 @@
 #include "proto.h"
 
 #define MIN(a, b) ((a < b) ? a : b)
-#define FABS(a) (((a) < 0.0) ? (0.0 - (a)) : (a))
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -651,8 +650,8 @@ void dump_gnss(Sky_rctx_t *rctx, const char *file, const char *func, Gnss_t *gns
 #if SKY_LOGGING
     if (rctx != NULL && gnss != NULL && !isnan(gnss->lat))
         logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
-            (int)(FABS((gnss->lat - (int)gnss->lat) * 1000000.0)), (int)gnss->lon,
-            (int)(FABS((gnss->lon - (int)gnss->lon) * 1000000.0)));
+            (int)(fabs(round(1000000.0 * (gnss->lat - (int)gnss->lat)))), (int)gnss->lon,
+            (int)(fabs(round(1000000.0 * (gnss->lon - (int)gnss->lon)))));
 #else
     (void)rctx;
     (void)file;
