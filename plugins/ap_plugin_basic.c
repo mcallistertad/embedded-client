@@ -306,8 +306,10 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
             }
         }
     }
-    if (worst_vap != NULL)
+    if (worst_vap != NULL) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "removing virtual AP idx: %d", IDX(worst_vap, rctx));
         return (remove_beacon(rctx, IDX(worst_vap, rctx)) == SKY_SUCCESS);
+    }
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "no match");
     return false;
 }
@@ -332,11 +334,12 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
     }
 
     DUMP_REQUEST_CTX(rctx);
-    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Overall worst AP idx:%d", idx_of_worst);
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Overall worst AP idx: %d", idx_of_worst);
 
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age, rssi distribution etc */
     if (!remove_virtual_ap(rctx)) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "removing worst AP idx: %d", idx_of_worst);
         return remove_beacon(rctx, idx_of_worst);
     }
     return SKY_SUCCESS;

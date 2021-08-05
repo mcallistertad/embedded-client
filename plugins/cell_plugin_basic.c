@@ -173,7 +173,8 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
         /* cells are in priority order
          * remove last beacon
          */
-        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: lowest priority cell");
+        LOGFMT(
+            rctx, SKY_LOG_LEVEL_DEBUG, "remove lowest priority cell idx:%d", NUM_BEACONS(rctx) - 1);
         return remove_beacon(rctx, NUM_BEACONS(rctx) - 1);
     }
     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
