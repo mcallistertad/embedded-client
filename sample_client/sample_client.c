@@ -220,7 +220,7 @@ static int save_session_context(Sky_sctx_t *sctx, char *file_name)
  */
 static Sky_sctx_t *retrieve_session_context(Config_t *config)
 {
-    void *sctx;
+    Sky_sctx_t *sctx;
 
     uint8_t tmp[SKY_SIZEOF_SESSION_HEADER];
     uint32_t sbufsize;
@@ -231,7 +231,7 @@ static Sky_sctx_t *retrieve_session_context(Config_t *config)
         if ((fio = fopen(config->statefile, "r")) != NULL) {
             if (fread((void *)tmp, sizeof(tmp), 1, fio) == 1) {
                 /* query header for actual size */
-                if ((sbufsize = sky_sizeof_session_ctx(tmp)) > 0) {
+                if ((sbufsize = sky_sizeof_session_ctx((void *)tmp)) > 0) {
                     rewind(fio);
                     sctx = malloc(sbufsize);
                     if (fread(sctx, sbufsize, 1, fio) == 1) {

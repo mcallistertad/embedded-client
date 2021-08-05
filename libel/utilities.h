@@ -112,7 +112,7 @@ int64_t get_cell_age(Beacon_t *cell);
 
 int32_t get_num_vaps(Sky_rctx_t *rctx);
 uint8_t *get_vap_data(Sky_rctx_t *rctx, uint32_t idx);
-uint8_t *select_vap(Sky_rctx_t *rctx);
+void select_vap(Sky_rctx_t *rctx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
 #endif
