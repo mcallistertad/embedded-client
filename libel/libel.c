@@ -1087,13 +1087,13 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
                 LOGFMT(rctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
             if (IS_CACHE_MISS(rctx))
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-                    "Location from server %d.%06d,%d.%06d hpe:%d, Source:%sctx app-data:%d",
+                    "Location from server: %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);
             else
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-                    "Server location for cache hit %d.%06d,%d.%06d hpe:%d, Source:%sctx app-data:%d",
+                    "Server location for cache hit: %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);

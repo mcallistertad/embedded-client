@@ -34,7 +34,6 @@
 #include "proto.h"
 
 #define MIN(a, b) ((a < b) ? a : b)
-#define FABS(a) (((a) < 0.0) ? (0.0 - (a)) : (a))
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -216,8 +215,6 @@ bool validate_request_ctx(Sky_rctx_t *rctx)
         rctx->header.crc32 == sky_crc32(&rctx->header.magic, (uint8_t *)&rctx->header.crc32 -
                                                                  (uint8_t *)&rctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
-            LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "beacon #%d of %d (%d)", i, NUM_BEACONS(rctx),
-                TOTAL_BEACONS);
             if (i < NUM_BEACONS(rctx)) {
                 if (!validate_beacon(&rctx->beacon[i], rctx)) {
                     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad beacon #%d of %d", i, TOTAL_BEACONS);
@@ -553,7 +550,7 @@ void dump_ap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, cons
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age, (int)b->h.priority,
-        (int)((b->h.priority - truncf(b->h.priority)) * 10.0));
+        (int)((b->h.priority - (int)b->h.priority) * 10.0));
     dump_vap(rctx, prefix, b, file, func);
 #else
     (void)rctx;
@@ -651,8 +648,8 @@ void dump_gnss(Sky_rctx_t *rctx, const char *file, const char *func, Gnss_t *gns
 #if SKY_LOGGING
     if (rctx != NULL && gnss != NULL && !isnan(gnss->lat))
         logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
-            (int)(FABS((gnss->lat - (int)gnss->lat) * 1000000.0)), (int)gnss->lon,
-            (int)(FABS((gnss->lon - (int)gnss->lon) * 1000000.0)));
+            (int)(fabs(round(1000000.0 * (gnss->lat - (int)gnss->lat)))), (int)gnss->lon,
+            (int)(fabs(round(1000000.0 * (gnss->lon - (int)gnss->lon)))));
 #else
     (void)rctx;
     (void)file;

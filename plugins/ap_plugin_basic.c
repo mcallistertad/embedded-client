@@ -416,8 +416,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             continue;
         } else if (serving_cell_changed(rctx, cl) == true || cached_gnss_worse(rctx, cl) == true) {
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cacheline has difference cell or worse gnss",
-                i);
+                "Cache: %d: Score 0 for cacheline has difference cell or worse gnss", i);
             continue;
         } else {
             /* count number of matching APs in request rctx and cache */

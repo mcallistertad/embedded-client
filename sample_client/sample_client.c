@@ -559,9 +559,8 @@ static void report_location(Sky_location_t *loc)
     char hex_data[200];
     printf("Skyhook location: status: %s, lat: %d.%06d, lon: %d.%06d, hpe: %d, source: %d\n",
         sky_pserver_status(loc->location_status), (int)loc->lat,
-        (int)fabs(round(1000000.0 * (loc->lat - truncf(loc->lat)))), (int)loc->lon,
-        (int)fabs(round(1000000.0 * (loc->lon - truncf(loc->lon)))), loc->hpe,
-        loc->location_source);
+        (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))), (int)loc->lon,
+        (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))), loc->hpe, loc->location_source);
     bin2hex(hex_data, sizeof(hex_data), loc->dl_app_data, (int)loc->dl_app_data_len);
     printf("Downlink data: %s(%d)\n", hex_data, loc->dl_app_data_len);
 }

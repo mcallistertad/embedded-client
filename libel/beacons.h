@@ -221,9 +221,9 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-/*! \brief Session Context - holds parameters defined when Libel is opened and the cachelines
+/*! \brief Session Context - holds cache lines as well as parameters defined when Libel is opened
  */
-typedef struct sky_session {
+typedef struct sky_sctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     bool open_flag; /* true if sky_open() has been called by user */
     Sky_randfn_t rand_bytes; /* User rand_bytes fn */
@@ -253,7 +253,7 @@ typedef struct sky_session {
 
 /*! \brief Request Context - temporary space used to build a request
  */
-typedef struct sky_ctx {
+typedef struct sky_rctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint16_t num_beacons; /* number of beacons in list (0 == none) */
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
