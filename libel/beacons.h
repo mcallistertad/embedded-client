@@ -221,9 +221,9 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-/*! \brief Session Context - holds parameters defined when Libel is opened and the cachelines
+/*! \brief Session Context - holds cache lines as well as parameters defined when Libel is opened
  */
-typedef struct sky_session {
+typedef struct sky_sctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     bool open_flag; /* true if sky_open() has been called by user */
     Sky_randfn_t rand_bytes; /* User rand_bytes fn */
@@ -249,11 +249,11 @@ typedef struct sky_session {
 #endif
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
-} Sky_session_t;
+} Sky_sctx_t;
 
 /*! \brief Request Context - temporary space used to build a request
  */
-typedef struct sky_ctx {
+typedef struct sky_rctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
     uint16_t num_beacons; /* number of beacons in list (0 == none) */
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
@@ -262,21 +262,21 @@ typedef struct sky_ctx {
     bool hit; /* status of search of cache for match to new scan (true/false) */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
-    Sky_session_t *session;
+    Sky_sctx_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-} Sky_ctx_t;
+} Sky_rctx_t;
 
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
-int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
+Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
+int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
-int serving_cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
-int cached_gnss_worse(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
-int find_oldest(Sky_ctx_t *ctx);
-int search_cache(Sky_ctx_t *ctx);
-Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
+    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
+int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
+int find_oldest(Sky_rctx_t *rctx);
+int search_cache(Sky_rctx_t *rctx);
+Sky_status_t remove_beacon(Sky_rctx_t *ctx, int index);
 
 #endif

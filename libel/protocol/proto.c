@@ -30,7 +30,6 @@
 #include <pb_decode.h>
 
 #include "el.pb.h"
-#define SKY_LIBEL
 #include "proto.h"
 #include "aes.h"
 #include "limits.h"
@@ -41,16 +40,16 @@
 /* extract the n-th bit from used AP array of l bytes */
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
-static bool apply_config_overrides(Sky_session_t *s, Rs *rs);
-static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static bool apply_config_overrides(Sky_sctx_t *s, Rs *rs);
+static int64_t get_gnss_lat_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_lon_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_alt_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_speed_scaled(Sky_rctx_t *ctx, uint32_t idx);
 
-typedef uint8_t *(*DataGetterb)(Sky_ctx_t *, uint32_t);
-typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
+typedef uint8_t *(*DataGetterb)(Sky_rctx_t *, uint32_t);
+typedef int64_t (*DataGetter)(Sky_rctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
-typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
+typedef bool (*EncodeSubmsgCallback)(Sky_rctx_t *, pb_ostream_t *);
 
 /*! \brief Map cell type
  *
@@ -76,7 +75,7 @@ static int16_t map_cell_type(Beacon_t *cell)
         return map[cell->h.type];
 }
 
-static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t mac_to_int(Sky_rctx_t *ctx, uint32_t idx)
 {
     size_t i;
 
@@ -98,7 +97,7 @@ static int64_t flip_sign(int64_t value)
     return -value;
 }
 
-static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
+static bool encode_repeated_int_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
     uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
     size_t i;
@@ -138,7 +137,7 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
 }
 
 static bool encode_vap_data(
-    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
+    Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
 {
     size_t i;
 
@@ -172,8 +171,8 @@ static bool encode_vap_data(
     return true;
 }
 
-static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
-    uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
+static bool encode_connected_ap_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+    uint32_t tag, bool (*callback)(Sky_rctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
@@ -190,7 +189,7 @@ static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
     return retval;
 }
 
-static bool encode_optimized_repeated_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
+static bool encode_optimized_repeated_field(Sky_rctx_t *ctx, pb_ostream_t *ostream,
     uint32_t num_beacons, uint32_t tag1, uint32_t tag2, DataGetter getter)
 {
     // Encode fields. Optimization: send only a single common value if
@@ -211,7 +210,7 @@ static bool encode_optimized_repeated_field(Sky_ctx_t *ctx, pb_ostream_t *ostrea
     }
 }
 
-static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_ap_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
@@ -237,7 +236,7 @@ static bool encode_cell_field_element(
         return true;
 }
 
-static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
+static bool encode_cell_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
 {
     return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
            pb_encode_varint(ostream, map_cell_type(cell)) &&
@@ -263,7 +262,7 @@ static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *c
                ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
 }
 
-static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_cell_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     size_t i;
     uint32_t num_cells = get_num_cells(ctx);
@@ -289,7 +288,7 @@ static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     return true;
 }
 
-static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_gnss_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
 
@@ -310,7 +309,7 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 }
 
 static bool encode_submessage(
-    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
+    Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
 {
     // Get and encode the submessage size.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
@@ -335,7 +334,7 @@ static bool encode_submessage(
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
     (void)istream; /* suppress warning unused parameter */
-    Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
+    Sky_rctx_t *ctx = *(Sky_rctx_t **)field->pData;
 
     /* If we are building request which uses TBR auth,
      * and we do not currently have a token_id,
@@ -379,7 +378,7 @@ int32_t get_maximum_response_size(void)
 }
 
 int32_t serialize_request(
-    Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
+    Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
 {
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
@@ -538,7 +537,7 @@ int32_t serialize_request(
     return bytes_written + aes_padding_length;
 }
 
-int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
+int32_t apply_used_info_to_ap(Sky_rctx_t *ctx, uint8_t *used, int size)
 {
     uint32_t i, v;
     int nap = 0;
@@ -566,7 +565,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
     return 0;
 }
 
-int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
+int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
     uint32_t hdr_size = *buf;
     struct AES_ctx aes_ctx;
@@ -706,22 +705,22 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     return ret;
 }
 
-static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_lat_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_lat(ctx, idx) * 1000000;
 }
 
-static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_lon_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_lon(ctx, idx) * 1000000;
 }
 
-static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_alt_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_alt(ctx, idx) * 10;
 }
 
-static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_speed_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_speed(ctx, idx) * 10;
 }
@@ -732,7 +731,7 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return bool true if new override is recived from server
  */
-static bool apply_config_overrides(Sky_session_t *s, Rs *rs)
+static bool apply_config_overrides(Sky_sctx_t *s, Rs *rs)
 {
     bool override = false;
 

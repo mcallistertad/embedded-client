@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#define SKY_LIBEL
 #include "libel.h"
 
 /* Register the basic plugins

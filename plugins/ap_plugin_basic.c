@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#define SKY_LIBEL
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
@@ -65,7 +64,7 @@ typedef enum {
     LOWEST_PRIORITY = 0x000
 } Property_priority_t;
 
-static Sky_status_t set_priorities(Sky_ctx_t *ctx);
+static Sky_status_t set_priorities(Sky_rctx_t *ctx);
 
 /*! \brief test two APs for equality
  *
@@ -80,7 +79,7 @@ static Sky_status_t set_priorities(Sky_ctx_t *ctx);
  *  if an error occurs during comparison. return SKY_ERROR
  */
 static Sky_status_t equal(
-    Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
+    Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
 {
     if (!ctx || !a || !b || !equal) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -119,7 +118,7 @@ static Sky_status_t equal(
  *  (greater than zero if a should be before b)
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t compare(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
+static Sky_status_t compare(Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff)
 {
     if (!ctx || !a || !b || !diff) {
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -193,7 +192,7 @@ static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
  *
  *  @return number of cached APs or -1 for fatal error
  */
-static int count_cached_aps_in_request_ctx(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+static int count_cached_aps_in_request_ctx(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
 {
     int num_aps_cached = 0;
     int j, i;
@@ -223,7 +222,7 @@ static int count_cached_aps_in_request_ctx(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
  *
  */
 #define CONNECTED_AND_IN_CACHE_ONLY(priority) ((int16_t)(priority) & (CONNECTED | IN_CACHE))
-static int cmp_properties(Sky_ctx_t *ctx, int i, int j)
+static int cmp_properties(Sky_rctx_t *ctx, int i, int j)
 {
     return (CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[i].h.priority) -
             CONNECTED_AND_IN_CACHE_ONLY(ctx->beacon[j].h.priority));
@@ -239,7 +238,7 @@ static int cmp_properties(Sky_ctx_t *ctx, int i, int j)
  *
  *  @return true if beacon removed or false otherwise
  */
-static bool remove_virtual_ap(Sky_ctx_t *ctx)
+static bool remove_virtual_ap(Sky_rctx_t *ctx)
 {
     int i, j;
     Beacon_t *vap_a = NULL;
@@ -320,7 +319,7 @@ static bool remove_virtual_ap(Sky_ctx_t *ctx)
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static Sky_status_t remove_worst(Sky_ctx_t *ctx)
+static Sky_status_t remove_worst(Sky_rctx_t *ctx)
 {
     int idx_of_worst;
 
@@ -361,7 +360,7 @@ static Sky_status_t remove_worst(Sky_ctx_t *ctx)
  *
  *  @return Sky_status_t SKY_SUCCESS if search produced result, SKY_ERROR otherwise
  */
-static Sky_status_t match(Sky_ctx_t *ctx)
+static Sky_status_t match(Sky_rctx_t *ctx)
 {
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
@@ -416,8 +415,7 @@ static Sky_status_t match(Sky_ctx_t *ctx)
             continue;
         } else if (serving_cell_changed(ctx, cl) == true || cached_gnss_worse(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cacheline has difference cell or worse gnss",
-                i);
+                "Cache: %d: Score 0 for cacheline has difference cell or worse gnss", i);
             continue;
         } else {
             /* count number of matching APs in request ctx and cache */
@@ -489,7 +487,7 @@ static Sky_status_t match(Sky_ctx_t *ctx)
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+static Sky_status_t to_cache(Sky_rctx_t *ctx, Sky_location_t *loc)
 {
 #if CACHE_SIZE
     int i = ctx->save_to;
@@ -560,7 +558,7 @@ static Sky_status_t to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
  *
  *  @return computed priority
  */
-static float get_priority(Sky_ctx_t *ctx, Beacon_t *b)
+static float get_priority(Sky_rctx_t *ctx, Beacon_t *b)
 {
     float priority = 0;
     float deviation;
@@ -607,7 +605,7 @@ static float get_priority(Sky_ctx_t *ctx, Beacon_t *b)
  *
  *  @return idx of beacon with lowest priority
  */
-static int set_priorities(Sky_ctx_t *ctx)
+static int set_priorities(Sky_rctx_t *ctx)
 {
     int j, jump, up_down;
     int idx_of_worst = NUM_APS(ctx) / 2;
