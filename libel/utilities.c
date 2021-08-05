@@ -215,8 +215,6 @@ bool validate_request_ctx(Sky_rctx_t *rctx)
         rctx->header.crc32 == sky_crc32(&rctx->header.magic, (uint8_t *)&rctx->header.crc32 -
                                                                  (uint8_t *)&rctx->header.magic)) {
         for (i = 0; i < TOTAL_BEACONS; i++) {
-            LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "beacon #%d of %d (%d)", i, NUM_BEACONS(rctx),
-                TOTAL_BEACONS);
             if (i < NUM_BEACONS(rctx)) {
                 if (!validate_beacon(&rctx->beacon[i], rctx)) {
                     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad beacon #%d of %d", i, TOTAL_BEACONS);
@@ -552,7 +550,7 @@ void dump_ap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, cons
         (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
         b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
         b->ap.freq, b->h.rssi, b->h.age, (int)b->h.priority,
-        (int)((b->h.priority - (int)b->h.priority) * 10));
+        (int)((b->h.priority - (int)b->h.priority) * 10.0));
     dump_vap(rctx, prefix, b, file, func);
 #else
     (void)rctx;

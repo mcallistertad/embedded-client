@@ -283,9 +283,9 @@ static bool remove_virtual_ap(Sky_rctx_t *ctx)
 #if VERBOSE_DEBUG
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s %s", IDX(vap_a),
                     IDX(vap_b), vap_b->h.connected != vap_a->h.connected ? "(connected)" : "",
-                    vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ? "(cached)" :
-                    mac_diff < 0                                               ? "(mac)" :
-                                                                                 "");
+                    vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
+                        "(cached)" :
+                        mac_diff < 0 ? "(mac)" : "");
                 dump_ap(ctx, "similar A:  ", vap_a, __FILE__, __FUNCTION__);
                 dump_ap(ctx, "similar B:  ", vap_b, __FILE__, __FUNCTION__);
 #else
@@ -415,8 +415,7 @@ static Sky_status_t match(Sky_rctx_t *ctx)
             continue;
         } else if (serving_cell_changed(ctx, cl) == true || cached_gnss_worse(ctx, cl) == true) {
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cacheline has difference cell or worse gnss",
-                i);
+                "Cache: %d: Score 0 for cacheline has difference cell or worse gnss", i);
             continue;
         } else {
             /* count number of matching APs in request ctx and cache */

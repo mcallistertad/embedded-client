@@ -303,9 +303,10 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     rctx->hit = false;
     rctx->get_from = rctx->save_to = -1;
     rctx->session = sctx;
-    rctx->auth_state = !is_tbr_enabled(rctx)               ? STATE_TBR_DISABLED :
-                       sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                             STATE_TBR_REGISTERED;
+    rctx->auth_state =
+        !is_tbr_enabled(rctx) ?
+            STATE_TBR_DISABLED :
+            sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     rctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         rctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -918,9 +919,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *ctx, uint32_t *size, Sky_errno_t
                 ctx->header.time == TIME_UNAVAILABLE ||
                 (ctx->header.time - CONFIG(s, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                     ? "Forced" :
-                                                                        "No");
+        rq_config && CONFIG(s, last_config_time) != CONFIG_UPDATE_DUE ?
+            "Timeout" :
+            rq_config ? "Forced" : "No");
 
     if (rq_config)
         CONFIG(s, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
@@ -1087,13 +1088,13 @@ Sky_status_t sky_decode_response(Sky_rctx_t *ctx, Sky_errno_t *sky_errno, void *
                 LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "failed to add to cache");
             if (IS_CACHE_MISS(ctx))
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Location from server %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
+                    "Location from server: %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);
             else
                 LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Server location for cache hit %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
+                    "Server location for cache hit: %d.%06d,%d.%06d hpe:%d, Source:%s app-data:%d",
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);
