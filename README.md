@@ -70,12 +70,11 @@ Instructions for cloning and building the library are below.
 * LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
 * LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer and session
   context buffer.
-* User may call new API call, sky_get_cache_hit(), to determine whether the current request has a match in the cache.
+* User may call new API call, sky_search_cache(), to determine whether the current request has a match in the cache.
 * User may tune some configuration parameters at runtime using sky_set_option().
 
 #### Code size optimizations.
 
-* Build time options allow inclusion/exclusion of non-essential consistency checks.
 * Common code sequences have been factored out.
 * Some of the largest functions have been re-written.
 
