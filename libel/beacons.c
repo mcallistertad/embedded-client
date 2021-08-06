@@ -389,7 +389,6 @@ int find_oldest(Sky_rctx_t *rctx)
     return oldestc;
 #endif
 }
-#endif
 
 /*! \brief test whether gnss in new scan is preferable to that in cache
  *
@@ -474,6 +473,7 @@ int serving_cell_changed(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
 }
+#endif
 
 /*! \brief get location from cache
  *
