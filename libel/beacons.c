@@ -385,7 +385,7 @@ int find_oldest(Sky_rctx_t *rctx)
             oldestc = i;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
     return oldestc;
 #endif
 }

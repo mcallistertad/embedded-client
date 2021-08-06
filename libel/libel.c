@@ -816,8 +816,8 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
 Sky_status_t sky_search_cache(
     Sky_rctx_t *rctx, Sky_errno_t *sky_errno, bool *cache_hit, Sky_location_t *loc)
 {
-#if CACHE_SIZE
     Sky_sctx_t *sctx = rctx->session;
+#if CACHE_SIZE
     Sky_cacheline_t *cl;
 #endif
 
