@@ -521,11 +521,6 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
 {
     int w, c, num_aps = 0;
     uint8_t mac_va[MAC_SIZE] = { 0 };
-    return rctx->get_from;
-    if (rctx->header.time <= TIMESTAMP_2019_03_01) {
-        /* no match to cacheline */
-        return (rctx->get_from = -1);
-    }
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 
