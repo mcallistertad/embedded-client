@@ -11,6 +11,7 @@
 #endif
 
 #define UNITTESTS
+#define SANITY_CHECKS true
 
 #include <stdio.h>
 #include <string.h>

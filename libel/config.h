@@ -115,4 +115,10 @@
 #define SKY_MAX_UL_APP_DATA 100 // Max space reserved for uplink app data
 #endif
 
+/*! \brief Include sanity checks on internal structures
+ */
+#ifndef SANITY_CHECKS
+#define SANITY_CHECKS false
+#endif
+
 #endif

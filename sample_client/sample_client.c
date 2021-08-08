@@ -240,13 +240,13 @@ static Sky_sctx_t *retrieve_session_context(Config_t *config)
                         return sctx;
                     }
                 } else
-                    printf("ERROR: sky_sizeof_session_ctx() checksum %s failed %d\n",
+                    printf("ERROR: retrieve_session_context() validation of %s failed %d\n",
                         config->statefile, sbufsize);
             } else
-                printf("ERROR: sky_sizeof_session_ctx() read for %s failed\n", config->statefile);
+                printf("ERROR: retrieve_session_context() read for %s failed\n", config->statefile);
             fclose(fio);
         } else
-            printf("ERROR: sky_sizeof_session_ctx() fopen for %s failed\n", config->statefile);
+            printf("ERROR: retrieve_session_context() fopen for %s failed\n", config->statefile);
     }
     if (config->factory_reset)
         printf("Clearing state due to Factory reset\n");

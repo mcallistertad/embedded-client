@@ -220,14 +220,18 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
 {
     int n;
 
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
     if (!rctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
+#if SANITY_CHECKS
     if (!validate_beacon(b, rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+#endif
 
     /* Validate scan was before sky_new_request and since Mar 1st 2019 */
     if (timestamp != TIME_UNAVAILABLE && timestamp < TIMESTAMP_2019_03_01)
