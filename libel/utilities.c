@@ -613,13 +613,15 @@ void dump_beacon(Sky_rctx_t *rctx, char *str, Beacon_t *b, const char *file, con
         /* if primary key is UNKNOWN, must be NMR */
         strcat(prefixstr, "    ");
         if (b->cell.id2 == SKY_UNKNOWN_ID2) {
-            logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "%9s %d %dMHz rssi:%d age:%d", prefixstr,
-                b->cell.id5, b->cell.freq, b->h.rssi, b->h.age);
+            logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "%9s %d %dMHz rssi:%d age:%d pri:%d.%d",
+                prefixstr, b->cell.id5, b->cell.freq, b->h.rssi, b->h.age, (int)b->h.priority,
+                (int)((b->h.priority - (int)b->h.priority) * 10.0));
         } else {
             logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
-                "%9s %u,%u,%u,%llu,%d %dMHz rssi:%d ta:%d age:%d", prefixstr, b->cell.id1,
+                "%9s %u,%u,%u,%llu,%d %dMHz rssi:%d ta:%d age:%d pri:%d.%d", prefixstr, b->cell.id1,
                 b->cell.id2, b->cell.id3, b->cell.id4, b->cell.id5, b->cell.freq, b->h.rssi,
-                b->cell.ta, b->h.age);
+                b->cell.ta, b->h.age, (int)b->h.priority,
+                (int)((b->h.priority - (int)b->h.priority) * 10.0));
         }
         break;
     default:

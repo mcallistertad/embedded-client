@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
@@ -314,6 +315,39 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
     return false;
 }
 
+/*! \brief try to reduce AP by filtering out the oldest one
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
+ */
+static bool remove_worst_ap_by_age(Sky_rctx_t *rctx)
+{
+    int i;
+    int oldest_idx = -1;
+    uint32_t oldest_age = 0, youngest_age = UINT_MAX; /* age is in seconds, larger means older */
+
+    /* Find the youngest and oldest APs */
+    for (i = 0; i < NUM_APS(rctx); i++) {
+        if (rctx->beacon[i].h.age < youngest_age) {
+            youngest_age = rctx->beacon[i].h.age;
+        }
+        if (rctx->beacon[i].h.age > oldest_age) {
+            oldest_age = rctx->beacon[i].h.age;
+            oldest_idx = i;
+        }
+    }
+
+    /* if the oldest and youngest beacons have the same age,
+     * there is nothing to do. Otherwise remove the oldest */
+    if (youngest_age != oldest_age && oldest_idx != -1) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d oldest", oldest_idx);
+        remove_beacon(rctx, oldest_idx);
+        return true;
+    }
+    return false;
+}
+
 /*! \brief try to reduce AP by filtering out the worst one
  *
  *  Request Context AP beacons are stored in decreasing rssi order
@@ -338,7 +372,7 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age, rssi distribution etc */
-    if (!remove_virtual_ap(rctx)) {
+    if (!remove_virtual_ap(rctx) && !remove_worst_ap_by_age(rctx)) {
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "removing worst AP idx: %d", idx_of_worst);
         return remove_beacon(rctx, idx_of_worst);
     }
