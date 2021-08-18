@@ -259,10 +259,17 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
      * Iterate over all beacon pairs. For each pair whose members are "similar" to
      * one another (i.e., which are part of the same virtual AP (VAP) group),
      * identify which member of the pair is a candidate for removal. After iterating,
-     * remove the worse such candidate.
+     * remove the worse such candidate. Note: connected APs are ignored.
      */
     for (j = NUM_APS(rctx) - 1; j > 0; j--) {
+        /* if connected, ignore this AP */
+        if (rctx->beacon[j].h.connected)
+            continue;
         for (i = j - 1; i >= 0; i--) {
+            /* if connected, ignore this AP */
+            if (rctx->beacon[i].h.connected)
+                continue;
+
             int mac_diff = mac_similar(
                 rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL); // <0 => i is better
             if (mac_diff != 0) {
@@ -281,9 +288,8 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
                     vap_b = &rctx->beacon[j];
                 }
 #if VERBOSE_DEBUG
-                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s %s",
+                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s",
                     IDX(vap_a, rctx), IDX(vap_b, rctx),
-                    vap_b->h.connected != vap_a->h.connected ? "(connected)" : "",
                     vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
                         "(cached)" :
                         mac_diff < 0 ? "(mac)" : "");
