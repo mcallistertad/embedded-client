@@ -25,6 +25,12 @@
 #ifndef SKY_CONFIG_H
 #define SKY_CONFIG_H
 
+/*! \brief Include sanity checks on internal structures
+ */
+#ifndef SANITY_CHECKS
+#define SANITY_CHECKS true
+#endif
+
 /* Change to false to remove all calls to logging */
 #ifndef SKY_LOGGING
 #define SKY_LOGGING true
@@ -113,12 +119,6 @@
 #endif
 #ifndef SKY_MAX_UL_APP_DATA
 #define SKY_MAX_UL_APP_DATA 100 // Max space reserved for uplink app data
-#endif
-
-/*! \brief Include sanity checks on internal structures
- */
-#ifndef SANITY_CHECKS
-#define SANITY_CHECKS false
 #endif
 
 #endif

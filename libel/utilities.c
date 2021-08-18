@@ -33,6 +33,10 @@
 #include "libel.h"
 #include "proto.h"
 
+#if SANITY_CHECKS
+static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx);
+#endif
+
 #define MIN(a, b) ((a < b) ? a : b)
 
 /*! \brief set sky_errno and return Sky_status
@@ -208,6 +212,7 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
     return true;
 }
 
+#if SANITY_CHECKS
 /*! \brief validate the request rctx buffer
  *
  *  @param rctx request rctx buffer
@@ -261,6 +266,7 @@ bool validate_request_ctx(Sky_rctx_t *rctx)
 #endif
     return true;
 }
+#endif
 
 /*! \brief validate the session context buffer - Cant use LOGFMT here
  *
@@ -343,6 +349,7 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
     return true;
 }
 
+#if SANITY_CHECKS
 /*! \brief validate mac address
  *
  *  @param mac pointer to mac address
@@ -350,7 +357,7 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
  *
  *  @return true if mac address not all zeros or ones
  */
-bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx)
+static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx)
 {
     if (mac[0] == 0 || mac[0] == 0xff) {
         if (mac[0] == mac[1] && mac[0] == mac[2] && mac[0] == mac[3] && mac[0] == mac[4] &&
@@ -365,6 +372,7 @@ bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx)
 #endif
     return true;
 }
+#endif
 
 /*! \brief return true if library is configured for tbr authentication
  *
