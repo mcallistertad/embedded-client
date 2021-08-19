@@ -249,7 +249,6 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
         return false;
     }
 
-    /* look for any AP beacon that is 'similar' to another */
     if (rctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(rctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi");
         return false;
