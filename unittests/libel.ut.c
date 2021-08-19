@@ -172,7 +172,7 @@ TEST_FUNC(test_sky_option)
         uint32_t value;
 
         ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
-               value == 20);
+               value > 4);
         ASSERT(SKY_SUCCESS ==
                sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi, freq, connected));
         ASSERT(SKY_SUCCESS ==
