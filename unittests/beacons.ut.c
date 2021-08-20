@@ -45,98 +45,158 @@ TEST_FUNC(test_validate_request_ctx)
     });
 }
 
-TEST_FUNC(test_compare)
+TEST_FUNC(test_beacon_order)
 {
-    GROUP("is_beacon_better APs");
+    GROUP("is_beacon_first APs");
     TEST("should return positive when 2 identical APs are passed", rctx, {
         AP(a, "ABCDEFAACCDD", 10, -108, 4433, true);
         AP(b, "ABCDEFAACCDD", 10, -108, 4433, true);
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return != 0 when 2 different APs are passed", rctx, {
         AP(a, "ABCDEFAACCDD", 10, -108, 4433, true);
         AP(b, "ABCDEFAACCFD", 10, -108, 4433, true);
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
-        ASSERT(is_beacon_better(rctx, &b, &a) < 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &b, &a) < 0);
     });
 
-    TEST("should return != 0 and calc RSSI diff with different APs", rctx, {
+    TEST("should return != 0 and order by RSSI with different APs", rctx, {
         AP(a, "ABCDEFAACCDD", 10, -108, 4433, true);
         AP(b, "ABCDEFAACCDE", 10, -78, 4433, true);
-        ASSERT(is_beacon_better(rctx, &a, &b) < 0); /* B is better */
-        ASSERT(is_beacon_better(rctx, &b, &a) > 0); /* A(first) is better */
+        ASSERT(is_beacon_first(rctx, &a, &b) < 0); /* B is better */
+        ASSERT(is_beacon_first(rctx, &b, &a) > 0); /* A(first) is better */
     });
 
-    GROUP("is_beacon_better Cells identical");
+    GROUP("is_beacon_first Cells identical");
     TEST("should return positive with 2 identical NR cell beacons", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         NR(b, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return positive with 2 identical LTE cell beacons", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         LTE(b, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return positive with 2 identical UMTS cell beacons", rctx, {
         UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return positive with 2 identical NBIOT cell beacons", rctx, {
         NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return positive with 2 identical CDMA cell beacons", rctx, {
         CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
     TEST("should return positive with 2 identical GSM cell beacons", rctx, {
         GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
-        ASSERT(is_beacon_better(rctx, &a, &b) > 0);
+        ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
 
-    GROUP("is_beacon_better Cells");
-    TEST("should return a better with one connected with different cells", rctx, {
-        LTE(a, 10, -108, true, 210, 485, 25614, 25664526, 387, 1000);
-        LTE(b, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+    GROUP("is_beacon_first Cells");
+    TEST("should return A better with stronger similar cell", rctx, {
+        LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+        LTE(b, 10, -85, false, 210, 485, 25614, 25664526, 387, 1000);
         Sky_errno_t sky_errno;
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
-        ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("should return a better with one NMR with same cell type", rctx, {
-        LTE(a, 10, -108, true, 310, 485, 25614, 25664526, 387, 1000);
+    TEST("should return A better NR over LTE", rctx, {
+        LTE(a, 10, -108, false, 210, 485, 25614, 25664526, 387, 1000);
+        NR(b, 10, -108, false, 213, 142, 15614, 25564526, 95, 1040);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+    });
+
+    TEST("should return A better newer LTE over NR", rctx, {
+        NR(a, 10, -108, false, 213, 142, 15614, 25564526, 95, 1040);
+        LTE(b, 4, -108, false, 210, 485, 25614, 25664526, 387, 1000);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+    });
+
+    TEST("should return A better connected LTE over newer NR", rctx, {
+        NR(a, 4, -108, false, 213, 142, 15614, 25564526, 95, 1040);
+        LTE(b, 10, -108, true, 210, 485, 25614, 25664526, 387, 1000);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+    });
+
+    TEST("should return A better with one connected with different cells", rctx, {
+        LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+        LTE(b, 10, -108, true, 210, 485, 25614, 25664526, 387, 1000);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+    });
+
+    TEST("should return A better with one connected with older cells", rctx, {
+        LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+        LTE(b, 15, -108, true, 210, 485, 25614, 25664526, 387, 1000);
+        Sky_errno_t sky_errno;
+
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
+        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
+        ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+    });
+
+    TEST("should return A better with one NMR with same cell type", rctx, {
         LTE_NMR(b, 10, -108, 387, 1000);
+        LTE(a, 10, -108, true, 310, 485, 25614, 25664526, 387, 1000);
         Sky_errno_t sky_errno;
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("should return a better with two NMR one younger", rctx, {
+    TEST("should return A better with two NMR one younger", rctx, {
         LTE_NMR(a, 8, -40, 38, 100);
         LTE_NMR(b, 10, -108, 387, 1000);
         Sky_errno_t sky_errno;
@@ -144,19 +204,19 @@ TEST_FUNC(test_compare)
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("should return a better diff with two NMR one stronger", rctx, {
+    TEST("should return A better diff with two NMR one stronger", rctx, {
         LTE_NMR(a, 10, -40, 38, 100);
         LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
     TEST("should report 1st better with two very similar cells", rctx, {
@@ -167,8 +227,8 @@ TEST_FUNC(test_compare)
         ASSERT(SKY_SUCCESS ==
                insert_beacon(rctx, NULL, &b)); /* New cell inserted before if very similar */
         ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) > 0);
     });
 
     TEST("should report 1st best with two NMR very similar", rctx, {
@@ -179,208 +239,208 @@ TEST_FUNC(test_compare)
         ASSERT(SKY_SUCCESS ==
                insert_beacon(rctx, NULL, &b)); /* New NMR inserted before if very similar */
         ASSERT(CELL_EQ(&b, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) > 0);
     });
 
-    TEST("should return a better with one NMR with different cell type", rctx, {
+    TEST("should return A better with one NMR with different cell type", rctx, {
         CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    GROUP("is_beacon_better Cells different");
-    TEST("is_beacon_better: NR better than LTE", rctx, {
+    GROUP("is_beacon_first Cells different");
+    TEST("is_beacon_first: NR better than LTE", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         LTE(b, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NR better than UMTS", rctx, {
+    TEST("is_beacon_first: NR better than UMTS", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NR better than NBIOT", rctx, {
+    TEST("is_beacon_first: NR better than NBIOT", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NR better than CDMA", rctx, {
+    TEST("is_beacon_first: NR better than CDMA", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NR better than GSM", rctx, {
+    TEST("is_beacon_first: NR better than GSM", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: LTE better than UMTS", rctx, {
+    TEST("is_beacon_first: LTE better than UMTS", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: LTE better than NBIOT", rctx, {
+    TEST("is_beacon_first: LTE better than NBIOT", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: LTE better than CDMA", rctx, {
+    TEST("is_beacon_first: LTE better than CDMA", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: LTE better than GSM", rctx, {
+    TEST("is_beacon_first: LTE better than GSM", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: UMTS better than NBIOT", rctx, {
+    TEST("is_beacon_first: UMTS better than NBIOT", rctx, {
         UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
         NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: UMTS better than CDMA", rctx, {
+    TEST("is_beacon_first: UMTS better than CDMA", rctx, {
         UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: UMTS better than GSM", rctx, {
+    TEST("is_beacon_first: UMTS better than GSM", rctx, {
         UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NBIOT better than CDMA", rctx, {
+    TEST("is_beacon_first: NBIOT better than CDMA", rctx, {
         NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
         CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: NBIOT better than GSM", rctx, {
+    TEST("is_beacon_first: NBIOT better than GSM", rctx, {
         NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: CDMA better than GSM", rctx, {
+    TEST("is_beacon_first: CDMA better than GSM", rctx, {
         CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
         GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    GROUP("is_beacon_better Cells same type");
-    TEST("is_beacon_better: one connected", rctx, {
+    GROUP("is_beacon_first Cells same type");
+    TEST("is_beacon_first: one connected", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
         LTE(b, 123, -94, false, 310, 470, 25613, 25664526, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 
-    TEST("is_beacon_better: one NMR", rctx, {
+    TEST("is_beacon_first: one NMR", rctx, {
         LTE(a, 10, -94, false, 310, 470, 25613, 25664526, 387, 1000);
         LTE_NMR(b, 10, -108, 387, 1000);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
         ASSERT(CELL_EQ(&a, &rctx->beacon[0]));
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
-        ASSERT(is_beacon_better(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[0], &rctx->beacon[1]) > 0);
+        ASSERT(is_beacon_first(rctx, &rctx->beacon[1], &rctx->beacon[0]) < 0);
     });
 }
 
@@ -794,7 +854,7 @@ TEST_FUNC(test_insert)
 BEGIN_TESTS(beacon_test)
 
 GROUP_CALL("validate_request_ctx", test_validate_request_ctx);
-GROUP_CALL("is_beacon_better", test_compare);
+GROUP_CALL("is_beacon_first", test_beacon_order);
 GROUP_CALL("beacon_add", test_add);
 GROUP_CALL("beacon_insert", test_insert);
 
