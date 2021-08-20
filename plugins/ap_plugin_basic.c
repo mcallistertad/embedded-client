@@ -321,7 +321,7 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static bool remove_worst_ap_by_age(Sky_rctx_t *rctx)
+static bool remove_oldest_ap(Sky_rctx_t *rctx)
 {
     int i;
     int oldest_idx = -1;
@@ -372,7 +372,7 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age, rssi distribution etc */
-    if (!remove_virtual_ap(rctx) && !remove_worst_ap_by_age(rctx)) {
+    if (!remove_virtual_ap(rctx) && !remove_oldest_ap(rctx)) {
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "removing worst AP idx: %d", idx_of_worst);
         return remove_beacon(rctx, idx_of_worst);
     }
