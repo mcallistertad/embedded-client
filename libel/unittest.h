@@ -11,6 +11,10 @@
 #endif
 
 #define UNITTESTS
+#ifdef SANITY_CHECKS
+#undef SANITY_CHECKS
+#endif
+#define SANITY_CHECKS true
 
 #include <stdio.h>
 #include <string.h>
@@ -19,7 +23,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define SKY_LIBEL
 #include "libel.h"
 
 /* Constants for sky_open */
@@ -141,7 +144,7 @@
         __VA_ARGS__                                                                                \
     }
 
-/* \brief Convienence wrapper around TEST_DEF/EXE with automatic Sky_ctx_t var
+/* \brief Convienence wrapper around TEST_DEF/EXE with automatic Sky_rctx_t var
  * @param const char* Test description
  * @param identifier Context variable
  * @param block Test code
@@ -180,9 +183,9 @@
     }
 
 /* Mock utility macros */
-#define MOCK_SKY_LOG_CTX(N) Sky_ctx_t ctx = { .logf = _test_log }
+#define MOCK_SKY_LOG_CTX(N) Sky_rctx_t rctx = { .logf = _test_log }
 
-#define MOCK_SKY_CTX(N) Sky_ctx_t *N = _test_sky_ctx()
+#define MOCK_SKY_CTX(N) Sky_rctx_t *N = _test_sky_ctx()
 
 #define CLOSE_SKY_SESSION(S)                                                                       \
     Sky_errno_t err;                                                                               \
@@ -277,7 +280,7 @@ void _test_set_desc(Test_ctx *ctx, const char *str);
 void _test_assert(Test_ctx *ctx, const char *file, int line, int res);
 void _test_print_rs(Test_opts *opts, Test_rs rs);
 int _test_log(Sky_log_level_t level, char *s);
-Sky_ctx_t *_test_sky_ctx();
+Sky_rctx_t *_test_sky_ctx();
 int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32_t frequency,
     bool is_connected);
 int _test_beacon(

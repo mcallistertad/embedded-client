@@ -82,7 +82,7 @@ TEST_DEF("test description", {
 });
 ```
 
-Because the use-case of needing to set up and clean up a `Sky_ctx_t` struct before and after tests is common, a
+Because the use-case of needing to set up and clean up a `Sky_rctx_t` struct before and after tests is common, a
 convenience macro `TEST()` has been defined:
 
 ```C
@@ -91,7 +91,7 @@ TEST("should create workspace and validate sucesfully", ctx, {
 });
 ```
 
-Which is equivalent to the above. The name of the `Sky_ctx_t` variable is defined in the second argument.
+Which is equivalent to the above. The name of the `Sky_rctx_t` variable is defined in the second argument.
 
 ### Writing
 

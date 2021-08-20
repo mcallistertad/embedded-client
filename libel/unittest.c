@@ -80,6 +80,7 @@ int _test_cell(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rs
     b->cell.id4 = id4;
     b->cell.id5 = id5;
     b->cell.freq = freq;
+    b->cell.ta = SKY_UNKNOWN_TA;
 
     return 1;
 }
@@ -107,9 +108,9 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
     return 1;
 }
 
-Sky_ctx_t *_test_sky_ctx()
+Sky_rctx_t *_test_sky_ctx()
 {
-    Sky_ctx_t *ctx;
+    Sky_rctx_t *ctx;
     void *session;
     Sky_errno_t _ctx_errno;
     uint8_t _aes_key[AES_KEYLEN] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
@@ -153,7 +154,7 @@ Sky_ctx_t *_test_sky_ctx()
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b)
 {
     return a->h.magic == b->h.magic && a->h.type == b->h.type && a->h.connected == b->h.connected &&
-           a->h.age == b->h.age && a->h.rssi == b->h.rssi;
+           a->h.rssi == b->h.rssi;
 }
 
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b)
