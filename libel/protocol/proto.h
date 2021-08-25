@@ -23,8 +23,8 @@
 #ifndef ELG_PB_H
 #define ELG_PB_H
 
-#include "libel.h"
 #include "el.pb.h"
+#include "libel.h"
 
 // Encode and encrypt request into buffer.
 int32_t serialize_request(

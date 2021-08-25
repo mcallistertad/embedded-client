@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include "proto.h"
 #include "libel.h"
 #include "proto.h"
 
