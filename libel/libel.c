@@ -856,7 +856,7 @@ Sky_status_t sky_search_cache(
 #if SKY_DEBUG
         time_t cached_time = loc->time;
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%sctx age:%d Sec", (int)loc->lat,
+            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
             (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
             (rctx->header.time - cached_time));
@@ -1474,6 +1474,8 @@ char *sky_psource(struct sky_location *l)
             return "Hybrid";
         case SKY_LOCATION_SOURCE_WIFI:
             return "Wi-Fi";
+        case SKY_LOCATION_SOURCE_RFPM:
+            return "RFPM";
         default:
             return "\?\?\?";
         }
