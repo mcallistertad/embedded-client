@@ -78,6 +78,10 @@ Instructions for cloning and building the library are below.
 * Common code sequences have been factored out.
 * Some of the largest functions have been re-written.
 
+### Release 3.0.4
+
+* Cache miss when request context buffer has gnss but cache does not
+
 ### Release 3.0.3
 
 * Remove strict check so that a GNSS fix with NSAT value of 0 can be added.
@@ -86,6 +90,10 @@ Instructions for cloning and building the library are below.
 
 * Bug fix - server side tuning of cache match thresholds was being ignored by LibEL
 * Change default configuration to 28 total beacons, 20 APs
+
+### Release 3.0.1.2
+
+* Cache miss when request context buffer has gnss but cache does not
 
 ### Release 3.0.1.1
 
