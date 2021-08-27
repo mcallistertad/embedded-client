@@ -48,9 +48,9 @@ CLIENT_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(CLIENT_SRCS:.c=.o)))
 
 .PHONY: all
 
-all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client.exe
+all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client
 
-sample_client/sample_client.exe: ${CLIENT_OBJS}
+sample_client/sample_client: ${CLIENT_OBJS}
 	$(CC) -lc -o $@ ${CLIENT_OBJS} ${BIN_DIR}/libel.a -lm
 
 submodules/nanopb/.git:
