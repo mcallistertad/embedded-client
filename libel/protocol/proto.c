@@ -30,7 +30,6 @@
 #include <pb_decode.h>
 
 #include "el.pb.h"
-#define SKY_LIBEL
 #include "proto.h"
 #include "aes.h"
 #include "limits.h"
@@ -41,16 +40,16 @@
 /* extract the n-th bit from used AP array of l bytes */
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
-static bool apply_config_overrides(Sky_state_t *s, Rs *rs);
-static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx);
-static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx);
+static bool apply_config_overrides(Sky_sctx_t *s, Rs *rs);
+static int64_t get_gnss_lat_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_lon_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_alt_scaled(Sky_rctx_t *ctx, uint32_t idx);
+static int64_t get_gnss_speed_scaled(Sky_rctx_t *ctx, uint32_t idx);
 
-typedef uint8_t *(*DataGetterb)(Sky_ctx_t *, uint32_t);
-typedef int64_t (*DataGetter)(Sky_ctx_t *, uint32_t);
+typedef uint8_t *(*DataGetterb)(Sky_rctx_t *, uint32_t);
+typedef int64_t (*DataGetter)(Sky_rctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
-typedef bool (*EncodeSubmsgCallback)(Sky_ctx_t *, pb_ostream_t *);
+typedef bool (*EncodeSubmsgCallback)(Sky_rctx_t *, pb_ostream_t *);
 
 /*! \brief Map cell type
  *
@@ -76,7 +75,7 @@ static int16_t map_cell_type(Beacon_t *cell)
         return map[cell->h.type];
 }
 
-static int64_t mac_to_int(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t mac_to_int(Sky_rctx_t *ctx, uint32_t idx)
 {
     size_t i;
 
@@ -98,7 +97,7 @@ static int64_t flip_sign(int64_t value)
     return -value;
 }
 
-static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
+static bool encode_repeated_int_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag,
     uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
     size_t i;
@@ -138,7 +137,7 @@ static bool encode_repeated_int_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
 }
 
 static bool encode_vap_data(
-    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
+    Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, uint32_t num_elems, DataGetterb getter)
 {
     size_t i;
 
@@ -152,7 +151,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(&substream, data + 1, *data))
             return false;
     }
@@ -164,7 +163,7 @@ static bool encode_vap_data(
     for (i = 0; i < num_elems; i++) {
         uint8_t *data = getter(ctx, i);
 
-        /* *data == len, data + 1 == first byte of data */
+        /* *data == num_beacons, data + 1 == first byte of data */
         if (!pb_encode_string(ostream, data + 1, *data))
             return false;
     }
@@ -172,8 +171,8 @@ static bool encode_vap_data(
     return true;
 }
 
-static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
-    uint32_t tag, bool (*callback)(Sky_ctx_t *, uint32_t idx))
+static bool encode_connected_ap_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t num_beacons,
+    uint32_t tag, bool (*callback)(Sky_rctx_t *, uint32_t idx))
 {
     bool retval = true;
     size_t i;
@@ -190,7 +189,7 @@ static bool encode_connected_ap_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, uin
     return retval;
 }
 
-static bool encode_optimized_repeated_field(Sky_ctx_t *ctx, pb_ostream_t *ostream,
+static bool encode_optimized_repeated_field(Sky_rctx_t *ctx, pb_ostream_t *ostream,
     uint32_t num_beacons, uint32_t tag1, uint32_t tag2, DataGetter getter)
 {
     // Encode fields. Optimization: send only a single common value if
@@ -211,7 +210,7 @@ static bool encode_optimized_repeated_field(Sky_ctx_t *ctx, pb_ostream_t *ostrea
     }
 }
 
-static bool encode_ap_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_ap_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_beacons = get_num_aps(ctx);
 
@@ -237,7 +236,7 @@ static bool encode_cell_field_element(
         return true;
 }
 
-static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
+static bool encode_cell_field(Sky_rctx_t *ctx, pb_ostream_t *ostream, Beacon_t *cell)
 {
     return pb_encode_tag(ostream, PB_WT_VARINT, Cell_type_tag) &&
            pb_encode_varint(ostream, map_cell_type(cell)) &&
@@ -263,7 +262,7 @@ static bool encode_cell_field(Sky_ctx_t *ctx, pb_ostream_t *ostream, Beacon_t *c
                ostream, Cell_ta_plus_1_tag, get_cell_ta(cell), SKY_UNKNOWN_TA);
 }
 
-static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_cell_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     size_t i;
     uint32_t num_cells = get_num_cells(ctx);
@@ -289,7 +288,7 @@ static bool encode_cell_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
     return true;
 }
 
-static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
+static bool encode_gnss_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
 
@@ -310,7 +309,7 @@ static bool encode_gnss_fields(Sky_ctx_t *ctx, pb_ostream_t *ostream)
 }
 
 static bool encode_submessage(
-    Sky_ctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
+    Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
 {
     // Get and encode the submessage size.
     pb_ostream_t substream = PB_OSTREAM_SIZING;
@@ -335,14 +334,14 @@ static bool encode_submessage(
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
     (void)istream; /* suppress warning unused parameter */
-    Sky_ctx_t *ctx = *(Sky_ctx_t **)field->pData;
+    Sky_rctx_t *ctx = *(Sky_rctx_t **)field->pData;
 
     /* If we are building request which uses TBR auth,
      * and we do not currently have a token_id,
      * then we need to encode a registration request,
      * which does not include any beacon info
      */
-    if (ctx && (!is_tbr_enabled(ctx) || ctx->state->sky_token_id != TBR_TOKEN_UNKNOWN)) {
+    if (ctx && (!is_tbr_enabled(ctx) || ctx->session->token_id != TBR_TOKEN_UNKNOWN)) {
         // Per the documentation here:
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
@@ -379,7 +378,7 @@ int32_t get_maximum_response_size(void)
 }
 
 int32_t serialize_request(
-    Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
+    Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, uint32_t sw_version, bool request_config)
 {
     size_t rq_size, aes_padding_length, crypto_info_size, hdr_size, total_length;
     int32_t bytes_written;
@@ -392,13 +391,13 @@ int32_t serialize_request(
 
     pb_ostream_t ostream;
 
-    assert(sizeof(ctx->state->sky_sku) >= sizeof(rq.tbr.sku));
+    assert(sizeof(ctx->session->sku) >= sizeof(rq.tbr.sku));
 
     rq_hdr.partner_id = get_ctx_partner_id(ctx);
 
     // sky_new_request initializes rand_bytes if user does not
-    if (ctx->rand_bytes != NULL)
-        ctx->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
+    if (ctx->session->rand_bytes != NULL)
+        ctx->session->rand_bytes(rq_crypto_info.iv.bytes, AES_BLOCKLEN);
 
     // Initialize crypto_info
     rq_crypto_info.iv.size = AES_BLOCKLEN;
@@ -409,7 +408,7 @@ int32_t serialize_request(
 
     rq.timestamp = (int64_t)ctx->header.time;
 
-    rq.cache_hits = ctx->state->cache_hits;
+    rq.cache_hits = ctx->session->cache_hits;
 
     /* if we have been given a sku, then
      * if we don't yet have a token_id,
@@ -418,7 +417,7 @@ int32_t serialize_request(
      * make a legacy style request
      */
     if (is_tbr_enabled(ctx)) {
-        if (ctx->state->sky_token_id == TBR_TOKEN_UNKNOWN) {
+        if (ctx->session->token_id == TBR_TOKEN_UNKNOWN) {
             /* build a tbr registration request */
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
@@ -428,7 +427,7 @@ int32_t serialize_request(
                 rq_hdr.partner_id, rq.tbr.sku);
         } else {
             /* build tbr location request */
-            rq.token_id = ctx->state->sky_token_id;
+            rq.token_id = ctx->session->token_id;
             rq.max_dl_app_data = SKY_MAX_DL_APP_DATA;
             rq.ul_app_data.size = get_ctx_ul_app_data_length(ctx);
             memcpy(rq.ul_app_data.bytes, get_ctx_ul_app_data(ctx), rq.ul_app_data.size);
@@ -472,7 +471,7 @@ int32_t serialize_request(
 
     total_length = 1 + hdr_size + crypto_info_size + rq_size;
 
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(ctx);
 
     // Exit if we've been called just for the purpose of determining how much
     // buffer space is necessary.
@@ -538,7 +537,7 @@ int32_t serialize_request(
     return bytes_written + aes_padding_length;
 }
 
-int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
+int32_t apply_used_info_to_ap(Sky_rctx_t *ctx, uint8_t *used, int size)
 {
     uint32_t i, v;
     int nap = 0;
@@ -551,7 +550,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
         if (nap++ > size * CHAR_BIT)
             break;
     }
-    for (v = 0; v < CONFIG(ctx->state, max_vap_per_ap); v++) {
+    for (v = 0; v < CONFIG(ctx->session, max_vap_per_ap); v++) {
         for (i = 0; i < NUM_APS(ctx); i++) {
             if (v < NUM_VAPS(&ctx->beacon[i])) {
                 ctx->beacon[i].ap.vg_prop[v].used = GET_USED_AP(used, size, nap);
@@ -566,7 +565,7 @@ int32_t apply_used_info_to_ap(Sky_ctx_t *ctx, uint8_t *used, int size)
     return 0;
 }
 
-int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
+int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
     uint32_t hdr_size = *buf;
     struct AES_ctx aes_ctx;
@@ -610,9 +609,10 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
-        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
-                                                      "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
+            "STATE_TBR_UNREGISTERED" :
+            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
+                                                        "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
@@ -643,12 +643,13 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "pb_decode returned failure");
             return ret;
         }
-        if (apply_config_overrides(ctx->state, &rs)) {
-            if (ctx->logf && SKY_LOG_LEVEL_DEBUG <= ctx->min_level)
-                (*ctx->logf)(SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
+        if (apply_config_overrides(ctx->session, &rs)) {
+            if (ctx->session->logf && SKY_LOG_LEVEL_DEBUG <= ctx->session->min_level)
+                (*ctx->session->logf)(
+                    SKY_LOG_LEVEL_DEBUG, "New config overrides received from server");
         }
-        if (CONFIG(ctx->state, last_config_time) == 0)
-            CONFIG(ctx->state, last_config_time) = (*ctx->gettime)(NULL);
+        if (CONFIG(ctx->session, last_config_time) == CONFIG_UPDATE_DUE)
+            CONFIG(ctx->session, last_config_time) = ctx->session->header.time;
     }
     ret = 0;
     switch (ctx->auth_state) {
@@ -661,7 +662,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* successful TBR registration response */
             /* Save the token_id for use in subsequent location requests. */
             ctx->auth_state = STATE_TBR_REGISTERED;
-            ctx->state->sky_token_id = rs.token_id;
+            ctx->session->token_id = rs.token_id;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "New TBR token received from server");
         }
         /* User must retry because this was a registration */
@@ -672,7 +673,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             /* failed TBR location request */
             /* Clear the token_id because it is invalid. */
             ctx->auth_state = STATE_TBR_UNREGISTERED;
-            ctx->state->sky_token_id = TBR_TOKEN_UNKNOWN;
+            ctx->session->token_id = TBR_TOKEN_UNKNOWN;
             /* Application must re-register */
             loc->location_status = SKY_LOCATION_STATUS_AUTH_ERROR;
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR authentication failed!");
@@ -685,6 +686,7 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
             loc->location_status = SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR;
         } else {
             /* Legacy or tbr location request */
+            loc->time = ctx->session->header.time;
             loc->lat = rs.lat;
             loc->lon = rs.lon;
             loc->hpe = (uint16_t)rs.hpe;
@@ -703,22 +705,22 @@ int32_t deserialize_response(Sky_ctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky
     return ret;
 }
 
-static int64_t get_gnss_lat_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_lat_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_lat(ctx, idx) * 1000000;
 }
 
-static int64_t get_gnss_lon_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_lon_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_lon(ctx, idx) * 1000000;
 }
 
-static int64_t get_gnss_alt_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_alt_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_alt(ctx, idx) * 10;
 }
 
-static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
+static int64_t get_gnss_speed_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return get_gnss_speed(ctx, idx) * 10;
 }
@@ -729,7 +731,7 @@ static int64_t get_gnss_speed_scaled(Sky_ctx_t *ctx, uint32_t idx)
  *
  *  @return bool true if new override is recived from server
  */
-static bool apply_config_overrides(Sky_state_t *s, Rs *rs)
+static bool apply_config_overrides(Sky_sctx_t *s, Rs *rs)
 {
     bool override = false;
 

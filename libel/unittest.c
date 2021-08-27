@@ -80,6 +80,7 @@ int _test_cell(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rs
     b->cell.id4 = id4;
     b->cell.id5 = id5;
     b->cell.freq = freq;
+    b->cell.ta = SKY_UNKNOWN_TA;
 
     return 1;
 }
@@ -107,31 +108,41 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
     return 1;
 }
 
-Sky_ctx_t *_test_sky_ctx()
+Sky_rctx_t *_test_sky_ctx()
 {
-    Sky_ctx_t *ctx;
+    Sky_rctx_t *ctx;
+    void *session;
     Sky_errno_t _ctx_errno;
     uint8_t _aes_key[AES_KEYLEN] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
         0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
     uint32_t bufsize;
 
+    bufsize = sky_sizeof_session_ctx(NULL);
+    if (bufsize == 0 || bufsize > 8192) {
+        fprintf(stderr, "sky_sizeof_session_ctx returned bad value, Can't continue\n");
+        exit(-1);
+    }
+
+    session = malloc(bufsize);
+    memset(session, '\0', bufsize);
+
     if (sky_open(&_ctx_errno, (uint8_t *)TEST_DEVICE_ID, 6, TEST_PARTNER_ID, _aes_key, TEST_SKU,
-            200, NULL, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, NULL, false) == SKY_ERROR) {
+            200, session, SKY_LOG_LEVEL_DEBUG, _test_log, NULL, &time) == SKY_ERROR) {
         fprintf(stderr, "Failure setting up mock context, aborting!\n");
         exit(-1);
     }
 
-    bufsize = sky_sizeof_workspace();
+    bufsize = sky_sizeof_request_ctx();
     if (bufsize == 0 || bufsize > 4096) {
-        fprintf(stderr, "sky_sizeof_workspace returned bad value, Can't continue\n");
+        fprintf(stderr, "sky_sizeof_request_ctx returned bad value, Can't continue\n");
         exit(-1);
     }
 
     ctx = malloc(bufsize);
-    //memset(ctx, 0, bufsize);
 
     Sky_errno_t sky_errno = -1;
-    if (sky_new_request(ctx, bufsize, (uint8_t *)"uplink app data", 16, &sky_errno) != ctx) {
+    if (sky_new_request(ctx, bufsize, session, (uint8_t *)"uplink app data", 16, &sky_errno) !=
+        ctx) {
         fprintf(stderr, "sky_new_request() returned bad value\n");
         fprintf(stderr, "sky_errno contains '%s'\n", sky_perror(sky_errno));
         exit(-1);
@@ -142,12 +153,20 @@ Sky_ctx_t *_test_sky_ctx()
 
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b)
 {
-    return a->h.magic == b->h.magic && a->h.type == b->h.type;
+    return a->h.magic == b->h.magic && a->h.type == b->h.type && a->h.connected == b->h.connected &&
+           a->h.rssi == b->h.rssi;
 }
 
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b)
 {
     return _test_beacon_eq(a, b) &&
-           0 == strncmp((const char *)a->ap.mac, (const char *)b->ap.mac, MAC_SIZE) &&
+           0 == memcmp((const char *)a->ap.mac, (const char *)b->ap.mac, MAC_SIZE) &&
            a->ap.freq == b->ap.freq;
+}
+
+bool _test_cell_eq(const Beacon_t *a, const Beacon_t *b)
+{
+    return _test_beacon_eq(a, b) && a->cell.id1 == b->cell.id1 && a->cell.id2 == b->cell.id2 &&
+           a->cell.id3 == b->cell.id3 && a->cell.id4 == b->cell.id4 && a->cell.id5 == b->cell.id5 &&
+           a->cell.freq == b->cell.freq;
 }

@@ -27,15 +27,16 @@
 
 #include <inttypes.h>
 #include <time.h>
+#include <math.h>
 
 #define SKY_MAGIC 0xD1967806
 #define BEACON_MAGIC 0xf0f0
 
 #define MAC_SIZE 6
 
-#define NUM_CELLS(p) ((uint32_t)((p)->len - (p)->ap_len))
-#define NUM_APS(p) ((p)->ap_len)
-#define NUM_BEACONS(p) ((p)->len)
+#define NUM_CELLS(p) ((uint16_t)((p)->num_beacons - (p)->num_ap))
+#define NUM_APS(p) ((p)->num_ap)
+#define NUM_BEACONS(p) ((p)->num_beacons)
 #define IMPLIES(a, b) (!(a) || (b))
 #define NUM_VAPS(b) ((b)->ap.vg_len)
 
@@ -55,12 +56,29 @@
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
 
-#define has_gps(c) ((c) != NULL && !isnan((c)->gps.lat))
+#define has_gnss(c) ((c) != NULL && !isnan((c)->gnss.lat))
+#define CACHE_EMPTY ((time_t)0)
+#define CONFIG_UPDATE_DUE ((time_t)0)
+#define IS_CACHE_HIT(c) (c->get_from != -1 && (c)->hit)
+#define IS_CACHE_MISS(c) ((c)->hit == false)
 
-#define IS_CACHE_HIT(c) ((c)->get_from != -1)
-#define IS_CACHE_MISS(c) ((c)->get_from == -1)
+#define EFFECTIVE_RSSI(rssi) ((rssi) == -1 ? (-127) : (rssi))
 
-/*! \brief Types of beacon in priority order
+/* Comparisons result in positive difference when beacon a is higher priority */
+/* when comparing type, lower type enum is better so invert difference */
+#define COMPARE_TYPE(a, b) ((b)->h.type - (a)->h.type)
+/* when comparing age, lower value (younger) is better so invert difference */
+#define COMPARE_AGE(a, b) ((b)->h.age - (a)->h.age)
+/* when comparing rssi, higher value (stronger) is better */
+#define COMPARE_RSSI(a, b) (EFFECTIVE_RSSI((a)->h.rssi) - EFFECTIVE_RSSI((b)->h.rssi))
+/* when comparing mac, lower value is better so invert difference */
+#define COMPARE_MAC(a, b) (memcmp((b)->ap.mac, (a)->ap.mac, MAC_SIZE))
+/* when comparing connected, higher (true) value is better */
+#define COMPARE_CONNECTED(a, b) ((a)->h.connected - (b)->h.connected)
+/* when comparing priority, higher value is better */
+#define COMPARE_PRIORITY(a, b) ((a)->h.priority - (b)->h.priority)
+
+/*! \brief Types of beacon in compare order
  */
 typedef enum {
     SKY_BEACON_AP = 1,
@@ -87,7 +105,8 @@ struct header {
     uint16_t magic; /* Indication that this beacon entry is valid */
     uint16_t type; /* sky_beacon_type_t */
     uint32_t age; /* age of scan in seconds relative to when this request was started */
-    int16_t rssi; // -255 unkonwn - map it to - 128
+    int16_t rssi; /* -128 through -10, Uknownn = -1 */
+    float priority; /* used to remove worst beacon. Higher values are better, always positive */
     int8_t connected; /* beacon connected */
 };
 
@@ -114,7 +133,8 @@ struct ap {
     Sky_beacon_property_t vg_prop[MAX_VAP_PER_AP]; /* Virtual AP properties */
 };
 
-// http://wiki.opencellid.org/wiki/API
+/*! \brief http://wiki.opencellid.org/wiki/API
+ */
 struct cell {
     struct header h;
     uint16_t id1; // mcc (gsm, umts, lte, nr, nb-iot). SKY_UNKNOWN_ID1 if unknown.
@@ -129,7 +149,8 @@ struct cell {
     int32_t ta; // SKY_UNKNOWN_TA if unknown.
 };
 
-// blue tooth
+/*! \brief blue tooth
+ */
 struct ble {
     struct header h;
     uint16_t major;
@@ -138,6 +159,8 @@ struct ble {
     uint8_t uuid[16];
 };
 
+/*! \brief universal beacon structure
+ */
 typedef union beacon {
     struct header h;
     struct ap ap;
@@ -145,7 +168,9 @@ typedef union beacon {
     struct cell cell;
 } Beacon_t;
 
-typedef struct gps {
+/*! \brief gnss/gnss
+ */
+typedef struct gnss {
     double lat;
     double lon;
     uint32_t hpe;
@@ -155,23 +180,21 @@ typedef struct gps {
     float bearing;
     uint32_t nsat;
     uint32_t age;
-} Gps_t;
+} Gnss_t;
 
-typedef struct sky_header {
-    uint32_t magic; /* SKY_MAGIC */
-    uint32_t size; /* total number of bytes in structure */
-    uint32_t time; /* timestamp when structure was allocated */
-    uint32_t crc32; /* crc32 over header */
-} Sky_header_t;
-
+/*! \brief each cacheline holds a copy of a scan and the server response
+ */
 typedef struct sky_cacheline {
-    uint16_t len; /* number of beacons */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
-    uint32_t time;
+    uint16_t num_beacons; /* number of beacons */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
+    time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+    Gnss_t gnss; /* GNSS info */
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
+/*! \brief TBR states, 1) Disabled (not in use), 2) Unregistered, 3) Registered
+ */
 typedef enum sky_tbr_state {
     STATE_TBR_DISABLED, /* not configured for TBR */
     STATE_TBR_UNREGISTERED, /* need to register */
@@ -179,10 +202,12 @@ typedef enum sky_tbr_state {
 } Sky_tbr_state_t;
 
 /* Access the cache config parameters */
-#define CONFIG(state, param) (state->config.param)
+#define CONFIG(session, param) (session->config.param)
 
+/*! \brief Server tunable config parameters
+ */
 typedef struct sky_config_pad {
-    uint32_t last_config_time; /* time when the last new config was received */
+    time_t last_config_time; /* time when the last new config was received */
     uint32_t total_beacons;
     uint32_t max_ap_beacons;
     uint32_t cache_match_threshold;
@@ -196,58 +221,62 @@ typedef struct sky_config_pad {
     /* add more configuration params here */
 } Sky_config_t;
 
-typedef struct sky_state {
+/*! \brief Session Context - holds cache lines as well as parameters defined when Libel is opened
+ */
+typedef struct sky_sctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    uint32_t sky_id_len; /* device ID len */
-    uint8_t sky_device_id[MAX_DEVICE_ID]; /* device ID */
-    uint32_t sky_token_id; /* TBR token ID */
-    uint32_t sky_ul_app_data_len; /* uplink app data length */
-    uint8_t sky_ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
-    uint32_t sky_dl_app_data_len; /* downlink app data length */
-    uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-    char sky_sku[MAX_SKU_LEN + 1]; /* product family ID */
-    uint16_t sky_cc; /* Optional Country Code (0 = unused) */
+    bool open_flag; /* true if sky_open() has been called by user */
+    Sky_randfn_t rand_bytes; /* User rand_bytes fn */
+    Sky_loggerfn_t logf; /* User logging fn */
+    Sky_log_level_t min_level; /* User log level */
+    Sky_timefn_t timefn; /* User time fn */
+    void *plugins; /* root of registered plugin list */
+    uint32_t id_len; /* device ID num_beacons */
+    uint8_t device_id[MAX_DEVICE_ID]; /* device ID */
+    uint32_t token_id; /* TBR token ID */
+    uint32_t ul_app_data_len; /* uplink app data length */
+    uint8_t ul_app_data[SKY_MAX_UL_APP_DATA]; /* uplink app data */
+    uint32_t dl_app_data_len; /* downlink app data length */
+    uint8_t dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
+    char sku[MAX_SKU_LEN + 1]; /* product family ID */
+    uint16_t cc; /* Optional Country Code (0 = unused) */
     Sky_errno_t backoff; /* last auth error */
-    uint32_t sky_partner_id; /* partner ID */
-    uint8_t sky_aes_key[AES_KEYLEN]; /* aes key */
+    uint32_t partner_id; /* partner ID */
+    uint8_t aes_key[AES_KEYLEN]; /* aes key */
 #if CACHE_SIZE
-    int len; /* number of cache lines */
+    int num_cachelines; /* number of cachelines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
 #endif
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
-} Sky_state_t;
+} Sky_sctx_t;
 
-typedef struct sky_ctx {
+/*! \brief Request Context - temporary space used to build a request
+ */
+typedef struct sky_rctx {
     Sky_header_t header; /* magic, size, timestamp, crc32 */
-    Sky_loggerfn_t logf;
-    Sky_randfn_t rand_bytes;
-    Sky_log_level_t min_level;
-    Sky_timefn_t gettime;
-    bool debounce;
-    uint16_t len; /* number of beacons in list (0 == none) */
-    uint16_t ap_len; /* number of AP beacons in list (0 == none) */
+    uint16_t num_beacons; /* number of beacons in list (0 == none) */
+    uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
-    Gps_t gps; /* GNSS info */
-    /* Assume worst case is that beacons and gps info takes twice the bare structure size */
+    Gnss_t gnss; /* GNSS info */
+    bool hit; /* status of search of cache for match to new scan (true/false) */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
-    Sky_state_t *state;
-    void *plugin;
+    Sky_sctx_t *session;
     Sky_tbr_state_t auth_state; /* tbr disabled, need to register or got token */
     uint32_t sky_dl_app_data_len; /* downlink app data length */
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
-} Sky_ctx_t;
+} Sky_rctx_t;
 
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b);
-int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop);
+Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
+int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop);
 bool beacon_in_cacheline(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl);
-int find_oldest(Sky_ctx_t *ctx);
-int get_from_cache(Sky_ctx_t *ctx);
-Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index);
-Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index);
+    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
+int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
+int find_oldest(Sky_rctx_t *rctx);
+int search_cache(Sky_rctx_t *rctx);
+Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index);
 
 #endif

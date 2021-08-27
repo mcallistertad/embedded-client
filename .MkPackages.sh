@@ -132,14 +132,25 @@ fi
 rm -rf ${packages}
 
 if [[ $(is_ec_dir ${PWD}) == "true" ]]; then
-    cp -r . ${scratch}/${archive} || err_exit "Failed to copy package files to ${scratch}"
+    if [[ $OSTYPE == 'darwin'* ]]; then
+        echo 'Running on macOS'
+        if command -v gcp &> /dev/null ; then
+            CP=gcp
+        else
+            err_exit 'gcp not found. Maybe do "brew install coreutils"?'
+        fi
+    else
+        CP=cp
+    fi
+
+    $CP -r . ${scratch}/${archive} || err_exit "Failed to copy package files to ${scratch}"
 
     # Is the directory a clean copy of the client files?
     if [[ $(is_clean_repo ${scratch}/${archive}) == "true" ]]; then
        # It is clean so lets archive it
 
         if mkdir -p ${packages}; then
-            cp ${pdf} ${scratch}/${archive}/README.pdf
+            $CP ${pdf} ${scratch}/${archive}/README.pdf
             cd ${scratch}
             tar czf ${scratch}/${archive}.tgz --exclude=${packages} ${archive}
             [ -e ${scratch}/${archive}.tgz ] || err_exit "Failed to create Tar archive ${scratch}/${archive}.tgz"

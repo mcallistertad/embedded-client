@@ -10,6 +10,12 @@
 #define _POSIX_C_SOURCE 200809L // for strsignal()
 #endif
 
+#define UNITTESTS
+#ifdef SANITY_CHECKS
+#undef SANITY_CHECKS
+#endif
+#define SANITY_CHECKS true
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,10 +23,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define SKY_LIBEL
 #include "libel.h"
-
-#define UNITTESTS
 
 /* Constants for sky_open */
 #define TEST_DEVICE_ID "123456123456112233445566"
@@ -141,16 +144,17 @@
         __VA_ARGS__                                                                                \
     }
 
-/* \brief Convienence wrapper around TEST_DEF/EXE with automatic Sky_ctx_t var
+/* \brief Convienence wrapper around TEST_DEF/EXE with automatic Sky_rctx_t var
  * @param const char* Test description
  * @param identifier Context variable
  * @param block Test code
  */
-#define TEST(S, N, ...)                                                                            \
+#define TEST(S, C, ...)                                                                            \
     TEST_DEF((S), {                                                                                \
-        MOCK_SKY_CTX(N);                                                                           \
+        MOCK_SKY_CTX(C);                                                                           \
         EXE(__VA_ARGS__);                                                                          \
-        CLOSE_SKY_CTX(N);                                                                          \
+        CLOSE_SKY_SESSION(C->session);                                                             \
+        free(C);                                                                                   \
     });
 
 /* \brief Evaluate expression and tally results
@@ -179,17 +183,17 @@
     }
 
 /* Mock utility macros */
-#define MOCK_SKY_LOG_CTX(N) Sky_ctx_t ctx = { .logf = _test_log }
+#define MOCK_SKY_LOG_CTX(N) Sky_rctx_t rctx = { .logf = _test_log }
 
-#define MOCK_SKY_CTX(N) Sky_ctx_t *N = _test_sky_ctx()
+#define MOCK_SKY_CTX(N) Sky_rctx_t *N = _test_sky_ctx()
 
-#define CLOSE_SKY_CTX(C)                                                                           \
+#define CLOSE_SKY_SESSION(S)                                                                       \
     Sky_errno_t err;                                                                               \
-    if (sky_close(&err, NULL) != SKY_SUCCESS) {                                                    \
+    if (sky_close(S, &err) != SKY_SUCCESS) {                                                       \
         fprintf(stderr, "error closing mock sky context\n");                                       \
         exit(-1);                                                                                  \
     }                                                                                              \
-    free(C);
+    free(S);
 
 /* Beacon macros */
 #define BEACON(N, TYPE, TIME, RSSI, CON)                                                           \
@@ -230,24 +234,25 @@
     _test_cell(                                                                                    \
         &(N), SKY_BEACON_GSM, (TIME), (RSSI), (CON), (ID1), (ID2), (ID3), (ID4), (ID5), (ID6));
 
-#define NR_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                       \
+#define NR_NMR(N, TIME, RSSI, ID5, ID6)                                                            \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_NR, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_NR, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define LTE_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                      \
+#define LTE_NMR(N, TIME, RSSI, ID5, ID6)                                                           \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_LTE, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_LTE, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define UMTS_NMR(N, TIME, RSSI, CON, ID1, ID2, ID3, ID4, ID5, ID6)                                 \
+#define UMTS_NMR(N, TIME, RSSI, ID5, ID6)                                                          \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_UMTS, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_UMTS, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
-#define NBIOT_NMR(N, TIME, RSSI, CON, ID5, ID6)                                                    \
+#define NBIOT_NMR(N, TIME, RSSI, ID5, ID6)                                                         \
     Beacon_t N;                                                                                    \
-    _test_cell(&(N), SKY_BEACON_NBIOT, (TIME), (RSSI), (CON), -1, -1, -1, -1, (ID5), (ID6));
+    _test_cell(&(N), SKY_BEACON_NBIOT, (TIME), (RSSI), 0, -1, -1, -1, -1, (ID5), (ID6));
 
 #define BEACON_EQ(A, B) _test_beacon_eq((A), (B))
 #define AP_EQ(A, B) _test_ap_eq((A), (B))
+#define CELL_EQ(A, B) _test_cell_eq((A), (B))
 
 typedef struct {
     int verbose;
@@ -275,7 +280,7 @@ void _test_set_desc(Test_ctx *ctx, const char *str);
 void _test_assert(Test_ctx *ctx, const char *file, int line, int res);
 void _test_print_rs(Test_opts *opts, Test_rs rs);
 int _test_log(Sky_log_level_t level, char *s);
-Sky_ctx_t *_test_sky_ctx();
+Sky_rctx_t *_test_sky_ctx();
 int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32_t frequency,
     bool is_connected);
 int _test_beacon(
@@ -285,6 +290,8 @@ int _test_cell(Beacon_t *b, Sky_beacon_type_t type, time_t timestamp, int16_t rs
     int32_t freq);
 bool _test_beacon_eq(const Beacon_t *a, const Beacon_t *b);
 bool _test_ap_eq(const Beacon_t *a, const Beacon_t *b);
-//int _test_cell(Beacon_t *b, time_t timestamp, int16_t rssi, int32_t frequency, bool is_connected);
+bool _test_cell_eq(const Beacon_t *a, const Beacon_t *b);
+Sky_status_t plugin_unit_tests(void);
+void sky_plugin_unit_tests(void *_ctx);
 
 #endif

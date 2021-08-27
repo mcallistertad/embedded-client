@@ -28,7 +28,7 @@
 #include "../libel/config.h"
 
 typedef struct client_config {
-    char *filename;
+    char *configfile;
     uint16_t port;
     uint16_t partner_id;
 
@@ -43,6 +43,7 @@ typedef struct client_config {
     bool debounce;
     uint8_t ul_app_data[SKY_MAX_UL_APP_DATA];
     uint32_t ul_app_data_len;
+    bool factory_reset; /* true means simulate factory reset */
 } Config_t;
 
 uint32_t hex2bin(char *hexstr, uint32_t hexlen, uint8_t *result, uint32_t reslen);

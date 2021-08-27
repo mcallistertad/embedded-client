@@ -25,232 +25,253 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 #include <stdio.h>
-#include <limits.h>
-#define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
-
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
-#define EFFECTIVE_RSSI(b) ((b) == -1 ? (-127) : (b))
-#define PUT_IN_CACHE true
-#define GET_FROM_CACHE false
-
-static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff);
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 /*! \brief shuffle list to remove the beacon at index
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param index 0 based index of AP to remove
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t remove_beacon(Sky_ctx_t *ctx, int index)
+Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index)
 {
-    if (index >= NUM_BEACONS(ctx))
+    if (index >= NUM_BEACONS(rctx))
         return SKY_ERROR;
 
-    if (is_ap_type(&ctx->beacon[index]))
-        NUM_APS(ctx) -= 1;
-
-    memmove(&ctx->beacon[index], &ctx->beacon[index + 1],
-        sizeof(Beacon_t) * (NUM_BEACONS(ctx) - index - 1));
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "idx:%d", index);
-    NUM_BEACONS(ctx) -= 1;
-#ifdef VERBOSE_DEBUG
-    DUMP_WORKSPACE(ctx);
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "type:%s idx:%d", sky_pbeacon(&rctx->beacon[index]), index);
+    if (is_ap_type(&rctx->beacon[index]))
+        NUM_APS(rctx) -= 1;
+    memmove(&rctx->beacon[index], &rctx->beacon[index + 1],
+        sizeof(Beacon_t) * (NUM_BEACONS(rctx) - index - 1));
+    NUM_BEACONS(rctx) -= 1;
+#if VERBOSE_DEBUG
+    DUMP_REQUEST_CTX(rctx);
 #endif
     return SKY_SUCCESS;
 }
 
+/*! \brief compare beacons for ordering when inserting in request context
+ *
+ * better beacons are inserted before worse.
+ *
+ *  @param rctx Skyhook request context
+ *  @param a pointer to beacon A
+ *  @param B pointer to beacon B
+ *
+ *  @return  >0 if beacon A is better
+ *           <0 if beacon B is better
+ */
+static int is_beacon_first(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
+{
+    int diff = 0;
+
+#if VERBOSE_DEBUG
+    dump_beacon(rctx, "A: ", a, __FILE__, __FUNCTION__);
+    dump_beacon(rctx, "B: ", b, __FILE__, __FUNCTION__);
+#endif
+    /* sky_plugin_compare compares beacons of the same class and returns SKY_ERROR when they are different classes */
+    if ((sky_plugin_compare(rctx, NULL, a, b, &diff)) == SKY_ERROR) {
+        /* Beacons are different classes, so compare like this */
+        /* If either beacon is not cell, order by type */
+        /* If one beacon is nmr cell, order fully qualified first */
+        /* If one cell is connected, order connected first */
+        /* otherwise order by type */
+        if (!is_cell_type(a) || !is_cell_type(b))
+            diff = COMPARE_TYPE(a, b) >= 0 ? 1 : -1;
+        else if (is_cell_nmr(a) != is_cell_nmr(b))
+            /* fully qualified cell is better */
+            diff = (!is_cell_nmr(a) ? 1 : -1);
+        else if (a->h.connected != b->h.connected)
+            diff = COMPARE_CONNECTED(a, b);
+        else
+            diff = COMPARE_TYPE(a, b);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Different classes %d (%s)", diff,
+            diff < 0 ? "B is better" : "A is better");
+#endif
+    } else {
+        /* otherwise beacons were comparable and plugin set diff appropriately */
+        diff = (diff != 0) ? diff : 1; /* choose A if plugin returns 0 */
+#if VERBOSE_DEBUG
+        if (diff)
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
+                diff < 0 ? "B is better" : "A is better");
+#endif
+    }
+    return diff;
+}
+
 /*! \brief insert beacon in list based on type and AP rssi
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param sky_errno pointer to errno
  *  @param b beacon to add
  *  @param index pointer where to save the insert position
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t insert_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b, int *index)
+static Sky_status_t insert_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b)
 {
-    int j, diff = 0;
-
-    /* sanity checks */
-    if (!validate_workspace(ctx) || b->h.magic != BEACON_MAGIC || b->h.type >= SKY_BEACON_MAX) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Invalid params. Beacon type %s", sky_pbeacon(b));
-        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    }
+    int j;
 
     /* check for duplicate */
-    if (is_ap_type(b)) { /* If new beacon is AP */
-        for (j = 0; j < NUM_APS(ctx); j++) {
-            if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
-                /* reject new beacon if already have connected AP, or it is older or weaker */
-                if (ctx->beacon[j].h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (not connected)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else if (b->h.connected && ctx->beacon[j].ap.vg_len) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate VAP (marked connected)");
-                    ctx->beacon[j].h.connected = b->h.connected;
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else if (b->h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (connected)");
-                    break; /* fall through to remove exiting duplicate */
-                } else if (b->h.age > ctx->beacon[j].h.age) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (older)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else if (b->h.age < ctx->beacon[j].h.age) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate AP (younger)");
-                    break; /* fall through to remove exiting duplicate */
-                } else if (EFFECTIVE_RSSI(b->h.rssi) <= EFFECTIVE_RSSI(ctx->beacon[j].h.rssi)) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate AP (weaker)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate AP (stronger signal)");
-                    break; /* fall through to remove exiting duplicate */
-                }
-            }
-        }
-        /* if a better duplicate was found, remove existing worse beacon */
-        if (j < NUM_APS(ctx))
-            remove_beacon(ctx, j);
-    } else if (is_cell_type(b)) { /* If new beacon is one of the cell types */
-        for (j = NUM_APS(ctx); j < NUM_BEACONS(ctx); j++) {
-            if (sky_plugin_equal(ctx, sky_errno, b, &ctx->beacon[j], NULL) == SKY_SUCCESS) {
-                /* reject new beacon if already have connected cell, or it is older or weaker */
-                if (ctx->beacon[j].h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (not connected)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else if (b->h.connected) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (connected)");
-                    break; /* fall through to remove exiting duplicate */
-                } else if (get_cell_age(b) > get_cell_age(&ctx->beacon[j])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (older)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else if (get_cell_age(b) < get_cell_age(&ctx->beacon[j])) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Keep new duplicate cell (younger)");
-                    break; /* fall through to remove exiting duplicate */
-                } else if (EFFECTIVE_RSSI(get_cell_rssi(b)) <=
-                           EFFECTIVE_RSSI(get_cell_rssi(&ctx->beacon[j]))) {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate cell (weaker)");
-                    return set_error_status(sky_errno, SKY_ERROR_NONE);
-                } else {
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate cell (stronger signal)");
-                    break; /* fall through to remove exiting duplicate */
-                }
-            }
-        }
-        /* if a better duplicate was found, remove existing worse beacon */
-        if (j < NUM_BEACONS(ctx))
-            remove_beacon(ctx, j);
-    } else
-        LOGFMT(ctx, SKY_LOG_LEVEL_WARNING, "Unsupported beacon type");
+    if (is_ap_type(b) || is_cell_type(b)) {
+        for (j = 0; j < NUM_BEACONS(rctx); j++) {
+            bool equal = false;
 
-    /* find correct position to insert based on priority */
-    for (j = 0; j < NUM_BEACONS(ctx); j++) {
-        if (beacon_compare(ctx, b, &ctx->beacon[j], &diff) == false)
-            if (diff >= 0) // stop if the new beacon is better
-                break;
+            if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], NULL, &equal) ==
+                    SKY_SUCCESS &&
+                equal) {
+                /* Found duplicate - keep new beacon if it is better */
+                if (b->h.age < rctx->beacon[j].h.age || /* Younger */
+                    (b->h.age == rctx->beacon[j].h.age &&
+                        b->h.connected) || /* same age, but connected */
+                    (b->h.age ==
+                            rctx->beacon[j].h.age && /* same age and connectedness, but stronger */
+                        b->h.connected == rctx->beacon[j].h.connected &&
+                        b->h.rssi > rctx->beacon[j].h.rssi)) {
+                    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Keep new duplicate");
+                    break; /* break for loop and remove existing duplicate */
+                } else {
+                    LOGFMT(rctx, SKY_LOG_LEVEL_WARNING, "Reject duplicate");
+                    return set_error_status(sky_errno, SKY_ERROR_NONE);
+                }
+            }
+        }
+        if (j < NUM_BEACONS(rctx)) {
+            /* a better duplicate was found, remove existing beacon */
+            remove_beacon(rctx, j);
+        }
+    } else {
+        LOGFMT(rctx, SKY_LOG_LEVEL_WARNING, "Unsupported beacon type");
+        return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
+    }
+
+    /* find position to insert based on plugin compare operation */
+    for (j = 0; j < NUM_BEACONS(rctx); j++) {
+        if (is_beacon_first(rctx, b, &rctx->beacon[j]) > 0)
+            break;
     }
 
     /* add beacon at the end */
-    if (j == NUM_BEACONS(ctx)) {
-        ctx->beacon[j] = *b;
-        NUM_BEACONS(ctx)++;
+    if (j == NUM_BEACONS(rctx)) {
+        rctx->beacon[j] = *b;
+        NUM_BEACONS(rctx)++;
     } else {
         /* shift beacons to make room for the new one */
-        memmove(&ctx->beacon[j + 1], &ctx->beacon[j], sizeof(Beacon_t) * (NUM_BEACONS(ctx) - j));
-        ctx->beacon[j] = *b;
-        NUM_BEACONS(ctx)++;
+        memmove(&rctx->beacon[j + 1], &rctx->beacon[j], sizeof(Beacon_t) * (NUM_BEACONS(rctx) - j));
+        rctx->beacon[j] = *b;
+        NUM_BEACONS(rctx)++;
     }
-    /* report back the position beacon was added */
-    if (index != NULL)
-        *index = j;
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted idx: %d %s", sky_pbeacon(b), j,
-        b->h.connected ? "* " : "");
+    if (is_ap_type(b)) {
+        NUM_APS(rctx)++;
+    }
 
-    if (is_ap_type(b))
-        NUM_APS(ctx)++;
+#ifdef SKY_LOGGING
+    /* Verify that the beacon we just added now appears in our beacon set. */
+    for (j = 0; j < NUM_BEACONS(rctx); j++) {
+        bool equal;
+        if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], NULL, &equal) == SKY_SUCCESS &&
+            equal)
+            break;
+    }
+    if (j < NUM_BEACONS(rctx))
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted at idx %d", sky_pbeacon(b), j);
+    else
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Beacon NOT found after insert");
+#endif
     return SKY_SUCCESS;
 }
 
-/*! \brief add beacon to list in workspace context
+/*! \brief add beacon to list in request rctx
  *
- *   if beacon is not AP and workspace is full (of non-AP), pick best one
+ *   if beacon is not AP and request rctx is full (of non-AP), pick best one
  *   if beacon is AP,
  *    . reject a duplicate
  *    . for duplicates, keep newest and strongest
  *
- *   Insert new beacon in workspace
+ *   Insert new beacon in request rctx
  *    . Add APs in order based on lowest to highest rssi value
  *    . Add cells after APs
  *
  *   If AP just added is known in cache,
  *    . set cached and copy Used property from cache
  *
- *   If AP just added fills workspace, remove one AP,
+ *   If AP just added fills request rctx, remove one AP,
  *    . Remove one virtual AP if there is a match
  *    . If haven't removed one AP, remove one based on rssi distribution
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
+ *  @param b beacon to be added
+ *  @param timestamp time that the beacon was scanned
  *
  *  @return SKY_SUCCESS if beacon successfully added or SKY_ERROR
  */
-Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
+Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp)
 {
-    int n, i = -1;
+    int n;
 
-    if (is_ap_type(b)) {
-        if (!validate_mac(b->ap.mac, ctx))
-            return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-    }
+#if SANITY_CHECKS
+    if (!validate_request_ctx(rctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
-    /* connected flag for nmr beacons always false */
-    if (is_cell_nmr(b))
-        b->h.connected = false;
+    if (!rctx->session->open_flag)
+        return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
 
-    /* insert the beacon */
-    n = NUM_BEACONS(ctx);
-    if (insert_beacon(ctx, sky_errno, b, &i) == SKY_ERROR)
-        return SKY_ERROR;
-    if (n == NUM_BEACONS(ctx)) // no beacon added, must be duplicate because there was no error
-        return SKY_SUCCESS;
+    if (!validate_beacon(b, rctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+
+    /* Validate scan was before sky_new_request and since Mar 1st 2019 */
+    if (timestamp != TIME_UNAVAILABLE && timestamp < TIMESTAMP_2019_03_01)
+        return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
+    else if (rctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
+        b->h.age = 0;
+    else if (rctx->header.time >= timestamp)
+        b->h.age = rctx->header.time - timestamp;
+    else
+        return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
 #if CACHE_SIZE
-    /* Update the AP just added to workspace */
+    /* Update the AP */
     if (is_ap_type(b)) {
-        Beacon_t *w = &ctx->beacon[i];
-        if (!beacon_in_cache(ctx, b, &w->ap.property)) {
-            w->ap.property.in_cache = false;
-            w->ap.property.used = false;
+        if (!beacon_in_cache(rctx, b, &b->ap.property)) {
+            b->ap.property.in_cache = false;
+            b->ap.property.used = false;
         }
     }
 #endif
 
+    /* insert the beacon */
+    n = NUM_BEACONS(rctx);
+    if (insert_beacon(rctx, sky_errno, b) == SKY_ERROR)
+        return SKY_ERROR;
+    if (n == NUM_BEACONS(rctx)) // no beacon added, must be duplicate because there was no error
+        return SKY_SUCCESS;
+
     /* done if no filtering needed */
-    if (NUM_APS(ctx) <= CONFIG(ctx->state, max_ap_beacons) &&
-        (NUM_CELLS(ctx) <=
-            (CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)))) {
-#ifdef VERBOSE_DEBUG
-        DUMP_WORKSPACE(ctx);
-#endif
+    if (NUM_APS(rctx) <= CONFIG(rctx->session, max_ap_beacons) &&
+        (NUM_CELLS(rctx) <=
+            (CONFIG(rctx->session, total_beacons) - CONFIG(rctx->session, max_ap_beacons)))) {
         return SKY_SUCCESS;
     }
 
     /* beacon is AP and is subject to filtering */
-    /* discard virtual duplicates of remove one based on rssi distribution */
-    if (sky_plugin_remove_worst(ctx, sky_errno) == SKY_ERROR) {
-        if (NUM_BEACONS(ctx) > CONFIG(ctx->state, total_beacons))
-            LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
+    /* discard virtual duplicates or remove one based on rssi distribution */
+    if (sky_plugin_remove_worst(rctx, sky_errno) == SKY_ERROR) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Unexpected failure removing worst beacon");
+        DUMP_REQUEST_CTX(rctx);
         return set_error_status(sky_errno, SKY_ERROR_INTERNAL);
     }
-    DUMP_WORKSPACE(ctx);
 
     return SKY_SUCCESS;
 }
@@ -258,31 +279,31 @@ Sky_status_t add_beacon(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *b)
 #if CACHE_SIZE
 /*! \brief check if a beacon is in cache
  *
- *   Scan all cachelines in the cache. 
+ *   Scan all cachelines in the cache.
  *   If the given beacon is found in the cache true is returned otherwise
- *   false. A beacon may appear in multiple cache lines.
+ *   false. A beacon may appear in multiple cachelines.
  *   If prop is not NULL, algorithm searches all caches for best match
  *   (beacon with Used == true is best) otherwise, first match is returned
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param b pointer to new beacon
  *  @param cl pointer to cacheline
  *  @param prop pointer to where the properties of matching beacon is saved
  *
  *  @return true if beacon successfully found or false
  */
-bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
     Sky_beacon_property_t best_prop = { false, false };
     Sky_beacon_property_t result = { false, false };
 
-    if (!b || !ctx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+    if (!b || !rctx) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
 
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        if (beacon_in_cacheline(ctx, b, &ctx->state->cacheline[i], &result)) {
+    for (int i = 0; i < rctx->session->num_cachelines; i++) {
+        if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i], &result)) {
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
             best_prop.in_cache = true;
@@ -308,7 +329,7 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
  *   true is returned otherwise false. If index is not NULL, the index of the matching
  *   beacon in the cacheline is saved or -1 if beacon was not found.
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param b pointer to new beacon
  *  @param cl pointer to cacheline
  *  @param index pointer to where the index of matching beacon is saved
@@ -316,203 +337,126 @@ bool beacon_in_cache(Sky_ctx_t *ctx, Beacon_t *b, Sky_beacon_property_t *prop)
  *  @return true if beacon successfully found or false
  */
 bool beacon_in_cacheline(
-    Sky_ctx_t *ctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
+    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
 
-    if (!cl || !b || !ctx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+    if (!cl || !b || !rctx) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
 
-    if (cl->time == 0) {
+    if (cl->time == CACHE_EMPTY) {
         return false;
     }
 
-    for (j = 0; j < NUM_BEACONS(cl); j++)
-        if (sky_plugin_equal(ctx, NULL, b, &cl->beacon[j], prop) == 1)
+    for (j = 0; j < NUM_BEACONS(cl); j++) {
+        bool equal = false;
+
+        if (sky_plugin_equal(rctx, NULL, b, &cl->beacon[j], prop, &equal) == SKY_SUCCESS && equal)
             return true;
+    }
     return false;
 }
 
 /*! \brief find cache entry with oldest entry
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *
  *  @return index of oldest cache entry, or empty
  */
-int find_oldest(Sky_ctx_t *ctx)
+int find_oldest(Sky_rctx_t *rctx)
 {
+#if CACHE_SIZE == 1
+    /* if there is only one cacheline */
+    (void)rctx;
+    return 0;
+#else
     int i;
-    uint32_t oldestc = 0;
-    uint32_t oldest = (*ctx->gettime)(NULL);
+    int oldestc = 0;
+    time_t oldest = rctx->header.time;
 
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (ctx->state->cacheline[i].time == 0)
+        /* if time is unavailable or
+         * cacheline is empty,
+         * then return index of current cacheline */
+        if (oldest == TIME_UNAVAILABLE || rctx->session->cacheline[i].time == CACHE_EMPTY)
             return i;
-        else if (ctx->state->cacheline[i].time < oldest) {
-            oldest = ctx->state->cacheline[i].time;
+        else if (rctx->session->cacheline[i].time < oldest) {
+            oldest = rctx->session->cacheline[i].time;
             oldestc = i;
         }
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
     return oldestc;
+#endif
 }
 #endif
 
-/*! \brief compare a beacon to one in workspace
+/*! \brief test whether gnss in new scan is preferable to that in cache
  *
- *  if beacon is duplicate, return true
+ *  if new scan has better gnss that that in cache, it is better to update cache
+ *  by sending new scan to server.
  *
- *  if both are AP, return false and set diff to difference in rssi
- *  if both are cell and same cell type, return false and set diff as below
- *   connected cell
- *   youngest
- *   in cache
- *   strongest
+ *  true only if gnss fix in cache is worse than new scan
+ *  false if cached gnss is not
  *
- *  @param ctx Skyhook request context
- *  @param bA pointer to beacon A
- *  @param wb pointer to beacon B
- *
- *  @return true if match or false and set diff
- *   diff is 0 if beacons can't be compared
- *           +ve if beacon A is better
- *           -ve if beacon B is better
- */
-static bool beacon_compare(Sky_ctx_t *ctx, Beacon_t *new, Beacon_t *wb, int *diff)
-{
-    Sky_status_t equality = SKY_ERROR;
-    bool ret = false;
-    int better = 1; // beacon B is better (-ve), or A is better (+ve)
-
-    if (!ctx || !new || !wb) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        if (diff)
-            *diff = 0; /* can't compare */
-        return false;
-    }
-
-    /* if beacons can't be compared for equality (different types), order like this */
-    if ((equality = sky_plugin_equal(ctx, NULL, new, wb, NULL)) == SKY_ERROR) {
-        if (new->h.connected != wb->h.connected)
-            /* connected is best */
-            better = new->h.connected ? 1 : -1;
-        if (is_cell_nmr(new) != is_cell_nmr(wb))
-            /* fully qualified is next */
-            better = (!is_cell_nmr(new) ? 1 : -1);
-        else
-            /* then type which increase in value as they become lower priority */
-            /* so we have to invert the sign of the comparison value */
-            better = -(new->h.type - wb->h.type);
-#ifdef VERBOSE_DEBUG
-        dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Different types %d (%s)", better,
-            better < 0 ? "B is better" : "A is better");
-#endif
-    } else if (equality == SKY_SUCCESS) // if beacons are equivalent, return true
-        ret = true;
-    else {
-        /* if the beacons can be compared and are not equivalent, determine which is better */
-        if (new->h.type == SKY_BEACON_AP || new->h.type == SKY_BEACON_BLE) {
-            /* Compare APs by rssi */
-            if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
-                better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "WiFi rssi score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else
-                /* vg with most members is better */
-                better = new->ap.vg_len - wb->ap.vg_len;
-        } else {
-        /* Compare cells of same type - priority is connected, non-nmr, youngest, or stongest */
-#ifdef VERBOSE_DEBUG
-            dump_beacon(ctx, "A: ", new, __FILE__, __FUNCTION__);
-            dump_beacon(ctx, "B: ", wb, __FILE__, __FUNCTION__);
-#endif
-            if (new->h.connected || wb->h.connected) {
-                better = (new->h.connected ? 1 : -1);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell connected score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else if (is_cell_nmr(new) != is_cell_nmr(wb)) {
-                /* fully qualified is best */
-                better = (!is_cell_nmr(new) ? 1 : -1);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell nmr score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else if (new->h.age != wb->h.age) {
-                /* youngest is best */
-                better = -(new->h.age - wb->h.age);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell age score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else if (EFFECTIVE_RSSI(new->h.rssi) != EFFECTIVE_RSSI(wb->h.rssi)) {
-                /* highest signal strength is best */
-                better = EFFECTIVE_RSSI(new->h.rssi) - EFFECTIVE_RSSI(wb->h.rssi);
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell signal strength score %d (%s)", better,
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            } else {
-                better = 1;
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell similar, pick one (%s)",
-                    better < 0 ? "B is better" : "A is better");
-#endif
-            }
-        }
-    }
-
-    if (!ret && diff)
-        *diff = better;
-
-#ifdef VERBOSE_DEBUG
-    if (ret)
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Beacons match");
-#endif
-    return ret;
-}
-
-/*! \brief test serving cell in workspace has changed from that in cache
- *
- *  Cells in workspace are in priority order
- *
- *  false if either workspace or cache has no cells
- *  false if highest priority workspace cell (which is
- *  assumed to be the serving cell, regardless of whether or
- *  not the user has marked it "connected") matches cache
- *  true otherwise
- *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in
  *
  *  @return true or false
  */
-int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
+int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
+{
+    if (!rctx || !cl) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
+#endif
+        return true;
+    }
+
+    /* in future, this condition could take accuracy into account */
+    /* Reject cached fix if new scan contains gnss and cache does not */
+    if (has_gnss(rctx) && !has_gnss(cl)) {
+#ifdef VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
+#endif
+        return true;
+    }
+    return false;
+}
+
+/*! \brief test serving cell in workspace has changed from that in cache
+ *
+ *  @return true or false
+ *
+ *  false if either request context or cache has no cells
+ *  false if highest priority cell (which is
+ *  assumed to be the serving cell, regardless of whether or
+ *  not the user has marked it "connected") matches cache
+ *  true otherwise
+ */
+int serving_cell_changed(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
+    bool equal = false;
+
     if (!ctx || !cl) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
 #endif
         return true;
     }
 
     if (NUM_CELLS(ctx) == 0) {
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in workspace");
+#if VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request ctx");
 #endif
         return false;
     }
 
     if (NUM_CELLS(cl) == 0) {
-#ifdef VERBOSE_DEBUG
+#if VERBOSE_DEBUG
         LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
@@ -521,13 +465,13 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
     w = &ctx->beacon[NUM_APS(ctx)];
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or workspace");
+#if VERBOSE_DEBUG
+        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request ctx");
 #endif
         return false;
     }
 
-    if (sky_plugin_equal(ctx, NULL, w, c, NULL) == SKY_SUCCESS)
+    if (sky_plugin_equal(ctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
         return false;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
@@ -535,56 +479,60 @@ int cell_changed(Sky_ctx_t *ctx, Sky_cacheline_t *cl)
 
 /*! \brief get location from cache
  *
- *  @param ctx Skyhook request context
+ *  The request context is updated with the index of cacheline with best match
+ *  and the status of whether that cacheline is a good enough match to be considered
+ *  a cache hit.
  *
- *  @return cacheline index or -1
+ *  @param rctx Skyhook request context
+ *
+ *  @return true or false based on match of new scan to cachelines
  */
-int get_from_cache(Sky_ctx_t *ctx)
+int search_cache(Sky_rctx_t *rctx)
 {
-    uint32_t now = (*ctx->gettime)(NULL);
-    int idx;
-
-    if (CACHE_SIZE < 1) {
+#if CACHE_SIZE == 0
+    /* no match to cacheline */
+    rctx->hit = false;
+    return (rctx->get_from = -1);
+#else
+    /* Avoid using the cache if we have good reason */
+    /* to believe that system time is bad or no cache */
+    if (rctx->session->num_cachelines < 1 || rctx->header.time <= TIMESTAMP_2019_03_01 ||
+        sky_plugin_match_cache(rctx, NULL) != SKY_SUCCESS) {
         /* no match to cacheline */
-        return (ctx->get_from = -1);
+        rctx->get_from = -1;
+        return (rctx->hit = false);
     }
 
-    /* compare current time to Mar 1st 2019 */
-    if (now <= TIMESTAMP_2019_03_01) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
-        /* no match to cacheline */
-        return (ctx->get_from = -1);
-    }
-    return (ctx->get_from =
-                sky_plugin_get_matching_cacheline(ctx, NULL, &idx) == SKY_SUCCESS ? idx : -1);
+    return (rctx->hit);
+#endif
 }
 
 /*! \brief check if an AP beacon is in a virtual group
  *
- *  Both the b (in workspace) and vg in cache may be virtual groups
+ *  Both the b (in request rctx) and vg in cache may be virtual groups
  *  if the two macs are similar and difference is same nibble as child, then
  *  if any of the children have matching macs, then match
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param b pointer to new beacon
  *  @param vg pointer to beacon in cacheline
  *
  *  @return 0 if no matches otherwise return number of matching APs
  */
-int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop)
+int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop)
 {
     int w, c, num_aps = 0;
     uint8_t mac_va[MAC_SIZE] = { 0 };
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 
-    if (!ctx || !va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+    if (!rctx || !va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
 #if VERBOSE_DEBUG
-    dump_beacon(ctx, "A: ", va, __FILE__, __FUNCTION__);
-    dump_beacon(ctx, "B: ", vb, __FILE__, __FUNCTION__);
+    dump_beacon(rctx, "A: ", va, __FILE__, __FUNCTION__);
+    dump_beacon(rctx, "B: ", vb, __FILE__, __FUNCTION__);
 #endif
 
     /* Compare every member of any virtual group with every other */
@@ -619,7 +567,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
                 if (prop)
                     *prop = p;
 #if VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s, match %d %s",
                     mac_va[0], mac_va[1], mac_va[2], mac_va[3], mac_va[4], mac_va[5],
@@ -630,7 +578,7 @@ int ap_beacon_in_vg(Sky_ctx_t *ctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_prope
 #endif
             } else {
 #if VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                     "cmp MAC %02X:%02X:%02X:%02X:%02X:%02X %s with "
                     "%02X:%02X:%02X:%02X:%02X:%02X %s",
                     mac_va[0], mac_va[1], mac_va[2], mac_va[3], mac_va[4], mac_va[5],

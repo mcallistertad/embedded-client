@@ -24,30 +24,46 @@
  *
  */
 #include <stdbool.h>
-#include <string.h>
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-#define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
+typedef enum {
+    HIGHEST_PRIORITY = 0xffff,
+    CONNECTED = 0x200,
+    NON_NMR = 0x100,
+    LOWEST_PRIORITY = 0x000
+} Property_priority_t;
 
-/*! \brief compare cell beacons fpr equality
+static float get_priority(Beacon_t *b);
+
+/*! \brief compare cell beacons for equality
  *
- *  if beacons are equivalent, return SKY_SUCCESS otherwise SKY_FAILURE
+ *  @param rctx Skyhook request context
+ *  @param a pointer to cell
+ *  @param b pointer to cell
+ *  @param prop pointer to where b's properties are saved if equal
+ *  @param equal result of test, true when equal
+ *
+ *  @return
+ *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in priority
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+static Sky_status_t equal(
+    Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
 {
     (void)prop; /* suppress warning unused parameter */
-    if (!ctx || !a || !b) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
+    if (!rctx || !a || !b || !equal) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
     }
+    bool equivalent = false;
 
     /* Two Cells can be compared but others are ordered by type */
     if (a->h.type != b->h.type || a->h.type == SKY_BEACON_AP || b->h.type == SKY_BEACON_AP ||
@@ -61,7 +77,7 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
             (a->cell.id4 == b->cell.id4)) {
             if (!(a->cell.id2 == SKY_UNKNOWN_ID2 || a->cell.id3 == SKY_UNKNOWN_ID3 ||
                     a->cell.id4 == SKY_UNKNOWN_ID4))
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     case SKY_BEACON_GSM:
@@ -69,202 +85,360 @@ static Sky_status_t equal(Sky_ctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_p
             a->cell.id3 == b->cell.id3 && (a->cell.id4 == b->cell.id4)) {
             if (!((a->cell.id1 == SKY_UNKNOWN_ID1 || a->cell.id2 == SKY_UNKNOWN_ID2 ||
                     a->cell.id3 == SKY_UNKNOWN_ID3 || a->cell.id4 == SKY_UNKNOWN_ID4)))
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
-#ifdef VERBOSE_DEBUG
-        dump_beacon(ctx, "a:", a, __FILE__, __FUNCTION__);
-        dump_beacon(ctx, "b:", b, __FILE__, __FUNCTION__);
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE");
-#endif
         if ((a->cell.id1 == b->cell.id1) && (a->cell.id2 == b->cell.id2) &&
             (a->cell.id4 == b->cell.id4)) {
             if ((a->cell.id1 == SKY_UNKNOWN_ID1) || (a->cell.id2 == SKY_UNKNOWN_ID2) ||
                 (a->cell.id4 == SKY_UNKNOWN_ID4)) {
-#ifdef VERBOSE_DEBUG
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "LTE-NMR");
-#endif
                 /* NMR */
                 if ((a->cell.id5 == b->cell.id5) && (a->cell.freq == b->cell.freq))
-                    return SKY_SUCCESS;
+                    equivalent = true;
             } else
-                return SKY_SUCCESS;
+                equivalent = true;
         }
         break;
     default:
         break;
     }
-    return SKY_FAILURE;
+
+    *equal = equivalent;
+
+    return SKY_SUCCESS;
 }
 
-/*! \brief remove least desirable cell if workspace is full
+/*! \brief compare cell beacons for order when adding to request context
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
+ *  @param a pointer to cell
+ *  @param b pointer to cell
+ *  @param diff result of comparison, positive when a is better
+ *
+ *  @return
+ *  if beacons are comparable, return SKY_SUCCESS and difference
+ *  (greater than zero if a should be before b)
+ *  if an error occurs during comparison. return SKY_ERROR
+ */
+static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *diff)
+{
+    if (!rctx || !a || !b || !diff) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
+        return SKY_ERROR;
+    }
+
+    if (!is_cell_type(a) || !is_cell_type(b))
+        return SKY_ERROR;
+
+    if (a->h.priority == 0)
+        a->h.priority = get_priority(a);
+    if (b->h.priority == 0)
+        b->h.priority = get_priority(b);
+
+    if (a->h.priority != b->h.priority)
+        *diff = COMPARE_PRIORITY(a, b);
+    else if (a->h.age != b->h.age)
+        *diff = COMPARE_AGE(a, b);
+    else if (a->h.type != b->h.type)
+        *diff = COMPARE_TYPE(a, b);
+    else
+        *diff = COMPARE_RSSI(a, b);
+    return SKY_SUCCESS;
+}
+
+/*! \brief remove lowest priority cell if request context is full
+ *
+ *  @param rctx Skyhook request context
  *
  *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
  */
-static Sky_status_t remove_worst(Sky_ctx_t *ctx)
+static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 {
-    int i = NUM_BEACONS(ctx) - 1; /* index of last cell */
-    Beacon_t *b = &ctx->beacon[i];
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_CELLS(rctx),
+        CONFIG(rctx->session, total_beacons) - CONFIG(rctx->session, max_ap_beacons));
 
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_BEACONS(ctx) - NUM_APS(ctx),
-        CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons));
-
-    /* no work to do if workspace not full of max cell */
-    if (NUM_CELLS(ctx) <= CONFIG(ctx->state, total_beacons) - CONFIG(ctx->state, max_ap_beacons)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
+    /* no work to do if request context is not full of max cell */
+    if (NUM_CELLS(rctx) <=
+        CONFIG(rctx->session, total_beacons) - CONFIG(rctx->session, max_ap_beacons)) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "No need to remove cell");
         return SKY_ERROR;
     }
 
-    DUMP_WORKSPACE(ctx);
+    DUMP_REQUEST_CTX(rctx);
 
     /* sanity check last beacon, if we get here, it should be a cell */
-    if (is_cell_type(b)) {
-        /* cells are priority order
+    if (is_cell_type(&rctx->beacon[NUM_BEACONS(rctx) - 1])) {
+        /* cells are in priority order
          * remove last beacon
          */
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d (least desirable cell)", i);
-        return remove_beacon(ctx, i);
+        LOGFMT(
+            rctx, SKY_LOG_LEVEL_DEBUG, "remove lowest priority cell idx:%d", NUM_BEACONS(rctx) - 1);
+        return remove_beacon(rctx, NUM_BEACONS(rctx) - 1);
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
+    LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
     return SKY_ERROR;
 }
 
-/*! \brief find cache entry with a match to workspace
+/*! \brief find cache entry with a match to request rctx
  *
  *   Expire any old cachelines
- *   Compare each cacheline with the workspace cell beacons:
+ *   Compare each cacheline with the request rctx cell beacons:
  *    . compare cells for match using cells and NMR
  *
- *   If any cacheline score meets threshold, accept it.
+ *   If any cacheline score meets threshold, accept it
+ *   setting get_from to index of cacheline and hit to true.
  *   While searching, keep track of best cacheline to
  *   save a new server response. An empty cacheline is
  *   best, a good match is next, oldest is the fall back.
- *   Best cacheline to 'save_to' is set in the workspace for later use.
+ *   Best cacheline to 'save_to' is set in the request rctx for later use.
  *
- *  @param ctx Skyhook request context
- *  @param idx cacheline index of best match or empty cacheline or -1
+ *  @param rctx Skyhook request context
  *
  *  @return index of best match or empty cacheline or -1
  */
-static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
+static Sky_status_t match(Sky_rctx_t *rctx)
 {
 #if CACHE_SIZE
     int i; /* i iterates through cacheline */
-    int err; /* err breaks the seach due to bad value */
-    float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which workspace matches cacheline
-                    In typical case this is the intersection(workspace, cache) / union(workspace, cache) */
-    float bestratio = 0.0;
-    float bestputratio = 0.0;
+    float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request context matches cacheline
+                    In typical case this is the intersection(request context, cache) / union(request context, cache) */
+    float bestratio = 0.0f;
+    float bestputratio = 0.0f;
     int score; /* score is number of APs found in cacheline */
     int threshold; /* the threshold determined that ratio should meet */
-    int bestc = -1, bestput = -1;
+    int bestc = -1;
+    int16_t bestput = -1;
     int bestthresh = 0;
     Sky_cacheline_t *cl;
-    bool result = false;
 
-    DUMP_WORKSPACE(ctx);
-    DUMP_CACHE(ctx);
+    DUMP_REQUEST_CTX(rctx);
+    DUMP_CACHE(rctx);
 
-    if (!idx) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameter");
+    /* expire old cachelines and note first empty cacheline as best line to save to */
+    for (i = 0; i < rctx->session->num_cachelines; i++) {
+        cl = &rctx->session->cacheline[i];
+        /* if cacheline is old, mark it empty */
+        if (cl->time != TIME_UNAVAILABLE &&
+            (rctx->header.time - cl->time) >
+                (CONFIG(rctx->session, cache_age_threshold) * SECONDS_IN_HOUR)) {
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
+            cl->time = CACHE_EMPTY;
+        }
+        /* if line is empty and it is the first one, remember it */
+        if (cl->time == CACHE_EMPTY) {
+            if (bestputratio < 1.0) {
+                bestput = (int16_t)i;
+                bestputratio = 1.0f;
+            }
+        }
+    }
+
+    if (NUM_CELLS(rctx) == 0) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Unable to compare using Cells. No cache match");
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
+            bestput, CACHE_SIZE, (int)round((double)bestputratio * 100));
         return SKY_ERROR;
     }
 
-    /* expire old cachelines and note first empty cacheline as best line to save to */
-    for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->state->cacheline[i];
-        /* if cacheline is old, mark it empty */
-        if (cl->time != 0 && ((uint32_t)(*ctx->gettime)(NULL)-cl->time) >
-                                 (CONFIG(ctx->state, cache_age_threshold) * SECONDS_IN_HOUR)) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache line %d expired", i);
-            cl->time = 0;
-        }
-        /* if line is empty and it is the first one, remember it */
-        if (cl->time == 0) {
-            if (bestputratio < 1.0) {
-                bestput = i;
-                bestputratio = 1.0;
-            }
-        }
-    }
+    DUMP_REQUEST_CTX(rctx);
+    DUMP_CACHE(rctx);
 
-    /* score each cache line wrt beacon match ratio */
-    for (i = 0, err = false; i < CACHE_SIZE; i++) {
-        cl = &ctx->state->cacheline[i];
-        threshold = ratio = score = 0;
-        if (cl->time == 0 || cell_changed(ctx, cl) == true) {
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for empty cacheline or cell change", i);
+    /* score each cacheline wrt beacon match ratio */
+    for (i = 0; i < rctx->session->num_cachelines; i++) {
+        cl = &rctx->session->cacheline[i];
+        threshold = score = 0;
+        ratio = 0.0f;
+        if (cl->time == CACHE_EMPTY || serving_cell_changed(rctx, cl) == true ||
+            cached_gnss_worse(rctx, cl) == true) {
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
+                "Cache: %d: Score 0 for empty cacheline or cacheline has different cell or worse gnss",
+                i);
             continue;
         } else {
             /* count number of matching cells */
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on cell beacons", i);
-            threshold = 100.0; /* 100% match */
-            score = 0.0;
-            for (int j = NUM_APS(ctx) - 1; j < NUM_BEACONS(ctx); j++) {
-                if (beacon_in_cacheline(ctx, &ctx->beacon[j], &ctx->state->cacheline[i], NULL)) {
-#ifdef VERBOSE_DEBUG
-                    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on cell beacons", i);
+            threshold = CONFIG(rctx->session, cache_match_all_threshold);
+            score = 0;
+            for (int j = NUM_APS(rctx); j < NUM_BEACONS(rctx); j++) {
+                if (beacon_in_cacheline(
+                        rctx, &rctx->beacon[j], &rctx->session->cacheline[i], NULL)) {
+#if VERBOSE_DEBUG
+                    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
-                        sky_pbeacon(&ctx->beacon[j]), i, CACHE_SIZE, (int)score);
+                        sky_pbeacon(&rctx->beacon[j]), i, rctx->session->num_cachelines,
+                        (int)score);
 #endif
-                    score = score + 1.0;
+                    score = score + 1;
                 }
             }
-            /* cell score = number of matching cells / cells in workspace */
-            ratio = (float)score / NUM_BEACONS(ctx);
-            LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
-                (int)round(ratio * 100), score, NUM_BEACONS(ctx), threshold);
-            result = true;
+            /* score = number of matching cells */
+            /* ratio is 1.0 when score == Number of cells */
+            /* ratio if 0.0 when score is less than Number of cells */
+            ratio = (float)score == NUM_CELLS(rctx) ? 1.0f : 0.0f;
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache: %d: score %d (%d/%d) vs %d", i,
+                (int)round((double)ratio * 100), score, NUM_BEACONS(rctx), threshold);
         }
 
         if (ratio > bestputratio) {
-            bestput = i;
+            bestput = (int16_t)i;
             bestputratio = ratio;
         }
         if (ratio > bestratio) {
             if (bestratio > 0.0)
-                LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG,
-                    "Found better match in cache %d of %d score %d (vs %d)", i, CACHE_SIZE,
-                    (int)round(ratio * 100), threshold);
+                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
+                    "Found better match in cache %d of %d score %d (vs %d)", i,
+                    rctx->session->num_cachelines, (int)round((double)ratio * 100), threshold);
             bestc = i;
             bestratio = ratio;
             bestthresh = threshold;
         }
-        if (ratio * 100 >= threshold)
+        if (ratio * 100 > (float)threshold)
             break;
-    }
-    if (err) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
-        return SKY_ERROR;
     }
 
     /* make a note of the best match used by add_to_cache */
-    ctx->save_to = bestput;
+    rctx->save_to = bestput;
+    rctx->get_from = bestc;
 
-    if (result && bestratio * 100 >= bestthresh) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
-            bestc, CACHE_SIZE, (int)round(bestratio * 100), bestthresh);
-        *idx = bestc;
-        return SKY_SUCCESS;
+    if (bestratio * 100 > (float)bestthresh) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "location in cache, pick cache %d of %d score %d (vs %d)",
+            bestc, rctx->session->num_cachelines, (int)round((double)bestratio * 100), bestthresh);
+        rctx->hit = true;
+    } else {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)",
+            bestc, (int)round((double)bestratio * 100), bestthresh);
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d",
+            bestput, rctx->session->num_cachelines, (int)round((double)bestputratio * 100));
+        rctx->hit = false;
     }
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Cache match failed. Cache %d, best score %d (vs %d)", bestc,
-        (int)round(bestratio * 100), bestthresh);
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "Best cacheline to save location: %d of %d score %d", bestput,
-        CACHE_SIZE, (int)round(bestputratio * 100));
-    return SKY_ERROR;
+    return SKY_SUCCESS;
 #else
-    (void)ctx; /* suppress warning unused parameter */
-    (void)idx; /* suppress warning unused parameter */
-    return SKY_FAILURE;
+    rctx->get_from = -1;
+    rctx->hit = false;
+    (void)rctx; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
 #endif
 }
+
+/*! \brief Assign relative priority value to cell based on attributes
+ *
+ * Priority is based on the attributes
+ *  1. connected
+ *  2. nmr
+ *  3. strength
+ *
+ *  @param b pointer to beacon we want to prioritize
+ *
+ *  @return priority
+ */
+static float get_priority(Beacon_t *b)
+{
+    float score = 0.0f;
+
+    if (b->h.connected)
+        score += (float)CONNECTED;
+    if (!is_cell_nmr(b))
+        score += (float)NON_NMR;
+
+    return score;
+}
+
+#ifdef UNITTESTS
+TEST_FUNC(test_cell_plugin)
+{
+    GROUP("remove worst");
+    TEST("remove_worst chooses lowest priority Air type by default", rctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+        NBIOT_NMR(a, 10, -108, 25, 255);
+        UMTS_NMR(b, 10, -108, 0, 412);
+        LTE(c, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
+        LTE_NMR(d, 10, -108, 387, 1000);
+        NR_NMR(e, 10, -108, 0, 0);
+
+        ASSERT(sky_set_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
+        ASSERT(sky_set_option(rctx, &sky_errno, CONF_TOTAL_BEACONS, 6) == SKY_SUCCESS);
+        ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 3);
+        ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_TOTAL_BEACONS, &value) &&
+               value == 6);
+        ASSERT(SKY_SUCCESS == sky_add_cell_nb_iot_neighbor_beacon(rctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_umts_neighbor_beacon(rctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_beacon(rctx, &sky_errno, c.cell.id3, c.cell.id4,
+                                  c.cell.id1, c.cell.id2, c.cell.id5, c.cell.freq, c.cell.ta,
+                                  TIME_UNAVAILABLE, c.h.rssi, c.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_neighbor_beacon(rctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(SKY_SUCCESS == sky_add_cell_nr_neighbor_beacon(rctx, &sky_errno, b.cell.id5,
+                                  b.cell.freq, TIME_UNAVAILABLE, b.h.rssi));
+        ASSERT(rctx->num_beacons == 3);
+        ASSERT(rctx->num_ap == 0);
+        /*
+         *       0       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         *       1    NR-NMR     0 412MHz rssi:-108 age:0
+         *       2   LTE-NMR     0 412MHz rssi:-108 age:0
+         */
+        ASSERT(rctx->beacon[0].h.type == SKY_BEACON_LTE);
+        ASSERT(rctx->beacon[1].h.type == SKY_BEACON_NR);
+        ASSERT(rctx->beacon[2].h.type == SKY_BEACON_LTE);
+        ASSERT(rctx->beacon[0].h.connected == true);
+        ASSERT(rctx->beacon[1].h.connected == false);
+        ASSERT(rctx->beacon[2].h.connected == false);
+    });
+    TEST("remove_worst respects connected properties", rctx, {
+        Sky_errno_t sky_errno;
+        uint32_t value;
+        LTE(a, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+        UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 412);
+        NBIOT(c, 10, -108, false, 515, 2, 20263, 15664525, 25, 255);
+        CDMA(d, 10, -108, false, 5000, 16683, 25614, 22265, 0, 0);
+        GSM(e, 10, -108, false, 515, 2, 20263, 22265, 0, 0);
+
+        ASSERT(sky_set_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
+        ASSERT(sky_set_option(rctx, &sky_errno, CONF_TOTAL_BEACONS, 6) == SKY_SUCCESS);
+        ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
+               value == 3);
+        ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_TOTAL_BEACONS, &value) &&
+               value == 6);
+        ASSERT(SKY_SUCCESS == sky_add_cell_lte_beacon(rctx, &sky_errno, a.cell.id3, a.cell.id4,
+                                  a.cell.id1, a.cell.id2, a.cell.id5, a.cell.freq, a.cell.ta,
+                                  TIME_UNAVAILABLE, a.h.rssi, a.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_umts_beacon(rctx, &sky_errno, b.cell.id3, b.cell.id4,
+                                  b.cell.id1, b.cell.id2, b.cell.id5, b.cell.freq, TIME_UNAVAILABLE,
+                                  b.h.rssi, b.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_nb_iot_beacon(rctx, &sky_errno, c.cell.id1, c.cell.id2,
+                                  c.cell.id4, c.cell.id3, c.cell.id5, c.cell.freq, TIME_UNAVAILABLE,
+                                  c.h.rssi, c.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_cdma_beacon(rctx, &sky_errno, d.cell.id2, d.cell.id3,
+                                  d.cell.id4, TIME_UNAVAILABLE, d.h.rssi, d.h.connected));
+        ASSERT(SKY_SUCCESS == sky_add_cell_gsm_beacon(rctx, &sky_errno, e.cell.id3, e.cell.id4,
+                                  e.cell.id1, e.cell.id2, e.cell.ta, TIME_UNAVAILABLE, e.h.rssi,
+                                  e.h.connected));
+        ASSERT(rctx->num_beacons == 3);
+        ASSERT(rctx->num_ap == 0);
+        /*          0 *    UMTS     515,2,32768,16843545,0 0MHz rssi:-108 ta:0 age:0
+         *          1       LTE     311,480,25614,25664526,387 1000MHz rssi:-108 ta:0 age:0
+         *          2    NB-IoT     515,2,20263,15664525,25 255MHz rssi:-108 ta:0 age:0
+         */
+        ASSERT(rctx->beacon[0].h.type == SKY_BEACON_UMTS);
+        ASSERT(rctx->beacon[1].h.type == SKY_BEACON_LTE);
+        ASSERT(rctx->beacon[2].h.type == SKY_BEACON_NBIOT);
+    });
+}
+
+static Sky_status_t unit_tests(void *_ctx)
+{
+    GROUP_CALL("Remove Worst", test_cell_plugin);
+    return SKY_SUCCESS;
+}
+
+#endif
 
 /* * * * * * Plugin access table * * * * *
  *
@@ -273,13 +447,6 @@ static Sky_status_t match(Sky_ctx_t *ctx, int *idx)
  *
  * For a given operation, each registered plugin is
  * called for that operation until a plugin returns success.
- *
- * The supported operations are:
- *   name        - get name of plugin
- *   equal       - test two beacons for equivalence
- *   remove_worst - find least desirable beacon and remove it
- *   cache_match  - determine if cache has a good match
- *   add_to_cache - Save workspace in cache
  */
 
 Sky_plugin_table_t cell_plugin_basic_table = {
@@ -287,8 +454,13 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .magic = SKY_MAGIC, /* Mark table so it can be validated */
     .name = __FILE__,
     /* Entry points */
-    .equal = equal, /*Compare two beacons for equality */
-    .remove_worst = remove_worst, /* Remove least desirable beacon from workspace */
-    .cache_match = match, /* Find best match between workspace and cache lines */
-    .add_to_cache = NULL /* Copy workspace beacons to a cacheline */
+    .equal = equal, /* Compare two beacons for equality */
+    .compare = compare, /* Compare priority of two beacons for ordering in request context */
+    .remove_worst = remove_worst, /* Remove least compare beacon from request context */
+    .cache_match = match, /* Find best match between request context and cachelines */
+    .add_to_cache = NULL, /* Copy request context beacons to a cacheline */
+#ifdef UNITTESTS
+    .unit_tests = unit_tests, /* Unit Tests */
+#endif
+
 };

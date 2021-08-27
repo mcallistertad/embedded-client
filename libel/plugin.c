@@ -28,16 +28,16 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
-#define SKY_LIBEL
 #include "libel.h"
 
-/* Uncomment VERBOSE_DEBUG to enable extra logging */
-// #define VERBOSE_DEBUG
+/* set VERBOSE_DEBUG to true to enable extra logging */
+#ifndef VERBOSE_DEBUG
+#define VERBOSE_DEBUG false
+#endif
 
 /*! \brief add a plugin table to the list of plugins
  *
- *  @param ctx Skyhook request context
- *  @param code the sky_errno_t code to return
+ *  @param root pointer to the next pointer that should point to table
  *  @param table the table for the next plugin to add
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
@@ -53,7 +53,6 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
     if (*root == NULL) { /* if list was empty, add first entry */
         *root = table;
         table->next = NULL;
-        p = table;
         return SKY_SUCCESS;
     }
     p = *root; /* pick up first entry */
@@ -83,30 +82,66 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
 
 /*! \brief call the equal operation in the registered plugins
  *
- *  @param ctx Skyhook request context
+ * equal operation returns true if the beacons of same type are equivalent
+ * used to find duplicates or finding beacons in the cache
+ *
+ *  @param rctx Skyhook request context
  *  @param code the sky_errno_t code to return
- *  @param op the operation index
+ *  @param a the first beacon to compare
+ *  @param b the second beacon to compare
+ *  @param prop where to store the properties of second beacon if identical to first
+ *  @param equal where to save the result of equivalence test
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_equal(
-    Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop)
+Sky_status_t sky_plugin_equal(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
+    Sky_beacon_property_t *prop, bool *equal)
 {
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
 
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-    }
-
-    p = ctx->plugin;
+    p = rctx->session->plugins;
     while (p) {
         if (p->equal)
-            ret = p->equal(ctx, a, b, prop);
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            ret = p->equal(rctx, a, b, prop, equal);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
+#endif
+        if (ret != SKY_ERROR) {
+            set_error_status(sky_errno, SKY_ERROR_NONE);
+            return ret;
+        }
+        p = p->next; /* move on to next plugin */
+    }
+    return set_error_status(sky_errno, SKY_ERROR_NO_PLUGIN);
+}
+
+/*! \brief call the compare operation in the registered plugins
+ *
+ * compare operation is used to order beacons of same type
+ *
+ *  @param rctx Skyhook request context
+ *  @param code the sky_errno_t code to return
+ *  @param a the first beacon to compare
+ *  @param b the second beacon to compare
+ *  @param diff where to save the result of comparison
+ *
+ *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
+ */
+Sky_status_t sky_plugin_compare(
+    Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, int *diff)
+{
+    Sky_plugin_table_t *p;
+    Sky_status_t ret = SKY_ERROR;
+
+    p = rctx->session->plugins;
+    while (p) {
+        if (p->compare)
+            ret = p->compare(rctx, a, b, diff);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -119,27 +154,22 @@ Sky_status_t sky_plugin_equal(
 
 /*! \brief call the remove_worst operation in the registered plugins
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param code the sky_errno_t code to return
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
+Sky_status_t sky_plugin_remove_worst(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = rctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
-
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-    }
 
     while (p) {
         if (p->remove_worst)
-            ret = (*p->remove_worst)(ctx);
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            ret = (*p->remove_worst)(rctx);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -152,28 +182,23 @@ Sky_status_t sky_plugin_remove_worst(Sky_ctx_t *ctx, Sky_errno_t *sky_errno)
 
 /*! \brief call the cache_match operation in the registered plugins
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param code the sky_errno_t code to return
  *  @param op the operation index
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, int *idx)
+Sky_status_t sky_plugin_match_cache(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = rctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
-
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-    }
 
     while (p) {
         if (p->cache_match)
-            ret = (*p->cache_match)(ctx, idx);
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            ret = (*p->cache_match)(rctx);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -186,28 +211,23 @@ Sky_status_t sky_plugin_get_matching_cacheline(Sky_ctx_t *ctx, Sky_errno_t *sky_
 
 /*! \brief call the add_to_cache operation in the registered plugins
  *
- *  @param ctx Skyhook request context
+ *  @param rctx Skyhook request context
  *  @param code the sky_errno_t code to return
- *  @param op the operation index
+ *  @param loc the location being saved to cache
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
+Sky_status_t sky_plugin_add_to_cache(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Sky_location_t *loc)
 {
-    Sky_plugin_table_t *p = ctx->plugin;
+    Sky_plugin_table_t *p = rctx->session->plugins;
     Sky_status_t ret = SKY_ERROR;
-
-    if (!validate_workspace(ctx)) {
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "invalid workspace");
-        return set_error_status(sky_errno, SKY_ERROR_BAD_WORKSPACE);
-    }
 
     while (p) {
         if (p->add_to_cache)
-            ret = (*p->add_to_cache)(ctx, loc);
-#ifdef VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
-            (ret == SKY_SUCCESS) ? "Success" : (ret == SKY_FAILURE) ? "Failure" : "Error");
+            ret = (*p->add_to_cache)(rctx, loc);
+#if VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
+            (ret == SKY_SUCCESS) ? "Success" : "Error");
 #endif
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
@@ -220,7 +240,7 @@ Sky_status_t sky_plugin_add_to_cache(Sky_ctx_t *ctx, Sky_errno_t *sky_errno, Sky
 
 #ifdef UNITTESTS
 
-static Sky_status_t operation_add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
+static Sky_status_t operation_add_to_cache(Sky_rctx_t *ctx, Sky_location_t *loc)
 {
     (void)ctx;
     (void)loc;
@@ -230,42 +250,175 @@ static Sky_status_t operation_add_to_cache(Sky_ctx_t *ctx, Sky_location_t *loc)
 BEGIN_TESTS(plugin_test)
 GROUP("sky_plugin_equal");
 
-TEST("should return SKY_SUCCESS when 2 identical beacons and NULL prop are passed", ctx, {
-    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-    AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
-    Sky_errno_t sky_errno;
+TEST(
+    "should return SKY_SUCCESS and equal when 2 identical beacons and NULL prop are passed", rctx, {
+        AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+        AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+        Sky_errno_t sky_errno;
+        bool equal = false;
 
-    ASSERT(SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, NULL));
-});
+        ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    });
 
-TEST("should return SKY_SUCCESS when 2 identical beacons and prop.in_cache is true", ctx, {
-    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
+TEST("should return SKY_SUCCESS and equal when 2 identical beacons and in_cache is true", rctx, {
+    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
     Sky_beacon_property_t prop = { false, false };
     b.ap.property.in_cache = true;
+    bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(ctx, &sky_errno, &a, &b, &prop)) && prop.in_cache);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && equal &&
+           prop.in_cache);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 different AP and equal", rctx, {
+    AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
+    AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
+    Sky_errno_t sky_errno;
+    Sky_beacon_property_t prop = { false, false };
+    b.ap.property.in_cache = true;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && !equal &&
+           !prop.in_cache);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical NR cell beacons", rctx, {
+    NR(a, 10, -108, true, 213, 142, 15614, 25564526, 287, 1040);
+    NR(b, 10, -108, true, 213, 142, 15614, 25564526, 287, 1040);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical LTE cell beacons", rctx, {
+    LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
+    LTE(b, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical UMTS cell beacons", rctx, {
+    UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 0, 0);
+    UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 0);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical NBIOT cell beacons", rctx, {
+    NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
+    NBIOT(b, 10, -108, true, 515, 2, 20263, 15664525, 25583, 255);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical CDMA cell beacons", rctx, {
+    CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
+    CDMA(b, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and equal with 2 identical GSM cell beacons", rctx, {
+    GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+    GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with one connected with different cells", rctx, {
+    LTE(a, 10, -108, true, 210, 485, 25614, 25664526, 387, 1000);
+    LTE(b, 10, -108, false, 311, 480, 25614, 25664526, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type", rctx, {
+    LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
+    LTE_NMR(b, 10, -108, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with two NMR one younger", rctx, {
+    LTE_NMR(a, 8, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with two NMR one stronger", rctx, {
+    LTE_NMR(a, 10, -10, 38, 100);
+    LTE_NMR(b, 10, -108, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with two very similar cells", rctx, {
+    LTE(a, 10, -108, true, 110, 485, 25614, 25664526, 387, 1000);
+    LTE(b, 10, -108, true, 110, 222, 25614, 25664526, 45, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_SUCCESS and not equal with two NMR very similar", rctx, {
+    LTE_NMR(a, 10, -108, 387, 1000);
+    LTE_NMR(b, 10, -108, 38, 100);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+});
+
+TEST("should return SKY_ERROR one NMR with different cell type", rctx, {
+    CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
+    LTE_NMR(b, 10, -108, 387, 1000);
+    Sky_errno_t sky_errno;
+    bool equal = false;
+
+    ASSERT((SKY_ERROR == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
 });
 
 GROUP("sky_plugin_add");
 
-TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL", ctx, {
+TEST("should return SKY_ERROR if table is corrupt (magic != SKY_MAGIC) or root is NULL", rctx, {
     Sky_plugin_table_t *root = NULL;
     Sky_plugin_table_t table;
     table.magic = 0;
     ASSERT(SKY_ERROR == sky_plugin_add(&root, &table) &&
-           SKY_ERROR == sky_plugin_add(&root, (Sky_plugin_table_t *)ctx));
+           SKY_ERROR == sky_plugin_add(&root, (Sky_plugin_table_t *)rctx));
 });
 
-TEST("should return SKY_ERROR if table or root pointer is NULL", ctx, {
+TEST("should return SKY_ERROR if table or root pointer is NULL", rctx, {
     Sky_plugin_table_t *root = NULL;
     Sky_plugin_table_t table;
     ASSERT(SKY_ERROR == sky_plugin_add(NULL, NULL) && SKY_ERROR == sky_plugin_add(&root, NULL) &&
            SKY_ERROR == sky_plugin_add(NULL, &table));
 });
 
-TEST("should return SKY_SUCCESS if table is added twice to same list", ctx, {
+TEST("should return SKY_SUCCESS if table is added twice to same list", rctx, {
     Sky_plugin_table_t *root = NULL;
     Sky_plugin_table_t table = {
         .next = NULL,
@@ -277,7 +430,7 @@ TEST("should return SKY_SUCCESS if table is added twice to same list", ctx, {
            SKY_SUCCESS == sky_plugin_add(&root, &table));
 });
 
-TEST("should return SKY_ERROR if no plugin operation found to provide result", ctx, {
+TEST("should return SKY_ERROR if no plugin operation found to provide result", rctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t errno = SKY_ERROR_NONE;
@@ -291,7 +444,6 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
         0,
         0,
     };
-    int idx = -1;
     Sky_plugin_table_t table1 = {
         .next = NULL,
         .magic = SKY_MAGIC,
@@ -312,25 +464,28 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", c
     };
 
     /* clear registration of standard plugins */
-    ctx->plugin = NULL;
+    rctx->session->plugins = NULL;
     /* add single access table with empty operations */
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table1));
-    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&ctx->plugin, &table2));
-    ASSERT((Sky_plugin_table_t *)ctx->plugin == &table1);
-    ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next == &table2);
-    ASSERT(((Sky_plugin_table_t *)ctx->plugin)->next->next == NULL);
-    ASSERT(SKY_ERROR == sky_plugin_add_to_cache(ctx, &errno, &loc));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&rctx->session->plugins, &table1));
+    ASSERT(SKY_SUCCESS == sky_plugin_add((void *)&rctx->session->plugins, &table2));
+    ASSERT((Sky_plugin_table_t *)rctx->session->plugins == &table1);
+    ASSERT(((Sky_plugin_table_t *)rctx->session->plugins)->next == &table2);
+    ASSERT(((Sky_plugin_table_t *)rctx->session->plugins)->next->next == NULL);
+    ASSERT(SKY_ERROR == sky_plugin_add_to_cache(rctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_equal(ctx, &errno, &a, &b, NULL));
+    ASSERT(SKY_ERROR == sky_plugin_equal(rctx, &errno, &a, &b, NULL, NULL));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_remove_worst(ctx, &errno));
+    ASSERT(SKY_ERROR == sky_plugin_remove_worst(rctx, &errno));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_get_matching_cacheline(ctx, &errno, &idx));
+    ASSERT(SKY_ERROR == sky_plugin_match_cache(rctx, &errno));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
 });
+
+/* call any plugin specific tests */
+sky_plugin_unit_tests(_ctx);
 
 END_TESTS();
 

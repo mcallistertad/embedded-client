@@ -4,7 +4,7 @@
 ARMCC = $(shell which armcc)
 
 ifeq ($(ARMCC), )
-CFLAGS = -Wall -Werror -Wextra -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
+CFLAGS = -Os --std=c99 -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
 else
 CC = armcc
 CFLAGS = --c90 --no_strict -Ospace -DVERSION=\"$(GIT_VERSION)\" $(DEBUG) $(CONFIG)
@@ -32,7 +32,7 @@ AES_DIR = submodules/tiny-AES128-C
 
 INCLUDES = -I${SKY_PROTO_DIR} -I${NANO_PB_DIR} -I${AES_DIR} -I${API_DIR} -I${PLUGIN_DIR}
 
-VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}
+VPATH = ${SKY_PROTO_DIR}:${API_DIR}:${NANO_PB_DIR}:${AES_DIR}:${PLUGIN_DIR}:sample_client
 
 LIBELG_SRCS = libel.c utilities.c beacons.c crc32.c plugin.c
 LIBELG_PLUG=$(shell find ${PLUGIN_DIR} -name '*.c' -print)
@@ -43,10 +43,15 @@ TINYAES_SRCS = ${AES_DIR}/aes.c
 
 LIBELG_ALL = ${LIBELG_SRCS} ${LIBELG_PLUG} ${PROTO_SRCS} ${TINYAES_SRCS}
 LIBELG_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(LIBELG_ALL:.c=.o)))
+CLIENT_SRCS = sample_client.c send.c config.c
+CLIENT_OBJS = $(addprefix ${BUILD_DIR}/, $(notdir $(CLIENT_SRCS:.c=.o)))
 
 .PHONY: all
 
-all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests
+all: submodules/nanopb/.git submodules/tiny-AES128-C/.git submodules/embedded-protocol/.git lib runtests sample_client/sample_client
+
+sample_client/sample_client: ${CLIENT_OBJS}
+	$(CC) -lc -o $@ ${CLIENT_OBJS} ${BIN_DIR}/libel.a -lm
 
 submodules/nanopb/.git:
 	@echo "submodule nanopb must be provided! Did you download embedded-client-X.X.X.tgz? Exiting..."
@@ -90,7 +95,8 @@ runtests: unittest
 
 ${TEST_BUILD_DIR}/%.o: %.c beacons.h config.h crc32.h libel.h utilities.h
 	mkdir -p $(dir $@)
-	$(CC) -include unittest.h -DVERBOSE_DEBUG $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
+	$(CC) -include unittest.h -DVERBOSE_DEBUG=true $(CFLAGS) -I${TEST_DIR} ${INCLUDES} -c -o $@ $<
 
 clean:
+	make -C sample_client clean
 	rm -rf ${BIN_DIR} ${BUILD_DIR} ${TEST_BUILD_DIR}

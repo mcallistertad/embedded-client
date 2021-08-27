@@ -201,7 +201,7 @@ int load_config(char *filename, Config_t *config)
         }
         if (sscanf(line, "DEBOUNCE %5s", str) == 1) {
             if (strcasecmp_(str, "off") == 0 || strcasecmp_(str, "false") == 0)
-                config->debounce = 0;
+                config->debounce = false;
             continue;
         }
         if (sscanf(line, "UL_APP_DATA %s", str) == 1) {
@@ -209,8 +209,13 @@ int load_config(char *filename, Config_t *config)
             hex2bin(str, config->ul_app_data_len * 2, config->ul_app_data, config->ul_app_data_len);
             continue;
         }
+        if (sscanf(line, "FACTORY_RESET %5s", str) == 1) {
+            if (strcasecmp_(str, "true") == 0)
+                config->factory_reset = true;
+            continue;
+        }
     }
-    config->filename = filename;
+    config->configfile = filename;
     fclose(fp);
     printf("Config Loaded\n");
     return 0;
@@ -235,7 +240,7 @@ void print_config(Config_t *config)
     bin2hex(ul_app_data, sizeof(ul_app_data), config->ul_app_data, config->ul_app_data_len);
     ul_app_data[config->ul_app_data_len * 2] = '\0';
 
-    printf("Configuration file: %s\n", config->filename);
+    printf("Configuration file: %s\n", config->configfile);
     printf("Server: %s\n", config->server);
     printf("Port: %d\n", config->port);
     printf("Key: %32s\n", key);
@@ -246,4 +251,5 @@ void print_config(Config_t *config)
     printf("CC: %d\n", config->cc);
     printf("Debounce: %s\n", config->debounce ? "true" : "false");
     printf("Uplink data: %s\n", ul_app_data);
+    printf("Factory reset: %s\n", config->factory_reset ? "true" : "false");
 }

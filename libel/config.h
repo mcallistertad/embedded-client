@@ -25,9 +25,15 @@
 #ifndef SKY_CONFIG_H
 #define SKY_CONFIG_H
 
+/*! \brief Include sanity checks on internal structures
+ */
+#ifndef SANITY_CHECKS
+#define SANITY_CHECKS true
+#endif
+
 /* Change to false to remove all calls to logging */
-#ifndef SKY_DEBUG
-#define SKY_DEBUG true
+#ifndef SKY_LOGGING
+#define SKY_LOGGING true
 #endif
 
 #ifndef SKY_LOG_LENGTH
@@ -37,13 +43,13 @@
 /*! \brief The maximum number of beacons passed to the server in a request
  */
 #ifndef TOTAL_BEACONS
-#define TOTAL_BEACONS 20
+#define TOTAL_BEACONS 28
 #endif
 
 /*! \brief The maximum number of AP beacons passed to the server in a request
  */
 #ifndef MAX_AP_BEACONS
-#define MAX_AP_BEACONS 15
+#define MAX_AP_BEACONS 20
 #endif
 
 /*! \brief The maximum number of child APs in a Virtual Group. No more than 16 allowed
@@ -73,10 +79,10 @@
 #define CACHE_AGE_THRESHOLD 24
 #endif
 
-/*! \brief If there are CACHE_BEACON_THRESHOLD or more beacons in workspace
+/*! \brief If there are CACHE_BEACON_THRESHOLD or more beacons in request ctx
  *   after filtering, then the cache match score is compared to
  *   CACHE_MATCH_THRESHOLD, otherwise 100% match is required to return the cached
- *   location (i.e. all beacons must match when only few beacons are in workspace).
+ *   location (i.e. all beacons must match when only few beacons are in request ctx).
  */
 #ifndef CACHE_BEACON_THRESHOLD
 #define CACHE_BEACON_THRESHOLD 3
