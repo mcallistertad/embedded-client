@@ -122,6 +122,7 @@ Instructions for cloning and building the library are below.
             * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
             * [sky_pbeacon() - returns a string which describes the type of a beacon](#sky_pbeacon---returns-a-string-which-describes-the-type-of-a-beacon)
             * [sky_pserver_status() - returns a string which describes the meaning of status codes](#sky_pserver_status---returns-a-string-which-describes-the-meaning-of-status-codes)
+            * [sky_psource() - returns a string which describes the source of the location](#sky_psource---returns-a-string-which-describes-the-source-of-the-location)
             * [sky_close() - frees any resources in use by the Skyhook library](#sky_close---frees-any-resources-in-use-by-the-skyhook-library)
         * [Appendix](#appendix)
             * [API Return Codes](#api-return-codes)
