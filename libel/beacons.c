@@ -297,11 +297,6 @@ bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
     Sky_beacon_property_t best_prop = { false, false };
     Sky_beacon_property_t result = { false, false };
 
-    if (!b || !rctx) {
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return false;
-    }
-
     for (int i = 0; i < rctx->session->num_cachelines; i++) {
         if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i], &result)) {
             if (!prop)
@@ -340,11 +335,6 @@ bool beacon_in_cacheline(
     Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
 {
     int j;
-
-    if (!cl || !b || !rctx) {
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return false;
-    }
 
     if (cl->time == CACHE_EMPTY) {
         return false;
@@ -407,13 +397,6 @@ int find_oldest(Sky_rctx_t *rctx)
  */
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 {
-    if (!rctx || !cl) {
-#ifdef VERBOSE_DEBUG
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-#endif
-        return true;
-    }
-
     /* in future, this condition could take accuracy into account */
     /* Reject cached fix if new scan contains gnss and cache does not */
     if (has_gnss(rctx) && !has_gnss(cl)) {
@@ -435,44 +418,37 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
  *  not the user has marked it "connected") matches cache
  *  true otherwise
  */
-int serving_cell_changed(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
+int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
     bool equal = false;
 
-    if (!ctx || !cl) {
+    if (NUM_CELLS(rctx) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
-#endif
-        return true;
-    }
-
-    if (NUM_CELLS(ctx) == 0) {
-#if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request ctx");
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request rctx");
 #endif
         return false;
     }
 
     if (NUM_CELLS(cl) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
 #endif
         return false;
     }
 
-    w = &ctx->beacon[NUM_APS(ctx)];
+    w = &rctx->beacon[NUM_APS(rctx)];
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request ctx");
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request rctx");
 #endif
         return false;
     }
 
-    if (sky_plugin_equal(ctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
+    if (sky_plugin_equal(rctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
         return false;
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
 }
 #endif
@@ -526,7 +502,11 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 
-    if (!rctx || !va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
+#if !SKY_LOGGING
+    (void)rctx;
+#endif
+
+    if (!va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }

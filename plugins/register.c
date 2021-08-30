@@ -22,12 +22,7 @@
  * IN THE SOFTWARE.
  *
  */
-#include <math.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include <time.h>
 #include "libel.h"
 
 /* Register the basic plugins

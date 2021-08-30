@@ -30,7 +30,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include "libel.h"
-#include "proto.h"
 
 #if SANITY_CHECKS
 static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx);
@@ -572,11 +571,6 @@ void dump_vap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, con
 void dump_ap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, const char *func)
 {
 #if SKY_LOGGING
-    if (!b || b->h.type != SKY_BEACON_AP) {
-        logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "%s can't dump non-AP beacon");
-        return;
-    }
-
     if (prefix == NULL)
         prefix = "AP:";
 
@@ -683,7 +677,7 @@ void dump_beacon(Sky_rctx_t *rctx, char *str, Beacon_t *b, const char *file, con
 void dump_gnss(Sky_rctx_t *rctx, const char *file, const char *func, Gnss_t *gnss)
 {
 #if SKY_LOGGING
-    if (rctx != NULL && gnss != NULL && !isnan(gnss->lat))
+    if (!isnan(gnss->lat))
         logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
             (int)(fabs(round(1000000.0 * (gnss->lat - (int)gnss->lat)))), (int)gnss->lon,
             (int)(fabs(round(1000000.0 * (gnss->lon - (int)gnss->lon)))));
@@ -764,8 +758,8 @@ void dump_cache(Sky_rctx_t *rctx, const char *file, const char *func)
             logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
                 "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons%s", i,
                 rctx->session->num_cachelines, (int)cl->loc.lat,
-                (int)fabs(round(1000000 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
-                (int)fabs(round(1000000 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
+                (int)fabs(round(1000000.0 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
+                (int)fabs(round(1000000.0 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
                 cl->num_beacons, (rctx->hit && rctx->get_from == i) ? ", <--Cache Hit" : "");
             dump_gnss(rctx, file, func, &cl->gnss);
             for (j = 0; j < cl->num_beacons; j++) {
@@ -1532,10 +1526,6 @@ void select_vap(Sky_rctx_t *rctx)
         0
     }; /* fill request with as many virtual groups as possible */
 
-    if (rctx == NULL) {
-        // LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad param");
-        return;
-    }
     for (; !no_more && nvap < CONFIG(rctx->session, max_vap_per_rq);) {
         /* Walk through APs counting vap, when max_vap_per_rq is reached */
         /* then walk through again, truncating the compressed bytes */
