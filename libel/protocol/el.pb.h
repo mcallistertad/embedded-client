@@ -46,11 +46,12 @@ typedef enum _Rs_Source {
     Rs_Source_HYBRID = 1,
     Rs_Source_CELL = 2,
     Rs_Source_WIFI = 3,
-    Rs_Source_GNSS = 4
+    Rs_Source_GNSS = 4,
+    Rs_Source_RFPM = 5
 } Rs_Source;
 #define _Rs_Source_MIN Rs_Source_UNKNOWN
-#define _Rs_Source_MAX Rs_Source_GNSS
-#define _Rs_Source_ARRAYSIZE ((Rs_Source)(Rs_Source_GNSS+1))
+#define _Rs_Source_MAX Rs_Source_RFPM
+#define _Rs_Source_ARRAYSIZE ((Rs_Source)(Rs_Source_RFPM+1))
 
 /* Struct definitions */
 typedef struct _Gnss {

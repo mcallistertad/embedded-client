@@ -35,7 +35,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 19
+#define SW_VERSION 20
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -44,7 +44,9 @@
 #define BACKOFF_UNITS_PER_HR 3600 // time in seconds
 
 /* Local functions */
+#if SANITY_CHECKS
 static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
+#endif
 static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Initialize Skyhook library and verify access to resources
@@ -105,9 +107,13 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         if (session->open_flag) {
             return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
         }
-        if (partner_id != 0 &&
-            (memcmp(sku, session->sku, sku_len) != 0 || partner_id != session->partner_id ||
-                memcmp(aes_key, session->aes_key, AES_SIZE) != 0)) {
+        if (session->num_cachelines != CACHE_SIZE) {
+            if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
+                (*logf)(SKY_LOG_LEVEL_WARNING, "cache configuration changed. Clearing state.");
+            session->header.magic = 0;
+        } else if (partner_id != 0 &&
+                   (memcmp(sku, session->sku, sku_len) != 0 || partner_id != session->partner_id ||
+                       memcmp(aes_key, session->aes_key, AES_SIZE) != 0)) {
             if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
                 (*logf)(SKY_LOG_LEVEL_WARNING, "New Authendication configuration. Clearing state.");
             session->header.magic = 0;
@@ -150,9 +156,10 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     }
     config_defaults(session);
 
-    /* Sanity check */
+#if SANITY_CHECKS
     if (!validate_device_id(device_id, id_len) || aes_key == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
+#endif
 
     session->id_len = id_len;
     memcpy(session->device_id, device_id, id_len);
@@ -789,8 +796,10 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
         nsat > 100) /* 100 is conservative max gnss sat count */
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
     rctx->gnss.lat = lat;
     rctx->gnss.lon = lon;
@@ -820,8 +829,10 @@ Sky_status_t sky_search_cache(
     Sky_cacheline_t *cl;
 #endif
 
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
 #if CACHE_SIZE
     /* check cachelines against new beacons for best match
@@ -844,7 +855,7 @@ Sky_status_t sky_search_cache(
 #if SKY_DEBUG
         time_t cached_time = loc->time;
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%sctx age:%d Sec", (int)loc->lat,
+            "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
             (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
             (rctx->header.time - cached_time));
@@ -871,8 +882,10 @@ Sky_status_t sky_search_cache(
  */
 Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 {
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
 #if CACHE_SIZE
     if (IS_CACHE_HIT(rctx)) {
@@ -906,8 +919,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
     Sky_cacheline_t *cl;
 #endif
 
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -990,9 +1005,10 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
     int rc;
     Sky_sctx_t *sctx = rctx->session;
 
-    if (!validate_request_ctx(rctx)) {
+#if SANITY_CHECKS
+    if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
+#endif
 
     if (backoff_violation(rctx, rctx->header.time)) {
         return set_error_status(sky_errno, SKY_ERROR_SERVICE_DENIED);
@@ -1465,6 +1481,8 @@ char *sky_psource(struct sky_location *l)
             return "Hybrid";
         case SKY_LOCATION_SOURCE_WIFI:
             return "Wi-Fi";
+        case SKY_LOCATION_SOURCE_RFPM:
+            return "RFPM";
         default:
             return "\?\?\?";
         }
@@ -1488,10 +1506,11 @@ Sky_status_t sky_close(Sky_sctx_t *sctx, Sky_errno_t *sky_errno)
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-/*******************************************************************************
+    /*******************************************************************************
  * Static helper functions
  ******************************************************************************/
 
+#if SANITY_CHECKS
 /*! \brief sanity check the device_id
  *
  *  @param device_id this is expected to be a binary mac address
@@ -1506,6 +1525,7 @@ static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
     else
         return true;
 }
+#endif
 
 /*! \brief safely return bounded length of string
  *

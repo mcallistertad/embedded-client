@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
@@ -249,7 +250,6 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
         return false;
     }
 
-    /* look for any AP beacon that is 'similar' to another */
     if (rctx->beacon[0].h.type != SKY_BEACON_AP) {
         LOGFMT(rctx, SKY_LOG_LEVEL_CRITICAL, "beacon type not WiFi");
         return false;
@@ -259,10 +259,17 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
      * Iterate over all beacon pairs. For each pair whose members are "similar" to
      * one another (i.e., which are part of the same virtual AP (VAP) group),
      * identify which member of the pair is a candidate for removal. After iterating,
-     * remove the worse such candidate.
+     * remove the worse such candidate. Note: connected APs are ignored.
      */
     for (j = NUM_APS(rctx) - 1; j > 0; j--) {
+        /* if connected, ignore this AP */
+        if (rctx->beacon[j].h.connected)
+            continue;
         for (i = j - 1; i >= 0; i--) {
+            /* if connected, ignore this AP */
+            if (rctx->beacon[i].h.connected)
+                continue;
+
             int mac_diff = mac_similar(
                 rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL); // <0 => i is better
             if (mac_diff != 0) {
@@ -281,9 +288,8 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
                     vap_b = &rctx->beacon[j];
                 }
 #if VERBOSE_DEBUG
-                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s %s",
+                LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s",
                     IDX(vap_a, rctx), IDX(vap_b, rctx),
-                    vap_b->h.connected != vap_a->h.connected ? "(connected)" : "",
                     vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
                         "(cached)" :
                         mac_diff < 0 ? "(mac)" : "");
@@ -314,6 +320,39 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
     return false;
 }
 
+/*! \brief try to reduce AP by filtering out the oldest one
+ *
+ *  @param ctx Skyhook request context
+ *
+ *  @return sky_status_t SKY_SUCCESS if beacon removed or SKY_ERROR
+ */
+static bool remove_oldest_ap(Sky_rctx_t *rctx)
+{
+    int i;
+    int oldest_idx = -1;
+    uint32_t oldest_age = 0, youngest_age = UINT_MAX; /* age is in seconds, larger means older */
+
+    /* Find the youngest and oldest APs */
+    for (i = 0; i < NUM_APS(rctx); i++) {
+        if (rctx->beacon[i].h.age < youngest_age) {
+            youngest_age = rctx->beacon[i].h.age;
+        }
+        if (rctx->beacon[i].h.age > oldest_age) {
+            oldest_age = rctx->beacon[i].h.age;
+            oldest_idx = i;
+        }
+    }
+
+    /* if the oldest and youngest beacons have the same age,
+     * there is nothing to do. Otherwise remove the oldest */
+    if (youngest_age != oldest_age && oldest_idx != -1) {
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "remove_beacon: %d oldest", oldest_idx);
+        remove_beacon(rctx, oldest_idx);
+        return true;
+    }
+    return false;
+}
+
 /*! \brief try to reduce AP by filtering out the worst one
  *
  *  Request Context AP beacons are stored in decreasing rssi order
@@ -338,7 +377,7 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 
     /* beacon is AP and is subject to filtering */
     /* discard virtual duplicates or remove one based on age, rssi distribution etc */
-    if (!remove_virtual_ap(rctx)) {
+    if (!remove_virtual_ap(rctx) && !remove_oldest_ap(rctx)) {
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "removing worst AP idx: %d", idx_of_worst);
         return remove_beacon(rctx, idx_of_worst);
     }

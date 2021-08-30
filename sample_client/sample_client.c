@@ -240,13 +240,13 @@ static Sky_sctx_t *retrieve_session_context(Config_t *config)
                         return sctx;
                     }
                 } else
-                    printf("ERROR: sky_sizeof_session_ctx() checksum %s failed %d\n",
+                    printf("ERROR: retrieve_session_context() validation of %s failed %d\n",
                         config->statefile, sbufsize);
             } else
-                printf("ERROR: sky_sizeof_session_ctx() read for %s failed\n", config->statefile);
+                printf("ERROR: retrieve_session_context() read for %s failed\n", config->statefile);
             fclose(fio);
         } else
-            printf("ERROR: sky_sizeof_session_ctx() fopen for %s failed\n", config->statefile);
+            printf("ERROR: retrieve_session_context() fopen for %s failed\n", config->statefile);
     }
     if (config->factory_reset)
         printf("Clearing state due to Factory reset\n");
@@ -394,7 +394,7 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             ret_status = sky_add_ap_beacon(rctx, &sky_errno, mac, timestamp - ap->age, ap->rssi,
                 (int32_t)ap->frequency, ap->connected);
             if (ret_status != SKY_SUCCESS)
-                printf("sky_add_ap_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_ap_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
         } else
             printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
     }
@@ -407,39 +407,40 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         case TYPE_CDMA:
             if (sky_add_cell_cdma_beacon(rctx, &sky_errno, cp->id2, cp->id3, cp->id4,
                     timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_cdma_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_cell_cdma_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_GSM:
             if (sky_add_cell_gsm_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
                     cp->ta, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_gsm_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_cell_gsm_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_LTE:
             if (sky_add_cell_lte_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
                     cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
                     cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_lte_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_cell_lte_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_NBIOT:
             if (sky_add_cell_nb_iot_beacon(rctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
                     cp->id5, cp->freq, timestamp - cp->age, (int16_t)cp->ss,
                     cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_nb_iot_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf(
+                    "sky_add_cell_nb_iot_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_NR:
             if (sky_add_cell_nr_beacon(rctx, &sky_errno, cp->id1, cp->id2, cp->id4, cp->id3,
                     cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
                     cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_nr_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_cell_nr_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_UMTS:
             if (sky_add_cell_umts_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
                     cp->id5, (int16_t)cp->freq, timestamp - cp->age, (int16_t)cp->ss,
                     cp->connected) != SKY_SUCCESS)
-                printf("sky_add_cell_umts_beacon sky_errno contains '%s'", sky_perror(sky_errno));
+                printf("sky_add_cell_umts_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         default:
-            printf("Error: unknown cell type at index %d", i);
+            printf("Error: unknown cell type at index %d\n", i);
             break;
         }
     }
@@ -498,7 +499,7 @@ retry_after_auth:
     } else if (sky_encode_request(rctx, &sky_errno, prequest, request_size, &response_size) ==
                SKY_ERROR) {
         free(prequest);
-        printf("sky_encode_request error '%s'", sky_perror(sky_errno));
+        printf("sky_encode_request error '%s'\n", sky_perror(sky_errno));
         return false;
     } else {
         /* send the request to the server. */

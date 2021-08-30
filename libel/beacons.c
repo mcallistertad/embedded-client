@@ -68,7 +68,7 @@ Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index)
  *  @return  >0 if beacon A is better
  *           <0 if beacon B is better
  */
-static int is_beacon_better(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
+static int is_beacon_first(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
 {
     int diff = 0;
 
@@ -156,7 +156,7 @@ static Sky_status_t insert_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beac
 
     /* find position to insert based on plugin compare operation */
     for (j = 0; j < NUM_BEACONS(rctx); j++) {
-        if (is_beacon_better(rctx, b, &rctx->beacon[j]) > 0)
+        if (is_beacon_first(rctx, b, &rctx->beacon[j]) > 0)
             break;
     }
 
@@ -220,8 +220,10 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
 {
     int n;
 
+#if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif
 
     if (!rctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -379,7 +381,6 @@ int find_oldest(Sky_rctx_t *rctx)
     return oldestc;
 #endif
 }
-#endif
 
 /*! \brief test whether gnss in new scan is preferable to that in cache
  *
@@ -450,6 +451,7 @@ int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
 }
+#endif
 
 /*! \brief get location from cache
  *

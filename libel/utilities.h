@@ -47,7 +47,6 @@ Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code);
 bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx);
 bool validate_request_ctx(Sky_rctx_t *rctx);
 bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf);
-bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx);
 bool is_tbr_enabled(Sky_rctx_t *rctx);
 #if SKY_LOGGING
 const char *sky_basename(const char *path);

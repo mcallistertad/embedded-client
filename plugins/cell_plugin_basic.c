@@ -41,7 +41,7 @@ typedef enum {
     LOWEST_PRIORITY = 0x000
 } Property_priority_t;
 
-static uint16_t get_priority(Beacon_t *b);
+static float get_priority(Beacon_t *b);
 
 /*! \brief compare cell beacons for equality
  *
@@ -135,14 +135,16 @@ static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *dif
         return SKY_ERROR;
 
     if (a->h.priority == 0)
-        a->h.priority = (float)get_priority(a);
+        a->h.priority = get_priority(a);
     if (b->h.priority == 0)
-        b->h.priority = (float)get_priority(b);
+        b->h.priority = get_priority(b);
 
-    if (a->h.age != b->h.age)
-        *diff = COMPARE_AGE(a, b);
-    else if (a->h.priority != b->h.priority)
+    if (a->h.priority != b->h.priority)
         *diff = COMPARE_PRIORITY(a, b);
+    else if (a->h.age != b->h.age)
+        *diff = COMPARE_AGE(a, b);
+    else if (a->h.type != b->h.type)
+        *diff = COMPARE_TYPE(a, b);
     else
         *diff = COMPARE_RSSI(a, b);
     return SKY_SUCCESS;
@@ -333,16 +335,15 @@ static Sky_status_t match(Sky_rctx_t *rctx)
  *
  *  @return priority
  */
-static uint16_t get_priority(Beacon_t *b)
+static float get_priority(Beacon_t *b)
 {
-    int score = 0;
+    float score = 0.0f;
 
     if (b->h.connected)
-        score |= CONNECTED;
+        score += (float)CONNECTED;
     if (!is_cell_nmr(b))
-        score |= NON_NMR;
+        score += (float)NON_NMR;
 
-    score |= (128 - b->h.type);
     return score;
 }
 
