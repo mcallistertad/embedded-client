@@ -1,10 +1,89 @@
 # Skyhook Embedded Client Library
 
+## Description
+
+The Skyhook Embedded Client is a small library written in C. It is intended to be included in embedded targets (e.g.,
+IoT devices) to allow those devices to use the Skyhook Precision Location service in order to obtain an estimate of the
+geolocation of the device on which it runs. It is known as the 'embedded library' or simply 'LibEL'. This repo also
+includes a sample client application which illustrates how the library can be used by your application (see below).
+
+Instructions for cloning and building the library are below.
+
+## Change Log
+
+### Release 4.0.0
+
+#### API simplifications.
+
+* LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
+* LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer and session
+  context buffer.
+* User may call new API call, sky_search_cache(), to determine whether the current request has a match in the cache.
+* User may tune some configuration parameters at runtime using sky_set_option().
+
+#### Code size optimizations.
+
+* Common code sequences have been factored out.
+* Some of the largest functions have been re-written.
+
+### [Release 3.0.4](https://github.com/SkyhookWireless/embedded-client/tree/3.0.4)
+
+* Cache miss when request context buffer has gnss but cache does not
+* sample_client improvements
+
+### [Release 3.0.3](https://github.com/SkyhookWireless/embedded-client/tree/3.0.3)
+
+* Remove strict check so that a GNSS fix with NSAT value of 0 can be added.
+
+### [Release 3.0.2](https://github.com/SkyhookWireless/embedded-client/tree/3.0.2)
+
+* Bug fix - server side tuning of cache match thresholds was being ignored by LibEL
+* Bug fix - low AP count in scan should require exact cache match
+* Bug fix - scan with gnss should never match a cache entry without gnss
+
+### [Release 3.0.1](https://github.com/SkyhookWireless/embedded-client/tree/3.0.1)
+
+* Added support for Token Based Registration and authentication.
+* Added support for Uplink and downlink data. Downlink data can be configured through a new web service/API.
+* Added 'debounce' parameter to sky_open() which allows the option, in the case of a cache match, to report the cached
+  information in a subsequent server request.
+* Added plugin modules infrastructure, allowing basic or premium algorithms for filtering scans and interpreting server
+  responses, and ability to expand LibEL's capabilities in the future.
+* Cellular beacons now allow Timing Advance values to be added.
+* Updated the sample_client application.
+* Renamed .submodules to submodules.
+* Additional bug fixes and improvements.
+
+### [Release 2.1.3](https://github.com/SkyhookWireless/embedded-client/tree/2.1.3)
+
+* Change default configuration to 20 total beacons, 15 APs
+* Update to allow ID3 to be -1 SKY_UNKNOWN_ID3
+* Bug fix - cache match fails if serving cell has changed
+* Bug fix - copy actual number of beacons in request context to cache
+* Bug fix - sky_add_cell_lte_beacon(), tac must be signed and wider for SKY_UNKNOWN_ID3
+
+### [Release 2.0.0](https://github.com/SkyhookWireless/embedded-client/tree/2.0.0)
+
+* Additional arguments provided to sky_add_cell_lte_beacon(), sky_add_cell_umts_beacon()
+  and sky_add_cell_nb_iot_beacon() to allow the user to optionally provide pci/psc/ncid and uarfcn/earfcn values.
+* Support for optionally adding scanned neighbor cells (for LTE, UMTS, and NB_IOT cell types) via 3 new functions
+  sky_add_cell_lte_neighbor_beacon(), sky_add_cell_umts_neighbor_beacon() and sky_add_cell_nb_iot_neighbor_beacon.
+
+### [Release 1.1.4](https://github.com/SkyhookWireless/embedded-client/tree/1.0.4)
+
+* Device ID length fix and a few changes to sample_client to allow full length of device_id to be used.
+
+### [Release 1.1.3](https://github.com/SkyhookWireless/embedded-client/tree/1.1.3)
+
+* Update to avoid ignoring server results in case no local clock is available, plus logging and other minor cleanups
+
+### [Release 1.1.1](https://github.com/SkyhookWireless/embedded-client/tree/1.1.1)
+
+* Initial public release
+
 ## Table of Contents
 
 * [Skyhook Embedded Client Library](#skyhook-embedded-client-library)
-    * [Description](#description)
-    * [Change Log](#change-log)
     * [Building](#building)
         * [Dependencies](#dependencies)
             * [Git Submodules](#git-submodules)
@@ -43,6 +122,7 @@
             * [sky_perror() - returns a string which describes the meaning of sky_errno codes](#sky_perror---returns-a-string-which-describes-the-meaning-of-sky_errno-codes)
             * [sky_pbeacon() - returns a string which describes the type of a beacon](#sky_pbeacon---returns-a-string-which-describes-the-type-of-a-beacon)
             * [sky_pserver_status() - returns a string which describes the meaning of status codes](#sky_pserver_status---returns-a-string-which-describes-the-meaning-of-status-codes)
+            * [sky_psource() - returns a string which describes the source of the location](#sky_psource---returns-a-string-which-describes-the-source-of-the-location)
             * [sky_close() - frees any resources in use by the Skyhook library](#sky_close---frees-any-resources-in-use-by-the-skyhook-library)
         * [Appendix](#appendix)
             * [API Return Codes](#api-return-codes)
@@ -51,96 +131,6 @@
             * [API sky_finalize_request() result](#api-sky_finalize_request-result)
             * [API Logging levels](#api-logging-levels)
     * [License](#license)
-
-## Description
-
-The Skyhook Embedded Client is a small library written in C. It is intended to be included in embedded targets (e.g.,
-IoT devices) to allow those devices to use the Skyhook Precision Location service in order to obtain an estimate of the
-geolocation of the device on which it runs. It is known as the 'embedded library' or simply 'LibEL'. This repo also
-includes a sample client application which illustrates how the library can be used by your application (see below).
-
-Instructions for cloning and building the library are below.
-
-## Change Log
-
-### Release 4.0.0
-
-#### API simplifications.
-
-* LibEL accepts timestamps with value 0 which indicates that time has not been synchronized.
-* LibEL no longer holds state and cache in a static buffer. User allocates both request context buffer and session
-  context buffer.
-* User may call new API call, sky_search_cache(), to determine whether the current request has a match in the cache.
-* User may tune some configuration parameters at runtime using sky_set_option().
-
-#### Code size optimizations.
-
-* Common code sequences have been factored out.
-* Some of the largest functions have been re-written.
-
-### Release 3.0.4
-
-* Cache miss when request context buffer has gnss but cache does not
-
-### Release 3.0.3
-
-* Remove strict check so that a GNSS fix with NSAT value of 0 can be added.
-
-### Release 3.0.2
-
-* Bug fix - server side tuning of cache match thresholds was being ignored by LibEL
-* Change default configuration to 28 total beacons, 20 APs
-
-### Release 3.0.1.2
-
-* Cache miss when request context buffer has gnss but cache does not
-
-### Release 3.0.1.1
-
-* Bug fix - gnss was not saved to cache
-* Bug fix - low AP count in scan should require exact cache match
-* Bug fix - scan with gnss should never match a cache entry without gnss
-* Bug fix - cache match threshold wrongly referenced premium threshold
-
-### Release 3.0.1
-
-* Added support for Token Based Registration and authentication.
-* Added support for Uplink and downlink data. Downlink data can be configured through a new web service/API.
-* Added 'debounce' parameter to sky_open() which allows the option, in the case of a cache match, to report the cached
-  information in a subsequent server request.
-* Added plugin modules infrastructure, allowing basic or premium algorithms for filtering scans and interpreting server
-  responses, and ability to expand LibEL's capabilities in the future.
-* Cellular beacons now allow Timing Advance values to be added.
-* Updated the sample_client application.
-* Renamed .submodules to submodules.
-* Additional bug fixes and improvements.
-
-### Release 2.1.3
-
-* Change default configuration to 20 total beacons, 15 APs
-* Update to allow ID3 to be -1 SKY_UNKNOWN_ID3
-* Bug fix - cache match fails if serving cell has changed
-* Bug fix - copy actual number of beacons in request context to cache
-* Bug fix - sky_add_cell_lte_beacon(), tac must be signed and wider for SKY_UNKNOWN_ID3
-
-### Release 2.0.0
-
-* Additional arguments provided to sky_add_cell_lte_beacon(), sky_add_cell_umts_beacon()
-  and sky_add_cell_nb_iot_beacon() to allow the user to optionally provide pci/psc/ncid and uarfcn/earfcn values.
-* Support for optionally adding scanned neighbor cells (for LTE, UMTS, and NB_IOT cell types) via 3 new functions
-  sky_add_cell_lte_neighbor_beacon(), sky_add_cell_umts_neighbor_beacon() and sky_add_cell_nb_iot_neighbor_beacon.
-
-### Release 1.1.4
-
-* Device ID length fix and a few changes to sample_client to allow full length of device_id to be used.
-
-### Release 1.1.3
-
-* Update to avoid ignoring server results in case no local clock is available, plus logging and other minor cleanups
-
-### Release 1.1.1
-
-* Initial public release
 
 ## Building
 
@@ -1303,8 +1293,10 @@ Return a static string which describes the source of the location passed in loc.
 location_source field of the Sky_location_t structure when sky_decode_response() returns `SKY_SUCCESS`.
 
 The string descriptions are:
-| Location Source | Description | -------------------------------| ------------ | `SKY_LOCATION_SOURCE_HYBRID`   | "
-Hybrid"
+
+| Location Source | Description
+| -------------------------------| ------------
+| `SKY_LOCATION_SOURCE_HYBRID`   | "Hybrid"
 | `SKY_LOCATION_SOURCE_CELL`     | "Cell"
 | `SKY_LOCATION_SOURCE_WIFI`     | "Wi-Fi"
 | `SKY_LOCATION_SOURCE_GNSS`     | "GNSS"
