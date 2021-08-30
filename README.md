@@ -1303,8 +1303,10 @@ Return a static string which describes the source of the location passed in loc.
 location_source field of the Sky_location_t structure when sky_decode_response() returns `SKY_SUCCESS`.
 
 The string descriptions are:
-| Location Source | Description | -------------------------------| ------------ | `SKY_LOCATION_SOURCE_HYBRID`   | "
-Hybrid"
+
+| Location Source | Description
+| -------------------------------| ------------
+| `SKY_LOCATION_SOURCE_HYBRID`   | "Hybrid"
 | `SKY_LOCATION_SOURCE_CELL`     | "Cell"
 | `SKY_LOCATION_SOURCE_WIFI`     | "Wi-Fi"
 | `SKY_LOCATION_SOURCE_GNSS`     | "GNSS"
