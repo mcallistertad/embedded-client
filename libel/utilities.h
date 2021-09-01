@@ -114,4 +114,5 @@ uint8_t *get_vap_data(Sky_rctx_t *rctx, uint32_t idx);
 void select_vap(Sky_rctx_t *rctx);
 
 int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize);
+float distance_A_to_B(float lat_a, float lon_a, float lat_b, float lon_b);
 #endif
