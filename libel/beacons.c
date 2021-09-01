@@ -387,7 +387,7 @@ int find_oldest(Sky_rctx_t *rctx)
  *  by sending new scan to server.
  *
  *  true only if gnss fix in cache is worse than new scan
- *  false if cached gnss is not
+ *  false if cached gnss is better
  *
  *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in
@@ -399,7 +399,7 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
     if (!has_gnss(rctx)) /* if new scan does not have gnss, it is not worse than cached gnss */
         return false;
 
-    /* Reject cached fix if new scan contains gnss and cache does not */
+    /* cached fix worse if new scan contains gnss and cache does not */
     if (!has_gnss(cl)) {
 #ifdef VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
@@ -407,18 +407,18 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
         return true;
     }
 
-    /* Reject certain cached fixes if new scan and cache contains gnss */
+    /* certain cached fixes are worse when new scan and cache contains gnss */
     if (has_gnss(cl)) {
-        /* if new gnss is more accurate than cached gnss */
         if (rctx->gnss.hpe < cl->gnss.hpe) {
+        /* New gnss is more accurate than cached gnss */
 #ifdef VERBOSE_DEBUG
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has worse gnss hpe!");
 #endif
             return true;
         }
-        /* if new gnss is outside radius of uncertainty at 68% of cached location */
-        if (distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon) >
-            (float)cl->gnss.hpe) {
+        if (distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon) >=
+            (float)rctx->gnss.hpe) {
+        /* new gnss is outside radius of uncertainty at 68% of cached location */
 #ifdef VERBOSE_DEBUG
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has worse gnss location!");
 #endif
