@@ -549,6 +549,25 @@ TEST_FUNC(test_add)
         });
 }
 
+TEST_FUNC(test_distance)
+{
+    GROUP("Verify distance calculation");
+    TEST("48.940511,2.233437 to 48.957394,2.267373=3108.96405", rctx, {
+        ASSERT(
+            fabs(3108.96405f - distance_A_to_B(48.940511, 2.233437, 48.957394, 2.267373)) < 2.7f);
+    });
+
+    TEST("34.26486,-84.5302 to 34.264867,-84.5302 = 0.777078904", rctx, {
+        ASSERT(
+            fabs(0.777078904f - distance_A_to_B(34.26486, -84.5302, 34.264867, -84.5302)) < 2.7f);
+    });
+
+    TEST("34.26004,-84.519028 to 34.26503,-84.529953 = 1147.117852", rctx, {
+        ASSERT(fabs(1147.117852f - distance_A_to_B(34.26004, -84.519028, 34.26503, -84.529953)) <
+               2.7f);
+    });
+}
+
 TEST_FUNC(test_insert)
 {
     GROUP("insert_beacon rssi order");
@@ -857,5 +876,6 @@ GROUP_CALL("validate_request_ctx", test_validate_request_ctx);
 GROUP_CALL("is_beacon_first", test_beacon_order);
 GROUP_CALL("beacon_add", test_add);
 GROUP_CALL("beacon_insert", test_insert);
+GROUP_CALL("distance_A_to_B", test_distance);
 
 END_TESTS();

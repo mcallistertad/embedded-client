@@ -29,13 +29,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <math.h>
 #include "libel.h"
 
 #if SANITY_CHECKS
 static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx);
 #endif
 
-#define MIN(a, b) ((a < b) ? a : b)
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 /*! \brief set sky_errno and return Sky_status
  *
@@ -1573,6 +1574,26 @@ int sky_rand_fn(uint8_t *rand_buf, uint32_t bufsize)
     for (i = 0; i < bufsize; i++)
         rand_buf[i] = rand() % 256;
     return (int)bufsize;
+}
+
+/*! \brief Calculate distance between two gps coordinates using Haversine formula
+ *
+ *  ref: https://www.geeksforgeeks.org/program-distance-two-points-earth/
+ *
+ *  @param a_lat latitude of position A in degrees
+ *  @param a_lon longitude of position A in degrees
+ *  @param a_lat latitude of position B in degrees
+ *  @param a_lon longitude of position B in degrees
+ *  @returns distance distance in meters
+ */
+#define PI (acos(-1.0))
+#define RADIANS(d) (PI / 180.0f * (d))
+float distance_A_to_B(float lat_a, float lon_a, float lat_b, float lon_b)
+{
+    return (float)(1000 * 6371 *
+                   acos(cos(RADIANS(90 - lat_a)) * cos(RADIANS(90 - lat_b)) +
+                        sin(RADIANS(90 - lat_a)) * sin(RADIANS(90 - lat_b)) *
+                            cos(RADIANS(lon_a - lon_b))));
 }
 
 #ifdef UNITTESTS

@@ -24,7 +24,6 @@
  */
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 #include "libel.h"
 
@@ -388,7 +387,7 @@ int find_oldest(Sky_rctx_t *rctx)
  *  by sending new scan to server.
  *
  *  true only if gnss fix in cache is worse than new scan
- *  false if cached gnss is not
+ *  false if cached gnss is better
  *
  *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in
@@ -397,14 +396,36 @@ int find_oldest(Sky_rctx_t *rctx)
  */
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 {
-    /* in future, this condition could take accuracy into account */
-    /* Reject cached fix if new scan contains gnss and cache does not */
-    if (has_gnss(rctx) && !has_gnss(cl)) {
+    if (!has_gnss(rctx))
+        /* new scan doesn't include gnss */
+        return false;
+
+    if (!has_gnss(cl)) {
+        /* new scan includes gnss, but cached scan does not */
 #ifdef VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
 #endif
         return true;
     }
+
+    /* at this point both new and cached scans include GNSS */
+    if (rctx->gnss.hpe < cl->gnss.hpe) {
+        /* New gnss is more accurate than cached gnss */
+#ifdef VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has worse gnss hpe!");
+#endif
+        return true;
+    }
+
+    if (distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon) >=
+        (float) rctx->gnss.hpe) {
+        /* Cached gnss location is outside radius of uncertainty at 68% of new gnss */
+#ifdef VERBOSE_DEBUG
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline gnss outside HPE radius of new gnss!");
+#endif
+        return true;
+    }
+
     return false;
 }
 
