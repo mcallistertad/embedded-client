@@ -267,41 +267,6 @@ TEST_FUNC(test_sky_gnss)
         ASSERT(rctx->gnss.lon == rctx->session->cacheline[0].gnss.lon);
         ASSERT(rctx->gnss.hpe == rctx->session->cacheline[0].gnss.hpe);
     });
-    TEST("cache hit true copies gnss from cache (gnss only in cache)", rctx, {
-        Sky_errno_t sky_errno;
-        Sky_location_t loc = { .lat = 35.511315,
-            .lon = 139.618906,
-            .hpe = 16,
-            .location_source = SKY_LOCATION_SOURCE_WIFI,
-            .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
-            .cell.id1 = 441,
-            .cell.id2 = 53,
-            .cell.id3 = 24674,
-            .cell.id4 = 202274050,
-            .cell.id5 = 21,
-            .cell.freq = 5901,
-            .cell.ta = 2 };
-        uint32_t buf_size;
-
-        rctx->hit = true;
-        rctx->beacon[0] = c;
-        rctx->num_beacons = 1;
-        rctx->num_ap = 0;
-        rctx->gnss.lat = NAN;
-        loc.time = rctx->header.time;
-
-        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
-        rctx->session->cacheline[0].gnss.lat = 35.511314;
-        rctx->session->cacheline[0].gnss.lon = 139.618905;
-        rctx->session->cacheline[0].gnss.hpe = 47;
-        sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == true);
-        ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
-        ASSERT(rctx->gnss.lat == rctx->session->cacheline[0].gnss.lat);
-        ASSERT(rctx->gnss.lon == rctx->session->cacheline[0].gnss.lon);
-        ASSERT(rctx->gnss.hpe == rctx->session->cacheline[0].gnss.hpe);
-    });
     TEST("cache hit true with no gnss)", rctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
@@ -318,7 +283,6 @@ TEST_FUNC(test_sky_gnss)
             .cell.freq = 5901,
             .cell.ta = 2 };
 
-        rctx->hit = true;
         rctx->beacon[0] = c;
         rctx->num_beacons = 1;
         rctx->num_ap = 0;
@@ -327,11 +291,11 @@ TEST_FUNC(test_sky_gnss)
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == true);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
     });
-    TEST("cache hit true copies gnss from cache (gnss in both)", rctx, {
+    TEST("cache hit true copies gnss from cache to request context (gnss only in cache)", rctx, {
         Sky_errno_t sky_errno;
-        Sky_location_t loc = { .lat = 35.511315,
+        Sky_location_t loc = { .lat = 35.511315, /* API server response */
             .lon = 139.618906,
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
@@ -346,89 +310,26 @@ TEST_FUNC(test_sky_gnss)
             .cell.ta = 2 };
         uint32_t buf_size;
 
-        rctx->hit = true;
         rctx->beacon[0] = c;
         rctx->num_beacons = 1;
         rctx->num_ap = 0;
-        rctx->gnss.lat = 35.511315;
-        rctx->gnss.lon = 139.618906;
-        rctx->gnss.hpe = 56;
-        loc.time = rctx->header.time;
-
-        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
-        rctx->session->cacheline[0].gnss.lat = 35.51132; /* position different but close */
-        rctx->session->cacheline[0].gnss.lon = 139.61889;
-        rctx->session->cacheline[0].gnss.hpe = 47; /* hpe better */
-        sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == true);
-        ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
-        ASSERT(rctx->gnss.lat == rctx->session->cacheline[0].gnss.lat);
-        ASSERT(rctx->gnss.lon == rctx->session->cacheline[0].gnss.lon);
-        ASSERT(rctx->gnss.hpe == rctx->session->cacheline[0].gnss.hpe);
-    });
-    TEST("cache miss gnss in both, but hpe worse", rctx, {
-        Sky_errno_t sky_errno;
-        Sky_location_t loc = { .lat = 35.511315,
-            .lon = 139.618906,
-            .hpe = 16,
-            .location_source = SKY_LOCATION_SOURCE_WIFI,
-            .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
-            .cell.id1 = 441,
-            .cell.id2 = 53,
-            .cell.id3 = 24674,
-            .cell.id4 = 202274050,
-            .cell.id5 = 21,
-            .cell.freq = 5901,
-            .cell.ta = 2 };
-
-        rctx->hit = true;
-        rctx->beacon[0] = c;
-        rctx->num_beacons = 1;
-        rctx->num_ap = 0;
-        rctx->gnss.lat = 35.511315;
-        rctx->gnss.lon = 139.618906;
-        rctx->gnss.hpe = 46;
+        rctx->gnss.lat = NAN; /* gnss empty in request rctx */
         loc.time = rctx->header.time;
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
         rctx->session->cacheline[0].gnss.lat = 35.511314;
         rctx->session->cacheline[0].gnss.lon = 139.618905;
-        rctx->session->cacheline[0].gnss.hpe = 57;
+        rctx->session->cacheline[0].gnss.hpe = 47;
+        rctx->session->cacheline[0].loc = loc;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == false);
-    });
-    TEST("cache miss gnss in both but too far apart", rctx, {
-        Sky_errno_t sky_errno;
-        Sky_location_t loc = { .lat = 35.511315,
-            .lon = 139.618906,
-            .hpe = 16,
-            .location_source = SKY_LOCATION_SOURCE_WIFI,
-            .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
-            .cell.id1 = 441,
-            .cell.id2 = 53,
-            .cell.id3 = 24674,
-            .cell.id4 = 202274050,
-            .cell.id5 = 21,
-            .cell.freq = 5901,
-            .cell.ta = 2 };
-
-        rctx->hit = true;
-        rctx->beacon[0] = c;
-        rctx->num_beacons = 1;
-        rctx->num_ap = 0;
-        rctx->gnss.lat = 35.511315;
-        rctx->gnss.lon = 139.618906;
-        rctx->gnss.hpe = 57;
-        loc.time = rctx->header.time;
-
-        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
-        rctx->session->cacheline[0].gnss.lat = 35; /* far away */
-        rctx->session->cacheline[0].gnss.lon = 139;
-        rctx->session->cacheline[0].gnss.hpe = 46; /* better accuracy */
-        sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == false);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        /* Location source should be copied from cache */
+        ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
+        ASSERT(rctx->gnss.lat ==
+               rctx->session->cacheline[0]
+                   .gnss.lat); /* Cached gnss should have been copied to request rctx */
+        ASSERT(rctx->gnss.lon == rctx->session->cacheline[0].gnss.lon);
+        ASSERT(rctx->gnss.hpe == rctx->session->cacheline[0].gnss.hpe);
     });
     TEST("cache miss gnss in new scan only", rctx, {
         Sky_errno_t sky_errno;
@@ -446,7 +347,6 @@ TEST_FUNC(test_sky_gnss)
             .cell.freq = 5901,
             .cell.ta = 2 };
 
-        rctx->hit = true;
         rctx->beacon[0] = c;
         rctx->num_beacons = 1;
         rctx->num_ap = 0;
@@ -458,7 +358,131 @@ TEST_FUNC(test_sky_gnss)
         rctx->gnss.lon = 139.618906;
         rctx->gnss.hpe = 56;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit == false);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
+    });
+    TEST("cache miss - New GNSS overlaps cached location but has smaller HPE", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_GNSS,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        rctx->beacon[0] = c;
+        rctx->num_beacons = 1;
+        rctx->num_ap = 0;
+        rctx->gnss.lat = 35.51131;
+        rctx->gnss.lon = 139.6189;
+        rctx->gnss.hpe = 90;
+        loc.time = rctx->header.time;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->session->cacheline[0].gnss.lat = 35.51132;
+        rctx->session->cacheline[0].gnss.lon = 139.618;
+        rctx->session->cacheline[0].gnss.hpe = 123;
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
+    });
+    TEST("cache miss - New GNSS has larger HPE but does not overlap cached location", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        rctx->beacon[0] = c;
+        rctx->num_beacons = 1;
+        rctx->num_ap = 0;
+        rctx->gnss.lat = 35.511315;
+        rctx->gnss.lon = 139.618906;
+        rctx->gnss.hpe = 57;
+        loc.time = rctx->header.time;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->session->cacheline[0].gnss.lat = 35; /* far away */
+        rctx->session->cacheline[0].gnss.lon = 139;
+        rctx->session->cacheline[0].gnss.hpe = 46; /* better accuracy */
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
+    });
+    TEST("cache miss - New GNSS has smaller HPE and does not overlap cached location", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 36.511315, /* API server response */
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_GNSS,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        rctx->beacon[0] = c;
+        rctx->num_beacons = 1;
+        rctx->num_ap = 0;
+        rctx->gnss.lat = 35.51131;
+        rctx->gnss.lon = 139.6189;
+        rctx->gnss.hpe = 30;
+        loc.time = rctx->header.time;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->session->cacheline[0].gnss.lat = 35.51132; /* position different but close (82m) */
+        rctx->session->cacheline[0].gnss.lon = 139.618;
+        rctx->session->cacheline[0].gnss.hpe = 47; /* hpe worse in cache */
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
+    });
+    TEST("cache hit - New GNSS overlaps cached location and has larger HPE", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 36.511315, /* API server response */
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_GNSS,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
+            .cell.id1 = 441,
+            .cell.id2 = 53,
+            .cell.id3 = 24674,
+            .cell.id4 = 202274050,
+            .cell.id5 = 21,
+            .cell.freq = 5901,
+            .cell.ta = 2 };
+
+        rctx->beacon[0] = c;
+        rctx->num_beacons = 1;
+        rctx->num_ap = 0;
+        rctx->gnss.lat = 35.51131;
+        rctx->gnss.lon = 139.6189;
+        rctx->gnss.hpe = 90;
+        loc.time = rctx->header.time;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->session->cacheline[0].gnss.lat = 35.51132; /* position different but close (82m) */
+        rctx->session->cacheline[0].gnss.lon = 139.618;
+        rctx->session->cacheline[0].gnss.hpe = 47; /* hpe better in cache */
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
     });
 }
 
@@ -618,7 +642,7 @@ TEST_FUNC(test_cache_match)
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
             .ap.vg_len = 0 };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,
             .cell.id2 = 53,
             .cell.id3 = 24674,
@@ -654,7 +678,7 @@ TEST_FUNC(test_cache_match)
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
             .ap.vg_len = 0 };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,
             .cell.id2 = 53,
             .cell.id3 = 24674,
@@ -685,7 +709,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,
             .cell.id2 = 53,
             .cell.id3 = 24674,
@@ -710,7 +734,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 1 },
+        Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,
             .cell.id2 = 53,
             .cell.id3 = 24674,
