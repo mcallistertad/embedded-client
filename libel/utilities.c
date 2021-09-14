@@ -679,9 +679,10 @@ void dump_gnss(Sky_rctx_t *rctx, const char *file, const char *func, Gnss_t *gns
 {
 #if SKY_LOGGING
     if (!isnan(gnss->lat))
-        logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%6d, %d.%6d", (int)gnss->lat,
-            (int)(fabs(round(1000000.0 * (gnss->lat - (int)gnss->lat)))), (int)gnss->lon,
-            (int)(fabs(round(1000000.0 * (gnss->lon - (int)gnss->lon)))));
+        logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG, "gnss: %d.%06d, %d.%6d hpe: %d",
+            (int)gnss->lat, (int)(fabs(round(1000000.0 * (gnss->lat - (int)gnss->lat)))),
+            (int)gnss->lon, (int)(fabs(round(1000000.0 * (gnss->lon - (int)gnss->lon)))),
+            gnss->hpe);
 #else
     (void)rctx;
     (void)file;
@@ -704,7 +705,7 @@ void dump_request_ctx(Sky_rctx_t *rctx, const char *file, const char *func)
     logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
         "Dump Request Context: Got %d beacons, WiFi %d%s%s", NUM_BEACONS(rctx), NUM_APS(rctx),
         is_tbr_enabled(rctx) ? ", TBR" : "", rctx->hit ? ", Cache Hit" : "");
-    dump_gnss(rctx, file, func, &rctx->gnss);
+    dump_gnss(rctx, __FILE__, __FUNCTION__, &rctx->gnss);
 
     for (i = 0; i < NUM_BEACONS(rctx); i++)
         dump_beacon(rctx, "req", &rctx->beacon[i], file, func);
@@ -757,12 +758,12 @@ void dump_cache(Sky_rctx_t *rctx, const char *file, const char *func)
                 rctx->session->num_cachelines, cl->num_beacons, cl->num_ap, cl->time);
         } else {
             logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
-                "cache: %d of %d GPS:%d.%06d,%d.%06d,%d  %d beacons%s", i,
+                "cache: %d of %d loc:%d.%06d,%d.%06d, hpe: %d  %d beacons%s", i,
                 rctx->session->num_cachelines, (int)cl->loc.lat,
                 (int)fabs(round(1000000.0 * (cl->loc.lat - (int)cl->loc.lat))), (int)cl->loc.lon,
                 (int)fabs(round(1000000.0 * (cl->loc.lon - (int)cl->loc.lon))), cl->loc.hpe,
                 cl->num_beacons, (rctx->hit && rctx->get_from == i) ? ", <--Cache Hit" : "");
-            dump_gnss(rctx, file, func, &cl->gnss);
+            dump_gnss(rctx, __FILE__, __FUNCTION__, &cl->gnss);
             for (j = 0; j < cl->num_beacons; j++) {
                 dump_beacon(rctx, "cache", &cl->beacon[j], file, func);
             }

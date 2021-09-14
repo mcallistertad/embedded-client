@@ -401,8 +401,8 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
         return false;
 
     if (!has_gnss(cl)) {
-        /* new scan includes gnss, but cached scan does not */
 #ifdef VERBOSE_DEBUG
+        /* new scan includes gnss, but cached scan does not */
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
 #endif
         return true;
@@ -410,18 +410,21 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 
     /* at this point both new and cached scans include GNSS */
     if (rctx->gnss.hpe < cl->gnss.hpe) {
-        /* New gnss is more accurate than cached gnss */
 #ifdef VERBOSE_DEBUG
+        /* New gnss is more accurate than cached gnss */
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has worse gnss hpe!");
 #endif
         return true;
     }
 
     if (distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon) >=
-        (float) rctx->gnss.hpe) {
-        /* Cached gnss location is outside radius of uncertainty at 68% of new gnss */
+        (float)rctx->gnss.hpe) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline gnss outside HPE radius of new gnss!");
+        /* Cached gnss location is outside radius of uncertainty at 68% of new gnss */
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
+            "cache miss! Distance to cacheline gnss fix (%dm) is larger than HPE of new gnss fix (%dm)",
+            (int)distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon),
+            rctx->gnss.hpe);
 #endif
         return true;
     }
