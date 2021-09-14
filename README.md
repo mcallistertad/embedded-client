@@ -11,6 +11,10 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
+
+#### Bug Fix - Fix build with no cache i.e. CACHE_SIZE=0
+
 ### [Release 4.0.0](https://github.com/SkyhookWireless/embedded-client/tree/4.0.0)
 
 #### API simplifications.
