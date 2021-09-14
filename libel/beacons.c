@@ -432,6 +432,7 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
     return false;
 }
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief test serving cell in workspace has changed from that in cache
  *
  *  @return true or false
@@ -476,6 +477,7 @@ int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
     return true;
 }
 #endif
+#endif
 
 /*! \brief get location from cache
  *
@@ -507,6 +509,7 @@ int search_cache(Sky_rctx_t *rctx)
 #endif
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief check if an AP beacon is in a virtual group
  *
  *  Both the b (in request rctx) and vg in cache may be virtual groups
@@ -595,6 +598,7 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
     }
     return num_aps;
 }
+#endif
 
 #ifdef UNITTESTS
 

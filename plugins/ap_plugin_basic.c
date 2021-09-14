@@ -679,6 +679,7 @@ static int set_priorities(Sky_rctx_t *rctx)
 }
 
 #ifdef UNITTESTS
+#if !SKY_EXCLUDE_WIFI
 
 TEST_FUNC(test_ap_plugin)
 {
@@ -893,10 +894,13 @@ TEST_FUNC(test_ap_plugin)
         ASSERT(ctx->beacon[2].ap.mac[5] == 0x4A);
     });
 }
+#endif
 
 static Sky_status_t unit_tests(void *_ctx)
 {
+#if !SKY_EXCLUDE_WIFI
     GROUP_CALL("Remove Worst", test_ap_plugin);
+#endif
     return SKY_SUCCESS;
 }
 

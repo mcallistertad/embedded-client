@@ -45,8 +45,15 @@ extern Sky_plugin_table_t cell_plugin_basic_table;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **table)
 {
-    if (table && sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS &&
+    if (table &&
+#if !SKY_EXCLUDE_WIFI_SUPPORT && !SKY_EXCLUDE_CELL_SUPPORT
+        sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS &&
         sky_plugin_add(table, &cell_plugin_basic_table) == SKY_SUCCESS)
+#elif !SKY_EXCLUDE_WIFI_SUPPORT
+        sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS)
+#else
+        sky_plugin_add(table, &cell_plugin_basic_table) == SKY_SUCCESS)
+#endif
         return SKY_SUCCESS;
     return SKY_ERROR;
 }

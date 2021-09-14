@@ -358,6 +358,7 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     return rctx;
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief  Adds the wifi ap information to the request context
  *
  *  @param rctx Skyhook request context
@@ -396,7 +397,9 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
 
     return add_beacon(rctx, sky_errno, &b, timestamp);
 }
+#endif
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief Add an lte cell beacon to request context
  *
  *  @param rctx Skyhook request context
@@ -738,7 +741,9 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, SKY_UNKNOWN_TA, timestamp,
         csi_rsrp, false);
 }
+#endif
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief Adds the position of the device from GNSS to the request context
  *
  *  @param rctx Skyhook request context
@@ -807,6 +812,7 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
     rctx->gnss.nsat = nsat;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
+#endif
 
 /*! \brief Determines whether the request matches the cached result
  *
