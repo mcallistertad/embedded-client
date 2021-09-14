@@ -290,6 +290,7 @@ TEST_FUNC(test_sky_gnss)
         loc.time = rctx->header.time;
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
     });
@@ -321,13 +322,18 @@ TEST_FUNC(test_sky_gnss)
         rctx->session->cacheline[0].gnss.lon = 139.618905;
         rctx->session->cacheline[0].gnss.hpe = 47;
         rctx->session->cacheline[0].loc = loc;
+        /* clear location source in order to subsequently verify that it's */
+        /* been copied out of the cache as expected */
+        loc.location_source = SKY_LOCATION_SOURCE_UNKNOWN;
+
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
-        /* Location source should be copied from cache */
+        /* Verify location source is copied from the cache */
+        ASSERT(loc.location_source == rctx->session->cacheline[0].loc.location_source);
         ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
-        ASSERT(rctx->gnss.lat ==
-               rctx->session->cacheline[0]
-                   .gnss.lat); /* Cached gnss should have been copied to request rctx */
+        /* Verify that GNSS fix is copied from the cache. */
+        ASSERT(rctx->gnss.lat == rctx->session->cacheline[0].gnss.lat);
         ASSERT(rctx->gnss.lon == rctx->session->cacheline[0].gnss.lon);
         ASSERT(rctx->gnss.hpe == rctx->session->cacheline[0].gnss.hpe);
     });
@@ -357,6 +363,7 @@ TEST_FUNC(test_sky_gnss)
         rctx->gnss.lat = 35.511315;
         rctx->gnss.lon = 139.618906;
         rctx->gnss.hpe = 56;
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
@@ -388,6 +395,7 @@ TEST_FUNC(test_sky_gnss)
         rctx->session->cacheline[0].gnss.lat = 35.51132;
         rctx->session->cacheline[0].gnss.lon = 139.618;
         rctx->session->cacheline[0].gnss.hpe = 123;
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
@@ -419,6 +427,7 @@ TEST_FUNC(test_sky_gnss)
         rctx->session->cacheline[0].gnss.lat = 35; /* far away */
         rctx->session->cacheline[0].gnss.lon = 139;
         rctx->session->cacheline[0].gnss.hpe = 46; /* better accuracy */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
@@ -450,6 +459,7 @@ TEST_FUNC(test_sky_gnss)
         rctx->session->cacheline[0].gnss.lat = 35.51132; /* position different but close (82m) */
         rctx->session->cacheline[0].gnss.lon = 139.618;
         rctx->session->cacheline[0].gnss.hpe = 47; /* hpe worse in cache */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
@@ -481,6 +491,7 @@ TEST_FUNC(test_sky_gnss)
         rctx->session->cacheline[0].gnss.lat = 35.51132; /* position different but close (82m) */
         rctx->session->cacheline[0].gnss.lon = 139.618;
         rctx->session->cacheline[0].gnss.hpe = 47; /* hpe better in cache */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
     });
@@ -508,7 +519,7 @@ TEST_FUNC(test_cache_match)
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit); /* Cache hit */
+        ASSERT(IS_CACHE_HIT(rctx) == true);
     });
     TEST("4 APs match cache with same 4 AP", rctx, {
         Sky_errno_t sky_errno;
@@ -537,7 +548,7 @@ TEST_FUNC(test_cache_match)
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit); /* Cache hit */
+        ASSERT(IS_CACHE_HIT(rctx) == true);
     });
     TEST("4 APs misses cache with different 4 AP, 2 different", rctx, {
         Sky_errno_t sky_errno;
@@ -568,7 +579,7 @@ TEST_FUNC(test_cache_match)
         rctx->session->cacheline[0].beacon[0].ap.mac[3] = 0x77;
         rctx->session->cacheline[0].beacon[1].ap.mac[3] = 0x66;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
     TEST("3 APs misses cache with 3 AP same, 1 extra ", rctx, {
         Sky_errno_t sky_errno;
@@ -599,7 +610,7 @@ TEST_FUNC(test_cache_match)
         rctx->session->cacheline[0].num_beacons = 4;
         rctx->session->cacheline[0].num_ap = 4;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
     TEST("2 APs misses cache with 1 AP", rctx, {
         Sky_errno_t sky_errno;
@@ -628,7 +639,7 @@ TEST_FUNC(test_cache_match)
         rctx->session->cacheline[0].num_beacons = 3;
         rctx->session->cacheline[0].num_ap = 3;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
     TEST("2 APs + cell misses cache with 2 AP + different cell", rctx, {
         Sky_errno_t sky_errno;
@@ -664,7 +675,7 @@ TEST_FUNC(test_cache_match)
         c.cell.id2 = 47;
         rctx->session->cacheline[0].beacon[2] = c;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
     TEST("4 APs + cell misses cache with 4 AP + different cell", rctx, {
         Sky_errno_t sky_errno;
@@ -700,7 +711,7 @@ TEST_FUNC(test_cache_match)
         c.cell.id2 = 47;
         rctx->session->cacheline[0].beacon[2] = c;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
     TEST("cell matches cache with cell", rctx, {
         Sky_errno_t sky_errno;
@@ -725,7 +736,7 @@ TEST_FUNC(test_cache_match)
 
         sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(rctx->hit); /* Cache hit */
+        ASSERT(IS_CACHE_HIT(rctx) == true);
     });
     TEST("cell misses cache with different cell", rctx, {
         Sky_errno_t sky_errno;
@@ -752,7 +763,7 @@ TEST_FUNC(test_cache_match)
         c.cell.id2 = 47;
         rctx->session->cacheline[0].beacon[0] = c;
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
-        ASSERT(!rctx->hit); /* Cache miss */
+        ASSERT(IS_CACHE_HIT(rctx) == false);
     });
 }
 
