@@ -11,7 +11,7 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
-### Release 4.0.0
+### [Release 4.0.0](https://github.com/SkyhookWireless/embedded-client/tree/4.0.0)
 
 #### API simplifications.
 
@@ -69,7 +69,7 @@ Instructions for cloning and building the library are below.
 * Support for optionally adding scanned neighbor cells (for LTE, UMTS, and NB_IOT cell types) via 3 new functions
   sky_add_cell_lte_neighbor_beacon(), sky_add_cell_umts_neighbor_beacon() and sky_add_cell_nb_iot_neighbor_beacon.
 
-### [Release 1.1.4](https://github.com/SkyhookWireless/embedded-client/tree/1.0.4)
+### [Release 1.1.4](https://github.com/SkyhookWireless/embedded-client/tree/1.1.4)
 
 * Device ID length fix and a few changes to sample_client to allow full length of device_id to be used.
 
