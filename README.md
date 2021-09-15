@@ -11,6 +11,11 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
+
+* Bug Fix - Fix build with no cache i.e. CACHE_SIZE=0
+* Document Location Source SKY_LOCATION_SOURCE_RFPM
+
 ### [Release 4.0.0](https://github.com/SkyhookWireless/embedded-client/tree/4.0.0)
 
 #### API simplifications.
@@ -1300,6 +1305,7 @@ The string descriptions are:
 | `SKY_LOCATION_SOURCE_CELL`     | "Cell"
 | `SKY_LOCATION_SOURCE_WIFI`     | "Wi-Fi"
 | `SKY_LOCATION_SOURCE_GNSS`     | "GNSS"
+| `SKY_LOCATION_SOURCE_RFPM`     | "RFPM"
 | `SKY_LOCATION_SOURCE_UNKNOWN`  | "????"
 
 ### sky_close() - frees any resources in use by the Skyhook library
@@ -1391,6 +1397,7 @@ The location_source field can have one of the following values:
 | `SKY_LOCATION_SOURCE_CELL`                      | Cell beacons were used to derive the location
 | `SKY_LOCATION_SOURCE_WIFI`                      | Wi-Fi beacons were used to derive the location
 | `SKY_LOCATION_SOURCE_GNSS`                      | GNSS info was used to return the location
+| `SKY_LOCATION_SOURCE_RFPM`                      | Radio Frequency Pattern Matching was used to derive the location
 | `SKY_LOCATION_SOURCE_UNKNOWN`                   | Location source unknown
 
 ### API sky_finalize_request() result

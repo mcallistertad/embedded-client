@@ -35,7 +35,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 20
+#define SW_VERSION 22
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -305,9 +305,10 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     rctx->hit = false;
     rctx->get_from = rctx->save_to = -1;
     rctx->session = sctx;
-    rctx->auth_state = !is_tbr_enabled(rctx)               ? STATE_TBR_DISABLED :
-                       sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                             STATE_TBR_REGISTERED;
+    rctx->auth_state =
+        !is_tbr_enabled(rctx) ?
+            STATE_TBR_DISABLED :
+            sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     rctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         rctx->beacon[i].h.magic = BEACON_MAGIC;
@@ -934,9 +935,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
                 rctx->header.time == TIME_UNAVAILABLE ||
                 (rctx->header.time - CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                        ? "Forced" :
-                                                                           "No");
+        rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ?
+            "Timeout" :
+            rq_config ? "Forced" : "No");
 
     if (rq_config)
         CONFIG(sctx, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
