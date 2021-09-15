@@ -177,7 +177,6 @@ struct cell_scan cells6[] =
 
 struct gnss_scan gnss6 =
     {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 /* clang-format on */
 
 /*! \brief save cache state

@@ -197,8 +197,6 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 {
     int num_aps_cached = 0;
     int j, i;
-    if (!rctx || !cl)
-        return -1;
     for (j = 0; j < NUM_APS(rctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
             bool equivalent = false;
@@ -456,9 +454,18 @@ static Sky_status_t match(Sky_rctx_t *rctx)
         if (cl->time == CACHE_EMPTY) {
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
             continue;
+#if !SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
         } else if (serving_cell_changed(rctx, cl) == true || cached_gnss_worse(rctx, cl) == true) {
+#elif !SKY_EXCLUDE_CELL_SUPPORT && SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (serving_cell_changed(rctx, cl) == true) {
+#elif SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (cached_gnss_worse(rctx, cl) == true) {
+#else
+        } else if (0) {
+        /* no support for cell or gnss, so no possibility of forced miss */
+#endif
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
-                "Cache: %d: Score 0 for cacheline has difference cell or worse gnss", i);
+                "Cache: %d: Score 0 for cacheline with difference cell or worse gnss", i);
             continue;
         } else {
             /* count number of matching APs in request rctx and cache */
@@ -564,7 +571,9 @@ static Sky_status_t to_cache(Sky_rctx_t *rctx, Sky_location_t *loc)
 
     cl->num_beacons = NUM_BEACONS(rctx);
     cl->num_ap = NUM_APS(rctx);
+#if !SKY_EXCLUDE_GNSS_SUPPORT
     cl->gnss = rctx->gnss;
+#endif
     cl->loc = *loc;
     cl->time = loc->time;
 

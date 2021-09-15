@@ -252,8 +252,19 @@ static Sky_status_t match(Sky_rctx_t *rctx)
         cl = &rctx->session->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
-        if (cl->time == CACHE_EMPTY || serving_cell_changed(rctx, cl) == true ||
-            cached_gnss_worse(rctx, cl) == true) {
+        if (cl->time == CACHE_EMPTY) {
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
+            continue;
+#if !SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (serving_cell_changed(rctx, cl) == true || cached_gnss_worse(rctx, cl) == true) {
+#elif !SKY_EXCLUDE_CELL_SUPPORT && SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (serving_cell_changed(rctx, cl) == true) {
+#elif SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (cached_gnss_worse(rctx, cl) == true) {
+#else
+        } else if (0) {
+        /* no support for cell or gnss, so no possibility of forced miss */
+#endif
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cacheline has different cell or worse gnss",
                 i);

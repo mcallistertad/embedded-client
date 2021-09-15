@@ -36,16 +36,22 @@
 #define SKY_LOGGING true
 #endif
 
-/*! \brief One of the following may be set to true
+/*! \brief One of the following may be set to true if desired
  */
 #ifndef SKY_EXCLUDE_WIFI_SUPPORT
-#define SKY_EXCLUDE_WIFI_SUPPORT true
+#define SKY_EXCLUDE_WIFI_SUPPORT false
 #endif
 #ifndef SKY_EXCLUDE_CELL_SUPPORT
 #define SKY_EXCLUDE_CELL_SUPPORT false
 #endif
 #if SKY_EXCLUDE_WIFI_SUPPORT && SKY_EXCLUDE_CELL_SUPPORT
 #error "SKY_EXCLUDE_WIFI_SUPPORT && SKY_EXCLUDE_CELL_SUPPORT both true"
+#endif
+
+/*! \brief The following may be set to true if desired
+ */
+#ifndef SKY_EXCLUDE_GNSS_SUPPORT
+#define SKY_EXCLUDE_GNSS_SUPPORT false
 #endif
 
 #ifndef SKY_LOG_LENGTH

@@ -309,12 +309,13 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
         !is_tbr_enabled(rctx) ?
             STATE_TBR_DISABLED :
             sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
-    rctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         rctx->beacon[i].h.magic = BEACON_MAGIC;
         rctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
-    rctx->gnss.lat = NAN;
+#if !SKY_EXCLUDE_GNSS_SUPPORT
+    rctx->gnss.lat = NAN; /* empty */
+#endif
 
     if (now < TIMESTAMP_2019_03_01) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
@@ -960,7 +961,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
                 NUM_APS(rctx) = cl->num_ap;
                 for (int j = 0; j < NUM_BEACONS(rctx); j++)
                     rctx->beacon[j] = cl->beacon[j];
+#if !SKY_EXCLUDE_GNSS_SUPPORT
                 rctx->gnss = cl->gnss;
+#endif
             }
         } else {
             rctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */

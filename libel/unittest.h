@@ -16,6 +16,21 @@
 #endif
 #define SANITY_CHECKS true
 
+#ifdef SKY_EXCLUDE_WIFI_SUPPORT
+#undef SKY_EXCLUDE_WIFI_SUPPORT
+#endif
+#define SKY_EXCLUDE_WIFI_SUPPORT false
+
+#ifdef SKY_EXCLUDE_CELL_SUPPORT
+#undef SKY_EXCLUDE_CELL_SUPPORT
+#endif
+#define SKY_EXCLUDE_CELL_SUPPORT false
+
+#ifdef SKY_EXCLUDE_GNSS_SUPPORT
+#undef SKY_EXCLUDE_GNSS_SUPPORT
+#endif
+#define SKY_EXCLUDE_GNSS_SUPPORT false
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

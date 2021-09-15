@@ -1318,6 +1318,7 @@ int64_t get_cell_ta(Beacon_t *cell)
     }
 }
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief field extraction for dynamic use of Nanopb (num gnss)
  *
  *  @param rctx request rctx buffer
@@ -1445,6 +1446,7 @@ int64_t get_gnss_age(Sky_rctx_t *rctx, uint32_t idx)
     (void)idx; /* suppress warning of unused parameter */
     return has_gnss(rctx) ? rctx->gnss.age : 0;
 }
+#endif
 
 /*! \brief field extraction for dynamic use of Nanopb (num vaps)
  *

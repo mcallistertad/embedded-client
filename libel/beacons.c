@@ -381,6 +381,7 @@ int find_oldest(Sky_rctx_t *rctx)
 #endif
 }
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief test whether gnss in new scan is preferable to that in cache
  *
  *  if new scan has better gnss that that in cache, it is better to update cache
@@ -431,6 +432,7 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 
     return false;
 }
+#endif
 
 #if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief test serving cell in workspace has changed from that in cache
