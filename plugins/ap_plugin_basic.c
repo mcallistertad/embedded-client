@@ -462,8 +462,8 @@ static Sky_status_t match(Sky_rctx_t *rctx)
         } else if (cached_gnss_worse(rctx, cl) == true) {
 #else
         } else if (0) {
-        /* no support for cell or gnss, so no possibility of forced miss */
 #endif
+            /* no support for cell or gnss, so no possibility of forced miss */
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for cacheline with difference cell or worse gnss", i);
             continue;

@@ -364,11 +364,18 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         case Rq_vaps_tag:
             return encode_vap_data(rctx, ostream, Rq_vaps_tag, get_num_vaps(rctx), get_vap_data);
             // break;
+#else
+        case Rq_aps_tag:
+        case Rq_vaps_tag:
+            break;
 #endif
 #if !SKY_EXCLUDE_CELL_SUPPORT
         case Rq_cells_tag:
             if (get_num_cells(rctx))
                 return encode_cell_fields(rctx, ostream);
+            break;
+#else
+        case Rq_cells_tag:
             break;
 #endif
 #if !SKY_EXCLUDE_GNSS_SUPPORT
