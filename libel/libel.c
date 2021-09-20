@@ -35,7 +35,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 19
+#define SW_VERSION 21
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -107,13 +107,9 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
         if (session->open_flag) {
             return set_error_status(sky_errno, SKY_ERROR_ALREADY_OPEN);
         }
-        if (session->num_cachelines != CACHE_SIZE) {
-            if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
-                (*logf)(SKY_LOG_LEVEL_WARNING, "cache configuration changed. Clearing state.");
-            session->header.magic = 0;
-        } else if (partner_id != 0 &&
-                   (memcmp(sku, session->sku, sku_len) != 0 || partner_id != session->partner_id ||
-                       memcmp(aes_key, session->aes_key, AES_SIZE) != 0)) {
+        if (partner_id != 0 &&
+            (memcmp(sku, session->sku, sku_len) != 0 || partner_id != session->partner_id ||
+                memcmp(aes_key, session->aes_key, AES_SIZE) != 0)) {
             if (logf != NULL && SKY_LOG_LEVEL_WARNING <= min_level)
                 (*logf)(SKY_LOG_LEVEL_WARNING, "New Authendication configuration. Clearing state.");
             session->header.magic = 0;
@@ -208,7 +204,7 @@ int32_t sky_sizeof_session_ctx(Sky_sctx_t *sctx)
                                                                  (uint8_t *)&sctx->header.magic)) {
         return 0;
     }
-    if (sctx->header.size >= sizeof(Sky_sctx_t))
+    if (sctx->header.size == sizeof(Sky_sctx_t))
         return (int32_t)sctx->header.size;
     return 0;
 }
