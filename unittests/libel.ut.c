@@ -81,7 +81,6 @@ TEST_FUNC(test_sky_new_request)
 
 TEST_FUNC(test_sky_add)
 {
-#if !SKY_EXCLUDE_WIFI
     TEST("sky_add_ap_beacon set sky_errno to SKY_ERROR_BAD_TIME with bad timestamp", rctx, {
         Sky_errno_t sky_errno;
         uint8_t mac[] = { 0x28, 0x3B, 0x82, 0x64, 0xE0, 0x8B };
@@ -157,12 +156,10 @@ TEST_FUNC(test_sky_add)
         ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(rctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
-#endif
 }
 
 TEST_FUNC(test_sky_option)
 {
-#if !SKY_EXCLUDE_WIFI
     TEST("Add 4 beacons with default config results in 4 in request context", rctx, {
         Sky_errno_t sky_errno;
         uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
@@ -212,7 +209,7 @@ TEST_FUNC(test_sky_option)
         ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
                value == 3);
     });
-#endif
+
     TEST("set options reports Bad Parameters appropriately", rctx, {
         Sky_errno_t sky_errno;
 
@@ -239,7 +236,6 @@ TEST_FUNC(test_sky_option)
     });
 }
 
-#if CACHE_SIZE != 0
 TEST_FUNC(test_sky_gnss)
 {
     TEST("to cache plugin copies gnss to cache", rctx, {
@@ -771,17 +767,13 @@ TEST_FUNC(test_cache_match)
     });
 }
 
-#endif
-
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
 GROUP_CALL("sky option tests", test_sky_option);
-#if CACHE_SIZE != 0
 GROUP_CALL("sky match tests", test_cache_match);
 GROUP_CALL("sky gnss tests", test_sky_gnss);
-#endif
 
 END_TESTS();

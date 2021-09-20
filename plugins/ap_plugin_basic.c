@@ -34,7 +34,7 @@
 /* set VERBOSE_DEBUG to true to enable extra logging */
 #ifndef VERBOSE_DEBUG
 #define VERBOSE_DEBUG false
-#endif
+#endif // VERBOSE_DEBUG
 
 #define IDX(b, rctx) ((b) - (rctx)->beacon)
 #define ABS(a) (((a) < 0) ? (-(a)) : (a))
@@ -65,7 +65,9 @@ typedef enum {
     LOWEST_PRIORITY = 0x000
 } Property_priority_t;
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 static Sky_status_t set_priorities(Sky_rctx_t *rctx);
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 /*! \brief test two APs for equality
  *
@@ -82,6 +84,7 @@ static Sky_status_t set_priorities(Sky_rctx_t *rctx);
 static Sky_status_t equal(
     Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
 {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     if (!rctx || !a || !b || !equal) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -102,6 +105,14 @@ static Sky_status_t equal(
     } else
         *equal = false;
     return SKY_SUCCESS;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    (void)a; /* suppress warning unused parameter */
+    (void)b; /* suppress warning unused parameter */
+    (void)prop; /* suppress warning unused parameter */
+    (void)equal; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 }
 
 /*! \brief compare AP for ordering when adding to context
@@ -121,6 +132,7 @@ static Sky_status_t equal(
  */
 static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *diff)
 {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     if (!rctx || !a || !b || !diff) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -136,8 +148,16 @@ static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *dif
     else
         *diff = COMPARE_MAC(a, b);
     return SKY_SUCCESS;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    (void)a; /* suppress warning unused parameter */
+    (void)b; /* suppress warning unused parameter */
+    (void)diff; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief test two MAC addresses for being members of same virtual Group
  *
  *   Similar means the two mac addresses differ only in one nibble AND
@@ -207,10 +227,10 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 #if VERBOSE_DEBUG
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d APs in cache %d", num_aps_cached,
         cl - rctx->session->cacheline);
-#endif
+#endif // VERBOSE_DEBUG
     return num_aps_cached;
 }
-#endif
+#endif // CACHE_SIZE
 
 /*! \brief determine which of a pair of APs is more valuable
  *
@@ -295,7 +315,7 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
                 dump_ap(rctx, "similar B:  ", vap_b, __FILE__, __FUNCTION__);
 #else
                 (void)vap_b;
-#endif
+#endif // VERBOSE_DEBUG
                 if (worst_vap != NULL)
                     prop_diff = cmp_properties(rctx, IDX(vap_a, rctx), IDX(worst_vap, rctx));
 
@@ -350,6 +370,7 @@ static bool remove_oldest_ap(Sky_rctx_t *rctx)
     }
     return false;
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 /*! \brief try to reduce AP by filtering out the worst one
  *
@@ -361,6 +382,7 @@ static bool remove_oldest_ap(Sky_rctx_t *rctx)
  */
 static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     int idx_of_worst;
 
     idx_of_worst = set_priorities(rctx);
@@ -380,6 +402,10 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
         return remove_beacon(rctx, idx_of_worst);
     }
     return SKY_SUCCESS;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 }
 
 /*! \brief find cache entry with a match to request rctx
@@ -403,7 +429,7 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
  */
 static Sky_status_t match(Sky_rctx_t *rctx)
 {
-#if CACHE_SIZE
+#if CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
     int i; /* i iterates through cacheline */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request rctx matches cacheline
                     In typical case this is the intersection(request rctx, cache) / union(request rctx, cache) */
@@ -462,7 +488,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
         } else if (cached_gnss_worse(rctx, cl) == true) {
 #else
         } else if (0) {
-#endif
+#endif // !SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
             /* no support for cell or gnss, so no possibility of forced miss */
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for cacheline with difference cell or worse gnss", i);
@@ -524,7 +550,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
     rctx->hit = false;
     (void)rctx; /* suppress warning unused parameter */
     return SKY_SUCCESS;
-#endif
+#endif // CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
 }
 
 /*! \brief add location to cache
@@ -539,7 +565,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
  */
 static Sky_status_t to_cache(Sky_rctx_t *rctx, Sky_location_t *loc)
 {
-#if CACHE_SIZE
+#if CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
     int i = rctx->save_to;
     int j;
     Sky_cacheline_t *cl;
@@ -573,7 +599,7 @@ static Sky_status_t to_cache(Sky_rctx_t *rctx, Sky_location_t *loc)
     cl->num_ap = NUM_APS(rctx);
 #if !SKY_EXCLUDE_GNSS_SUPPORT
     cl->gnss = rctx->gnss;
-#endif
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
     cl->loc = *loc;
     cl->time = loc->time;
 
@@ -589,9 +615,10 @@ static Sky_status_t to_cache(Sky_rctx_t *rctx, Sky_location_t *loc)
     (void)rctx; /* suppress warning unused parameter */
     (void)loc; /* suppress warning unused parameter */
     return SKY_SUCCESS;
-#endif
+#endif // CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief Compute an AP's priority value.
  *
  * An AP's priority is based on the following attributes, in priority order:
@@ -643,7 +670,7 @@ static float get_priority(Sky_rctx_t *rctx, Beacon_t *b)
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d rssi:%d ideal:%d.%d priority:%d.%d", IDX(b, rctx),
         EFFECTIVE_RSSI(b->h.rssi), deviation, (int)(deviation * 10), (int)priority,
         (int)((priority - (int)priority) * 10));
-#endif
+#endif // VERBOSE_DEBUGC
     return priority;
 }
 
@@ -686,9 +713,9 @@ static int set_priorities(Sky_rctx_t *rctx)
 
     return idx_of_worst;
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 #ifdef UNITTESTS
-#if !SKY_EXCLUDE_WIFI
 
 TEST_FUNC(test_ap_plugin)
 {
@@ -903,17 +930,14 @@ TEST_FUNC(test_ap_plugin)
         ASSERT(ctx->beacon[2].ap.mac[5] == 0x4A);
     });
 }
-#endif
 
 static Sky_status_t unit_tests(void *_ctx)
 {
-#if !SKY_EXCLUDE_WIFI
     GROUP_CALL("Remove Worst", test_ap_plugin);
-#endif
     return SKY_SUCCESS;
 }
 
-#endif
+#endif // UNITTESTS
 /* * * * * * Plugin access table * * * * *
  *
  * Each plugin is registered via the access table
@@ -935,5 +959,5 @@ Sky_plugin_table_t ap_plugin_basic_table = {
     .add_to_cache = to_cache, /* Copy request context beacons to a cacheline */
 #ifdef UNITTESTS
     .unit_tests = unit_tests, /* Unit Tests */
-#endif
+#endif // UNITTESTS
 };

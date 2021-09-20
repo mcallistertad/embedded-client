@@ -46,7 +46,7 @@
 /* Local functions */
 #if SANITY_CHECKS
 static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
-#endif
+#endif // SANITY_CHECKS
 static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Initialize Skyhook library and verify access to resources
@@ -79,7 +79,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     int sku_len;
 #if SKY_LOGGING
     char buf[SKY_LOG_LENGTH];
-#endif
+#endif // SKY_LOGGING
 
     if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
         (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
@@ -139,7 +139,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 session->cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
-#endif
+#endif // CACHE_SIZE
 #if SKY_LOGGING
     } else {
         if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
@@ -148,14 +148,14 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 session->header.size);
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
-#endif
+#endif // SKY_LOGGING
     }
     config_defaults(session);
 
 #if SANITY_CHECKS
     if (!validate_device_id(device_id, id_len) || aes_key == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-#endif
+#endif // SANITY_CHECKS
 
     session->id_len = id_len;
     memcpy(session->device_id, device_id, id_len);
@@ -315,7 +315,7 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     }
 #if !SKY_EXCLUDE_GNSS_SUPPORT
     rctx->gnss.lat = NAN; /* empty */
-#endif
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
     if (now < TIMESTAMP_2019_03_01) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
@@ -351,7 +351,7 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
                 CACHE_SIZE, now - sctx->cacheline[i].time);
         }
     }
-#endif
+#endif // CACHE_SIZE
     sctx->ul_app_data_len = ul_app_data_len;
     memcpy(sctx->ul_app_data, ul_app_data, ul_app_data_len);
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %sctx", sctx->partner_id, sctx->sku);
@@ -399,7 +399,7 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
 
     return add_beacon(rctx, sky_errno, &b, timestamp);
 }
-#endif
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 #if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief Add an lte cell beacon to request context
@@ -743,7 +743,7 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, SKY_UNKNOWN_TA, timestamp,
         csi_rsrp, false);
 }
-#endif
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
 #if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief Adds the position of the device from GNSS to the request context
@@ -802,7 +802,7 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
 #if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // SANITY_CHECKS
 
     rctx->gnss.lat = lat;
     rctx->gnss.lon = lon;
@@ -814,7 +814,7 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
     rctx->gnss.nsat = nsat;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
-#endif
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
 /*! \brief Determines whether the request matches the cached result
  *
@@ -831,12 +831,12 @@ Sky_status_t sky_search_cache(
     Sky_sctx_t *sctx = rctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
-#endif
+#endif // CACHE_SIZE
 
 #if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // SANITY_CHECKS
 
 #if CACHE_SIZE
     /* check cachelines against new beacons for best match
@@ -863,10 +863,10 @@ Sky_status_t sky_search_cache(
             (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
             (rctx->header.time - cached_time));
-#endif
+#endif // SKY_DEBUG
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
-#endif
+#endif // CACHE_SIZE
     rctx->hit = false;
     sctx->cache_hits = 0; /* report 0 for cache miss */
     if (cache_hit != NULL)
@@ -889,7 +889,7 @@ Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // SANITY_CHECKS
 
 #if CACHE_SIZE
     if (IS_CACHE_HIT(rctx)) {
@@ -902,7 +902,7 @@ Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #else
     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Can't ignore cache with no cache");
     return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
-#endif
+#endif // CACHE_SIZE
 }
 
 /*! \brief Determines the required size of the network request buffer
@@ -921,12 +921,12 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
     Sky_sctx_t *sctx = rctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
-#endif
+#endif // CACHE_SIZE
 
 #if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // SANITY_CHECKS
 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -963,22 +963,24 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
                     rctx->beacon[j] = cl->beacon[j];
 #if !SKY_EXCLUDE_GNSS_SUPPORT
                 rctx->gnss = cl->gnss;
-#endif
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
             }
         } else {
             rctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
             sctx->cache_hits = 0; /* report 0 for cache miss */
         }
     } else {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
         /* Trim any excess vap from request rctx i.e. total number of vap
          * in request rctx cannot exceed max that a request can carry
          */
         select_vap(rctx);
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
     }
 #else
     rctx->get_from = -1; /* cache miss */
     sctx->cache_hits = 0; /* report 0 for cache miss */
-#endif
+#endif // CACHE_SIZE
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
@@ -1014,7 +1016,7 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
 #if SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // SANITY_CHECKS
 
     if (backoff_violation(rctx, rctx->header.time)) {
         return set_error_status(sky_errno, SKY_ERROR_SERVICE_DENIED);
@@ -1041,7 +1043,7 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
     else
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
             CONFIG(sctx, last_config_time));
-#endif
+#endif // SKY_LOGGING
 
     /* encode request */
     rc = serialize_request(rctx, request_buf, bufsize, SW_VERSION,
@@ -1126,7 +1128,7 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);
-#endif
+#endif // CACHE_SIZE > 0
 
             return set_error_status(sky_errno, SKY_ERROR_NONE);
         case SKY_LOCATION_STATUS_AUTH_ERROR:
@@ -1432,6 +1434,7 @@ char *sky_pserver_status(Sky_loc_status_t status)
  */
 char *sky_pbeacon(Beacon_t *b)
 {
+#if !SKY_EXCLUDE_CELL_SUPPORT
     if (is_cell_type(b) && b->cell.id2 == SKY_UNKNOWN_ID2) {
         switch (b->h.type) {
         case SKY_BEACON_LTE:
@@ -1446,9 +1449,13 @@ char *sky_pbeacon(Beacon_t *b)
             return "\?\?\?-NMR";
         }
     } else {
+#endif //!SKY_EXCLUDE_CELL_SUPPORT
         switch (b->h.type) {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
         case SKY_BEACON_AP:
             return "Wi-Fi";
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
+#if !SKY_EXCLUDE_CELL_SUPPORT
         case SKY_BEACON_BLE:
             return "BLE";
         case SKY_BEACON_CDMA:
@@ -1463,10 +1470,13 @@ char *sky_pbeacon(Beacon_t *b)
             return "UMTS";
         case SKY_BEACON_NR:
             return "NR";
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
         default:
             return "\?\?\?";
         }
+#if !SKY_EXCLUDE_CELL_SUPPORT
     }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 }
 
 /*! \brief returns a string which describes the source of a location
@@ -1512,7 +1522,7 @@ Sky_status_t sky_close(Sky_sctx_t *sctx, Sky_errno_t *sky_errno)
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-/*******************************************************************************
+    /*******************************************************************************
  * Static helper functions
  ******************************************************************************/
 
@@ -1531,7 +1541,7 @@ static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
     else
         return true;
 }
-#endif
+#endif // SANITY_CHECKS
 
 /*! \brief safely return bounded length of string
  *
@@ -1554,4 +1564,4 @@ static size_t strnlen_(char *s, size_t maxlen)
 
 #include "libel.ut.c"
 
-#endif
+#endif // UNITTESTS
