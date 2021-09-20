@@ -11,10 +11,6 @@
 #endif
 
 #define UNITTESTS
-#ifdef SANITY_CHECKS
-#undef SANITY_CHECKS
-#endif
-#define SANITY_CHECKS true
 
 #include <stdio.h>
 #include <string.h>

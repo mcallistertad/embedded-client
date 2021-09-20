@@ -177,7 +177,6 @@ struct cell_scan cells6[] =
 
 struct gnss_scan gnss6 =
     {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 /* clang-format on */
 
 /*! \brief save cache state
@@ -383,7 +382,7 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         printf("sky_new_request() ERROR: '%s'\n", sky_perror(sky_errno));
         return false;
     }
-
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     /* Add APs to the request */
     for (i = 0; ap; i++, ap++) {
         uint8_t mac[MAC_SIZE];
@@ -398,7 +397,11 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         } else
             printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
     }
+#else
+    (void)ap;
+#endif
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
     /* add cells to request */
     for (i = 0; cp; i++, cp++) {
         if (cp->type == TYPE_RESERVED)
@@ -444,13 +447,20 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         }
     }
+#else
+    (void)cp;
+#endif
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
     if (gp) {
         if (sky_add_gnss(rctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
                 gp->speed, gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
         }
     }
+#else
+    (void)gp;
+#endif
     /* All data has been added to new scan info */
 
     /* check to see if new scan matches cached scan (i.e. test for stationarity) */

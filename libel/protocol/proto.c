@@ -25,6 +25,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 
+#include "config.h"
 #include "el.pb.h"
 #include "proto.h"
 #include "aes.h"
@@ -37,16 +38,19 @@
 #define GET_USED_AP(u, l, n) ((((u)[l - 1 - (((n) / CHAR_BIT))]) & (0x01 << ((n) % CHAR_BIT))) != 0)
 
 static bool apply_config_overrides(Sky_sctx_t *sctx, Rs *rs);
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 static int64_t get_gnss_lat_scaled(Sky_rctx_t *rctx, uint32_t idx);
 static int64_t get_gnss_lon_scaled(Sky_rctx_t *rctx, uint32_t idx);
 static int64_t get_gnss_alt_scaled(Sky_rctx_t *rctx, uint32_t idx);
 static int64_t get_gnss_speed_scaled(Sky_rctx_t *rctx, uint32_t idx);
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
 typedef uint8_t *(*DataGetterb)(Sky_rctx_t *, uint32_t);
 typedef int64_t (*DataGetter)(Sky_rctx_t *, uint32_t);
 typedef int64_t (*DataWrapper)(int64_t);
 typedef bool (*EncodeSubmsgCallback)(Sky_rctx_t *, pb_ostream_t *);
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief Map cell type
  *
  *  @param cell Pointer to beacon (cell)
@@ -70,29 +74,9 @@ static int16_t map_cell_type(Beacon_t *cell)
     else
         return (int16_t)map[cell->h.type];
 }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
-static int64_t mac_to_int(Sky_rctx_t *rctx, uint32_t idx)
-{
-    size_t i;
-
-    // This is a wrapper function around get_ap_mac(). It converts the 8-byte
-    // mac array to an uint64_t.
-    //
-    uint8_t *mac = get_ap_mac(rctx, idx);
-
-    int64_t ret_val = 0;
-
-    for (i = 0; i < 6; i++)
-        ret_val = ret_val * 256 + mac[i];
-
-    return ret_val;
-}
-
-static int64_t flip_sign(int64_t value)
-{
-    return -value;
-}
-
+#if !SKY_EXCLUDE_WIFI_SUPPORT || !SKY_EXCLUDE_GNSS_SUPPORT
 static bool encode_repeated_int_field(Sky_rctx_t *rctx, pb_ostream_t *ostream, uint32_t tag,
     uint32_t num_elems, DataGetter getter, DataWrapper wrapper)
 {
@@ -130,6 +114,30 @@ static bool encode_repeated_int_field(Sky_rctx_t *rctx, pb_ostream_t *ostream, u
     }
 
     return true;
+}
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT || !SKY_EXCLUDE_GNSS_SUPPORT
+
+#if !SKY_EXCLUDE_WIFI_SUPPORT
+static int64_t mac_to_int(Sky_rctx_t *rctx, uint32_t idx)
+{
+    size_t i;
+
+    // This is a wrapper function around get_ap_mac(). It converts the 8-byte
+    // mac array to an uint64_t.
+    //
+    uint8_t *mac = get_ap_mac(rctx, idx);
+
+    int64_t ret_val = 0;
+
+    for (i = 0; i < 6; i++)
+        ret_val = ret_val * 256 + mac[i];
+
+    return ret_val;
+}
+
+static int64_t flip_sign(int64_t value)
+{
+    return -value;
 }
 
 static bool encode_vap_data(
@@ -220,7 +228,9 @@ static bool encode_ap_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
            encode_optimized_repeated_field(
                ctx, ostream, num_beacons, Aps_common_age_plus_1_tag, Aps_age_tag, get_ap_age);
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 static bool encode_cell_field_element(
     pb_ostream_t *ostream, uint32_t tag, int64_t val, int64_t unknown)
 {
@@ -283,7 +293,9 @@ static bool encode_cell_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 
     return true;
 }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 static bool encode_gnss_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
 {
     uint32_t num_gnss = get_num_gnss(ctx);
@@ -303,7 +315,9 @@ static bool encode_gnss_fields(Sky_rctx_t *ctx, pb_ostream_t *ostream)
            encode_repeated_int_field(ctx, ostream, Gnss_nsat_tag, num_gnss, get_gnss_nsat, NULL) &&
            encode_repeated_int_field(ctx, ostream, Gnss_age_tag, num_gnss, get_gnss_age, NULL);
 }
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT || !SKY_EXCLUDE_WIFI_SUPPORT
 static bool encode_submessage(
     Sky_rctx_t *ctx, pb_ostream_t *ostream, uint32_t tag, EncodeSubmsgCallback func)
 {
@@ -326,6 +340,7 @@ static bool encode_submessage(
 
     return true;
 }
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT || !SKY_EXCLUDE_WIFI_SUPPORT
 
 bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t *field)
 {
@@ -342,6 +357,7 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         // https://jpa.kapsi.fi/nanopb/docs/reference.html#pb-encode-delimited
         //
         switch (field->tag) {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
         case Rq_aps_tag:
             if (get_num_aps(rctx))
                 return encode_submessage(rctx, ostream, field->tag, encode_ap_fields);
@@ -349,14 +365,29 @@ bool Rq_callback(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_t 
         case Rq_vaps_tag:
             return encode_vap_data(rctx, ostream, Rq_vaps_tag, get_num_vaps(rctx), get_vap_data);
             // break;
+#else
+        case Rq_aps_tag:
+        case Rq_vaps_tag:
+            break;
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
+#if !SKY_EXCLUDE_CELL_SUPPORT
         case Rq_cells_tag:
             if (get_num_cells(rctx))
                 return encode_cell_fields(rctx, ostream);
             break;
+#else
+        case Rq_cells_tag:
+            break;
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
+#if !SKY_EXCLUDE_GNSS_SUPPORT
         case Rq_gnss_tag:
             if (get_num_gnss(rctx))
                 return encode_submessage(rctx, ostream, field->tag, encode_gnss_fields);
             break;
+#else
+        case Rq_gnss_tag:
+            break;
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
         default:
             LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Unknown tag %d", field->tag);
             break;
@@ -430,7 +461,7 @@ int32_t serialize_request(
 #if SKY_TBR_DEVICE_ID
             rq.device_id.size = get_ctx_id_length(ctx);
             memcpy(rq.device_id.bytes, get_ctx_device_id(ctx), rq.device_id.size);
-#endif
+#endif // SKY_TBR_DEVICE_ID
             LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR location request: token %d", rq.token_id);
         }
     } else {
@@ -533,6 +564,7 @@ int32_t serialize_request(
     return (int32_t)(bytes_written + aes_padding_length);
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 int32_t apply_used_info_to_ap(Sky_rctx_t *ctx, const uint8_t *used, int size)
 {
     uint32_t i, v;
@@ -560,6 +592,7 @@ int32_t apply_used_info_to_ap(Sky_rctx_t *ctx, const uint8_t *used, int size)
 
     return 0;
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sky_location_t *loc)
 {
@@ -605,9 +638,10 @@ int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sk
     memset(loc, 0, sizeof(*loc));
     loc->location_status = (Sky_loc_status_t)header.status;
     LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "TBR state %s, Response %s",
-        (ctx->auth_state == STATE_TBR_UNREGISTERED) ? "STATE_TBR_UNREGISTERED" :
-        (ctx->auth_state == STATE_TBR_REGISTERED)   ? "STATE_TBR_REGISTERED" :
-                                                      "STATE_TBR_DISABLED",
+        (ctx->auth_state == STATE_TBR_UNREGISTERED) ?
+            "STATE_TBR_UNREGISTERED" :
+            (ctx->auth_state == STATE_TBR_REGISTERED) ? "STATE_TBR_REGISTERED" :
+                                                        "STATE_TBR_DISABLED",
         sky_pserver_status(loc->location_status));
 
     /* if response contains a body */
@@ -691,8 +725,10 @@ int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sk
             ctx->sky_dl_app_data_len = loc->dl_app_data_len =
                 MIN(rs.dl_app_data.size, sizeof(ctx->sky_dl_app_data));
             memmove(ctx->sky_dl_app_data, rs.dl_app_data.bytes, loc->dl_app_data_len);
+#if !SKY_EXCLUDE_WIFI_SUPPORT
             // Extract Used info for each AP from the Used_aps bytes
             apply_used_info_to_ap(ctx, (void *)rs.used_aps.bytes, (int)rs.used_aps.size);
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
         }
         break;
     }
@@ -700,6 +736,7 @@ int32_t deserialize_response(Sky_rctx_t *ctx, uint8_t *buf, uint32_t buf_len, Sk
     return ret;
 }
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 static int64_t get_gnss_lat_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return (int64_t)(get_gnss_lat(ctx, idx) * 1000000.0);
@@ -719,6 +756,7 @@ static int64_t get_gnss_speed_scaled(Sky_rctx_t *ctx, uint32_t idx)
 {
     return (int64_t)(get_gnss_speed(ctx, idx) * 10.0);
 }
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
 /*! \brief update dynamic config params with server overrides
  *

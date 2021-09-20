@@ -209,6 +209,7 @@ TEST_FUNC(test_sky_option)
         ASSERT(SKY_SUCCESS == sky_get_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
                value == 3);
     });
+
     TEST("set options reports Bad Parameters appropriately", rctx, {
         Sky_errno_t sky_errno;
 
@@ -235,7 +236,6 @@ TEST_FUNC(test_sky_option)
     });
 }
 
-#if CACHE_SIZE != 0
 TEST_FUNC(test_sky_gnss)
 {
     TEST("to cache plugin copies gnss to cache", rctx, {
@@ -767,17 +767,13 @@ TEST_FUNC(test_cache_match)
     });
 }
 
-#endif
-
 BEGIN_TESTS(libel_test)
 
 GROUP_CALL("sky open", test_sky_open);
 GROUP_CALL("sky new request", test_sky_new_request);
 GROUP_CALL("sky add tests", test_sky_add);
 GROUP_CALL("sky option tests", test_sky_option);
-#if CACHE_SIZE != 0
 GROUP_CALL("sky match tests", test_cache_match);
 GROUP_CALL("sky gnss tests", test_sky_gnss);
-#endif
 
 END_TESTS();

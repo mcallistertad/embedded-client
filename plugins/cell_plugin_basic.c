@@ -32,7 +32,7 @@
 /* set VERBOSE_DEBUG to true to enable extra logging */
 #ifndef VERBOSE_DEBUG
 #define VERBOSE_DEBUG false
-#endif
+#endif // VERBOSE_DEBUG
 
 typedef enum {
     HIGHEST_PRIORITY = 0xffff,
@@ -41,7 +41,9 @@ typedef enum {
     LOWEST_PRIORITY = 0x000
 } Property_priority_t;
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 static float get_priority(Beacon_t *b);
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
 /*! \brief compare cell beacons for equality
  *
@@ -58,6 +60,7 @@ static float get_priority(Beacon_t *b);
 static Sky_status_t equal(
     Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
 {
+#if !SKY_EXCLUDE_CELL_SUPPORT
     (void)prop; /* suppress warning unused parameter */
     if (!rctx || !a || !b || !equal) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -110,6 +113,14 @@ static Sky_status_t equal(
     *equal = equivalent;
 
     return SKY_SUCCESS;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    (void)a; /* suppress warning unused parameter */
+    (void)b; /* suppress warning unused parameter */
+    (void)prop; /* suppress warning unused parameter */
+    (void)equal; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif //!SKY_EXCLUDE_CELL_SUPPORT
 }
 
 /*! \brief compare cell beacons for order when adding to request context
@@ -126,6 +137,7 @@ static Sky_status_t equal(
  */
 static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *diff)
 {
+#if !SKY_EXCLUDE_CELL_SUPPORT
     if (!rctx || !a || !b || !diff) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -148,6 +160,13 @@ static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *dif
     else
         *diff = COMPARE_RSSI(a, b);
     return SKY_SUCCESS;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    (void)a; /* suppress warning unused parameter */
+    (void)b; /* suppress warning unused parameter */
+    (void)diff; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif //!SKY_EXCLUDE_CELL_SUPPORT
 }
 
 /*! \brief remove lowest priority cell if request context is full
@@ -158,6 +177,7 @@ static Sky_status_t compare(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, int *dif
  */
 static Sky_status_t remove_worst(Sky_rctx_t *rctx)
 {
+#if !SKY_EXCLUDE_CELL_SUPPORT
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d cells present. Max %d", NUM_CELLS(rctx),
         CONFIG(rctx->session, total_beacons) - CONFIG(rctx->session, max_ap_beacons));
 
@@ -181,6 +201,10 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
     }
     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Not a cell?");
     return SKY_ERROR;
+#else
+    (void)rctx; /* suppress warning unused parameter */
+    return SKY_SUCCESS;
+#endif //!SKY_EXCLUDE_CELL_SUPPORT
 }
 
 /*! \brief find cache entry with a match to request rctx
@@ -202,7 +226,7 @@ static Sky_status_t remove_worst(Sky_rctx_t *rctx)
  */
 static Sky_status_t match(Sky_rctx_t *rctx)
 {
-#if CACHE_SIZE
+#if CACHE_SIZE && !SKY_EXCLUDE_CELL_SUPPORT
     int i; /* i iterates through cacheline */
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request context matches cacheline
                     In typical case this is the intersection(request context, cache) / union(request context, cache) */
@@ -252,8 +276,19 @@ static Sky_status_t match(Sky_rctx_t *rctx)
         cl = &rctx->session->cacheline[i];
         threshold = score = 0;
         ratio = 0.0f;
-        if (cl->time == CACHE_EMPTY || serving_cell_changed(rctx, cl) == true ||
-            cached_gnss_worse(rctx, cl) == true) {
+        if (cl->time == CACHE_EMPTY) {
+            LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score 0 for empty cacheline", i);
+            continue;
+#if !SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (serving_cell_changed(rctx, cl) == true || cached_gnss_worse(rctx, cl) == true) {
+#elif !SKY_EXCLUDE_CELL_SUPPORT && SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (serving_cell_changed(rctx, cl) == true) {
+#elif SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+        } else if (cached_gnss_worse(rctx, cl) == true) {
+#else
+        } else if (0) {
+#endif // !SKY_EXCLUDE_CELL_SUPPORT && !SKY_EXCLUDE_GNSS_SUPPORT
+            /* no support for cell or gnss, so no possibility of forced miss */
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "Cache: %d: Score 0 for empty cacheline or cacheline has different cell or worse gnss",
                 i);
@@ -271,7 +306,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,
                         sky_pbeacon(&rctx->beacon[j]), i, rctx->session->num_cachelines,
                         (int)score);
-#endif
+#endif // VERBOSE_DEBUG
                     score = score + 1;
                 }
             }
@@ -321,9 +356,10 @@ static Sky_status_t match(Sky_rctx_t *rctx)
     rctx->hit = false;
     (void)rctx; /* suppress warning unused parameter */
     return SKY_SUCCESS;
-#endif
+#endif // CACHE_SIZE && !SKY_EXCLUDE_CELL_SUPPORT
 }
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief Assign relative priority value to cell based on attributes
  *
  * Priority is based on the attributes
@@ -346,6 +382,7 @@ static float get_priority(Beacon_t *b)
 
     return score;
 }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
 #ifdef UNITTESTS
 TEST_FUNC(test_cell_plugin)
@@ -438,7 +475,7 @@ static Sky_status_t unit_tests(void *_ctx)
     return SKY_SUCCESS;
 }
 
-#endif
+#endif // UNITTESTS
 
 /* * * * * * Plugin access table * * * * *
  *
@@ -461,6 +498,6 @@ Sky_plugin_table_t cell_plugin_basic_table = {
     .add_to_cache = NULL, /* Copy request context beacons to a cacheline */
 #ifdef UNITTESTS
     .unit_tests = unit_tests, /* Unit Tests */
-#endif
+#endif // UNITTESTS
 
 };
