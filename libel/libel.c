@@ -1522,11 +1522,11 @@ Sky_status_t sky_close(Sky_sctx_t *sctx, Sky_errno_t *sky_errno)
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-    /*******************************************************************************
+/*******************************************************************************
  * Static helper functions
  ******************************************************************************/
-
 #if SANITY_CHECKS
+
 /*! \brief sanity check the device_id
  *
  *  @param device_id this is expected to be a binary mac address
