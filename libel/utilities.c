@@ -278,6 +278,8 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
 #if SKY_LOGGING
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: NULL pointer");
+#else
+        (void)logf;
 #endif // SKY_LOGGING
         return false;
     }
@@ -338,8 +340,6 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
 #if SKY_LOGGING
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: crc mismatch!");
-#else
-        (void)logf;
 #endif // SKY_LOGGING
         return false;
     }

@@ -305,9 +305,10 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     rctx->hit = false;
     rctx->get_from = rctx->save_to = -1;
     rctx->session = sctx;
-    rctx->auth_state = !is_tbr_enabled(rctx)               ? STATE_TBR_DISABLED :
-                       sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED :
-                                                             STATE_TBR_REGISTERED;
+    rctx->auth_state =
+        !is_tbr_enabled(rctx) ?
+            STATE_TBR_DISABLED :
+            sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
     for (i = 0; i < TOTAL_BEACONS; i++) {
         rctx->beacon[i].h.magic = BEACON_MAGIC;
         rctx->beacon[i].h.type = SKY_BEACON_MAX;
@@ -888,6 +889,8 @@ Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#elif !SKY_LOGGING
+    (void)rctx;
 #endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 #if CACHE_SIZE
@@ -935,9 +938,9 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
                 rctx->header.time == TIME_UNAVAILABLE ||
                 (rctx->header.time - CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
-        rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ? "Timeout" :
-        rq_config                                                        ? "Forced" :
-                                                                           "No");
+        rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ?
+            "Timeout" :
+            rq_config ? "Forced" : "No");
 
     if (rq_config)
         CONFIG(sctx, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
@@ -1077,9 +1080,10 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
     Sky_sctx_t *sctx;
     time_t now;
 
-    if (!validate_request_ctx(rctx)) {
+#if !SKY_EXCLUDE_SANITY_CHECKS
+    if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
     if (rctx == NULL || loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
