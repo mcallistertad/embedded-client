@@ -25,12 +25,6 @@
 #ifndef SKY_CONFIG_H
 #define SKY_CONFIG_H
 
-/*! \brief Include sanity checks on internal structures
- */
-#ifndef SANITY_CHECKS
-#define SANITY_CHECKS true
-#endif
-
 /* Change to false to remove all calls to logging */
 #ifndef SKY_LOGGING
 #define SKY_LOGGING true
@@ -124,6 +118,12 @@
 #endif
 
 #ifndef UNITTESTS
+/*! \brief Exclude sanity checks on internal structures
+ */
+#ifndef SKY_EXCLUDE_SANITY_CHECKS
+#define SKY_EXCLUDE_SANITY_CHECKS false
+#endif
+
 /*! \brief One and only one of the following may be set to true if support
  *   for the corresponding beacon type is not available or is not necessary.
  */
@@ -147,10 +147,10 @@
 /* Unit Tests are always built with AP, Cell and GNSS suport included
  */
 
-#ifdef SANITY_CHECKS
-#undef SANITY_CHECKS
+#ifdef SKY_EXCLUDE_SANITY_CHECKS
+#undef SKY_EXCLUDE_SANITY_CHECKS
 #endif
-#define SANITY_CHECKS true
+#define SKY_EXCLUDE_SANITY_CHECKS false
 
 #ifdef SKY_EXCLUDE_WIFI_SUPPORT
 #undef SKY_EXCLUDE_WIFI_SUPPORT
