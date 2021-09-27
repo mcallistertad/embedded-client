@@ -32,9 +32,9 @@
 #include <math.h>
 #include "libel.h"
 
-#if SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
+#if !SKY_EXCLUDE_SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
 static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx);
-#endif // SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
+#endif // !SKY_EXCLUDE_SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
@@ -63,9 +63,9 @@ Sky_status_t set_error_status(Sky_errno_t *sky_errno, Sky_errno_t code)
  */
 bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
 {
-#if !SANITY_CHECKS || SKY_EXCLUDE_WIFI_SUPPORT
+#if !!SKY_EXCLUDE_SANITY_CHECKS || SKY_EXCLUDE_WIFI_SUPPORT
     (void)rctx;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
     if (b == NULL || b->h.magic != BEACON_MAGIC)
         return false;
     switch (b->h.type) {
@@ -75,17 +75,17 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
 #if !SKY_EXCLUDE_WIFI_SUPPORT
         if (b->ap.freq < 2400 || b->ap.freq > 6000)
             b->ap.freq = 0; /* 0's not sent to server */
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         return validate_mac(b->ap.mac, rctx);
 #else
         return true;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 #endif // !SKY_EXCLUDE_WIFI_SUPPORT
 #if !SKY_EXCLUDE_CELL_SUPPORT
     case SKY_BEACON_LTE:
         if (b->h.rssi > -40 || b->h.rssi < -140)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         /* If at least one of the primary IDs is unvalued, then *all* primary IDs must
          * be unvalued (meaning user is attempting to add a neighbor cell). Partial
          * specification of primary IDs is considered an error.
@@ -108,12 +108,12 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
             (b->cell.freq != SKY_UNKNOWN_ID6 && b->cell.freq > 262143) || /* earfcn */
             (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 7690))) /* ta */
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
     case SKY_BEACON_NBIOT:
         if (b->h.rssi > -44 || b->h.rssi < -156)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
                 b->cell.id4 == SKY_UNKNOWN_ID4) &&
             !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
@@ -131,12 +131,12 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
             (b->cell.freq != SKY_UNKNOWN_ID6 &&
                 (b->cell.freq < 0 || b->cell.freq > 262143))) /* earfcn */
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
     case SKY_BEACON_GSM:
         if (b->h.rssi > -32 || b->h.rssi < -128)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         if (b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
             b->cell.id3 == SKY_UNKNOWN_ID3 || b->cell.id4 == SKY_UNKNOWN_ID4)
             return false;
@@ -145,12 +145,12 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
             b->cell.id2 > 999 || /* mnc */
             (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 63))) /* ta */
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
     case SKY_BEACON_UMTS:
         if (b->h.rssi > -20 || b->h.rssi < -120)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
                 b->cell.id4 == SKY_UNKNOWN_ID4) &&
             !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
@@ -166,12 +166,12 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
             (b->cell.freq != SKY_UNKNOWN_ID6 &&
                 (b->cell.freq < 412 || b->cell.freq > 262143))) /* earfcn */
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
     case SKY_BEACON_CDMA:
         if (b->h.rssi > -49 || b->h.rssi < -140)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         if (b->cell.id2 == SKY_UNKNOWN_ID2 || b->cell.id3 == SKY_UNKNOWN_ID3 ||
             b->cell.id4 == SKY_UNKNOWN_ID4)
             return false;
@@ -180,12 +180,12 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
             b->cell.id3 < 0 || b->cell.id3 > 65535 || /* nid */
             b->cell.id4 < 0 || b->cell.id4 > 65535) /* bsid */
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
     case SKY_BEACON_NR:
         if (b->h.rssi > -40 || b->h.rssi < -140)
             b->h.rssi = -1;
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
         if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
                 b->cell.id4 == SKY_UNKNOWN_ID4) &&
             !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
@@ -202,7 +202,7 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
                 (b->cell.freq < 0 || b->cell.freq > 3279165)) || /* nrarfcn */
             (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 3846)))
             return false;
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
         break;
 #endif // !SKY_EXCLUDE_CELL_SUPPORT
     default:
@@ -217,7 +217,7 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
     return true;
 }
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
 /*! \brief validate the request rctx buffer
  *
  *  @param rctx request rctx buffer
@@ -264,7 +264,7 @@ bool validate_request_ctx(Sky_rctx_t *rctx)
     }
     return true;
 }
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 /*! \brief validate the session context buffer - Cant use LOGFMT here
  *
@@ -278,6 +278,8 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
 #if SKY_LOGGING
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: NULL pointer");
+#else
+        (void)logf;
 #endif // SKY_LOGGING
         return false;
     }
@@ -289,7 +291,7 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
 #endif // SKY_LOGGING
         return false;
     }
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (sctx->header.crc32 == sky_crc32(&sctx->header.magic, (uint8_t *)&sctx->header.crc32 -
                                                                  (uint8_t *)&sctx->header.magic)) {
 #if CACHE_SIZE
@@ -338,16 +340,14 @@ bool validate_session_ctx(Sky_sctx_t *sctx, Sky_loggerfn_t logf)
 #if SKY_LOGGING
         if (logf != NULL)
             (*logf)(SKY_LOG_LEVEL_ERROR, "Session ctx validation failed: crc mismatch!");
-#else
-        (void)logf;
 #endif // SKY_LOGGING
         return false;
     }
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
     return true;
 }
 
-#if SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
+#if !SKY_EXCLUDE_SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief validate mac address
  *
  *  @param mac pointer to mac address
@@ -370,7 +370,7 @@ static bool validate_mac(const uint8_t mac[6], Sky_rctx_t *rctx)
 #endif // SKY_LOGGING
     return true;
 }
-#endif // SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
+#endif // !SKY_EXCLUDE_SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
 
 /*! \brief return true if library is configured for tbr authentication
  *

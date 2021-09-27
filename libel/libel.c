@@ -44,9 +44,9 @@
 #define BACKOFF_UNITS_PER_HR 3600 // time in seconds
 
 /* Local functions */
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
 static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Initialize Skyhook library and verify access to resources
@@ -152,10 +152,10 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     }
     config_defaults(session);
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_device_id(device_id, id_len) || aes_key == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     session->id_len = id_len;
     memcpy(session->device_id, device_id, id_len);
@@ -799,10 +799,10 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
         nsat > 100) /* 100 is conservative max gnss sat count */
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     rctx->gnss.lat = lat;
     rctx->gnss.lon = lon;
@@ -833,10 +833,10 @@ Sky_status_t sky_search_cache(
     Sky_cacheline_t *cl;
 #endif // CACHE_SIZE
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 #if CACHE_SIZE
     /* check cachelines against new beacons for best match
@@ -886,10 +886,12 @@ Sky_status_t sky_search_cache(
  */
 Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 {
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif // SANITY_CHECKS
+#elif !SKY_LOGGING
+    (void)rctx;
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 #if CACHE_SIZE
     if (IS_CACHE_HIT(rctx)) {
@@ -923,10 +925,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
     Sky_cacheline_t *cl;
 #endif // CACHE_SIZE
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1013,10 +1015,10 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
     int rc;
     Sky_sctx_t *sctx = rctx->session;
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     if (backoff_violation(rctx, rctx->header.time)) {
         return set_error_status(sky_errno, SKY_ERROR_SERVICE_DENIED);
@@ -1078,9 +1080,10 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
     Sky_sctx_t *sctx;
     time_t now;
 
-    if (!validate_request_ctx(rctx)) {
+#if !SKY_EXCLUDE_SANITY_CHECKS
+    if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-    }
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
     if (rctx == NULL || loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
@@ -1525,7 +1528,7 @@ Sky_status_t sky_close(Sky_sctx_t *sctx, Sky_errno_t *sky_errno)
 /*******************************************************************************
  * Static helper functions
  ******************************************************************************/
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
 
 /*! \brief sanity check the device_id
  *
@@ -1541,7 +1544,7 @@ static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
     else
         return true;
 }
-#endif // SANITY_CHECKS
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 /*! \brief safely return bounded length of string
  *
