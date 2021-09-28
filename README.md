@@ -113,6 +113,7 @@ Instructions for cloning and building the library are below.
             * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
             * [sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_lte_neighbor_beacon---adds-an-lte-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_gsm_neighbor_beacon---adds-an-gsm-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context](#sky_add_cell_umts_beacon---adds-a-umts-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context](#sky_add_cell_umts_neighbor_beacon---adds-a-umts-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context](#sky_add_cell_cdma_beacon---adds-a-cdma-cell-beacon-to-the-request-context)
@@ -540,8 +541,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx,
  * e_cellid     lte beacon identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
- * pci          mobile pci (0-503, 'SKY_UNKNOWN_ID5' if unknown)
- * earfcn,      channel (0-45589, 'SKY_UNKNOWN_ID6' if unknown)
+ * pci          mobile pci (0-503), 'SKY_UNKNOWN_ID5' if unknown
+ * earfcn,      channel (0-45589), 'SKY_UNKNOWN_ID6' if unknown
  * ta           timing-advance (0-7690), `SKY_UNKNOWN_TA` if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
@@ -577,8 +578,8 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx,
 /* Parameters
  * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * pci          mobile pci (0-503, 'SKY_UNKNOWN_ID5' if unknown)
- * earfcn,      channel (0-45589, 'SKY_UNKNOWN_ID6' if unknown)
+ * pci          mobile pci (0-503), 'SKY_UNKNOWN_ID5' if unknown
+ * earfcn,      channel (0-45589), 'SKY_UNKNOWN_ID6' if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
 
@@ -609,6 +610,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
     int64_t ci,
     uint16_t mcc,
     uint16_t mnc,
+    int16_t bsic,
+    int32_t arfcn
     int32_t ta,
     time_t timestamp,
     int16_t rssi,
@@ -622,6 +625,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
  * ci           gsm cell identifier (0-65535)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
+ * bsic         Base Station Identify Code (0-63), SKY_UNKNOWN_ID5 if unknown
+ * arfcn        channel (1-1023), SKY_UNKNOWN_ID6 if unknown
  * ta           timing-advance (0-63), `SKY_UNKNOWN_TA` if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
@@ -631,10 +636,33 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
  */
  ```
 
-Adds the cell gsm information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`. In case of
+### sky_add_cell_gsm_neighbor_beacon() - Adds an GSM neighbor cell beacon to the request context
+
+```c
+Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx,
+    Sky_errno_t *sky_errno,
+    int16_t bsic,
+    int32_t arfcn,
+    time_t timestamp,
+    int16_t rsrp)
+
+/* Parameters
+ * rctx         Skyhook request context
+ * sky_errno    sky_errno is set to the error code
+ * bsic         mobile pci (0-63), 'SKY_UNKNOWN_ID5' if unknown
+ * arfcn,       channel (1-1023), 'SKY_UNKNOWN_ID6' if unknown
+ * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
+
+ * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+
+ ```
+
+Adds the gsm neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`. In case of
 failure sky_errno is set if there is a bad parameter or other error.
 
-sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno:
+sky_add_cell_gsm_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------

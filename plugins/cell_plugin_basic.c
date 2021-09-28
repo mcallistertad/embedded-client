@@ -435,7 +435,7 @@ TEST_FUNC(test_cell_plugin)
         UMTS(b, 10, -108, true, 515, 2, 32768, 16843545, 0, 412);
         NBIOT(c, 10, -108, false, 515, 2, 20263, 15664525, 25, 255);
         CDMA(d, 10, -108, false, 5000, 16683, 25614, 22265, 0, 0);
-        GSM(e, 10, -108, false, 515, 2, 20263, 22265, 0, 0);
+        GSM(e, 10, -108, false, 515, 2, 20263, 22265, SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6);
 
         ASSERT(sky_set_option(rctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
         ASSERT(sky_set_option(rctx, &sky_errno, CONF_TOTAL_BEACONS, 6) == SKY_SUCCESS);
@@ -455,8 +455,8 @@ TEST_FUNC(test_cell_plugin)
         ASSERT(SKY_SUCCESS == sky_add_cell_cdma_beacon(rctx, &sky_errno, d.cell.id2, d.cell.id3,
                                   d.cell.id4, TIME_UNAVAILABLE, d.h.rssi, d.h.connected));
         ASSERT(SKY_SUCCESS == sky_add_cell_gsm_beacon(rctx, &sky_errno, e.cell.id3, e.cell.id4,
-                                  e.cell.id1, e.cell.id2, e.cell.ta, TIME_UNAVAILABLE, e.h.rssi,
-                                  e.h.connected));
+                                  e.cell.id1, e.cell.id2, e.cell.id5, e.cell.freq, e.cell.ta,
+                                  TIME_UNAVAILABLE, e.h.rssi, e.h.connected));
         ASSERT(rctx->num_beacons == 3);
         ASSERT(rctx->num_ap == 0);
         /*          0 *    UMTS     515,2,32768,16843545,0 0MHz rssi:-108 ta:0 age:0

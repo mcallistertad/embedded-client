@@ -213,8 +213,11 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
     int32_t earfcn, time_t timestamp, int16_t rsrp);
 
 Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, int32_t lac,
-    int64_t ci, uint16_t mcc, uint16_t mnc, int32_t ta, time_t timestamp, int16_t rssi,
-    bool is_connected);
+    int64_t ci, uint16_t mcc, uint16_t mnc, int16_t bsic, int32_t arfcn, int32_t ta,
+    time_t timestamp, int16_t rssi, bool is_connected);
+
+Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno,
+    int16_t bsic, int16_t arfcn, time_t timestamp, int16_t rscp);
 
 Sky_status_t sky_add_cell_umts_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, int32_t lac,
     int64_t ucid, uint16_t mcc, uint16_t mnc, int16_t psc, int16_t uarfcn, time_t timestamp,

@@ -105,8 +105,8 @@ TEST_FUNC(test_beacon_order)
     });
 
     TEST("should return positive with 2 identical GSM cell beacons", rctx, {
-        GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(a, 10, -108, true, 515, 2, 20263, 22265, SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6);
 
         ASSERT(is_beacon_first(rctx, &a, &b) > 0);
     });
@@ -301,7 +301,7 @@ TEST_FUNC(test_beacon_order)
 
     TEST("is_beacon_first: NR better than GSM", rctx, {
         NR(a, 10, -108, true, 213, 142, 15614, 25564526, 95, 1040);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
@@ -345,7 +345,7 @@ TEST_FUNC(test_beacon_order)
 
     TEST("is_beacon_first: LTE better than GSM", rctx, {
         LTE(a, 10, -108, true, 311, 480, 25614, 25664526, 387, 1000);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
@@ -378,7 +378,7 @@ TEST_FUNC(test_beacon_order)
 
     TEST("is_beacon_first: UMTS better than GSM", rctx, {
         UMTS(a, 10, -108, true, 515, 2, 32768, 16843545, 300, 415);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
@@ -400,7 +400,7 @@ TEST_FUNC(test_beacon_order)
 
     TEST("is_beacon_first: NBIOT better than GSM", rctx, {
         NBIOT(a, 10, -108, true, 515, 2, 20263, 15664525, 283, 255);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
@@ -411,7 +411,7 @@ TEST_FUNC(test_beacon_order)
 
     TEST("is_beacon_first: CDMA better than GSM", rctx, {
         CDMA(a, 10, -108, true, 5000, 16683, 25614, 22265, 0, 0);
-        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+        GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
 
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &a));
         ASSERT(SKY_SUCCESS == insert_beacon(rctx, NULL, &b));
@@ -510,7 +510,7 @@ TEST_FUNC(test_add)
     TEST(
         "should return SKY_ERROR and set sky_errno to SKY_ERROR_BAD_PARAMETERS with bad beacon GSM",
         rctx, {
-            GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+            GSM(a, 10, -108, true, 515, 2, 20263, 22265, SKY_UNKNOWN_ID5, SKY_UNKNOWN_ID6);
             Sky_errno_t sky_errno;
 
             a.cell.ta = 100; /* bad ta */

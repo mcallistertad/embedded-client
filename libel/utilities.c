@@ -137,12 +137,17 @@ bool validate_beacon(Beacon_t *b, Sky_rctx_t *rctx)
         if (b->h.rssi > -32 || b->h.rssi < -128)
             b->h.rssi = -1;
 #if !SKY_EXCLUDE_SANITY_CHECKS
-        if (b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
-            b->cell.id3 == SKY_UNKNOWN_ID3 || b->cell.id4 == SKY_UNKNOWN_ID4)
+        if ((b->cell.id1 == SKY_UNKNOWN_ID1 || b->cell.id2 == SKY_UNKNOWN_ID2 ||
+                b->cell.id3 == SKY_UNKNOWN_ID3 || b->cell.id4 == SKY_UNKNOWN_ID4) &&
+            !(b->cell.id1 == SKY_UNKNOWN_ID1 && b->cell.id2 == SKY_UNKNOWN_ID2 &&
+                b->cell.id3 == SKY_UNKNOWN_ID3 && b->cell.id4 == SKY_UNKNOWN_ID4))
             return false;
         /* range check parameters */
         if (b->cell.id1 < 200 || b->cell.id1 > 799 || /* mcc */
             b->cell.id2 > 999 || /* mnc */
+            (b->cell.id5 != SKY_UNKNOWN_ID5 && (b->cell.id5 < 0 || b->cell.id5 > 63)) || /* bsic */
+            (b->cell.freq != SKY_UNKNOWN_ID6 &&
+                (b->cell.freq < 1 || b->cell.freq > 1023)) || /* arfcn */
             (b->cell.ta != SKY_UNKNOWN_TA && (b->cell.ta < 0 || b->cell.ta > 63))) /* ta */
             return false;
 #endif // !SKY_EXCLUDE_SANITY_CHECKS
@@ -1227,13 +1232,13 @@ int64_t get_cell_id5(Beacon_t *cell)
 
     switch (type) {
     case SKY_BEACON_CDMA:
-    case SKY_BEACON_GSM:
-        return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported for GSM
+        return SKY_UNKNOWN_ID5; // Reporting ID5 value not supported
 
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
+    case SKY_BEACON_GSM:
         return cell->cell.id5;
     default:
         break;
@@ -1254,13 +1259,13 @@ int64_t get_cell_id6(Beacon_t *cell)
 
     switch (type) {
     case SKY_BEACON_CDMA:
-    case SKY_BEACON_GSM:
-        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported for GSM
+        return SKY_UNKNOWN_ID6; // Reporting ID6 value not supported
 
     case SKY_BEACON_LTE:
     case SKY_BEACON_NBIOT:
     case SKY_BEACON_UMTS:
     case SKY_BEACON_NR:
+    case SKY_BEACON_GSM:
         return cell->cell.freq;
     default:
         break;
