@@ -318,12 +318,11 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ?
-            "CRIT" :
-            level == SKY_LOG_LEVEL_ERROR ?
-            "ERRR" :
-            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
-                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
+        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
+        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
+        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
+                                          "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -414,7 +413,8 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         case TYPE_GSM:
             if (sky_add_cell_gsm_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
-                    cp->ta, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
+                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
+                    cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_gsm_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_LTE:

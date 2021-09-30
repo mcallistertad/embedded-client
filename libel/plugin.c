@@ -330,8 +330,8 @@ TEST("should return SKY_SUCCESS and equal with 2 identical CDMA cell beacons", r
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical GSM cell beacons", rctx, {
-    GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
-    GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+    GSM(a, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
+    GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
     Sky_errno_t sky_errno;
     bool equal = false;
 
