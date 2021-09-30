@@ -525,7 +525,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
 Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno,
     int16_t bsic, int16_t arfcn, time_t timestamp, int16_t rscp)
 {
-    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", bsic, arfcn, rscp,
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rssi %d, age %d", bsic, arfcn, rscp,
         (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
     return sky_add_cell_gsm_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, bsic, arfcn, SKY_UNKNOWN_TA, timestamp, rscp, false);
@@ -1473,6 +1473,8 @@ char *sky_pbeacon(Beacon_t *b)
             return "UMTS-NMR";
         case SKY_BEACON_NR:
             return "NR-NMR";
+        case SKY_BEACON_GSM:
+            return "GSM-NMR";
         default:
             return "\?\?\?-NMR";
         }

@@ -11,9 +11,14 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
-### [Release 4.1.0](https://github.com/SkyhookWireless/embedded-client/tree/4.1.0)
+### [Release 5.0.0](https://github.com/SkyhookWireless/embedded-client/tree/5.0.0)
 
 * Library is more compact and can be configured to include only the required features.
+* sky_add_cell_gsm_beacon() allows bsic and arfcn to be included in the beacon info.
+* sky_add_cell_gsm_neighbor_beacon() has been added to the API
+* When porting application code from a previous release of the library, any calls to sky_add_cell_gsm_beacon must be
+  modified to include bsic and arfcn data if available on your device, or SKY_UNKNOWN_ID5 and SKY_UNKNOWN_ID6 respectively.
+
 
 ### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
 
@@ -112,8 +117,8 @@ Instructions for cloning and building the library are below.
             * [sky_add_ap_beacon() - Add a Wi-Fi beacon to request context](#sky_add_ap_beacon---add-a-wi-fi-beacon-to-request-context)
             * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
             * [sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_lte_neighbor_beacon---adds-an-lte-neighbor-cell-beacon-to-the-request-context)
-            * [sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
-            * [sky_add_cell_gsm_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_gsm_neighbor_beacon---adds-an-gsm-neighbor-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_beacon() - Adds a GSM cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_neighbor_beacon() - Adds an GSM neighbor cell beacon to the request context](#sky_add_cell_gsm_neighbor_beacon---adds-an-gsm-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context](#sky_add_cell_umts_beacon---adds-a-umts-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context](#sky_add_cell_umts_neighbor_beacon---adds-a-umts-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context](#sky_add_cell_cdma_beacon---adds-a-cdma-cell-beacon-to-the-request-context)
