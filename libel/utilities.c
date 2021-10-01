@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <math.h>
 #include "libel.h"
 
 #if !SKY_EXCLUDE_SANITY_CHECKS && !SKY_EXCLUDE_WIFI_SUPPORT
