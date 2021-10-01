@@ -318,11 +318,12 @@ static int rand_bytes(uint8_t *rand_buf, uint32_t bufsize)
 static int logger(Sky_log_level_t level, char *s)
 {
     printf("Skyhook libEL %s: %.*s\n",
-        level == SKY_LOG_LEVEL_CRITICAL ? "CRIT" :
-        level == SKY_LOG_LEVEL_ERROR    ? "ERRR" :
-        level == SKY_LOG_LEVEL_WARNING  ? "WARN" :
-        level == SKY_LOG_LEVEL_DEBUG    ? "DEBG" :
-                                          "UNKN",
+        level == SKY_LOG_LEVEL_CRITICAL ?
+            "CRIT" :
+            level == SKY_LOG_LEVEL_ERROR ?
+            "ERRR" :
+            level == SKY_LOG_LEVEL_WARNING ? "WARN" :
+                                             level == SKY_LOG_LEVEL_DEBUG ? "DEBG" : "UNKN",
         SKY_LOG_LENGTH, s);
     return 0;
 }
@@ -553,9 +554,6 @@ retry_after_auth:
                 goto retry_after_auth;
             case SKY_AUTH_RETRY_1D:
                 /* sleep 1 day */
-                goto retry_after_auth;
-            case SKY_AUTH_RETRY_30D:
-                /* sleep 30 days */
                 goto retry_after_auth;
             default:
                 printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));
