@@ -649,7 +649,7 @@ Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx,
     int16_t bsic,
     int32_t arfcn,
     time_t timestamp,
-    int16_t rsrp)
+    int16_t rssi)
 
 /* Parameters
  * rctx         Skyhook request context
@@ -657,7 +657,7 @@ Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx,
  * bsic         mobile pci (0-63), 'SKY_UNKNOWN_ID5' if unknown
  * arfcn,       channel (1-1023), 'SKY_UNKNOWN_ID6' if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
- * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
+ * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
 
  * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
@@ -894,7 +894,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_rctx_t *rctx,
     int32_t nrarfcn,
     int32_t ta,
     time_t timestamp,
-    int16_t nrsrp
+    int16_t nrsrp,
+    bool is_connected
 )
 
 /* Parameters
