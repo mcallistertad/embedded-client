@@ -189,8 +189,8 @@ typedef union beacon {
 /*! \brief gnss/gnss
  */
 typedef struct gnss {
-    double lat;
-    double lon;
+    float lat;
+    float lon;
     uint32_t hpe;
     float alt; // altitude
     uint32_t vpe;
