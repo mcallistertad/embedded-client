@@ -23,11 +23,7 @@
  *
  */
 #include <stdbool.h>
-#include <string.h>
-#include <time.h>
-#include <math.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
