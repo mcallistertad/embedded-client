@@ -251,10 +251,6 @@ static bool backoff_violation(Sky_rctx_t *rctx, time_t now)
             if (now - sctx->header.time < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
-        case SKY_AUTH_RETRY_30D:
-            if (now - sctx->header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
-                return true;
-            break;
         case SKY_AUTH_NEEDS_TIME:
             /* Waiting for time to be available */
             if (now == TIME_UNAVAILABLE)
@@ -1177,11 +1173,8 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
             else if (sctx->backoff ==
                      SKY_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
                 return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_16H));
-            else if (sctx->backoff ==
-                     SKY_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
+            else /* Registration request failed again, retry once per day */
                 return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_1D));
-            else
-                return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_30D));
         case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
         case SKY_LOCATION_STATUS_DECODE_ERROR:
             return set_error_status(sky_errno, SKY_ERROR_AUTH);
@@ -1396,9 +1389,6 @@ char *sky_perror(Sky_errno_t sky_errno)
         break;
     case SKY_AUTH_RETRY_1D:
         str = "Operation unauthorized, retry in 24 hours";
-        break;
-    case SKY_AUTH_RETRY_30D:
-        str = "Operation unauthorized, retry in a month";
         break;
     case SKY_AUTH_NEEDS_TIME:
         str = "Operation needs good time of day";
