@@ -233,22 +233,23 @@ int32_t sky_sizeof_request_ctx(void)
 static bool backoff_violation(Sky_rctx_t *rctx, time_t now)
 {
     Sky_sctx_t *sctx = rctx->session;
+    double duration = difftime(now, sctx->header.time);
 
     /* Enforce backoff period, check that enough time has passed since last request was received */
     if (sctx->backoff != SKY_ERROR_NONE) { /* Retry backoff in progress */
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
-            sky_perror(sctx->backoff), (int)(now - sctx->header.time));
+            sky_perror(sctx->backoff), (int)duration);
         switch (sctx->backoff) {
         case SKY_AUTH_RETRY_8H:
-            if (now - sctx->header.time < (8 * BACKOFF_UNITS_PER_HR))
+            if (duration < (8 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_16H:
-            if (now - sctx->header.time < (16 * BACKOFF_UNITS_PER_HR))
+            if (duration < (16 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_1D:
-            if (now - sctx->header.time < (24 * BACKOFF_UNITS_PER_HR))
+            if (duration < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_NEEDS_TIME:
@@ -313,7 +314,7 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     rctx->gnss.lat = NAN; /* empty */
 #endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
-    if (now < TIMESTAMP_2019_03_01) {
+    if (difftime(now, TIMESTAMP_2019_03_01) < 0) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         now = TIME_UNAVAILABLE; /* note that time was bad when request was started */
     }
@@ -340,11 +341,11 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "cache %d of %d cleared due to time being unavailable", i, CACHE_SIZE);
         } else if (sctx->cacheline[i].time != CACHE_EMPTY &&
-                   (now - sctx->cacheline[i].time) >
+                   difftime(now, sctx->cacheline[i].time) >
                        CONFIG(sctx, cache_age_threshold) * SECONDS_IN_HOUR) {
             sctx->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
-                CACHE_SIZE, now - sctx->cacheline[i].time);
+                CACHE_SIZE, (int)difftime(now, sctx->cacheline[i].time));
         }
     }
 #endif // CACHE_SIZE
@@ -380,7 +381,7 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
         is_connected ? "serve " : "",
-        (int)timestamp == TIME_UNAVAILABLE ? 0 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == TIME_UNAVAILABLE ? 0 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create AP beacon */
     memset(&b, 0, sizeof(b));
@@ -424,7 +425,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, e_cellid, pci, earfcn, ta, rsrp, is_connected ? "serve, " : "",
-            (int)(rctx->header.time - timestamp));
+            (int)difftime(rctx->header.time, timestamp));
 
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
@@ -458,7 +459,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, earfcn, rsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_lte_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, SKY_UNKNOWN_TA, timestamp, rsrp, false);
 }
@@ -488,7 +489,7 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
 
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rssi %d, %sage %d", lac,
         ci, mcc, mnc, bsic, arfcn, ta, rssi, is_connected ? "serve, " : "",
-        (int)(rctx->header.time - timestamp));
+        (int)difftime(rctx->header.time, timestamp));
 
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
@@ -522,7 +523,7 @@ Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
     int16_t bsic, int16_t arfcn, time_t timestamp, int16_t rscp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rssi %d, age %d", bsic, arfcn, rscp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_gsm_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, bsic, arfcn, SKY_UNKNOWN_TA, timestamp, rscp, false);
 }
@@ -555,7 +556,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, 
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || ucid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
@@ -588,7 +589,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sk
     int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", psc, uarfcn, rscp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_umts_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -616,7 +617,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, 
 
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
         is_connected ? "serve, " : "",
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
@@ -659,7 +660,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
             mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
@@ -692,7 +693,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, nrsrp %d, age %d", ncid, earfcn, nrsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     return sky_add_cell_nb_iot_beacon(rctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
@@ -725,7 +726,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, ui
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && nci != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d: %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, nci, pci, nrarfcn, ta, csi_rsrp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
@@ -759,7 +760,7 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, nrarfcn, csi_rsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_nr_beacon(rctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, SKY_UNKNOWN_TA, timestamp,
         csi_rsrp, false);
@@ -798,13 +799,14 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing %d.%01d, nsat %d, age %d", (int)speed,
         (int)fabs(round(10.0 * (speed - (int)speed))), (int)bearing,
         (int)fabs(round(1.0 * (bearing - (int)bearing))), nsat,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (rctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         rctx->gnss.age = 0;
-    else if (rctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        rctx->gnss.age = rctx->header.time - timestamp;
+    else if (difftime(rctx->header.time, timestamp) >= 0 &&
+             difftime(timestamp, TIMESTAMP_2019_03_01) > 0)
+        rctx->gnss.age = difftime(rctx->header.time, timestamp);
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
 
@@ -883,7 +885,7 @@ Sky_status_t sky_search_cache(
             "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
             (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
-            (rctx->header.time - cached_time));
+            (int)difftime(rctx->header.time, cached_time));
 #endif // SKY_DEBUG
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
@@ -955,9 +957,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* determine whether request_client_conf should be true in request message */
-    rq_config = CONFIG(sctx, last_config_time) == CONFIG_UPDATE_DUE ||
-                rctx->header.time == TIME_UNAVAILABLE ||
-                (rctx->header.time - CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
+    rq_config =
+        CONFIG(sctx, last_config_time) == CONFIG_UPDATE_DUE ||
+        rctx->header.time == TIME_UNAVAILABLE ||
+        difftime(rctx->header.time, CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
         rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ?
             "Timeout" :
