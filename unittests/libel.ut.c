@@ -156,6 +156,16 @@ TEST_FUNC(test_sky_add)
         ASSERT(sky_sizeof_request_buf(rctx, &buf_size, &sky_errno) == SKY_SUCCESS);
         ASSERT(rctx->session->config.last_config_time == CONFIG_UPDATE_DUE);
     });
+    TEST("sky_add_ap_beacon timestamp of beacon after new_request is error", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        bool connected = false;
+
+        ASSERT(SKY_ERROR == sky_add_ap_beacon(rctx, &sky_errno, mac, rctx->header.time + 3, rssi,
+                                freq, connected));
+    });
 }
 
 TEST_FUNC(test_sky_option)

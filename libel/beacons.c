@@ -235,8 +235,8 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     else if (rctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b->h.age = 0;
-    else if (rctx->header.time >= timestamp)
-        b->h.age = rctx->header.time - timestamp;
+    else if (difftime(rctx->header.time, timestamp) >= 0)
+        b->h.age = difftime(rctx->header.time, timestamp);
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
@@ -371,7 +371,7 @@ int find_oldest(Sky_rctx_t *rctx)
          * then return index of current cacheline */
         if (oldest == TIME_UNAVAILABLE || rctx->session->cacheline[i].time == CACHE_EMPTY)
             return i;
-        else if (rctx->session->cacheline[i].time < oldest) {
+        else if (difftime(rctx->session->cacheline[i].time, oldest) < 0) {
             oldest = rctx->session->cacheline[i].time;
             oldestc = i;
         }
@@ -500,7 +500,8 @@ int search_cache(Sky_rctx_t *rctx)
 #else
     /* Avoid using the cache if we have good reason */
     /* to believe that system time is bad or no cache */
-    if (rctx->session->num_cachelines < 1 || rctx->header.time <= TIMESTAMP_2019_03_01 ||
+    if (rctx->session->num_cachelines < 1 ||
+        difftime(rctx->header.time, TIMESTAMP_2019_03_01) < 0 ||
         sky_plugin_match_cache(rctx, NULL) != SKY_SUCCESS) {
         /* no match to cacheline */
         rctx->get_from = -1;
