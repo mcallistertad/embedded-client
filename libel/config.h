@@ -69,7 +69,7 @@
 #define CACHE_MATCH_THRESHOLD_ALL 65 // Score needed when matching Used and Unused APs
 #endif
 
-/*! \brief The maximum age (in hr) that a cached value is concidered useful
+/*! \brief The maximum age (in hr) that a cached value is considered useful
  */
 #ifndef CACHE_AGE_THRESHOLD
 #define CACHE_AGE_THRESHOLD 24
@@ -170,7 +170,7 @@
 #ifdef CACHE_SIZE
 #undef CACHE_SIZE
 #endif
-#define CACHE_SIZE 1
+#define CACHE_SIZE 10
 #endif // UNITTESTS
 
 #endif

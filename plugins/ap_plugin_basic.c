@@ -929,6 +929,60 @@ TEST_FUNC(test_ap_plugin)
         ASSERT(ctx->beacon[1].ap.mac[5] == 0xAD);
         ASSERT(ctx->beacon[2].ap.mac[5] == 0x4A);
     });
+
+    GROUP("test 2 cache lines, both adding cached beacons and searching cache for a match");
+    TEST("Both cachelines get filled", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x3B, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+
+        loc.time = rctx->header.time;
+        /* add a beacon, copy to cache line 0, verify match */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(memcmp(mac1, rctx->session->cacheline[0].beacon[0].ap.mac, sizeof(mac1)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 0);
+        rctx->hit = 0; /* re-initialize to add more beacons and search cache again */
+        rctx->get_from = -1;
+
+        /* add another beacon, copy to cache line 1, verify match */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(memcmp(mac2, rctx->session->cacheline[1].beacon[1].ap.mac, sizeof(mac2)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 1);
+        rctx->hit = 0; /* re-initialize to add more beacons and search cache again */
+        rctx->get_from = -1;
+
+        rctx->beacon[0].ap.mac[0] = 0x00; /* allow mac1 to be added again */
+        rctx->beacon[1].ap.mac[0] = 0x00; /* allow mac2 to be added again */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, rctx->header.time, rssi--, freq, false));
+        ASSERT(rctx->beacon[2].ap.property.in_cache ==
+               true); /* beacon in both cache lines hence cached */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, rctx->header.time, rssi--, freq, false));
+        ASSERT(
+            rctx->beacon[3].ap.property.in_cache == true); /* beacon in cache line 1 hence cached */
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == false);
+        ASSERT(rctx->save_to == 2);
+    });
 }
 
 static Sky_status_t unit_tests(void *_ctx)

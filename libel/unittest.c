@@ -118,7 +118,7 @@ Sky_rctx_t *_test_sky_ctx()
     uint32_t bufsize;
 
     bufsize = sky_sizeof_session_ctx(NULL);
-    if (bufsize == 0 || bufsize > 8192) {
+    if (bufsize == 0 || bufsize > 32768) {
         fprintf(stderr, "sky_sizeof_session_ctx returned bad value, Can't continue\n");
         exit(-1);
     }
