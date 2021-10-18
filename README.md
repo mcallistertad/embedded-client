@@ -368,8 +368,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
-    Sky_timefn_t gettime,
-    bool debounce)
+    Sky_timefn_t gettime)
 
 /* Parameters
  * sky_errno    if sky_open() returns failure, sky_errno is set to the error code
@@ -384,7 +383,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
  * gettime      pointer to time function
- * debounce     true to report matching cache location in request (stationary detection)
  *
  * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
