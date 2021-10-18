@@ -331,8 +331,8 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             bestratio = ratio;
             bestthresh = threshold;
         }
-        if (ratio * 100 > (float)threshold)
-            break;
+        // if (ratio * 100 > (float)threshold)
+        //     break;
     }
 
     /* make a note of the best match used by add_to_cache */
