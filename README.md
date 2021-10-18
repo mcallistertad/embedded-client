@@ -18,7 +18,9 @@ Instructions for cloning and building the library are below.
 * sky_add_cell_gsm_neighbor_beacon() has been added to the API
 * When porting application code from a previous release of the library, any calls to sky_add_cell_gsm_beacon must be
   modified to include bsic and arfcn data if available on your device, or SKY_UNKNOWN_ID5 and SKY_UNKNOWN_ID6 respectively.
-
+* Maximum time that service will be blocked due to TBR authorization failure is now 24 hours.
+* All time comparisons use the function difftime(), improving portability of the library.
+* Bug fixes from hotfix releases 3.0.3 and 3.0.4 have been incorporated
 
 ### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
 
