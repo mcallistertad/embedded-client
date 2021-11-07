@@ -516,7 +516,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -538,7 +538,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -567,7 +567,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -598,7 +598,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -629,7 +629,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -658,7 +658,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
@@ -694,7 +694,7 @@ TEST_FUNC(test_cache_match)
             .hpe = 16,
             .location_source = SKY_LOCATION_SOURCE_WIFI,
             .location_status = SKY_LOCATION_STATUS_SUCCESS };
-        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0 },
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
             .ap.property = { 0, 0 },
