@@ -18,7 +18,9 @@ Instructions for cloning and building the library are below.
 * sky_add_cell_gsm_neighbor_beacon() has been added to the API
 * When porting application code from a previous release of the library, any calls to sky_add_cell_gsm_beacon must be
   modified to include bsic and arfcn data if available on your device, or SKY_UNKNOWN_ID5 and SKY_UNKNOWN_ID6 respectively.
-
+* Maximum time that service will be blocked due to TBR authorization failure is now 24 hours.
+* All time comparisons use the function difftime(), improving portability of the library.
+* Bug fixes from hotfix releases 3.0.3 and 3.0.4 have been incorporated
 
 ### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
 
@@ -366,8 +368,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
-    Sky_timefn_t gettime,
-    bool debounce)
+    Sky_timefn_t gettime)
 
 /* Parameters
  * sky_errno    if sky_open() returns failure, sky_errno is set to the error code
@@ -382,7 +383,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
  * gettime      pointer to time function
- * debounce     true to report matching cache location in request (stationary detection)
  *
  * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
@@ -1186,7 +1186,6 @@ sky_decode_response() may report the following error conditions in sky_errno:
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)
 | `SKY_AUTH_RETRY_16HR`                           | Server indicated that authentication failed. Service is blocked for 16 hours (TBR only)
 | `SKY_AUTH_RETRY_24HR`                           | Server indicated that authentication failed. Service is blocked for 24 hours (TBR only)
-| `SKY_AUTH_RETRY_30DAY`                          | Server indicated that authentication failed. Service is blocked for 30 Days (TBR only)
 
 ### sky_get_option() - query the value of a configuration parameter
 
