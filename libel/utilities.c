@@ -622,13 +622,18 @@ void dump_beacon(Sky_rctx_t *rctx, char *str, Beacon_t *b, const char *file, con
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
     } else if (rctx->session && b >= rctx->session->cacheline[0].beacon &&
-               b < rctx->session->cacheline[CACHE_SIZE - 1].beacon +
-                       rctx->session->cacheline[CACHE_SIZE - 1].num_beacons) {
-        idx_b = (int)(b - rctx->session->cacheline[0].beacon);
-        idx_c = idx_b / TOTAL_BEACONS;
-        idx_b %= TOTAL_BEACONS;
-        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
-            b->h.connected ? "*" : " ", sky_pbeacon(b));
+               b < (rctx->session->cacheline[CACHE_SIZE - 1].beacon + TOTAL_BEACONS)) {
+        Sky_cacheline_t *c;
+
+        for (c = rctx->session->cacheline; c < rctx->session->cacheline + CACHE_SIZE; c++) {
+            if (b >= c->beacon && b < c->beacon + TOTAL_BEACONS) {
+                idx_b = b - c->beacon;
+                idx_c = c - rctx->session->cacheline;
+                snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
+                    b->h.connected ? "*" : " ", sky_pbeacon(b));
+                break;
+            }
+        }
 #endif // CACHE_SIZE
     } else {
         snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %7s", str, b->h.connected ? "*" : " ",
