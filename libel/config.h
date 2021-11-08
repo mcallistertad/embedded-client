@@ -144,7 +144,7 @@
 #endif
 
 #else // UNITTESTS
-/* Unit Tests are always built with AP, Cell and GNSS suport included
+/* Unit Tests are always built with AP, Cell and GNSS suport included and cache size of 10
  */
 
 #ifdef SKY_EXCLUDE_SANITY_CHECKS
