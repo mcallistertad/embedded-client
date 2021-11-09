@@ -5,6 +5,8 @@
 # @param log_file
 # @param expected_req
 # 
+set -x
+
 Sample_client() {
 if [ -d libel -a -d sample_client -a -x sample_client/sample_client -a -f ../sample_client.conf.tbr ]; then
     sample_client/sample_client ../sample_client.conf >> $1 2>&1 || exit 1
