@@ -177,7 +177,6 @@ struct cell_scan cells6[] =
 
 struct gnss_scan gnss6 =
     {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 /* clang-format on */
 
 /*! \brief save cache state
@@ -383,7 +382,7 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         printf("sky_new_request() ERROR: '%s'\n", sky_perror(sky_errno));
         return false;
     }
-
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     /* Add APs to the request */
     for (i = 0; ap; i++, ap++) {
         uint8_t mac[MAC_SIZE];
@@ -398,7 +397,11 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
         } else
             printf("Ignoring AP beacon with bad MAC Address '%s'\n", ap->mac);
     }
+#else
+    (void)ap;
+#endif
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
     /* add cells to request */
     for (i = 0; cp; i++, cp++) {
         if (cp->type == TYPE_RESERVED)
@@ -411,7 +414,8 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         case TYPE_GSM:
             if (sky_add_cell_gsm_beacon(rctx, &sky_errno, cp->id3, cp->id4, cp->id1, cp->id2,
-                    cp->ta, timestamp - cp->age, (int16_t)cp->ss, cp->connected) != SKY_SUCCESS)
+                    cp->id5, cp->freq, cp->ta, timestamp - cp->age, (int16_t)cp->ss,
+                    cp->connected) != SKY_SUCCESS)
                 printf("sky_add_cell_gsm_beacon sky_errno contains '%s'\n", sky_perror(sky_errno));
             break;
         case TYPE_LTE:
@@ -444,13 +448,20 @@ static int locate(void *rctx, uint32_t rbufsize, Sky_sctx_t *sctx, Config_t *con
             break;
         }
     }
+#else
+    (void)cp;
+#endif
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
     if (gp) {
         if (sky_add_gnss(rctx, &sky_errno, gp->lat, gp->lon, gp->hpe, gp->altitude, gp->vpe,
                 gp->speed, gp->bearing, gp->nsat, timestamp - gp->age) != SKY_SUCCESS) {
             printf("Error adding GNSS: '%s'\n", sky_perror(sky_errno));
         }
     }
+#else
+    (void)gp;
+#endif
     /* All data has been added to new scan info */
 
     /* check to see if new scan matches cached scan (i.e. test for stationarity) */
@@ -543,9 +554,6 @@ retry_after_auth:
                 goto retry_after_auth;
             case SKY_AUTH_RETRY_1D:
                 /* sleep 1 day */
-                goto retry_after_auth;
-            case SKY_AUTH_RETRY_30D:
-                /* sleep 30 days */
                 goto retry_after_auth;
             default:
                 printf("sky_decode_response: '%s'\n", sky_perror(sky_errno));

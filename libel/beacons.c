@@ -24,14 +24,13 @@
  */
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
 #ifndef VERBOSE_DEBUG
 #define VERBOSE_DEBUG false
-#endif
+#endif // VERBOSE_DEBUG
 
 /*! \brief shuffle list to remove the beacon at index
  *
@@ -53,7 +52,7 @@ Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index)
     NUM_BEACONS(rctx) -= 1;
 #if VERBOSE_DEBUG
     DUMP_REQUEST_CTX(rctx);
-#endif
+#endif // VERBOSE_DEBUG
     return SKY_SUCCESS;
 }
 
@@ -75,7 +74,7 @@ static int is_beacon_first(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
 #if VERBOSE_DEBUG
     dump_beacon(rctx, "A: ", a, __FILE__, __FUNCTION__);
     dump_beacon(rctx, "B: ", b, __FILE__, __FUNCTION__);
-#endif
+#endif // VERBOSE_DEBUG
     /* sky_plugin_compare compares beacons of the same class and returns SKY_ERROR when they are different classes */
     if ((sky_plugin_compare(rctx, NULL, a, b, &diff)) == SKY_ERROR) {
         /* Beacons are different classes, so compare like this */
@@ -95,7 +94,7 @@ static int is_beacon_first(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Different classes %d (%s)", diff,
             diff < 0 ? "B is better" : "A is better");
-#endif
+#endif // VERBOSE_DEBUG
     } else {
         /* otherwise beacons were comparable and plugin set diff appropriately */
         diff = (diff != 0) ? diff : 1; /* choose A if plugin returns 0 */
@@ -103,7 +102,7 @@ static int is_beacon_first(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b)
         if (diff)
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Same types %d (%s)", diff,
                 diff < 0 ? "B is better" : "A is better");
-#endif
+#endif // VERBOSE_DEBUG
     }
     return diff;
 }
@@ -187,7 +186,7 @@ static Sky_status_t insert_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beac
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Beacon type %s inserted at idx %d", sky_pbeacon(b), j);
     else
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Beacon NOT found after insert");
-#endif
+#endif // SKY_LOGGING
     return SKY_SUCCESS;
 }
 
@@ -220,10 +219,10 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
 {
     int n;
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     if (!rctx->session->open_flag)
         return set_error_status(sky_errno, SKY_ERROR_NEVER_OPEN);
@@ -236,12 +235,12 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
     else if (rctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         b->h.age = 0;
-    else if (rctx->header.time >= timestamp)
-        b->h.age = rctx->header.time - timestamp;
+    else if (difftime(rctx->header.time, timestamp) >= 0)
+        b->h.age = difftime(rctx->header.time, timestamp);
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-#if CACHE_SIZE
+#if CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
     /* Update the AP */
     if (is_ap_type(b)) {
         if (!beacon_in_cache(rctx, b, &b->ap.property)) {
@@ -249,7 +248,7 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
             b->ap.property.used = false;
         }
     }
-#endif
+#endif // CACHE_SIZE
 
     /* insert the beacon */
     n = NUM_BEACONS(rctx);
@@ -297,11 +296,6 @@ bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
     Sky_beacon_property_t best_prop = { false, false };
     Sky_beacon_property_t result = { false, false };
 
-    if (!b || !rctx) {
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return false;
-    }
-
     for (int i = 0; i < rctx->session->num_cachelines; i++) {
         if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i], &result)) {
             if (!prop)
@@ -341,11 +335,6 @@ bool beacon_in_cacheline(
 {
     int j;
 
-    if (!cl || !b || !rctx) {
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-        return false;
-    }
-
     if (cl->time == CACHE_EMPTY) {
         return false;
     }
@@ -382,24 +371,24 @@ int find_oldest(Sky_rctx_t *rctx)
          * then return index of current cacheline */
         if (oldest == TIME_UNAVAILABLE || rctx->session->cacheline[i].time == CACHE_EMPTY)
             return i;
-        else if (rctx->session->cacheline[i].time < oldest) {
+        else if (difftime(rctx->session->cacheline[i].time, oldest) < 0) {
             oldest = rctx->session->cacheline[i].time;
             oldestc = i;
         }
     }
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cacheline %d oldest time %d", oldestc, oldest);
     return oldestc;
-#endif
+#endif // CACHE_SIZE == 1
 }
-#endif
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief test whether gnss in new scan is preferable to that in cache
  *
  *  if new scan has better gnss that that in cache, it is better to update cache
  *  by sending new scan to server.
  *
  *  true only if gnss fix in cache is worse than new scan
- *  false if cached gnss is not
+ *  false if cached gnss is better
  *
  *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in
@@ -408,24 +397,44 @@ int find_oldest(Sky_rctx_t *rctx)
  */
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 {
-    if (!rctx || !cl) {
+    if (!has_gnss(rctx))
+        /* new scan doesn't include gnss */
+        return false;
+
+    if (!has_gnss(cl)) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
-#endif
+        /* new scan includes gnss, but cached scan does not */
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
+#endif // VERBOSE_DEBUG
         return true;
     }
 
-    /* in future, this condition could take accuracy into account */
-    /* Reject cached fix if new scan contains gnss and cache does not */
-    if (has_gnss(rctx) && !has_gnss(cl)) {
+    /* at this point both new and cached scans include GNSS */
+    if (rctx->gnss.hpe < cl->gnss.hpe) {
 #ifdef VERBOSE_DEBUG
-        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has no gnss!");
-#endif
+        /* New gnss is more accurate than cached gnss */
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache miss! Cacheline has worse gnss hpe!");
+#endif // VERBOSE_DEBUG
         return true;
     }
+
+    if (distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon) >=
+        (float)rctx->gnss.hpe) {
+#ifdef VERBOSE_DEBUG
+        /* Cached gnss location is outside radius of uncertainty at 68% of new gnss */
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
+            "cache miss! Distance to cacheline gnss fix (%dm) is larger than HPE of new gnss fix (%dm)",
+            (int)distance_A_to_B(rctx->gnss.lat, rctx->gnss.lon, cl->gnss.lat, cl->gnss.lon),
+            rctx->gnss.hpe);
+#endif // VERBOSE_DEBUG
+        return true;
+    }
+
     return false;
 }
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief test serving cell in workspace has changed from that in cache
  *
  *  @return true or false
@@ -436,46 +445,41 @@ int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
  *  not the user has marked it "connected") matches cache
  *  true otherwise
  */
-int serving_cell_changed(Sky_rctx_t *ctx, Sky_cacheline_t *cl)
+int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
 {
     Beacon_t *w, *c;
     bool equal = false;
 
-    if (!ctx || !cl) {
+    if (NUM_CELLS(rctx) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_ERROR, "bad params");
-#endif
-        return true;
-    }
-
-    if (NUM_CELLS(ctx) == 0) {
-#if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request ctx");
-#endif
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "0 cells in request rctx");
+#endif // VERBOSE_DEBUG
         return false;
     }
 
     if (NUM_CELLS(cl) == 0) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
-#endif
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "0 cells in cache");
+#endif // VERBOSE_DEBUG
         return false;
     }
 
-    w = &ctx->beacon[NUM_APS(ctx)];
+    w = &rctx->beacon[NUM_APS(rctx)];
     c = &cl->beacon[NUM_APS(cl)];
     if (is_cell_nmr(w) || is_cell_nmr(c)) {
 #if VERBOSE_DEBUG
-        LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request ctx");
-#endif
+        LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "no significant cell in cache or request rctx");
+#endif // VERBOSE_DEBUG
         return false;
     }
 
-    if (sky_plugin_equal(ctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
+    if (sky_plugin_equal(rctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
         return false;
-    LOGFMT(ctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;
 }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
+#endif // CACHE_SIZE
 
 /*! \brief get location from cache
  *
@@ -496,7 +500,8 @@ int search_cache(Sky_rctx_t *rctx)
 #else
     /* Avoid using the cache if we have good reason */
     /* to believe that system time is bad or no cache */
-    if (rctx->session->num_cachelines < 1 || rctx->header.time <= TIMESTAMP_2019_03_01 ||
+    if (rctx->session->num_cachelines < 1 ||
+        difftime(rctx->header.time, TIMESTAMP_2019_03_01) < 0 ||
         sky_plugin_match_cache(rctx, NULL) != SKY_SUCCESS) {
         /* no match to cacheline */
         rctx->get_from = -1;
@@ -504,9 +509,10 @@ int search_cache(Sky_rctx_t *rctx)
     }
 
     return (rctx->hit);
-#endif
+#endif // CACHE_SIZE == 0
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief check if an AP beacon is in a virtual group
  *
  *  Both the b (in request rctx) and vg in cache may be virtual groups
@@ -526,14 +532,18 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
     uint8_t mac_vb[MAC_SIZE] = { 0 };
     Sky_beacon_property_t p;
 
-    if (!rctx || !va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
+#if !SKY_LOGGING
+    (void)rctx;
+#endif // !SKY_LOGGING
+
+    if (!va || !vb || va->h.type != SKY_BEACON_AP || vb->h.type != SKY_BEACON_AP) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return false;
     }
 #if VERBOSE_DEBUG
     dump_beacon(rctx, "A: ", va, __FILE__, __FUNCTION__);
     dump_beacon(rctx, "B: ", vb, __FILE__, __FUNCTION__);
-#endif
+#endif // VERBOSE_DEBUG
 
     /* Compare every member of any virtual group with every other */
     /* index -1 is used to reference the parent mac */
@@ -575,7 +585,7 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
                     mac_vb[0], mac_vb[1], mac_vb[2], mac_vb[3], mac_vb[4], mac_vb[5],
                     c == -1 ? "AP " : "VAP", /* Parent or child */
                     num_aps, p.used ? "Used" : "Unused");
-#endif
+#endif // VERBOSE_DEBUG
             } else {
 #if VERBOSE_DEBUG
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
@@ -585,15 +595,16 @@ int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_pro
                     w == -1 ? "AP " : "VAP", /* Parent or child */
                     mac_vb[0], mac_vb[1], mac_vb[2], mac_vb[3], mac_vb[4], mac_vb[5],
                     c == -1 ? "AP " : "VAP"); /* Parent or child */
-#endif
+#endif // VERBOSE_DEBUG
             }
         }
     }
     return num_aps;
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 #ifdef UNITTESTS
 
 #include "beacons.ut.c"
 
-#endif
+#endif // UNITTESTS

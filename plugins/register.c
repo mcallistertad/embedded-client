@@ -22,12 +22,7 @@
  * IN THE SOFTWARE.
  *
  */
-#include <math.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include <time.h>
 #include "libel.h"
 
 /* Register the basic plugins
@@ -50,8 +45,15 @@ extern Sky_plugin_table_t cell_plugin_basic_table;
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **table)
 {
-    if (table && sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS &&
+    if (table &&
+#if !SKY_EXCLUDE_WIFI_SUPPORT && !SKY_EXCLUDE_CELL_SUPPORT
+        sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS &&
         sky_plugin_add(table, &cell_plugin_basic_table) == SKY_SUCCESS)
+#elif !SKY_EXCLUDE_WIFI_SUPPORT
+        sky_plugin_add(table, &ap_plugin_basic_table) == SKY_SUCCESS)
+#else
+        sky_plugin_add(table, &cell_plugin_basic_table) == SKY_SUCCESS)
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT && !SKY_EXCLUDE_CELL_SUPPORT
         return SKY_SUCCESS;
     return SKY_ERROR;
 }
@@ -62,4 +64,4 @@ void sky_plugin_unit_tests(void *_ctx)
     (*ap_plugin_basic_table.unit_tests)(_ctx);
     (*cell_plugin_basic_table.unit_tests)(_ctx);
 }
-#endif
+#endif // UNITTESTS

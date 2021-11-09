@@ -23,17 +23,13 @@
  *
  */
 #include <stdbool.h>
-#include <string.h>
-#include <time.h>
-#include <math.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include "libel.h"
 
 /* set VERBOSE_DEBUG to true to enable extra logging */
 #ifndef VERBOSE_DEBUG
 #define VERBOSE_DEBUG false
-#endif
+#endif // VERBOSE_DEBUG
 
 /*! \brief add a plugin table to the list of plugins
  *
@@ -107,7 +103,7 @@ Sky_status_t sky_plugin_equal(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
-#endif
+#endif // VERBOSE_DEBUG
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
@@ -142,7 +138,7 @@ Sky_status_t sky_plugin_compare(
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
-#endif
+#endif // VERBOSE_DEBUG
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
@@ -170,7 +166,7 @@ Sky_status_t sky_plugin_remove_worst(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
-#endif
+#endif // VERBOSE_DEBUG
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
@@ -199,7 +195,7 @@ Sky_status_t sky_plugin_match_cache(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
-#endif
+#endif // VERBOSE_DEBUG
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
@@ -228,7 +224,7 @@ Sky_status_t sky_plugin_add_to_cache(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, S
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
-#endif
+#endif // VERBOSE_DEBUG
         if (ret != SKY_ERROR) {
             set_error_status(sky_errno, SKY_ERROR_NONE);
             return ret;
@@ -330,8 +326,8 @@ TEST("should return SKY_SUCCESS and equal with 2 identical CDMA cell beacons", r
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical GSM cell beacons", rctx, {
-    GSM(a, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
-    GSM(b, 10, -108, true, 515, 2, 20263, 22265, 0, 0);
+    GSM(a, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
+    GSM(b, 10, -108, true, 515, 2, 20263, 22265, 63, 1023);
     Sky_errno_t sky_errno;
     bool equal = false;
 
@@ -489,4 +485,4 @@ sky_plugin_unit_tests(_ctx);
 
 END_TESTS();
 
-#endif
+#endif // UNITTESTS
