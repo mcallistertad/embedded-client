@@ -11,6 +11,17 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### [Release 5.0.0](https://github.com/SkyhookWireless/embedded-client/tree/5.0.0)
+
+* Library is more compact and can be configured to include only the required features.
+* sky_add_cell_gsm_beacon() allows bsic and arfcn to be included in the beacon info.
+* sky_add_cell_gsm_neighbor_beacon() has been added to the API
+* When porting application code from a previous release of the library, any calls to sky_add_cell_gsm_beacon must be
+  modified to include bsic and arfcn data if available on your device, or SKY_UNKNOWN_ID5 and SKY_UNKNOWN_ID6 respectively.
+* Maximum time that service will be blocked due to TBR authorization failure is now 24 hours.
+* All time comparisons use the function difftime(), improving portability of the library.
+* Bug fixes from hotfix releases 3.0.3 and 3.0.4 have been incorporated
+
 ### [Release 4.0.1](https://github.com/SkyhookWireless/embedded-client/tree/4.0.1)
 
 * Bug Fix - Fix build with no cache i.e. CACHE_SIZE=0
@@ -108,7 +119,8 @@ Instructions for cloning and building the library are below.
             * [sky_add_ap_beacon() - Add a Wi-Fi beacon to request context](#sky_add_ap_beacon---add-a-wi-fi-beacon-to-request-context)
             * [sky_add_cell_lte_beacon() - Add an lte or lte-CatM1 cell beacon to request context](#sky_add_cell_lte_beacon---add-an-lte-or-lte-catm1-cell-beacon-to-request-context)
             * [sky_add_cell_lte_neighbor_beacon() - Adds an LTE neighbor cell beacon to the request context](#sky_add_cell_lte_neighbor_beacon---adds-an-lte-neighbor-cell-beacon-to-the-request-context)
-            * [sky_add_cell_gsm_beacon() - Adds a gsm cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_beacon() - Adds a GSM cell beacon to the request context](#sky_add_cell_gsm_beacon---adds-a-gsm-cell-beacon-to-the-request-context)
+            * [sky_add_cell_gsm_neighbor_beacon() - Adds an GSM neighbor cell beacon to the request context](#sky_add_cell_gsm_neighbor_beacon---adds-an-gsm-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_beacon() - Adds a umts cell beacon to the request context](#sky_add_cell_umts_beacon---adds-a-umts-cell-beacon-to-the-request-context)
             * [sky_add_cell_umts_neighbor_beacon() - Adds a umts neighbor cell beacon to the request context](#sky_add_cell_umts_neighbor_beacon---adds-a-umts-neighbor-cell-beacon-to-the-request-context)
             * [sky_add_cell_cdma_beacon() - Adds a cdma cell beacon to the request context](#sky_add_cell_cdma_beacon---adds-a-cdma-cell-beacon-to-the-request-context)
@@ -258,6 +270,8 @@ sky_errno set to `SKY_ERROR_AUTH`.
 
 ### Client Configuration
 
+#### Credential Configuration
+
 Your LibEL needs to be configured with a Skyhook partner ID and AES (encryption) key. You can obtain these parameters
 via the following steps:
 
@@ -270,12 +284,13 @@ via the following steps:
    your project home screen. To enable Token Based Registration for your project, please reach out to your Skyhook
    account representative or contact support@skyhook.com
 
-|Description                  |  Value                                      |
+|  Description                |  Value (Example)                                     |
 |:----------------------------|:--------------------------------------------|
 |                             |                                             |
-| Skyhook API key             |"1E5D0AAEA1DEC1CD10DC2DD1CA11CE6B" (Example) |
-| Partner ID                  |1 (Example)                                  |
-| Skyhook ELG Server hostname|"elg.skyhook.com"                             |
+| Skyhook API key             |"1E5D0AAEA1DEC1CD10DC2DD1CA11CE6B"           |
+| Partner ID                  |1                                            |
+| SKU                         |"" (defined only for TBR Authentication)     |
+| Skyhook ELG Server hostname |"elg.skyhook.com"                            |
 | Skyhook ELG Server port     |9756                                         |
 
 **Note** These values must be stored within the client application and passed to sky_open().
@@ -302,31 +317,31 @@ interference or poor HW WiFi scan, this technique may improve accuracy and yield
 many APs, it has no impact. Time to fix in this case may be up to 10 seconds longer (1-3 seconds per scan depending on
 the environment). This needs to be accounted in application layer and confirmed acceptable. There is minor battery
 impact on power consumption due to multiple scans in some cases detailed above. The timestamp associated with each
-beacon must accurately reflects the time at which the scan was captured.
+beacon must accurately reflect the time at which the scan was captured.
 
-The following are build time configuration parameters
+#### Build Time Configuration (libel/config.h)
 
-* `CACHE_SIZE` allows a cache to be established. The value is the number of cachelines in the cache. A value of 0
-  disables the cache. When a server response is decoded, the location and scan information is stored in the cache.
-  Susequent calls to sky_get_cache_hit() will compare scan information in the request with the cache. If a good match is
-  found, the cached location is returned along with a request buffer. The application may use the cached location (
-  reduced network traffic) or send the request (update server with the uplink application data and position). For a
-  stationary device the scan matching helps to significantly reduce the number of transactions to server (by 80 - 90%)
-  and allows the client to report last known location without accuracy impact. This results in significant power
-  consumption savings. For high speed moving devices (driving), scan matching fails typically and as a result it has no
-  impact on battery or accuracy. For slow speed moving devices (walking/biking) the stationary logic helps reduce number
-  of transactions to server by as much as 50% but may introduce some lag in reported fixes relative to device location.
-* `SKY_MAX_DL_APP_DATA` allows the maximum size of downlink application data to be defined, however the default of 100
-  is recommended. This provides the ability to limit the buffer space required to receive a response message. This value
-  must accomodate the length of downlink application date set at the server. The server will not send application data
-  that is longer than this value in response messages.
-* `SKY_TBR_DEVICE_ID` this boolean value chooses whether a TBR location request carries with it the unique device ID.
-  Devices using TBR authentication, which also make use of the ECHO service and wish to receive an identifier in
-  Skyhook's device_id field, will need to build with `SKY_TBR_DEVICE_ID` `true' in order to correlate locations with a
-  device. Alternatively, this information can be transmitted through uplink application data.
-* `SKY_LOGGING` controls whether debug information is generated by the library. By default, it
-  includes `SKY_LOG_LEVEL_DEBUG` logging to assist with integration efforts. To remove this, build the library
-  with `SKY_LOGGING` false. Passing a min_level value to sky_open() allows intermediate levels of logging.
+| Preprocessor Symbol         | Description                                         | Default Value    |
+|:----------------------------|:----------------------------------------------------|:-----------------|
+| `CACHE_SIZE`                | typically set to '1' meaning that there is one available cache entry reserved. Setting `CACHE_SIZE` to 0 will disable the cache. Values of `CACHE_SIZE` above `1` may provide some improvements to cache performance, however should you find the performance of `CACHE_SIZE` `1` suboptimal, you should contact your Skyhook representative. | 1             |
+| `SKY_MAX_DL_APP_DATA`       | allows the maximum size of downlink application data to be defined, however the default of `100` is recommended. This provides the ability to limit the buffer space required to receive a response message. This value must accommodate the length of downlink application date set at the server. The server will not send application data that is longer than this value in response messages. |100    |
+| `SKY_TBR_DEVICE_ID`         | this boolean value chooses whether a TBR location request carries with it the unique device ID. Devices using TBR authentication, which also make use of the ECHO service and wish to receive an identifier in Skyhook's device_id field, will need to build with `SKY_TBR_DEVICE_ID` `true' in order to correlate locations with a device. Alternatively, this information can be transmitted through uplink application data. |true |
+| `SKY_LOGGING`               | controls whether debug information is generated by the library. By default, it includes `SKY_LOG_LEVEL_DEBUG` logging to assist with integration efforts. To remove this, build the library with `SKY_LOGGING` false. Passing a min_level value to sky_open() allows intermediate levels of logging. |true |
+| `SKY_LOG_LENGTH`            | can be used to adjust the maximum line length of logging, if required. | 120 |
+| `SANITY_CHECKS`             | may be used to minimize the size of the library, however, when possible, it is recommended that sanity checks be included during the application development process. When set to true checking code is included | true |
+| `SKY_EXCLUDE_WIFI_SUPPORT`  | may be set to true if no Wi-Fi scan data will be added to a request. This reduces the size of the library code. When set to true Wi-Fi support is excluded | false |
+| `SKY_EXCLUDE_CELL_SUPPORT`  |  may be set to true if no Wi-Fi scan data will be added to a request. This reduces the size of the library code. When set to true Cell support is excluded| false |
+| `SKY_EXCLUDE_GNSS_SUPPORT`  |  may be set to true if no Wi-Fi scan data will be added to a request. This reduces the size of the library code. When set to true GNSS support is excluded| false |
+
+When a server response is decoded, the location and scan information is stored in the cache. Susequent calls to
+sky_get_cache_hit() will compare scan information in the request with the cache. If a good match is found, the cached
+location is returned along with a request buffer. The application may use the cached location (
+reduced network traffic) or send the request (update server with the uplink application data and position). For a
+stationary device the scan matching helps to significantly reduce the number of transactions to server (by 80 - 90%)
+and allows the client to report last known location without accuracy impact. This results in significant power
+consumption savings. For high speed moving devices (driving), scan matching fails typically and as a result it has no
+impact on battery or accuracy. For slow speed moving devices (walking/biking) the stationary logic helps reduce number
+of transactions to server by as much as 50% but may introduce some lag in reported fixes relative to device location.
 
 <div style="page-break-after: always"></div>
 
@@ -353,8 +368,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
     Sky_log_level_t min_level,
     Sky_loggerfn_t logf,
     Sky_randfn_t rand_bytes,
-    Sky_timefn_t gettime,
-    bool debounce)
+    Sky_timefn_t gettime)
 
 /* Parameters
  * sky_errno    if sky_open() returns failure, sky_errno is set to the error code
@@ -369,7 +383,6 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno,
  * logf         pointer to logging function
  * rand_bytes   pointer to random function
  * gettime      pointer to time function
- * debounce     true to report matching cache location in request (stationary detection)
  *
  * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
  */
@@ -533,8 +546,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx,
  * e_cellid     lte beacon identifier 28bit (0-268435455)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
- * pci          mobile pci (0-503, 'SKY_UNKNOWN_ID5' if unknown)
- * earfcn,      channel (0-45589, 'SKY_UNKNOWN_ID6' if unknown)
+ * pci          mobile pci (0-503), 'SKY_UNKNOWN_ID5' if unknown
+ * earfcn,      channel (0-45589), 'SKY_UNKNOWN_ID6' if unknown
  * ta           timing-advance (0-7690), `SKY_UNKNOWN_TA` if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
@@ -570,8 +583,8 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx,
 /* Parameters
  * rctx         Skyhook request context
  * sky_errno    sky_errno is set to the error code
- * pci          mobile pci (0-503, 'SKY_UNKNOWN_ID5' if unknown)
- * earfcn,      channel (0-45589, 'SKY_UNKNOWN_ID6' if unknown)
+ * pci          mobile pci (0-503), 'SKY_UNKNOWN_ID5' if unknown
+ * earfcn,      channel (0-45589), 'SKY_UNKNOWN_ID6' if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rsrp         Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
 
@@ -602,6 +615,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
     int64_t ci,
     uint16_t mcc,
     uint16_t mnc,
+    int16_t bsic,
+    int32_t arfcn
     int32_t ta,
     time_t timestamp,
     int16_t rssi,
@@ -615,6 +630,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
  * ci           gsm cell identifier (0-65535)
  * mcc          mobile country code (200-799)
  * mnc          mobile network code (0-999)
+ * bsic         Base Station Identify Code (0-63), SKY_UNKNOWN_ID5 if unknown
+ * arfcn        channel (1-1023), SKY_UNKNOWN_ID6 if unknown
  * ta           timing-advance (0-63), `SKY_UNKNOWN_TA` if unknown
  * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
@@ -624,10 +641,33 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t * rctx,
  */
  ```
 
-Adds the cell gsm information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`. In case of
+### sky_add_cell_gsm_neighbor_beacon() - Adds an GSM neighbor cell beacon to the request context
+
+```c
+Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx,
+    Sky_errno_t *sky_errno,
+    int16_t bsic,
+    int32_t arfcn,
+    time_t timestamp,
+    int16_t rssi)
+
+/* Parameters
+ * rctx         Skyhook request context
+ * sky_errno    sky_errno is set to the error code
+ * bsic         mobile pci (0-63), 'SKY_UNKNOWN_ID5' if unknown
+ * arfcn,       channel (1-1023), 'SKY_UNKNOWN_ID6' if unknown
+ * timestamp    time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ * rssi         Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
+
+ * Returns      `SKY_SUCCESS` or `SKY_ERROR` and sets sky_errno with error code
+ */
+
+ ```
+
+Adds the gsm neighbor cell information to the request context. Returns `SKY_ERROR` for failure or the `SKY_SUCCESS`. In case of
 failure sky_errno is set if there is a bad parameter or other error.
 
-sky_add_cell_gsm_beacon() may report the following error conditions in sky_errno:
+sky_add_cell_gsm_neighbor_beacon() may report the following error conditions in sky_errno:
 
 | Error Code                                      | Description
 | ----------------------------------------------- | --------------------------------------------------------------
@@ -854,7 +894,8 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_rctx_t *rctx,
     int32_t nrarfcn,
     int32_t ta,
     time_t timestamp,
-    int16_t nrsrp
+    int16_t nrsrp,
+    bool is_connected
 )
 
 /* Parameters
@@ -1145,7 +1186,6 @@ sky_decode_response() may report the following error conditions in sky_errno:
 | `SKY_AUTH_RETRY_8HR`                            | Server indicated that authentication failed. Service is blocked for 8 hours (TBR only)
 | `SKY_AUTH_RETRY_16HR`                           | Server indicated that authentication failed. Service is blocked for 16 hours (TBR only)
 | `SKY_AUTH_RETRY_24HR`                           | Server indicated that authentication failed. Service is blocked for 24 hours (TBR only)
-| `SKY_AUTH_RETRY_30DAY`                          | Server indicated that authentication failed. Service is blocked for 30 Days (TBR only)
 
 ### sky_get_option() - query the value of a configuration parameter
 

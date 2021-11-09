@@ -1,0 +1,226 @@
+# Sample_client() executes sample_client collecting output in the specified log file
+# The log file is filtered to find all the successful requests and they are counted
+# If the count does not match the specified number, exit with error
+
+# @param log_file
+# @param expected_req
+# 
+set -x
+
+Sample_client() {
+if [ -d libel -a -d sample_client -a -x sample_client/sample_client -a -f ../sample_client.conf.tbr ]; then
+    sample_client/sample_client ../sample_client.conf >> $1 2>&1 || exit 1
+    egrep -e "^Skyhook location: status:" -e "^Location found in cache" $1
+    # Verify that the number of successful requests is as expected
+    req=$( grep -c "^Skyhook location: status:" $1 )
+    echo ${req} Requests
+    if [ $(( ${req} != $2 )) -eq 1 ]; then
+        echo "ERROR! Expected $2 requests from sample_client"
+        exit 1
+    fi
+else
+    echo "Error: Can't execute sample_client due to unexpected directory and file environment"
+    echo "Execute this script in the top level EC directory with a sample_client.conf.tbr config file in parent directory"
+fi
+}
+
+echo -n "Removing old log files: " 
+ls sample_client | grep -c "^sample_client.*log$" && rm sample_client/sample_client*.log
+
+let idx=1; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 6|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=0 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=true -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 4|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=true"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 2|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_WIFI_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 5|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+let  "idx = ${idx} + 1"; logfile=$( printf "%03d" ${idx} )
+make clean && make DEBUG="-Wall -Werror -Wextra -DSKY_EXCLUDE_SANITY_CHECKS=true -DCACHE_SIZE=1 -DSKY_LOGGING=false -DSKY_EXCLUDE_CELL_SUPPORT=true -DSKY_EXCLUDE_GNSS_SUPPORT=false"  > sample_client/sample_client_${logfile}.log && Sample_client sample_client/sample_client_${logfile}.log 3|| exit
+size --totals bin/libel.a >> sample_client/sample_client_${logfile}.log
+
+
+echo "--- Completed ${idx} tests ---"
+echo "Results:" && ls -l sample_client/sample_client*.log
+egrep -H -e sample_client.c$ -e TOTAL -e Stack sample_client/sample_client*log | sed -e"/Wextra /s/.*Wextra //" | sed -e"/  -Ilibel.*/s///"

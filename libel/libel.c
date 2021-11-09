@@ -35,7 +35,7 @@
  * than just including the Git version string (since it will need to be updated
  * manually for every release) but cheaper bandwidth-wise.
  */
-#define SW_VERSION 21
+#define SW_VERSION 22
 
 /* Interval in seconds between requests for config params */
 #define CONFIG_REQUEST_INTERVAL (24 * SECONDS_IN_HOUR) /* 24 hours */
@@ -44,9 +44,9 @@
 #define BACKOFF_UNITS_PER_HR 3600 // time in seconds
 
 /* Local functions */
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
 static bool validate_device_id(const uint8_t *device_id, uint32_t id_len);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 static size_t strnlen_(char *s, size_t maxlen);
 
 /*! \brief Initialize Skyhook library and verify access to resources
@@ -79,7 +79,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
     int sku_len;
 #if SKY_LOGGING
     char buf[SKY_LOG_LENGTH];
-#endif
+#endif // SKY_LOGGING
 
     if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level)
         (*logf)(SKY_LOG_LEVEL_DEBUG, "Skyhook Embedded Library (Version: " VERSION ")");
@@ -139,7 +139,7 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 session->cacheline[i].beacon[j].h.type = SKY_BEACON_MAX;
             }
         }
-#endif
+#endif // CACHE_SIZE
 #if SKY_LOGGING
     } else {
         if (logf != NULL && SKY_LOG_LEVEL_DEBUG <= min_level) {
@@ -148,14 +148,14 @@ Sky_status_t sky_open(Sky_errno_t *sky_errno, uint8_t *device_id, uint32_t id_le
                 session->header.size);
             (*logf)(SKY_LOG_LEVEL_DEBUG, buf);
         }
-#endif
+#endif // SKY_LOGGING
     }
     config_defaults(session);
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_device_id(device_id, id_len) || aes_key == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     session->id_len = id_len;
     memcpy(session->device_id, device_id, id_len);
@@ -233,26 +233,23 @@ int32_t sky_sizeof_request_ctx(void)
 static bool backoff_violation(Sky_rctx_t *rctx, time_t now)
 {
     Sky_sctx_t *sctx = rctx->session;
+    double duration = difftime(now, sctx->header.time);
 
     /* Enforce backoff period, check that enough time has passed since last request was received */
     if (sctx->backoff != SKY_ERROR_NONE) { /* Retry backoff in progress */
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Backoff: %s, %d seconds so far",
-            sky_perror(sctx->backoff), (int)(now - sctx->header.time));
+            sky_perror(sctx->backoff), (int)duration);
         switch (sctx->backoff) {
         case SKY_AUTH_RETRY_8H:
-            if (now - sctx->header.time < (8 * BACKOFF_UNITS_PER_HR))
+            if (duration < (8 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_16H:
-            if (now - sctx->header.time < (16 * BACKOFF_UNITS_PER_HR))
+            if (duration < (16 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_RETRY_1D:
-            if (now - sctx->header.time < (24 * BACKOFF_UNITS_PER_HR))
-                return true;
-            break;
-        case SKY_AUTH_RETRY_30D:
-            if (now - sctx->header.time < (30 * 24 * BACKOFF_UNITS_PER_HR))
+            if (duration < (24 * BACKOFF_UNITS_PER_HR))
                 return true;
             break;
         case SKY_AUTH_NEEDS_TIME:
@@ -309,14 +306,15 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
         !is_tbr_enabled(rctx) ?
             STATE_TBR_DISABLED :
             sctx->token_id == TBR_TOKEN_UNKNOWN ? STATE_TBR_UNREGISTERED : STATE_TBR_REGISTERED;
-    rctx->gnss.lat = NAN; /* empty */
     for (i = 0; i < TOTAL_BEACONS; i++) {
         rctx->beacon[i].h.magic = BEACON_MAGIC;
         rctx->beacon[i].h.type = SKY_BEACON_MAX;
     }
-    rctx->gnss.lat = NAN;
+#if !SKY_EXCLUDE_GNSS_SUPPORT
+    rctx->gnss.lat = NAN; /* empty */
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
-    if (now < TIMESTAMP_2019_03_01) {
+    if (difftime(now, TIMESTAMP_2019_03_01) < 0) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Don't have good time of day!");
         now = TIME_UNAVAILABLE; /* note that time was bad when request was started */
     }
@@ -343,14 +341,14 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                 "cache %d of %d cleared due to time being unavailable", i, CACHE_SIZE);
         } else if (sctx->cacheline[i].time != CACHE_EMPTY &&
-                   (now - sctx->cacheline[i].time) >
+                   difftime(now, sctx->cacheline[i].time) >
                        CONFIG(sctx, cache_age_threshold) * SECONDS_IN_HOUR) {
             sctx->cacheline[i].time = CACHE_EMPTY;
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cache %d of %d cleared due to age (%d)", i,
-                CACHE_SIZE, now - sctx->cacheline[i].time);
+                CACHE_SIZE, (int)difftime(now, sctx->cacheline[i].time));
         }
     }
-#endif
+#endif // CACHE_SIZE
     sctx->ul_app_data_len = ul_app_data_len;
     memcpy(sctx->ul_app_data, ul_app_data, ul_app_data_len);
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Partner_id: %d, Sku: %sctx", sctx->partner_id, sctx->sku);
@@ -359,6 +357,7 @@ Sky_rctx_t *sky_new_request(Sky_rctx_t *rctx, uint32_t rbufsize, Sky_sctx_t *sct
     return rctx;
 }
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief  Adds the wifi ap information to the request context
  *
  *  @param rctx Skyhook request context
@@ -382,7 +381,7 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%02X:%02X:%02X:%02X:%02X:%02X, %d MHz, rssi %d, %sage %d",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], frequency, rssi,
         is_connected ? "serve " : "",
-        (int)timestamp == TIME_UNAVAILABLE ? 0 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == TIME_UNAVAILABLE ? 0 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create AP beacon */
     memset(&b, 0, sizeof(b));
@@ -397,7 +396,9 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
 
     return add_beacon(rctx, sky_errno, &b, timestamp);
 }
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief Add an lte cell beacon to request context
  *
  *  @param rctx Skyhook request context
@@ -407,7 +408,7 @@ Sky_status_t sky_add_ap_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, uint8_t
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code (0-999)
  *  @param pci mobile pci (0-503), SKY_UNKNOWN_ID5 if unknown
- *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
+ *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown)
  *  @param ta  timing-advance (0-7690), SKY_UNKNOWN_TA if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
@@ -424,7 +425,7 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, e_cellid, pci, earfcn, ta, rsrp, is_connected ? "serve, " : "",
-            (int)(rctx->header.time - timestamp));
+            (int)difftime(rctx->header.time, timestamp));
 
     /* Create LTE beacon */
     memset(&b, 0, sizeof(b));
@@ -447,8 +448,8 @@ Sky_status_t sky_add_cell_lte_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
  *
  *  @param rctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param pci mobile pci (0-503, SKY_UNKNOWN_ID5 if unknown)
- *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
+ *  @param pci mobile pci (0-503), SKY_UNKNOWN_ID5 if unknown)
+ *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown)
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rsrp Received Signal Receive Power, range -140 to -40dbm, -1 if unknown
  *
@@ -458,7 +459,7 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
     int32_t earfcn, time_t timestamp, int16_t rsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, earfcn, rsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_lte_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, pci, earfcn, SKY_UNKNOWN_TA, timestamp, rsrp, false);
 }
@@ -471,6 +472,8 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
  *  @param ci gsm cell identifier (0-65535)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
+ *  @param bsic Base Station Identify Code (0-63), SKY_UNKNOWN_ID5 if unknown
+ *  @param arfcn channel (1-1023), SKY_UNKNOWN_ID6 if unknown)
  *  @param ta timing-advance (0-63), SKY_UNKNOWN_TA if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rssi Received Signal Strength Intensity, range -128 to -32dbm, -1 if unknown
@@ -479,13 +482,14 @@ Sky_status_t sky_add_cell_lte_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky
  *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
  */
 Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, int32_t lac,
-    int64_t ci, uint16_t mcc, uint16_t mnc, int32_t ta, time_t timestamp, int16_t rssi,
-    bool is_connected)
+    int64_t ci, uint16_t mcc, uint16_t mnc, int16_t bsic, int32_t arfcn, int32_t ta,
+    time_t timestamp, int16_t rssi, bool is_connected)
 {
     Beacon_t b;
 
-    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, ta %d, rssi %d, %sage %d", lac, ci, mcc,
-        mnc, ta, rssi, is_connected ? "serve, " : "", (int)(rctx->header.time - timestamp));
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, ta %d, rssi %d, %sage %d", lac,
+        ci, mcc, mnc, bsic, arfcn, ta, rssi, is_connected ? "serve, " : "",
+        (int)difftime(rctx->header.time, timestamp));
 
     /* Create GSM beacon */
     memset(&b, 0, sizeof(b));
@@ -497,9 +501,31 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
     b.cell.id2 = mnc;
     b.cell.id3 = lac;
     b.cell.id4 = ci;
+    b.cell.id5 = bsic;
+    b.cell.freq = arfcn;
     b.cell.ta = ta;
 
     return add_beacon(rctx, sky_errno, &b, timestamp);
+}
+
+/*! \brief Adds a gsm cell neighbor beacon to the request context
+ *
+ *  @param rctx Skyhook request context
+ *  @param sky_errno skyErrno is set to the error code
+ *  @param bsic Base Station Identity Code (0-511), SKY_UNKNOWN_ID5 if unknown
+ *  @param uarfcn channel (412-10833), SKY_UNKNOWN_ID6 if unknown
+ *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
+ *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
+ *
+ *  @return SKY_SUCCESS or SKY_ERROR and sets sky_errno with error code
+ */
+Sky_status_t sky_add_cell_gsm_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno,
+    int16_t bsic, int16_t arfcn, time_t timestamp, int16_t rscp)
+{
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rssi %d, age %d", bsic, arfcn, rscp,
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
+    return sky_add_cell_gsm_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
+        SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, bsic, arfcn, SKY_UNKNOWN_TA, timestamp, rscp, false);
 }
 
 /*! \brief Adds a umts cell beacon to the request context
@@ -510,8 +536,8 @@ Sky_status_t sky_add_cell_gsm_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, i
  *  @param ucid umts cell identifier 28bit (0-268435455)
  *  @param mcc mobile country code (200-799)
  *  @param mnc mobile network code  (0-999)
- *  @param psc primary scrambling code (0-511, SKY_UNKNOWN_ID5 if unknown)
- *  @param uarfcn channel (412-10833, SKY_UNKNOWN_ID6 if unknown)
+ *  @param psc primary scrambling code (0-511), SKY_UNKNOWN_ID5 if unknown
+ *  @param uarfcn channel (412-10833), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *  @param is_connected this beacon is currently connected, false if unknown
@@ -530,7 +556,7 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, 
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || ucid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, rscp %d, %sage %d", mcc,
             mnc, lac, ucid, psc, uarfcn, rscp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create UMTS beacon */
     memset(&b, 0, sizeof(b));
@@ -552,8 +578,8 @@ Sky_status_t sky_add_cell_umts_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, 
  *
  *  @param rctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param psc primary scrambling code (0-511, SKY_UNKNOWN_ID5 if unknown)
- *  @param uarfcn channel (412-10833, SKY_UNKNOWN_ID6 if unknown)
+ *  @param psc primary scrambling code (0-511), SKY_UNKNOWN_ID5 if unknown
+ *  @param uarfcn channel (412-10833), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param rscp Received Signal Code Power, range -120dbm to -20dbm, -1 if unknown
  *
@@ -563,7 +589,7 @@ Sky_status_t sky_add_cell_umts_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sk
     int16_t psc, int16_t uarfcn, time_t timestamp, int16_t rscp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rscp %d, age %d", psc, uarfcn, rscp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_umts_beacon(rctx, sky_errno, SKY_UNKNOWN_ID3, SKY_UNKNOWN_ID4,
         SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2, psc, uarfcn, timestamp, rscp, false);
 }
@@ -591,7 +617,7 @@ Sky_status_t sky_add_cell_cdma_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, 
 
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %d, %lld, rssi %d, %sage %d", sid, nid, bsid, rssi,
         is_connected ? "serve, " : "",
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create CDMA beacon */
     memset(&b, 0, sizeof(b));
@@ -634,7 +660,7 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno
     if (mcc != SKY_UNKNOWN_ID1 || mnc != SKY_UNKNOWN_ID2 || e_cellid != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d, %lld, %d, %d MHz, nrsrp %d, %sage %d", mcc,
             mnc, tac, e_cellid, ncid, earfcn, nrsrp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create NB IoT beacon */
     memset(&b, 0, sizeof(b));
@@ -656,8 +682,8 @@ Sky_status_t sky_add_cell_nb_iot_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno
  *
  *  @param rctx Skyhook request context
  *  @param sky_errno skyErrno is set to the error code
- *  @param ncid mobile cell ID (0-503, SKY_UNKNOWN_ID4 if unknown)
- *  @param earfcn channel (0-45589, SKY_UNKNOWN_ID6 if unknown)
+ *  @param ncid mobile cell ID (0-503), SKY_UNKNOWN_ID4 if unknown
+ *  @param earfcn channel (0-45589), SKY_UNKNOWN_ID6 if unknown
  *  @param timestamp time in seconds (from 1970 epoch) indicating when the scan was performed, (time_t)-1 if unknown
  *  @param nrsrp Narrowband Reference Signal Received Power, range -156 to -44dbm, -1 if unknown
  *
@@ -667,7 +693,7 @@ Sky_status_t sky_add_cell_nb_iot_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *
     int16_t ncid, int32_t earfcn, time_t timestamp, int16_t nrsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, nrsrp %d, age %d", ncid, earfcn, nrsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     return sky_add_cell_nb_iot_beacon(rctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, ncid, earfcn, timestamp, nrsrp, false);
@@ -700,7 +726,7 @@ Sky_status_t sky_add_cell_nr_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, ui
     if (mcc != SKY_UNKNOWN_ID1 && mnc != SKY_UNKNOWN_ID2 && nci != SKY_UNKNOWN_ID4)
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%u, %u, %d: %lld, %d, %d MHz, ta %d, rsrp %d, %sage %d",
             mcc, mnc, tac, nci, pci, nrarfcn, ta, csi_rsrp, is_connected ? "serve, " : "",
-            (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+            (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* Create NR beacon */
     memset(&b, 0, sizeof(b));
@@ -734,12 +760,14 @@ Sky_status_t sky_add_cell_nr_neighbor_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_
     int32_t nrarfcn, time_t timestamp, int16_t csi_rsrp)
 {
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d, %d MHz, rsrp %d, age %d", pci, nrarfcn, csi_rsrp,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
     return sky_add_cell_nr_beacon(rctx, sky_errno, SKY_UNKNOWN_ID1, SKY_UNKNOWN_ID2,
         (int64_t)SKY_UNKNOWN_ID4, SKY_UNKNOWN_ID3, pci, nrarfcn, SKY_UNKNOWN_TA, timestamp,
         csi_rsrp, false);
 }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief Adds the position of the device from GNSS to the request context
  *
  *  @param rctx Skyhook request context
@@ -771,13 +799,14 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d.%01dm/s, bearing %d.%01d, nsat %d, age %d", (int)speed,
         (int)fabs(round(10.0 * (speed - (int)speed))), (int)bearing,
         (int)fabs(round(1.0 * (bearing - (int)bearing))), nsat,
-        (int)timestamp == -1 ? -1 : (int)(rctx->header.time - timestamp));
+        (int)timestamp == -1 ? -1 : (int)difftime(rctx->header.time, timestamp));
 
     /* location was determined before sky_new_request and since Mar 1st 2019 */
     if (rctx->header.time == TIME_UNAVAILABLE || timestamp == TIME_UNAVAILABLE)
         rctx->gnss.age = 0;
-    else if (rctx->header.time >= timestamp && timestamp > TIMESTAMP_2019_03_01)
-        rctx->gnss.age = rctx->header.time - timestamp;
+    else if (difftime(rctx->header.time, timestamp) >= 0 &&
+             difftime(timestamp, TIMESTAMP_2019_03_01) > 0)
+        rctx->gnss.age = difftime(rctx->header.time, timestamp);
     else
         return set_error_status(sky_errno, SKY_ERROR_BAD_TIME);
 
@@ -793,10 +822,10 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
         nsat > 100) /* 100 is conservative max gnss sat count */
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     rctx->gnss.lat = lat;
     rctx->gnss.lon = lon;
@@ -808,6 +837,7 @@ Sky_status_t sky_add_gnss(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, float lat, f
     rctx->gnss.nsat = nsat;
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
 /*! \brief Determines whether the request matches the cached result
  *
@@ -824,12 +854,12 @@ Sky_status_t sky_search_cache(
     Sky_sctx_t *sctx = rctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
-#endif
+#endif // CACHE_SIZE
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 #if CACHE_SIZE
     /* check cachelines against new beacons for best match
@@ -855,11 +885,11 @@ Sky_status_t sky_search_cache(
             "Location from cache: %d.%06d,%d.%06d hpe:%d source:%s age:%d Sec", (int)loc->lat,
             (int)fabs(round(1000000 * (loc->lat - (int)loc->lat))), (int)loc->lon,
             (int)fabs(round(1000000 * (loc->lon - (int)loc->lon))), loc->hpe, sky_psource(loc),
-            (rctx->header.time - cached_time));
-#endif
+            (int)difftime(rctx->header.time, cached_time));
+#endif // SKY_DEBUG
         return set_error_status(sky_errno, SKY_ERROR_NONE);
     }
-#endif
+#endif // CACHE_SIZE
     rctx->hit = false;
     sctx->cache_hits = 0; /* report 0 for cache miss */
     if (cache_hit != NULL)
@@ -879,10 +909,12 @@ Sky_status_t sky_search_cache(
  */
 Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 {
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#elif !SKY_LOGGING
+    (void)rctx;
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 #if CACHE_SIZE
     if (IS_CACHE_HIT(rctx)) {
@@ -895,7 +927,7 @@ Sky_status_t sky_ignore_cache_hit(Sky_rctx_t *rctx, Sky_errno_t *sky_errno)
 #else
     LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Can't ignore cache with no cache");
     return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
-#endif
+#endif // CACHE_SIZE
 }
 
 /*! \brief Determines the required size of the network request buffer
@@ -914,20 +946,21 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
     Sky_sctx_t *sctx = rctx->session;
 #if CACHE_SIZE
     Sky_cacheline_t *cl;
-#endif
+#endif // CACHE_SIZE
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     if (size == NULL)
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
     /* determine whether request_client_conf should be true in request message */
-    rq_config = CONFIG(sctx, last_config_time) == CONFIG_UPDATE_DUE ||
-                rctx->header.time == TIME_UNAVAILABLE ||
-                (rctx->header.time - CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
+    rq_config =
+        CONFIG(sctx, last_config_time) == CONFIG_UPDATE_DUE ||
+        rctx->header.time == TIME_UNAVAILABLE ||
+        difftime(rctx->header.time, CONFIG(sctx, last_config_time)) > CONFIG_REQUEST_INTERVAL;
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Request config: %s",
         rq_config && CONFIG(sctx, last_config_time) != CONFIG_UPDATE_DUE ?
             "Timeout" :
@@ -936,10 +969,10 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
     if (rq_config)
         CONFIG(sctx, last_config_time) = CONFIG_UPDATE_DUE; /* request on next serialize */
 
-        /* check cache against beacons for match
+#if CACHE_SIZE
+    /* check cache against beacons for match
      * setting from_cache if a matching cacheline is found
      * */
-#if CACHE_SIZE
     if (IS_CACHE_HIT(rctx)) {
         cl = &sctx->cacheline[rctx->get_from];
 
@@ -954,22 +987,26 @@ Sky_status_t sky_sizeof_request_buf(Sky_rctx_t *rctx, uint32_t *size, Sky_errno_
                 NUM_APS(rctx) = cl->num_ap;
                 for (int j = 0; j < NUM_BEACONS(rctx); j++)
                     rctx->beacon[j] = cl->beacon[j];
+#if !SKY_EXCLUDE_GNSS_SUPPORT
                 rctx->gnss = cl->gnss;
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
             }
         } else {
             rctx->get_from = -1; /* force cache miss after 127 consecutive cache hits */
             sctx->cache_hits = 0; /* report 0 for cache miss */
         }
     } else {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
         /* Trim any excess vap from request rctx i.e. total number of vap
          * in request rctx cannot exceed max that a request can carry
          */
         select_vap(rctx);
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
     }
 #else
     rctx->get_from = -1; /* cache miss */
     sctx->cache_hits = 0; /* report 0 for cache miss */
-#endif
+#endif // CACHE_SIZE
 
     /* encode request into the bit bucket, just to determine the length of the
      * encoded message */
@@ -1002,10 +1039,10 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
     int rc;
     Sky_sctx_t *sctx = rctx->session;
 
-#if SANITY_CHECKS
+#if !SKY_EXCLUDE_SANITY_CHECKS
     if (!validate_request_ctx(rctx))
         return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
     if (backoff_violation(rctx, rctx->header.time)) {
         return set_error_status(sky_errno, SKY_ERROR_SERVICE_DENIED);
@@ -1032,7 +1069,7 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
     else
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Configuration parameter: %d",
             CONFIG(sctx, last_config_time));
-#endif
+#endif // SKY_LOGGING
 
     /* encode request */
     rc = serialize_request(rctx, request_buf, bufsize, SW_VERSION,
@@ -1064,14 +1101,23 @@ Sky_status_t sky_encode_request(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *
 Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void *response_buf,
     uint32_t bufsize, Sky_location_t *loc)
 {
-    Sky_sctx_t *sctx = rctx->session;
-    time_t now = (*sctx->timefn)(NULL);
+    Sky_sctx_t *sctx;
+    time_t now;
 
-    if (loc == NULL || response_buf == NULL || bufsize == 0) {
+#if !SKY_EXCLUDE_SANITY_CHECKS
+    if (!validate_request_ctx(rctx))
+        return set_error_status(sky_errno, SKY_ERROR_BAD_REQUEST_CTX);
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
+    if (rctx == NULL || loc == NULL || response_buf == NULL || bufsize == 0) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "Bad parameters");
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
     }
 
+    sctx = rctx->session;
+    if (!validate_session_ctx(sctx, NULL)) {
+        return set_error_status(sky_errno, SKY_ERROR_BAD_SESSION_CTX);
+    }
+    now = (*sctx->timefn)(NULL);
     /* note the time of this server response in the request context */
     sctx->header.time = now;
     sctx->header.crc32 = sky_crc32(
@@ -1109,7 +1155,7 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
                     (int)loc->lat, (int)fabs(round(1000000.0 * (loc->lat - (int)loc->lat))),
                     (int)loc->lon, (int)fabs(round(1000000.0 * (loc->lon - (int)loc->lon))),
                     loc->hpe, sky_psource(loc), loc->dl_app_data_len);
-#endif
+#endif // CACHE_SIZE > 0
 
             return set_error_status(sky_errno, SKY_ERROR_NONE);
         case SKY_LOCATION_STATUS_AUTH_ERROR:
@@ -1130,11 +1176,8 @@ Sky_status_t sky_decode_response(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, void 
             else if (sctx->backoff ==
                      SKY_AUTH_RETRY_8H) /* Registration request failed again, retry after 16hr */
                 return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_16H));
-            else if (sctx->backoff ==
-                     SKY_AUTH_RETRY_16H) /* Registration request failed again, retry after 24hr */
+            else /* Registration request failed again, retry once per day */
                 return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_1D));
-            else
-                return set_error_status(sky_errno, (sctx->backoff = SKY_AUTH_RETRY_30D));
         case SKY_LOCATION_STATUS_BAD_PARTNER_ID_ERROR:
         case SKY_LOCATION_STATUS_DECODE_ERROR:
             return set_error_status(sky_errno, SKY_ERROR_AUTH);
@@ -1350,9 +1393,6 @@ char *sky_perror(Sky_errno_t sky_errno)
     case SKY_AUTH_RETRY_1D:
         str = "Operation unauthorized, retry in 24 hours";
         break;
-    case SKY_AUTH_RETRY_30D:
-        str = "Operation unauthorized, retry in a month";
-        break;
     case SKY_AUTH_NEEDS_TIME:
         str = "Operation needs good time of day";
         break;
@@ -1415,6 +1455,7 @@ char *sky_pserver_status(Sky_loc_status_t status)
  */
 char *sky_pbeacon(Beacon_t *b)
 {
+#if !SKY_EXCLUDE_CELL_SUPPORT
     if (is_cell_type(b) && b->cell.id2 == SKY_UNKNOWN_ID2) {
         switch (b->h.type) {
         case SKY_BEACON_LTE:
@@ -1425,13 +1466,19 @@ char *sky_pbeacon(Beacon_t *b)
             return "UMTS-NMR";
         case SKY_BEACON_NR:
             return "NR-NMR";
+        case SKY_BEACON_GSM:
+            return "GSM-NMR";
         default:
             return "\?\?\?-NMR";
         }
     } else {
+#endif //!SKY_EXCLUDE_CELL_SUPPORT
         switch (b->h.type) {
+#if !SKY_EXCLUDE_WIFI_SUPPORT
         case SKY_BEACON_AP:
             return "Wi-Fi";
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
+#if !SKY_EXCLUDE_CELL_SUPPORT
         case SKY_BEACON_BLE:
             return "BLE";
         case SKY_BEACON_CDMA:
@@ -1446,10 +1493,13 @@ char *sky_pbeacon(Beacon_t *b)
             return "UMTS";
         case SKY_BEACON_NR:
             return "NR";
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
         default:
             return "\?\?\?";
         }
+#if !SKY_EXCLUDE_CELL_SUPPORT
     }
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 }
 
 /*! \brief returns a string which describes the source of a location
@@ -1495,11 +1545,11 @@ Sky_status_t sky_close(Sky_sctx_t *sctx, Sky_errno_t *sky_errno)
     return set_error_status(sky_errno, SKY_ERROR_NONE);
 }
 
-    /*******************************************************************************
+/*******************************************************************************
  * Static helper functions
  ******************************************************************************/
+#if !SKY_EXCLUDE_SANITY_CHECKS
 
-#if SANITY_CHECKS
 /*! \brief sanity check the device_id
  *
  *  @param device_id this is expected to be a binary mac address
@@ -1514,7 +1564,7 @@ static bool validate_device_id(const uint8_t *device_id, uint32_t id_len)
     else
         return true;
 }
-#endif
+#endif // !SKY_EXCLUDE_SANITY_CHECKS
 
 /*! \brief safely return bounded length of string
  *
@@ -1537,4 +1587,4 @@ static size_t strnlen_(char *s, size_t maxlen)
 
 #include "libel.ut.c"
 
-#endif
+#endif // UNITTESTS

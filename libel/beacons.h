@@ -53,10 +53,19 @@
 #define is_cell_type(c)                                                                            \
     ((c)->h.type >= SKY_BEACON_FIRST_CELL_TYPE && (c)->h.type <= SKY_BEACON_LAST_CELL_TYPE)
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /* For all cell types, id2 is a key parameter, i.e. Unknown is not allowed unless it is an nmr */
 #define is_cell_nmr(c) (is_cell_type(c) && ((c)->cell.id2 == SKY_UNKNOWN_ID2))
+#else
+#define is_cell_nmr(c) (false)
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 #define has_gnss(c) ((c) != NULL && !isnan((c)->gnss.lat))
+#else
+#define has_gnss(c) (false)
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
+
 #define CACHE_EMPTY ((time_t)0)
 #define CONFIG_UPDATE_DUE ((time_t)0)
 #define IS_CACHE_HIT(c) (c->get_from != -1 && (c)->hit)
@@ -110,6 +119,7 @@ struct header {
     int8_t connected; /* beacon connected */
 };
 
+#if !SKY_EXCLUDE_WIFI_SUPPORT
 /*! \brief Virtual AP member
  */
 typedef union {
@@ -132,7 +142,9 @@ struct ap {
     Vap_t vg[MAX_VAP_PER_AP + 2]; /* Virtual APs */
     Sky_beacon_property_t vg_prop[MAX_VAP_PER_AP]; /* Virtual AP properties */
 };
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
+#if !SKY_EXCLUDE_CELL_SUPPORT
 /*! \brief http://wiki.opencellid.org/wiki/API
  */
 struct cell {
@@ -148,6 +160,7 @@ struct cell {
         freq; // arfcn(gsm), uarfcn (umts), earfcn (lte, nb-iot), nrarfcn (nr). SKY_UNKNOWN_ID6 if unknown.
     int32_t ta; // SKY_UNKNOWN_TA if unknown.
 };
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 
 /*! \brief blue tooth
  */
@@ -163,16 +176,21 @@ struct ble {
  */
 typedef union beacon {
     struct header h;
+#if !SKY_EXCLUDE_WIFI_SUPPORT
     struct ap ap;
+#endif // !SKY_EXCLUDE_WIFI_SUPPORT
     struct ble ble;
+#if !SKY_EXCLUDE_CELL_SUPPORT
     struct cell cell;
+#endif // !SKY_EXCLUDE_CELL_SUPPORT
 } Beacon_t;
 
+#if !SKY_EXCLUDE_GNSS_SUPPORT
 /*! \brief gnss/gnss
  */
 typedef struct gnss {
-    double lat;
-    double lon;
+    float lat;
+    float lon;
     uint32_t hpe;
     float alt; // altitude
     uint32_t vpe;
@@ -181,6 +199,7 @@ typedef struct gnss {
     uint32_t nsat;
     uint32_t age;
 } Gnss_t;
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
 
 /*! \brief each cacheline holds a copy of a scan and the server response
  */
@@ -189,7 +208,9 @@ typedef struct sky_cacheline {
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     time_t time;
     Beacon_t beacon[TOTAL_BEACONS]; /* beacons */
+#if !SKY_EXCLUDE_GNSS_SUPPORT
     Gnss_t gnss; /* GNSS info */
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
     Sky_location_t loc; /* Skyhook location */
 } Sky_cacheline_t;
 
@@ -246,7 +267,7 @@ typedef struct sky_sctx {
 #if CACHE_SIZE
     int num_cachelines; /* number of cachelines */
     Sky_cacheline_t cacheline[CACHE_SIZE]; /* beacons */
-#endif
+#endif // CACHE_SIZE
     Sky_config_t config; /* dynamic config parameters */
     uint8_t cache_hits; /* count the client cache hits */
 } Sky_sctx_t;
@@ -258,7 +279,9 @@ typedef struct sky_rctx {
     uint16_t num_beacons; /* number of beacons in list (0 == none) */
     uint16_t num_ap; /* number of AP beacons in list (0 == none) */
     Beacon_t beacon[TOTAL_BEACONS + 1]; /* beacon data */
+#if !SKY_EXCLUDE_GNSS_SUPPORT
     Gnss_t gnss; /* GNSS info */
+#endif // !SKY_EXCLUDE_GNSS_SUPPORT
     bool hit; /* status of search of cache for match to new scan (true/false) */
     int16_t get_from; /* cacheline with good match to scan (-1 for miss) */
     int16_t save_to; /* cacheline with best match for saving scan*/
@@ -279,4 +302,4 @@ int find_oldest(Sky_rctx_t *rctx);
 int search_cache(Sky_rctx_t *rctx);
 Sky_status_t remove_beacon(Sky_rctx_t *rctx, int index);
 
-#endif
+#endif // SKY_BEACONS_H

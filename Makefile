@@ -85,7 +85,7 @@ ${BUILD_DIR}/%.o: %.c beacons.h  config.h  crc32.h  libel.h  utilities.h
 	$(CC) -c $(CFLAGS) ${INCLUDES} -o $@ $<
 
 SRCFILES := $(shell find libel -path $(SKY_PROTO_DIR) -prune -o -name '*test*.c' -prune -o -type f -name '*.c' -print) \
-	$(shell find ${PLUGIN_DIR} -name '*.c' -print)
+	$(shell find ${PLUGIN_DIR} -name '*.c' -print) ${SKY_PROTO_DIR}/proto.c
 DSTFILES := $(addprefix ${TEST_BUILD_DIR}/,$(SRCFILES:.c=.o))
 unittest: ${BIN_DIR} ${BUILD_DIR} ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a
 	$(CC) $(CFLAGS) ${INCLUDES} -o ${BIN_DIR}/tests ${BUILD_DIR}/unittest.o $(DSTFILES) ${BIN_DIR}/libel.a libel/runtests.c -lm -lc
