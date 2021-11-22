@@ -621,8 +621,7 @@ void dump_beacon(Sky_rctx_t *rctx, char *str, Beacon_t *b, const char *file, con
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
-    } else if (rctx->session && b >= rctx->session->cacheline[0].beacon &&
-               b < (rctx->session->cacheline[CACHE_SIZE - 1].beacon + TOTAL_BEACONS)) {
+    } else if (rctx->session) {
         Sky_cacheline_t *c;
 
         for (c = rctx->session->cacheline; c < rctx->session->cacheline + CACHE_SIZE; c++) {
