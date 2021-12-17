@@ -243,12 +243,10 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
 #if CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
     /* Update the AP */
     if (is_ap_type(b)) {
-        if (!beacon_in_cache(rctx, b, &b->ap.property)) {
-            b->ap.property.in_cache = false;
+        if (!beacon_in_cache(rctx, b, &b->ap.property))
             b->ap.property.used = false;
-        }
     }
-#endif // CACHE_SIZE
+#endif // CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
 
     /* insert the beacon */
     n = NUM_BEACONS(rctx);
@@ -293,14 +291,15 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
  */
 bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
 {
-    Sky_beacon_property_t best_prop = { false, false };
-    Sky_beacon_property_t result = { false, false };
+    Sky_beacon_property_t best_prop = { false };
+    Sky_beacon_property_t result = { false };
+    bool in_cache = false;
 
     for (int i = 0; i < rctx->session->num_cachelines; i++) {
         if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i], &result)) {
+            in_cache = true;
             if (!prop)
                 return true; /* don't need to keep looking for used if prop is NULL */
-            best_prop.in_cache = true;
 
             if (result.used) {
                 best_prop.used = true;
@@ -308,7 +307,7 @@ bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
             }
         }
     }
-    if (best_prop.in_cache) {
+    if (in_cache) {
         *prop = best_prop;
         return true;
     }

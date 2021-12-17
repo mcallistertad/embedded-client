@@ -256,28 +256,24 @@ TEST(
         ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
     });
 
-TEST("should return SKY_SUCCESS and equal when 2 identical beacons and in_cache is true", rctx, {
+TEST("should return SKY_SUCCESS and equal with 2 identical beacons", rctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
-    Sky_beacon_property_t prop = { false, false };
-    b.ap.property.in_cache = true;
+    Sky_beacon_property_t prop = { false };
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && equal &&
-           prop.in_cache);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 different AP and equal", rctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
     Sky_errno_t sky_errno;
-    Sky_beacon_property_t prop = { false, false };
-    b.ap.property.in_cache = true;
+    Sky_beacon_property_t prop = { false };
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && !equal &&
-           !prop.in_cache);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical NR cell beacons", rctx, {

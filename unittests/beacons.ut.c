@@ -712,26 +712,6 @@ TEST_FUNC(test_insert)
         ASSERT(AP_EQ(&c, rctx->beacon + 2));
     });
 
-    TEST("should insert 3 APs B, C, A, with C in_cache, in rssi order B, A, C", rctx, {
-        AP(b, "ABCDEF010201", 2, -48, 2412, false);
-        AP(c, "CBADEF010201", 2, -108, 2412, false);
-        AP(a, "ABCDEF010203", 2, -88, 2412, false);
-        Sky_errno_t sky_errno;
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
-        ASSERT(AP_EQ(&b, rctx->beacon));
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &c));
-        ASSERT(AP_EQ(&c, rctx->beacon + 1));
-        rctx->beacon[1].ap.property.in_cache = true; /* mark C in_cache */
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
-        ASSERT(NUM_BEACONS(rctx) == 3);
-        ASSERT(AP_EQ(&b, rctx->beacon));
-        ASSERT(AP_EQ(&a, rctx->beacon + 1));
-        ASSERT(AP_EQ(&c, rctx->beacon + 2));
-    });
-
     TEST("should insert 3 APs B, C, A, with C younger, in rssi order B, A, C", rctx, {
         AP(b, "ABCDEF010201", 2, -48, 2412, false);
         AP(c, "CBADEF010201", 1, -108, 2412, false); /* youngest */

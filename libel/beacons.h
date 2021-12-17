@@ -86,6 +86,15 @@
 #define COMPARE_CONNECTED(a, b) ((a)->h.connected - (b)->h.connected)
 /* when comparing priority, higher value is better */
 #define COMPARE_PRIORITY(a, b) ((a)->h.priority - (b)->h.priority)
+/* when comparing property, connected better than used */
+#define COMPARE_CONNECTED_USED(a, b)                                                               \
+    (((a)->h.connected && !(b)->h.connected) ?                                                     \
+            1 :                                                                                    \
+            ((b)->h.connected && !(a)->h.connected) ?                                              \
+            -1 :                                                                                   \
+            ((a)->ap.property.used && !(b)->ap.property.used) ?                                    \
+            1 :                                                                                    \
+            ((b)->ap.property.used && !(a)->ap.property.used) ? -1 : 0)
 
 /*! \brief Types of beacon in compare order
  */
@@ -106,7 +115,6 @@ typedef enum {
 /*! \brief Property of beacon
  */
 typedef struct {
-    uint8_t in_cache : 1;
     uint8_t used : 1;
 } Sky_beacon_property_t;
 
