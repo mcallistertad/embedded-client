@@ -434,7 +434,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request rctx matches cacheline
                     In typical case this is the intersection(request rctx, cache) / union(request rctx, cache) */
     float bestratio = 0.0f;
-    float bestputratio = 0.0f;
+    float bestputratio = 1.0f; /* best put is worst score */
     int score; /* score is number of APs found in cacheline */
     int threshold; /* the threshold determined that ratio should meet */
     int num_aps_cached = 0;
@@ -453,12 +453,10 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
             cl->time = CACHE_EMPTY;
         }
-        /* if line is empty and it is the first one, remember it */
+        /* if line is empty, remember it */
         if (cl->time == CACHE_EMPTY) {
-            if (bestputratio < 1.0) {
-                bestput = (int16_t)i;
-                bestputratio = 1.0f;
-            }
+            bestput = (int16_t)i;
+            bestputratio = 0.0f;
         }
     }
 
@@ -512,7 +510,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             }
         }
 
-        if (ratio > bestputratio) {
+        if (ratio < bestputratio) {
             bestput = (int16_t)i;
             bestputratio = ratio;
         }
@@ -954,12 +952,14 @@ TEST_FUNC(test_ap_plugin)
         /* placed into cache line 0. */
         ASSERT(SKY_SUCCESS ==
                sky_add_ap_beacon(rctx, &sky_errno, mac1, rctx->header.time, rssi--, freq, false));
-        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        sky_plugin_add_to_cache(
+            rctx, &sky_errno, &loc); /* By default, saves to first empty cacheline */
         ASSERT(memcmp(mac1, rctx->session->cacheline[0].beacon[0].ap.mac, sizeof(mac1)) == 0);
 
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
         ASSERT(rctx->get_from == 0);
+        ASSERT(rctx->save_to == 9);
 
         /* Initialize cache status from the request context, add another beacon to it, */
         /* and copy it into the cache. Verify that the context is */
@@ -973,6 +973,7 @@ TEST_FUNC(test_ap_plugin)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
         ASSERT(rctx->get_from == 1);
+        ASSERT(rctx->save_to == 9);
 
         /* Initialize cache status from the request context, add another beacon to it, */
         /* and copy it into the cache. Verify that the context is */
@@ -986,6 +987,7 @@ TEST_FUNC(test_ap_plugin)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
         ASSERT(rctx->get_from == 2);
+        ASSERT(rctx->save_to == 9);
 
         /* Initialize cache status from the request context, add another beacon to it, */
         /* and copy it into the cache. Verify that the context is */
@@ -999,6 +1001,7 @@ TEST_FUNC(test_ap_plugin)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
         ASSERT(rctx->get_from == 3);
+        ASSERT(rctx->save_to == 9);
 
         /* Initialize cache status from the request context, remove first two beacons from it, */
         /* add them back to it, verifying that they are marked cached in the Request context. */
@@ -1020,6 +1023,7 @@ TEST_FUNC(test_ap_plugin)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
         ASSERT(rctx->get_from == 3);
+        ASSERT(rctx->save_to == 9);
     });
 }
 
