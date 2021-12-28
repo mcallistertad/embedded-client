@@ -66,7 +66,7 @@
 #define CACHE_MATCH_THRESHOLD_USED 50 // Score needed when matching just Used APs
 #endif
 #ifndef CACHE_MATCH_THRESHOLD_ALL
-#define CACHE_MATCH_THRESHOLD_ALL 65 // Score needed when matching Used and Unused APs
+#define CACHE_MATCH_THRESHOLD_ALL 50 // Score needed when matching Used and Unused APs
 #endif
 
 /*! \brief The maximum age (in hr) that a cached value is considered useful
@@ -81,7 +81,7 @@
  *   location (i.e. all beacons must match when only few beacons are in request ctx).
  */
 #ifndef CACHE_BEACON_THRESHOLD
-#define CACHE_BEACON_THRESHOLD 3
+#define CACHE_BEACON_THRESHOLD 5
 #endif
 
 /*! \brief The minimum rssi value preferred for cache matching
