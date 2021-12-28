@@ -230,6 +230,36 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 #endif // VERBOSE_DEBUG
     return num_aps_cached;
 }
+
+/*! \brief Count number of uniq virtual groups
+ *
+ *  return count the APs ignoring those which belong to a virtual group already counted
+ *
+ *  @param rctx Skyhook request context
+ *
+ */
+static uint32_t count_uniq_vg(Sky_rctx_t *rctx)
+{
+    bool vg[MAX_AP_BEACONS] = { 0 };
+    int num_aps = 0;
+    int i, j;
+    for (i = 0; i < NUM_APS(rctx); i++) {
+        if (!vg[i])
+            /* count those that are not part of a VG */
+            num_aps++;
+        else
+            continue;
+        for (j = i + 1; j < NUM_APS(rctx); j++) {
+            /* compare each beacon to all others */
+            if (!vg[j]) {
+                if (mac_similar(rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL) != 0)
+                    vg[j] = true;
+            }
+        }
+    }
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d APs are unique", num_aps);
+    return num_aps;
+}
 #endif // CACHE_SIZE
 
 /*! \brief determine which of a pair of APs is more valuable
@@ -502,7 +532,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(rctx) + NUM_APS(cl) - num_aps_cached;
-                if (NUM_APS(rctx) <= CONFIG(rctx->session, cache_beacon_threshold))
+                if (count_uniq_vg(rctx) <= CONFIG(rctx->session, cache_beacon_threshold))
                     threshold = 99; /* cache hit requires 100% */
                 else
                     threshold = CONFIG(rctx->session, cache_match_all_threshold);
