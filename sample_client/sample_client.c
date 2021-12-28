@@ -151,11 +151,13 @@ struct ap_scan aps5[] =
     { { "74DADA5E1015", 300, 3660, -88, 0 },
       { "B482F1A46221", 30, 3660, -89, 0 },
       { "EC22809E00DB", 300, 3660, -90, 0 },
+      { "74DADB5E1015", 300, 3660, -88, 0 },
       { .mac = {'\0'}, .age = 0, .frequency = 0, .rssi = 0, .connected = 0}
     };
 
 struct cell_scan cells5[] =
-    { { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
+    { { TYPE_LTE, 154, -105, 311, 480, 25614, 25664526, 387, 1000, SKY_UNKNOWN_TA, 1},
+      { TYPE_RESERVED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
 struct gnss_scan gnss5 =
     {0, 35.700388f, 139.751840f, 37, 0, 0, 0, 0, 7};
