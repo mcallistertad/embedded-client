@@ -560,7 +560,7 @@ TEST_FUNC(test_cache_match)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
     });
-    TEST("4 APs misses cache with different 4 AP, 2 different", rctx, {
+    TEST("4 APs misses cache with 2 different AP", rctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
             .lon = 139.618906,
@@ -622,7 +622,7 @@ TEST_FUNC(test_cache_match)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
-    TEST("2 APs misses cache with 1 AP", rctx, {
+    TEST("2 APs misses cache with 1 different AP", rctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
             .lon = 139.618906,
