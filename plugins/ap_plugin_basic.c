@@ -233,27 +233,33 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 
 /*! \brief Count number of uniq virtual groups
  *
- *  return count the APs ignoring those which belong to a virtual group already counted
+ *  count the APs ignoring those which belong to a virtual group already counted
  *
  *  @param rctx Skyhook request context
  *
+ *  @return number of uniq virtual groups
  */
 static uint32_t count_uniq_vg(Sky_rctx_t *rctx)
 {
-    bool vg[MAX_AP_BEACONS] = { 0 };
+    bool vg[MAX_AP_BEACONS] = { false };
     int num_aps = 0;
     int i, j;
+
+    /* step through APs in request ctx */
     for (i = 0; i < NUM_APS(rctx); i++) {
-        if (!vg[i])
+        if (!vg[i]) {
             /* count those that are not part of a VG */
             num_aps++;
-        else
-            continue;
+        } else
+            continue; /* this AP is known to be in a VG so skip it */
+
+        /* Scan remaining APs looking for any in the same VG as the current AP */
         for (j = i + 1; j < NUM_APS(rctx); j++) {
-            /* compare each beacon to all others */
+            /* compare each beacon to all others, ignoring APs already known to be in VG */
             if (!vg[j]) {
-                if (mac_similar(rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL) != 0)
-                    vg[j] = true;
+                if (mac_similar(rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL) != 0) {
+                    vg[j] = true; /* note that this AP is a member of VG */
+                }
             }
         }
     }
@@ -1053,9 +1059,125 @@ TEST_FUNC(test_ap_plugin)
     });
 }
 
+TEST_FUNC(test_ap_plugin_vg)
+{
+    GROUP("count_uniq_vg");
+    TEST("count_uniq_vg finds 2 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAA }; /* 3rd AP in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 2);
+    });
+    TEST("count_uniq_vg finds 1 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAA }; /* 3rd AP in VG */
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xA5 }; /* 4th AP in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 1);
+    });
+    TEST("count_uniq_vg finds 3 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x1D, 0x5C, 0x2B, 0x8A, 0x38, 0x2C }; /* Not in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 3);
+    });
+    TEST("count_uniq_vg finds 4 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* Not in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0xCC, 0xEE, 0xCC, 0xBB, 0x77, 0xDD }; /* Not in VG */
+        uint8_t mac3[] = { 0x44, 0x55, 0x00, 0x90, 0x74, 0x4E }; /* Not in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 4);
+    });
+    TEST("count_uniq_vg finds 2 uniq vg each with multiple members", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* vg 1 */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0xCC, 0xEE, 0xCC, 0xBB, 0x77, 0xDD }; /* vg 2 */
+        uint8_t mac3[] = { 0xCC, 0xEE, 0xCC, 0xB2, 0x77, 0xDD }; /* vg 2 */
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xA2 }; /* vg 1 */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 2);
+    });
+}
+
 static Sky_status_t unit_tests(void *_ctx)
 {
     GROUP_CALL("Remove Worst", test_ap_plugin);
+    GROUP_CALL("count_uniq_vg", test_ap_plugin_vg);
     return SKY_SUCCESS;
 }
 
