@@ -32,6 +32,27 @@
 #define VERBOSE_DEBUG false
 #endif // VERBOSE_DEBUG
 
+/*! \brief compare the connected and used properties of APs
+ *         connected has higher value than used when comparing APs
+ *
+ *  @param a first beacon
+ *  @param b second beacon
+ *
+ *  @return positive if a has better properties
+ *          negative if b has better properties
+ *          0 if a and b have the same properties
+ */
+int compare_connected_used(Beacon_t *a, Beacon_t *b)
+{
+    return ((a->h.connected && !b->h.connected) ?
+                1 :
+                ((b)->h.connected && !(a)->h.connected) ?
+                -1 :
+                ((a)->ap.property.used && !(b)->ap.property.used) ?
+                1 :
+                ((b)->ap.property.used && !(a)->ap.property.used) ? -1 : 0);
+}
+
 /*! \brief shuffle list to remove the beacon at index
  *
  *  @param rctx Skyhook request context
