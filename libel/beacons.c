@@ -125,8 +125,7 @@ static Sky_status_t insert_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beac
         for (j = 0; j < NUM_BEACONS(rctx); j++) {
             bool equal = false;
 
-            if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], NULL, &equal) ==
-                    SKY_SUCCESS &&
+            if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], &equal) == SKY_SUCCESS &&
                 equal) {
                 /* Found duplicate - keep new beacon if it is better */
                 if (b->h.age < rctx->beacon[j].h.age || /* Younger */
@@ -178,8 +177,7 @@ static Sky_status_t insert_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beac
     /* Verify that the beacon we just added now appears in our beacon set. */
     for (j = 0; j < NUM_BEACONS(rctx); j++) {
         bool equal;
-        if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], NULL, &equal) == SKY_SUCCESS &&
-            equal)
+        if (sky_plugin_equal(rctx, sky_errno, b, &rctx->beacon[j], &equal) == SKY_SUCCESS && equal)
             break;
     }
     if (j < NUM_BEACONS(rctx))
@@ -241,11 +239,9 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
         return set_error_status(sky_errno, SKY_ERROR_BAD_PARAMETERS);
 
 #if CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
-    /* Update the AP */
-    if (is_ap_type(b)) {
-        if (!beacon_in_cache(rctx, b, &b->ap.property))
-            b->ap.property.used = false;
-    }
+    /* Update the AP with any used info from cache */
+    if (is_ap_type(b))
+        beacon_in_cache(rctx, b); /* b is updated with Used info if the beacon is found */
 #endif // CACHE_SIZE && !SKY_EXCLUDE_WIFI_SUPPORT
 
     /* insert the beacon */
@@ -279,8 +275,10 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
  *   Scan all cachelines in the cache.
  *   If the given beacon is found in the cache true is returned otherwise
  *   false. A beacon may appear in multiple cachelines.
- *   If prop is not NULL, algorithm searches all caches for best match
- *   (beacon with Used == true is best) otherwise, first match is returned
+ *   If beacon is found and the cached beacon is marked 'used', the given
+ *   beacon is marked as 'used' also.
+ *   Algorithm stops searching if beacon is found and that beacon is marked used.
+ *   Otherwise the entire cache is scanned.
  *
  *  @param rctx Skyhook request context
  *  @param b pointer to new beacon
@@ -289,48 +287,34 @@ Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, t
  *
  *  @return true if beacon successfully found or false
  */
-bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop)
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b)
 {
-    Sky_beacon_property_t best_prop = { false };
-    Sky_beacon_property_t result = { false };
-    bool in_cache = false;
+    bool result = false;
 
     for (int i = 0; i < rctx->session->num_cachelines; i++) {
-        if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i], &result)) {
-            in_cache = true;
-            if (!prop)
-                return true; /* don't need to keep looking for used if prop is NULL */
-
-            if (result.used) {
-                best_prop.used = true;
+        if (beacon_in_cacheline(rctx, b, &rctx->session->cacheline[i])) {
+            result = true; /* beacon is in cache */
+            if (is_ap_type(b) && b->ap.property.used)
                 break; /* beacon is in cached and used, can stop search */
-            }
         }
     }
-    if (in_cache) {
-        *prop = best_prop;
-        return true;
-    }
-
-    return false;
+    return result;
 }
 
 /*! \brief check if a beacon is in a cacheline
  *
  *   Scan all beacons in the cacheline. If the type matches the given beacon, compare
  *   the appropriate attributes. If the given beacon is found in the cacheline
- *   true is returned otherwise false. If index is not NULL, the index of the matching
- *   beacon in the cacheline is saved or -1 if beacon was not found.
+ *   true is returned otherwise false. Also if cached beacon has the Used property,
+ *   set it in the beacon we searched for.
  *
  *  @param rctx Skyhook request context
  *  @param b pointer to new beacon
  *  @param cl pointer to cacheline
- *  @param index pointer to where the index of matching beacon is saved
  *
  *  @return true if beacon successfully found or false
  */
-bool beacon_in_cacheline(
-    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop)
+bool beacon_in_cacheline(Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl)
 {
     int j;
 
@@ -341,8 +325,11 @@ bool beacon_in_cacheline(
     for (j = 0; j < NUM_BEACONS(cl); j++) {
         bool equal = false;
 
-        if (sky_plugin_equal(rctx, NULL, b, &cl->beacon[j], prop, &equal) == SKY_SUCCESS && equal)
+        if (sky_plugin_equal(rctx, NULL, b, &cl->beacon[j], &equal) == SKY_SUCCESS && equal) {
+            if (is_ap_type(&cl->beacon[j]) && cl->beacon[j].ap.property.used)
+                b->ap.property.used = true;
             return true;
+        }
     }
     return false;
 }
@@ -472,7 +459,7 @@ int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl)
         return false;
     }
 
-    if (sky_plugin_equal(rctx, NULL, w, c, NULL, &equal) == SKY_SUCCESS && equal)
+    if (sky_plugin_equal(rctx, NULL, w, c, &equal) == SKY_SUCCESS && equal)
         return false;
     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "cell mismatch");
     return true;

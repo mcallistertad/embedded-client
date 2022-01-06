@@ -90,8 +90,8 @@ Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table
  *
  *  @return sky_status_t SKY_SUCCESS (if code is SKY_ERROR_NONE) or SKY_ERROR
  */
-Sky_status_t sky_plugin_equal(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
-    Sky_beacon_property_t *prop, bool *equal)
+Sky_status_t sky_plugin_equal(
+    Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, bool *equal)
 {
     Sky_plugin_table_t *p;
     Sky_status_t ret = SKY_ERROR;
@@ -99,7 +99,7 @@ Sky_status_t sky_plugin_equal(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t
     p = rctx->session->plugins;
     while (p) {
         if (p->equal)
-            ret = p->equal(rctx, a, b, prop, equal);
+            ret = p->equal(rctx, a, b, equal);
 #if VERBOSE_DEBUG
         LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%s returned %s", p->name,
             (ret == SKY_SUCCESS) ? "Success" : "Error");
@@ -253,27 +253,25 @@ TEST(
         Sky_errno_t sky_errno;
         bool equal = false;
 
-        ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+        ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
     });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical beacons", rctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCDD", 1605291372, -108, 4433, true);
     Sky_errno_t sky_errno;
-    Sky_beacon_property_t prop = { false };
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 different AP and equal", rctx, {
     AP(a, "ABCDEFAACCDD", 1605291372, -108, 4433, false);
     AP(b, "ABCDEFAACCEE", 1605291372, -78, 422, true);
     Sky_errno_t sky_errno;
-    Sky_beacon_property_t prop = { false };
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &prop, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical NR cell beacons", rctx, {
@@ -282,7 +280,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical NR cell beacons", rct
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical LTE cell beacons", rctx, {
@@ -291,7 +289,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical LTE cell beacons", rc
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical UMTS cell beacons", rctx, {
@@ -300,7 +298,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical UMTS cell beacons", r
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical NBIOT cell beacons", rctx, {
@@ -309,7 +307,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical NBIOT cell beacons", 
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical CDMA cell beacons", rctx, {
@@ -318,7 +316,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical CDMA cell beacons", r
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and equal with 2 identical GSM cell beacons", rctx, {
@@ -327,7 +325,7 @@ TEST("should return SKY_SUCCESS and equal with 2 identical GSM cell beacons", rc
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with one connected with different cells", rctx, {
@@ -336,7 +334,7 @@ TEST("should return SKY_SUCCESS and not equal with one connected with different 
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type", rctx, {
@@ -345,7 +343,7 @@ TEST("should return SKY_SUCCESS and not equal with one NMR with same cell type",
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one younger", rctx, {
@@ -354,7 +352,7 @@ TEST("should return SKY_SUCCESS and not equal with two NMR one younger", rctx, {
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR one stronger", rctx, {
@@ -363,7 +361,7 @@ TEST("should return SKY_SUCCESS and not equal with two NMR one stronger", rctx, 
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with two very similar cells", rctx, {
@@ -372,7 +370,7 @@ TEST("should return SKY_SUCCESS and not equal with two very similar cells", rctx
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_SUCCESS and not equal with two NMR very similar", rctx, {
@@ -381,7 +379,7 @@ TEST("should return SKY_SUCCESS and not equal with two NMR very similar", rctx, 
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_SUCCESS == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 TEST("should return SKY_ERROR one NMR with different cell type", rctx, {
@@ -390,7 +388,7 @@ TEST("should return SKY_ERROR one NMR with different cell type", rctx, {
     Sky_errno_t sky_errno;
     bool equal = false;
 
-    ASSERT((SKY_ERROR == sky_plugin_equal(rctx, &sky_errno, &a, &b, NULL, &equal)) && !equal);
+    ASSERT((SKY_ERROR == sky_plugin_equal(rctx, &sky_errno, &a, &b, &equal)) && !equal);
 });
 
 GROUP("sky_plugin_add");
@@ -466,7 +464,7 @@ TEST("should return SKY_ERROR if no plugin operation found to provide result", r
     ASSERT(SKY_ERROR == sky_plugin_add_to_cache(rctx, &errno, &loc));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
-    ASSERT(SKY_ERROR == sky_plugin_equal(rctx, &errno, &a, &b, NULL, NULL));
+    ASSERT(SKY_ERROR == sky_plugin_equal(rctx, &errno, &a, &b, NULL));
     ASSERT(errno == SKY_ERROR_NO_PLUGIN);
     errno = SKY_ERROR_NONE;
     ASSERT(SKY_ERROR == sky_plugin_remove_worst(rctx, &errno));

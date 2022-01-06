@@ -80,10 +80,8 @@ static Sky_status_t set_priorities(Sky_rctx_t *rctx);
  *  if beacons are comparable, return SKY_SUCCESS, and set equivalence
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(
-    Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
+static Sky_status_t equal(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, bool *equal)
 {
-    (void)prop; /* suppress warning unused parameter. Used in premium version */
 #if !SKY_EXCLUDE_WIFI_SUPPORT
     if (!rctx || !a || !b || !equal) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
@@ -103,7 +101,6 @@ static Sky_status_t equal(
     (void)rctx; /* suppress warning unused parameter */
     (void)a; /* suppress warning unused parameter */
     (void)b; /* suppress warning unused parameter */
-    (void)prop; /* suppress warning unused parameter */
     (void)equal; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif // !SKY_EXCLUDE_WIFI_SUPPORT
@@ -214,7 +211,7 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
     for (j = 0; j < NUM_APS(rctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
             bool equivalent = false;
-            equal(rctx, &rctx->beacon[j], &cl->beacon[i], NULL, &equivalent);
+            equal(rctx, &rctx->beacon[j], &cl->beacon[i], &equivalent);
             num_aps_cached += equivalent;
         }
     }

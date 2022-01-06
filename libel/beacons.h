@@ -301,9 +301,8 @@ typedef struct sky_rctx {
 
 Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
 int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
-bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop);
-bool beacon_in_cacheline(
-    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b);
+bool beacon_in_cacheline(Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl);
 int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_rctx_t *rctx);
