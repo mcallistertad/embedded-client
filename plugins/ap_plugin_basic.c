@@ -241,24 +241,24 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
  */
 static uint32_t count_uniq_vg(Sky_rctx_t *rctx)
 {
-    bool vg[MAX_AP_BEACONS] = { false };
+    bool redundant_ap[MAX_AP_BEACONS] = { false };
     int num_aps = 0;
     int i, j;
 
     /* step through APs in request ctx */
     for (i = 0; i < NUM_APS(rctx); i++) {
-        if (!vg[i]) {
+        if (!redundant_ap[i]) {
             /* count those that are not part of a VG */
             num_aps++;
         } else
             continue; /* this AP is known to be in a VG so skip it */
 
         /* Scan remaining APs looking for any in the same VG as the current AP */
+        /* compare each beacon to all others, ignoring APs already known to be in VG */
         for (j = i + 1; j < NUM_APS(rctx); j++) {
-            /* compare each beacon to all others, ignoring APs already known to be in VG */
-            if (!vg[j]) {
+            if (!redundant_ap[j]) {
                 if (mac_similar(rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL) != 0) {
-                    vg[j] = true; /* note that this AP is a member of VG */
+                    redundant_ap[j] = true; /* note that this AP is a member of VG */
                 }
             }
         }
