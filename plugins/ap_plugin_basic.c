@@ -453,8 +453,9 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
             cl->time = CACHE_EMPTY;
         }
-        /* if line is empty, remember it */
         if (cl->time == CACHE_EMPTY) {
+            /* We've found an empty cache line, which is the best */
+            /* possible place to put a new scan. Mark it as such. */
             bestput = (int16_t)i;
             bestputratio = 0.0f;
         }
