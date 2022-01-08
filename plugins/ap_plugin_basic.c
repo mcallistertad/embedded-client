@@ -223,9 +223,8 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
     /* step through each AP in request context looking for a matching AP in cache */
     for (j = 0; j < NUM_APS(rctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
-            bool equivalent = !matched[i] && (mac_similar(rctx->beacon[j].ap.mac,
-                                                  cl->beacon[i].ap.mac, NULL) != 0);
-            if (equivalent) {
+            if (!matched[i] && (mac_similar(rctx->beacon[j].ap.mac,
+                                                  cl->beacon[i].ap.mac, NULL) != 0)) {
                 num_aps_cached++;
                 matched[i] = true;
                 break;
