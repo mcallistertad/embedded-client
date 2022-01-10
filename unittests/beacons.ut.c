@@ -712,26 +712,6 @@ TEST_FUNC(test_insert)
         ASSERT(AP_EQ(&c, rctx->beacon + 2));
     });
 
-    TEST("should insert 3 APs B, C, A, with C in_cache, in rssi order B, A, C", rctx, {
-        AP(b, "ABCDEF010201", 2, -48, 2412, false);
-        AP(c, "CBADEF010201", 2, -108, 2412, false);
-        AP(a, "ABCDEF010203", 2, -88, 2412, false);
-        Sky_errno_t sky_errno;
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &b));
-        ASSERT(AP_EQ(&b, rctx->beacon));
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &c));
-        ASSERT(AP_EQ(&c, rctx->beacon + 1));
-        rctx->beacon[1].ap.property.in_cache = true; /* mark C in_cache */
-
-        ASSERT(SKY_SUCCESS == insert_beacon(rctx, &sky_errno, &a));
-        ASSERT(NUM_BEACONS(rctx) == 3);
-        ASSERT(AP_EQ(&b, rctx->beacon));
-        ASSERT(AP_EQ(&a, rctx->beacon + 1));
-        ASSERT(AP_EQ(&c, rctx->beacon + 2));
-    });
-
     TEST("should insert 3 APs B, C, A, with C younger, in rssi order B, A, C", rctx, {
         AP(b, "ABCDEF010201", 2, -48, 2412, false);
         AP(c, "CBADEF010201", 1, -108, 2412, false); /* youngest */
@@ -870,6 +850,42 @@ TEST_FUNC(test_insert)
     });
 }
 
+TEST_FUNC(test_used)
+{
+    GROUP("test AP added gets marked used");
+    TEST("2 APs in cache with 2 AP used", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0 },
+            .ap.vg_len = 0 };
+
+        /* 3 different APs */
+        rctx->beacon[0] = b;
+        b.ap.mac[3] = 0xaa;
+        rctx->beacon[1] = b;
+        rctx->num_beacons = 2;
+        rctx->num_ap = 2;
+        loc.time = rctx->header.time;
+        rctx->beacon[0].ap.property.used = true;
+        rctx->beacon[1].ap.property.used = true;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->num_beacons = 0;
+        rctx->num_ap = 0;
+
+        b.ap.mac[3] = 0xB0;
+        ASSERT(SKY_SUCCESS == add_beacon(rctx, &sky_errno, &b, TIME_UNAVAILABLE));
+        ASSERT(b.ap.property.used == true);
+    });
+}
+
 BEGIN_TESTS(beacon_test)
 
 GROUP_CALL("validate_request_ctx", test_validate_request_ctx);
@@ -877,5 +893,6 @@ GROUP_CALL("is_beacon_first", test_beacon_order);
 GROUP_CALL("beacon_add", test_add);
 GROUP_CALL("beacon_insert", test_insert);
 GROUP_CALL("distance_A_to_B", test_distance);
+GROUP_CALL("beacon used", test_used);
 
 END_TESTS();
