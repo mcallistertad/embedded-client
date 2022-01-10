@@ -57,11 +57,9 @@ static float get_priority(Beacon_t *b);
  *  if beacons are comparable, return SKY_SUCCESS, equivalence and difference in priority
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(
-    Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
+static Sky_status_t equal(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, bool *equal)
 {
 #if !SKY_EXCLUDE_CELL_SUPPORT
-    (void)prop; /* suppress warning unused parameter */
     if (!rctx || !a || !b || !equal) {
         LOGFMT(rctx, SKY_LOG_LEVEL_ERROR, "bad params");
         return SKY_ERROR;
@@ -117,7 +115,6 @@ static Sky_status_t equal(
     (void)rctx; /* suppress warning unused parameter */
     (void)a; /* suppress warning unused parameter */
     (void)b; /* suppress warning unused parameter */
-    (void)prop; /* suppress warning unused parameter */
     (void)equal; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif //!SKY_EXCLUDE_CELL_SUPPORT
@@ -299,8 +296,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             threshold = CONFIG(rctx->session, cache_match_all_threshold);
             score = 0;
             for (int j = NUM_APS(rctx); j < NUM_BEACONS(rctx); j++) {
-                if (beacon_in_cacheline(
-                        rctx, &rctx->beacon[j], &rctx->session->cacheline[i], NULL)) {
+                if (beacon_in_cacheline(rctx, &rctx->beacon[j], &rctx->session->cacheline[i])) {
 #if VERBOSE_DEBUG
                     LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG,
                         "Cell Beacon %d type %s matches cache %d of %d Score %d", j,

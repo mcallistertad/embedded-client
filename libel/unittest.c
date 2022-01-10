@@ -102,7 +102,6 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
     }
 
     b->ap.freq = frequency;
-    b->ap.property.in_cache = false;
     b->ap.property.used = false;
 
     return 1;
