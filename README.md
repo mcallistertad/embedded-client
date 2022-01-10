@@ -11,6 +11,11 @@ Instructions for cloning and building the library are below.
 
 ## Change Log
 
+### [Release 5.1.0](https://github.com/SkyhookWireless/embedded-client/tree/5.0.0)
+
+* Cache performance has been improved
+* Library configuration includes the ability to configure larger cache sizes
+
 ### [Release 5.0.0](https://github.com/SkyhookWireless/embedded-client/tree/5.0.0)
 
 * Library is more compact and can be configured to include only the required features.
