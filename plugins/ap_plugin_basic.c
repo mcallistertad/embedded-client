@@ -198,6 +198,7 @@ static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
 
 #if CACHE_SIZE
 /*! \brief count number of cached APs in request rctx relative to a cacheline
+ *         APs that belong to same Virtual group are considered present in cache
  *
  *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in, otherwise count in request rctx
@@ -208,11 +209,17 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 {
     int num_aps_cached = 0;
     int j, i;
+    bool matched[MAX_AP_BEACONS] = { false }; /* each AP in cache is matched only once */
+
+    /* step through each AP in request context looking for a matching AP in cache */
     for (j = 0; j < NUM_APS(rctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
-            bool equivalent = false;
-            equal(rctx, &rctx->beacon[j], &cl->beacon[i], &equivalent);
-            num_aps_cached += equivalent;
+            if (!matched[i] &&
+                (mac_similar(rctx->beacon[j].ap.mac, cl->beacon[i].ap.mac, NULL) != 0)) {
+                num_aps_cached++;
+                matched[i] = true;
+                break;
+            }
         }
     }
 #if VERBOSE_DEBUG
