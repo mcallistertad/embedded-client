@@ -570,7 +570,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         /* four different APs */
