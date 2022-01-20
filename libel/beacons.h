@@ -86,6 +86,8 @@
 #define COMPARE_CONNECTED(a, b) ((a)->h.connected - (b)->h.connected)
 /* when comparing priority, higher value is better */
 #define COMPARE_PRIORITY(a, b) ((a)->h.priority - (b)->h.priority)
+/* when comparing property, connected better than used */
+#define COMPARE_CONNECTED_USED(a, b) (compare_connected_used((a), (b)))
 
 /*! \brief Types of beacon in compare order
  */
@@ -106,7 +108,6 @@ typedef enum {
 /*! \brief Property of beacon
  */
 typedef struct {
-    uint8_t in_cache : 1;
     uint8_t used : 1;
 } Sky_beacon_property_t;
 
@@ -291,11 +292,11 @@ typedef struct sky_rctx {
     uint8_t sky_dl_app_data[SKY_MAX_DL_APP_DATA]; /* downlink app data */
 } Sky_rctx_t;
 
+int compare_connected_used(Beacon_t *a, Beacon_t *b);
 Sky_status_t add_beacon(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *b, time_t timestamp);
 int ap_beacon_in_vg(Sky_rctx_t *rctx, Beacon_t *va, Beacon_t *vb, Sky_beacon_property_t *prop);
-bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b, Sky_beacon_property_t *prop);
-bool beacon_in_cacheline(
-    Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl, Sky_beacon_property_t *prop);
+bool beacon_in_cache(Sky_rctx_t *rctx, Beacon_t *b);
+bool beacon_in_cacheline(Sky_rctx_t *rctx, Beacon_t *b, Sky_cacheline_t *cl);
 int serving_cell_changed(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int cached_gnss_worse(Sky_rctx_t *rctx, Sky_cacheline_t *cl);
 int find_oldest(Sky_rctx_t *rctx);

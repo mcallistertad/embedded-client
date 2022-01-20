@@ -102,7 +102,6 @@ int _test_ap(Beacon_t *b, const char *mac, time_t timestamp, int16_t rssi, int32
     }
 
     b->ap.freq = frequency;
-    b->ap.property.in_cache = false;
     b->ap.property.used = false;
 
     return 1;
@@ -118,7 +117,7 @@ Sky_rctx_t *_test_sky_ctx()
     uint32_t bufsize;
 
     bufsize = sky_sizeof_session_ctx(NULL);
-    if (bufsize == 0 || bufsize > 8192) {
+    if (bufsize == 0 || bufsize > 32768) {
         fprintf(stderr, "sky_sizeof_session_ctx returned bad value, Can't continue\n");
         exit(-1);
     }

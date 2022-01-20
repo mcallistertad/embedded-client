@@ -26,8 +26,7 @@
 
 #include <stdarg.h>
 
-typedef Sky_status_t (*Sky_plugin_equal_t)(
-    Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal);
+typedef Sky_status_t (*Sky_plugin_equal_t)(Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b, bool *equal);
 typedef Sky_status_t (*Sky_plugin_compare_t)(Sky_rctx_t *ctx, Beacon_t *a, Beacon_t *b, int *diff);
 typedef Sky_status_t (*Sky_plugin_remove_worst_t)(Sky_rctx_t *ctx);
 typedef Sky_status_t (*Sky_plugin_cache_match_t)(Sky_rctx_t *ctx);
@@ -54,8 +53,8 @@ typedef struct plugin_table {
 
 Sky_status_t sky_register_plugins(Sky_plugin_table_t **root);
 Sky_status_t sky_plugin_add(Sky_plugin_table_t **root, Sky_plugin_table_t *table);
-Sky_status_t sky_plugin_equal(Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b,
-    Sky_beacon_property_t *prop, bool *equal);
+Sky_status_t sky_plugin_equal(
+    Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, bool *equal);
 Sky_status_t sky_plugin_compare(
     Sky_rctx_t *rctx, Sky_errno_t *sky_errno, Beacon_t *a, Beacon_t *b, int *diff);
 Sky_status_t sky_plugin_remove_worst(Sky_rctx_t *rctx, Sky_errno_t *sky_errno);

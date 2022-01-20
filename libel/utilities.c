@@ -551,9 +551,8 @@ void dump_vap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, con
 
         logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
             "%s %s %3s %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d", prefix,
-            (b->ap.vg_prop[j].in_cache) ? (b->ap.vg_prop[j].used ? "Used  " : "Cached") : "      ",
-            j < b->ap.vg_len - 1 ? "\\ /" : "\\_/", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-            b->ap.freq, b->h.rssi, b->h.age);
+            b->ap.vg_prop[j].used ? "Used  " : "      ", j < b->ap.vg_len - 1 ? "\\ /" : "\\_/",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], b->ap.freq, b->h.rssi, b->h.age);
     }
 #else
     (void)rctx;
@@ -582,10 +581,9 @@ void dump_ap(Sky_rctx_t *rctx, char *prefix, Beacon_t *b, const char *file, cons
 
     logfmt(file, func, rctx, SKY_LOG_LEVEL_DEBUG,
         "%s %s MAC %02X:%02X:%02X:%02X:%02X:%02X %-4dMHz rssi:%d age:%d pri:%d.%d", prefix,
-        (b->ap.property.in_cache) ? (b->ap.property.used ? "Used  " : "Cached") : "      ",
-        b->ap.mac[0], b->ap.mac[1], b->ap.mac[2], b->ap.mac[3], b->ap.mac[4], b->ap.mac[5],
-        b->ap.freq, b->h.rssi, b->h.age, (int)b->h.priority,
-        (int)((b->h.priority - (int)b->h.priority) * 10.0));
+        b->ap.property.used ? "Used  " : "      ", b->ap.mac[0], b->ap.mac[1], b->ap.mac[2],
+        b->ap.mac[3], b->ap.mac[4], b->ap.mac[5], b->ap.freq, b->h.rssi, b->h.age,
+        (int)b->h.priority, (int)((b->h.priority - (int)b->h.priority) * 10.0));
     dump_vap(rctx, prefix, b, file, func);
 #else
     (void)rctx;
@@ -621,14 +619,18 @@ void dump_beacon(Sky_rctx_t *rctx, char *str, Beacon_t *b, const char *file, con
         snprintf(prefixstr, sizeof(prefixstr), "%s     %-2d%s %7s", str, idx_b,
             b->h.connected ? "*" : " ", sky_pbeacon(b));
 #if CACHE_SIZE
-    } else if (rctx->session && b >= rctx->session->cacheline[0].beacon &&
-               b < rctx->session->cacheline[CACHE_SIZE - 1].beacon +
-                       rctx->session->cacheline[CACHE_SIZE - 1].num_beacons) {
-        idx_b = (int)(b - rctx->session->cacheline[0].beacon);
-        idx_c = idx_b / TOTAL_BEACONS;
-        idx_b %= TOTAL_BEACONS;
-        snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
-            b->h.connected ? "*" : " ", sky_pbeacon(b));
+    } else if (rctx->session) {
+        Sky_cacheline_t *c;
+
+        for (c = rctx->session->cacheline; c < rctx->session->cacheline + CACHE_SIZE; c++) {
+            if (b >= c->beacon && b < c->beacon + TOTAL_BEACONS) {
+                idx_b = b - c->beacon;
+                idx_c = c - rctx->session->cacheline;
+                snprintf(prefixstr, sizeof(prefixstr), "%s %2d:%-2d%s %7s", str, idx_c, idx_b,
+                    b->h.connected ? "*" : " ", sky_pbeacon(b));
+                break;
+            }
+        }
 #endif // CACHE_SIZE
     } else {
         snprintf(prefixstr, sizeof(prefixstr), "%s     ? %s %7s", str, b->h.connected ? "*" : " ",
