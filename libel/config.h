@@ -66,10 +66,10 @@
 #define CACHE_MATCH_THRESHOLD_USED 50 // Score needed when matching just Used APs
 #endif
 #ifndef CACHE_MATCH_THRESHOLD_ALL
-#define CACHE_MATCH_THRESHOLD_ALL 65 // Score needed when matching Used and Unused APs
+#define CACHE_MATCH_THRESHOLD_ALL 50 // Score needed when matching Used and Unused APs
 #endif
 
-/*! \brief The maximum age (in hr) that a cached value is concidered useful
+/*! \brief The maximum age (in hr) that a cached value is considered useful
  */
 #ifndef CACHE_AGE_THRESHOLD
 #define CACHE_AGE_THRESHOLD 24
@@ -81,7 +81,7 @@
  *   location (i.e. all beacons must match when only few beacons are in request ctx).
  */
 #ifndef CACHE_BEACON_THRESHOLD
-#define CACHE_BEACON_THRESHOLD 3
+#define CACHE_BEACON_THRESHOLD 5
 #endif
 
 /*! \brief The minimum rssi value preferred for cache matching
@@ -144,7 +144,7 @@
 #endif
 
 #else // UNITTESTS
-/* Unit Tests are always built with AP, Cell and GNSS suport included
+/* Unit Tests are always built with AP, Cell and GNSS suport included and cache size of 10
  */
 
 #ifdef SKY_EXCLUDE_SANITY_CHECKS
@@ -170,7 +170,7 @@
 #ifdef CACHE_SIZE
 #undef CACHE_SIZE
 #endif
-#define CACHE_SIZE 1
+#define CACHE_SIZE 10
 #endif // UNITTESTS
 
 #endif

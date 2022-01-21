@@ -519,7 +519,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         rctx->beacon[0] = b;
@@ -541,7 +541,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         /* four different APs */
@@ -560,7 +560,7 @@ TEST_FUNC(test_cache_match)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == true);
     });
-    TEST("4 APs misses cache with different 4 AP, 2 different", rctx, {
+    TEST("4 APs match cache with 4 AP in same virtual group", rctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
             .lon = 139.618906,
@@ -570,7 +570,40 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
+            .ap.vg_len = 0 };
+
+        /* four different APs */
+        rctx->beacon[0] = b;
+        b.ap.mac[3] = 0xAA;
+        rctx->beacon[1] = b;
+        b.ap.mac[3] = 0x99;
+        rctx->beacon[2] = b;
+        b.ap.mac[3] = 0x88;
+        rctx->beacon[3] = b;
+        rctx->num_beacons = 4;
+        rctx->num_ap = 4;
+        loc.time = rctx->header.time;
+
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        rctx->beacon[0].ap.mac[3] = 0xB1; /* 0xB0 */
+        rctx->beacon[1].ap.mac[3] = 0xA8; /* 0xAA */
+        rctx->beacon[2].ap.mac[3] = 0x98; /* 0x99 */
+        rctx->beacon[3].ap.mac[3] = 0x89; /* 0x88 */
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+    });
+    TEST("4 APs misses cache with 2 different AP", rctx, {
+        Sky_errno_t sky_errno;
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
+        Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
+            .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
+            .ap.freq = 3660,
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         /* four different APs */
@@ -601,7 +634,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         /* 3 different APs */
@@ -622,7 +655,7 @@ TEST_FUNC(test_cache_match)
         sky_search_cache(rctx, &sky_errno, NULL, &loc);
         ASSERT(IS_CACHE_HIT(rctx) == false);
     });
-    TEST("2 APs misses cache with 1 AP", rctx, {
+    TEST("2 APs misses cache with 1 different AP", rctx, {
         Sky_errno_t sky_errno;
         Sky_location_t loc = { .lat = 35.511315,
             .lon = 139.618906,
@@ -632,7 +665,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 1, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
 
         /* 2 different APs */
@@ -661,7 +694,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
         Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,
@@ -697,7 +730,7 @@ TEST_FUNC(test_cache_match)
         Beacon_t b = { .ap.h = { BEACON_MAGIC, SKY_BEACON_AP, 1, -30, 0, false },
             .ap.mac = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B },
             .ap.freq = 3660,
-            .ap.property = { 0, 0 },
+            .ap.property = { 0 },
             .ap.vg_len = 0 };
         Beacon_t c = { .cell.h = { BEACON_MAGIC, SKY_BEACON_LTE, 1, -30, 0, 1 },
             .cell.id1 = 441,

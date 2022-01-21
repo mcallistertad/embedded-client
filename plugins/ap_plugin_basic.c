@@ -61,7 +61,6 @@
 typedef enum {
     HIGHEST_PRIORITY = 0xffff,
     CONNECTED = 0x200,
-    IN_CACHE = 0x100,
     LOWEST_PRIORITY = 0x000
 } Property_priority_t;
 
@@ -81,8 +80,7 @@ static Sky_status_t set_priorities(Sky_rctx_t *rctx);
  *  if beacons are comparable, return SKY_SUCCESS, and set equivalence
  *  if an error occurs during comparison. return SKY_ERROR
  */
-static Sky_status_t equal(
-    Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, Sky_beacon_property_t *prop, bool *equal)
+static Sky_status_t equal(Sky_rctx_t *rctx, Beacon_t *a, Beacon_t *b, bool *equal)
 {
 #if !SKY_EXCLUDE_WIFI_SUPPORT
     if (!rctx || !a || !b || !equal) {
@@ -96,12 +94,6 @@ static Sky_status_t equal(
 
     if (COMPARE_MAC(a, b) == 0) {
         *equal = true;
-        /* If user provided property pointer, copy properties
-         * from b (useful when getting properties from matching cached beacon */
-        if (prop != NULL && b->ap.property.in_cache) {
-            prop->in_cache = true;
-            prop->used = false; /* Premium plugin supports this property */
-        }
     } else
         *equal = false;
     return SKY_SUCCESS;
@@ -109,7 +101,6 @@ static Sky_status_t equal(
     (void)rctx; /* suppress warning unused parameter */
     (void)a; /* suppress warning unused parameter */
     (void)b; /* suppress warning unused parameter */
-    (void)prop; /* suppress warning unused parameter */
     (void)equal; /* suppress warning unused parameter */
     return SKY_SUCCESS;
 #endif // !SKY_EXCLUDE_WIFI_SUPPORT
@@ -207,6 +198,7 @@ static int mac_similar(const uint8_t macA[], const uint8_t macB[], int *pn)
 
 #if CACHE_SIZE
 /*! \brief count number of cached APs in request rctx relative to a cacheline
+ *         APs that belong to same Virtual group are considered present in cache
  *
  *  @param rctx Skyhook request context
  *  @param cl the cacheline to count in, otherwise count in request rctx
@@ -217,11 +209,17 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 {
     int num_aps_cached = 0;
     int j, i;
+    bool matched[MAX_AP_BEACONS] = { false }; /* each AP in cache is matched only once */
+
+    /* step through each AP in request context looking for a matching AP in cache */
     for (j = 0; j < NUM_APS(rctx); j++) {
         for (i = 0; i < NUM_APS(cl); i++) {
-            bool equivalent = false;
-            equal(rctx, &rctx->beacon[j], &cl->beacon[i], NULL, &equivalent);
-            num_aps_cached += equivalent;
+            if (!matched[i] &&
+                (mac_similar(rctx->beacon[j].ap.mac, cl->beacon[i].ap.mac, NULL) != 0)) {
+                num_aps_cached++;
+                matched[i] = true;
+                break;
+            }
         }
     }
 #if VERBOSE_DEBUG
@@ -230,22 +228,43 @@ static int count_cached_aps_in_request_ctx(Sky_rctx_t *rctx, Sky_cacheline_t *cl
 #endif // VERBOSE_DEBUG
     return num_aps_cached;
 }
-#endif // CACHE_SIZE
 
-/*! \brief determine which of a pair of APs is more valuable
+/*! \brief Count number of uniq virtual groups
  *
- *  return positive value if i is more valuable, negative value is j is more valuable
- *  otherwise return positive if worse (or 0 when same)
+ *  count the APs ignoring those which belong to a virtual group already counted
  *
  *  @param rctx Skyhook request context
  *
+ *  @return number of uniq virtual groups
  */
-#define CONNECTED_AND_IN_CACHE_ONLY(priority) ((int16_t)(priority) & (CONNECTED | IN_CACHE))
-static int cmp_properties(Sky_rctx_t *rctx, int i, int j)
+static uint32_t count_uniq_vg(Sky_rctx_t *rctx)
 {
-    return (CONNECTED_AND_IN_CACHE_ONLY(rctx->beacon[i].h.priority) -
-            CONNECTED_AND_IN_CACHE_ONLY(rctx->beacon[j].h.priority));
+    bool redundant_ap[MAX_AP_BEACONS] = { false };
+    int num_aps = 0;
+    int i, j;
+
+    /* step through APs in request ctx */
+    for (i = 0; i < NUM_APS(rctx); i++) {
+        if (!redundant_ap[i]) {
+            /* count those that are not part of a VG */
+            num_aps++;
+        } else
+            continue; /* this AP is known to be in a VG so skip it */
+
+        /* Scan remaining APs looking for any in the same VG as the current AP */
+        /* compare each beacon to all others, ignoring APs already known to be in VG */
+        for (j = i + 1; j < NUM_APS(rctx); j++) {
+            if (!redundant_ap[j]) {
+                if (mac_similar(rctx->beacon[i].ap.mac, rctx->beacon[j].ap.mac, NULL) != 0) {
+                    redundant_ap[j] = true; /* note that this AP is a member of VG */
+                }
+            }
+        }
+    }
+    LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d APs are unique", num_aps);
+    return num_aps;
 }
+#endif // CACHE_SIZE
 
 /*! \brief Remove a single virtual AP
  *
@@ -295,8 +314,8 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
                  * the one with worse properties, or, if properties are the same, the one with
                  * the higher MAC address.
                  */
-                int prop_diff = cmp_properties(rctx, i, j); // <0 => j is better
-                if (prop_diff > 0 || (prop_diff == 0 && mac_diff < 0)) {
+                int preferred_status = COMPARE_CONNECTED_USED(&rctx->beacon[i], &rctx->beacon[j]);
+                if (preferred_status > 0 || (preferred_status == 0 && mac_diff < 0)) {
                     /* i is better (either because of major properties or mac). j becomes removal candidate */
                     vap_a = &rctx->beacon[j];
                     vap_b = &rctx->beacon[i];
@@ -307,20 +326,17 @@ static bool remove_virtual_ap(Sky_rctx_t *rctx)
                 }
 #if VERBOSE_DEBUG
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "%d similar and worse than %d%s",
-                    IDX(vap_a, rctx), IDX(vap_b, rctx),
-                    vap_b->ap.property.in_cache != vap_a->ap.property.in_cache ?
-                        "(cached)" :
-                        mac_diff < 0 ? "(mac)" : "");
+                    IDX(vap_a, rctx), IDX(vap_b, rctx), mac_diff < 0 ? "(mac)" : "");
                 dump_ap(rctx, "similar A:  ", vap_a, __FILE__, __FUNCTION__);
                 dump_ap(rctx, "similar B:  ", vap_b, __FILE__, __FUNCTION__);
 #else
                 (void)vap_b;
 #endif // VERBOSE_DEBUG
                 if (worst_vap != NULL)
-                    prop_diff = cmp_properties(rctx, IDX(vap_a, rctx), IDX(worst_vap, rctx));
+                    preferred_status = COMPARE_CONNECTED_USED(vap_a, worst_vap);
 
-                if (worst_vap == NULL || prop_diff < 0 ||
-                    (prop_diff == 0 && COMPARE_MAC(vap_a, worst_vap) < 0)) {
+                if (worst_vap == NULL || preferred_status > 0 ||
+                    (preferred_status == 0 && COMPARE_MAC(vap_a, worst_vap) < 0)) {
                     /* This is the first removal candidate or its properties are
                      * worse than the current candidate or its properties are the same
                      * but it has a larger MAC value. */
@@ -434,7 +450,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
     float ratio; /* 0.0 <= ratio <= 1.0 is the degree to which request rctx matches cacheline
                     In typical case this is the intersection(request rctx, cache) / union(request rctx, cache) */
     float bestratio = 0.0f;
-    float bestputratio = 0.0f;
+    float bestputratio = 1.0f; /* best put is worst score */
     int score; /* score is number of APs found in cacheline */
     int threshold; /* the threshold determined that ratio should meet */
     int num_aps_cached = 0;
@@ -453,12 +469,11 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cacheline %d expired", i);
             cl->time = CACHE_EMPTY;
         }
-        /* if line is empty and it is the first one, remember it */
         if (cl->time == CACHE_EMPTY) {
-            if (bestputratio < 1.0) {
-                bestput = (int16_t)i;
-                bestputratio = 1.0f;
-            }
+            /* We've found an empty cache line, which is the best */
+            /* possible place to put a new scan. Mark it as such. */
+            bestput = (int16_t)i;
+            bestputratio = 0.0f;
         }
     }
 
@@ -502,7 +517,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
                 LOGFMT(rctx, SKY_LOG_LEVEL_DEBUG, "Cache: %d: Score based on ALL APs", i);
                 score = num_aps_cached;
                 int unionAB = NUM_APS(rctx) + NUM_APS(cl) - num_aps_cached;
-                if (NUM_APS(rctx) <= CONFIG(rctx->session, cache_beacon_threshold))
+                if (count_uniq_vg(rctx) <= CONFIG(rctx->session, cache_beacon_threshold))
                     threshold = 99; /* cache hit requires 100% */
                 else
                     threshold = CONFIG(rctx->session, cache_match_all_threshold);
@@ -512,7 +527,7 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             }
         }
 
-        if (ratio > bestputratio) {
+        if (ratio < bestputratio) {
             bestput = (int16_t)i;
             bestputratio = ratio;
         }
@@ -525,11 +540,9 @@ static Sky_status_t match(Sky_rctx_t *rctx)
             bestratio = ratio;
             bestthresh = threshold;
         }
-        if (ratio * 100 > (float)threshold)
-            break;
     }
 
-    /* make a note of the best match used by add_to_cache */
+    /* make a note of the best match (this is used by add_to_cache) */
     rctx->save_to = bestput;
 
     rctx->get_from = bestc;
@@ -605,9 +618,6 @@ static Sky_status_t to_cache(Sky_rctx_t *rctx, Sky_location_t *loc)
 
     for (j = 0; j < NUM_BEACONS(rctx); j++) {
         cl->beacon[j] = rctx->beacon[j];
-        if (cl->beacon[j].h.type == SKY_BEACON_AP) {
-            cl->beacon[j].ap.property.in_cache = false;
-        }
     }
     DUMP_CACHE(rctx);
     return SKY_SUCCESS;
@@ -646,9 +656,7 @@ static float get_priority(Sky_rctx_t *rctx, Beacon_t *b)
 
     if (b->h.connected)
         priority += (float)CONNECTED;
-    if (b->ap.property.in_cache) {
-        priority += (float)IN_CACHE;
-    }
+
     /* Compute the range of RSSI values across all APs. */
     /* (Note that the list of APs is in rssi order so index 0 is the strongest beacon.) */
     highest_rssi = EFFECTIVE_RSSI(rctx->beacon[0].h.rssi);
@@ -716,6 +724,11 @@ static int set_priorities(Sky_rctx_t *rctx)
 #endif // !SKY_EXCLUDE_WIFI_SUPPORT
 
 #ifdef UNITTESTS
+static void init_req_ctx(Sky_rctx_t *r)
+{
+    r->hit = false;
+    r->get_from = r->save_to = -1;
+}
 
 TEST_FUNC(test_ap_plugin)
 {
@@ -897,43 +910,218 @@ TEST_FUNC(test_ap_plugin)
         ASSERT(ctx->beacon[1].ap.mac[5] == 0xAC);
         ASSERT(ctx->beacon[2].ap.mac[5] == 0x4A);
     });
-    TEST("remove_worst removes VAP with highest mac unless cached", ctx, {
+
+    GROUP("test 4 cache lines, both adding cached beacons and searching cache for a match");
+    TEST("Multiple cachelines get filled and used", rctx, {
         Sky_errno_t sky_errno;
         uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4B };
         int16_t rssi = -30;
         int32_t freq = 3660;
-        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD };
+        uint8_t mac2[] = { 0x3B, 0x5E, 0x0C, 0xB0, 0x17, 0x4D };
         uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0x4A };
-        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAC }; /* remove */
-        uint32_t value;
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAC };
+        Sky_location_t loc = { .lat = 35.511315,
+            .lon = 139.618906,
+            .hpe = 16,
+            .location_source = SKY_LOCATION_SOURCE_WIFI,
+            .location_status = SKY_LOCATION_STATUS_SUCCESS };
 
-        ASSERT(sky_set_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, 3) == SKY_SUCCESS);
-        ASSERT(SKY_SUCCESS == sky_get_option(ctx, &sky_errno, CONF_MAX_AP_BEACONS, &value) &&
-               value == 3);
+        loc.time = rctx->header.time;
+        /* Add a beacon to the request context, */
+        /* copy it into the cache. Verify that the context is */
+        /* placed into cache line 0. */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(
+            rctx, &sky_errno, &loc); /* By default, saves to first empty cacheline */
+        ASSERT(memcmp(mac1, rctx->session->cacheline[0].beacon[0].ap.mac, sizeof(mac1)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 0);
+        ASSERT(rctx->save_to == 9);
+
+        /* Initialize cache status from the request context, add another beacon to it, */
+        /* and copy it into the cache. Verify that the context is */
+        /* placed into cache line 1. */
+        init_req_ctx(rctx);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(memcmp(mac2, rctx->session->cacheline[1].beacon[1].ap.mac, sizeof(mac2)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 1);
+        ASSERT(rctx->save_to == 9);
+
+        /* Initialize cache status from the request context, add another beacon to it, */
+        /* and copy it into the cache. Verify that the context is */
+        /* placed into cache line 2. */
+        init_req_ctx(rctx);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(memcmp(mac3, rctx->session->cacheline[2].beacon[2].ap.mac, sizeof(mac3)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 2);
+        ASSERT(rctx->save_to == 9);
+
+        /* Initialize cache status from the request context, add another beacon to it, */
+        /* and copy it into the cache. Verify that the context is */
+        /* placed into cache line 3. */
+        init_req_ctx(rctx);
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, rctx->header.time, rssi--, freq, false));
+        sky_plugin_add_to_cache(rctx, &sky_errno, &loc);
+        ASSERT(memcmp(mac4, rctx->session->cacheline[3].beacon[3].ap.mac, sizeof(mac4)) == 0);
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 3);
+        ASSERT(rctx->save_to == 9);
+
+        /* Initialize cache status from the request context, remove first two beacons from it, */
+        /* add them back to it, verifying that they are marked cached in the Request context. */
+        /* Verify that the context is a match to cache line 2. */
+        init_req_ctx(rctx);
+
+        remove_beacon(rctx, 0); /* remove mac1 */
+        remove_beacon(rctx, 0); /* remove mac2 */
+
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, rctx->header.time, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, rctx->header.time, rssi--, freq, false));
+
+        sky_search_cache(rctx, &sky_errno, NULL, &loc);
+        ASSERT(IS_CACHE_HIT(rctx) == true);
+        ASSERT(rctx->get_from == 3);
+        ASSERT(rctx->save_to == 9);
+    });
+}
+
+TEST_FUNC(test_ap_plugin_vg)
+{
+    GROUP("count_uniq_vg");
+    TEST("count_uniq_vg finds 2 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAA }; /* 3rd AP in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
         /* Add in rssi order */
         ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
         ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
         ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
-        ctx->beacon[0].ap.property.in_cache = true;
-        ctx->beacon[1].ap.property.in_cache = true;
-        ctx->beacon[2].ap.property.in_cache = true;
-        /* add one more VAP than MAX AP Beacons allows */
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
         ASSERT(SKY_SUCCESS ==
-               sky_add_ap_beacon(ctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
-        ASSERT(ctx->num_beacons == 3);
-        ASSERT(ctx->num_ap == 3);
-        ASSERT(ctx->beacon[0].ap.mac[5] == 0x4B);
-        ASSERT(ctx->beacon[1].ap.mac[5] == 0xAD);
-        ASSERT(ctx->beacon[2].ap.mac[5] == 0x4A);
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 2);
+    });
+    TEST("count_uniq_vg finds 1 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAA }; /* 3rd AP in VG */
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xA5 }; /* 4th AP in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 1);
+    });
+    TEST("count_uniq_vg finds 3 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* 1st AP in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAD }; /* 2nd AP in VG */
+        uint8_t mac3[] = { 0x1D, 0x5C, 0x2B, 0x8A, 0x38, 0x2C }; /* Not in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 3);
+    });
+    TEST("count_uniq_vg finds 4 uniq vg", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* Not in VG */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0xCC, 0xEE, 0xCC, 0xBB, 0x77, 0xDD }; /* Not in VG */
+        uint8_t mac3[] = { 0x44, 0x55, 0x00, 0x90, 0x74, 0x4E }; /* Not in VG */
+        uint8_t mac4[] = { 0x3D, 0x4C, 0x5B, 0x1A, 0x28, 0x5C }; /* Not in VG */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 4);
+    });
+    TEST("count_uniq_vg finds 2 uniq vg each with multiple members", rctx, {
+        Sky_errno_t sky_errno;
+        uint8_t mac1[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xAB }; /* vg 1 */
+        int16_t rssi = -30;
+        int32_t freq = 3660;
+        uint8_t mac2[] = { 0xCC, 0xEE, 0xCC, 0xBB, 0x77, 0xDD }; /* vg 2 */
+        uint8_t mac3[] = { 0xCC, 0xEE, 0xCC, 0xB2, 0x77, 0xDD }; /* vg 2 */
+        uint8_t mac4[] = { 0x4C, 0x5E, 0x0C, 0xB0, 0x17, 0xA2 }; /* vg 1 */
+
+        /* Add in rssi order */
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac1, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac2, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac3, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(SKY_SUCCESS ==
+               sky_add_ap_beacon(rctx, &sky_errno, mac4, TIME_UNAVAILABLE, rssi--, freq, false));
+        ASSERT(rctx->num_beacons == 4);
+        ASSERT(rctx->num_ap == 4);
+        ASSERT(count_uniq_vg(rctx) == 2);
     });
 }
 
 static Sky_status_t unit_tests(void *_ctx)
 {
     GROUP_CALL("Remove Worst", test_ap_plugin);
+    GROUP_CALL("count_uniq_vg", test_ap_plugin_vg);
     return SKY_SUCCESS;
 }
 
